@@ -13315,6 +13315,7 @@ ${renderBottomNavigation()}
                 } else { // Risposta multipla
                     const checkedBoxes = document.querySelectorAll(`.poll-option-checkbox-${pollId}:checked`);
                     if (checkedBoxes.length === 0) return await customAlert("Seleziona almeno un'opzione per votare.");
+                    if (checkedBoxes.length > 3) return await customAlert("Puoi selezionare al massimo 3 opzioni.");
 
                     checkedBoxes.forEach(box => {
                         const idx = parseInt(box.value, 10);
