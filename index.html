@@ -12,6 +12,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <!-- Content Security Policy: difesa in profondità contro XSS e caricamento di risorse non attendibili.
+         'unsafe-inline' è necessario per gli stili inline e gli handler onclick usati dall'app;
+         la protezione principale contro l'XSS è comunque l'escaping dell'output lato JS. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://cloud.activepieces.com https://primary-production-36d20.up.railway.app; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Con-bridge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,9 +26,9 @@
     <!-- Link al manifest per la PWA -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Libreria jsPDF per generazione PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- Libreria jsPDF per generazione PDF (con Subresource Integrity) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" integrity="sha384-vuyrTV5nkscLp1knFvt+FIHfKKzmROBq5reruhMRslauj54mW+l2B8b6szMN6lCL" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         /* --- NUOVO DESIGN SYSTEM v4 (Stile App Nativa) --- */
 
@@ -1718,7 +1723,7 @@
             }
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
@@ -1739,6 +1744,33 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+
+        // ===== SICUREZZA: escaping HTML per prevenire XSS (stored/reflected) =====
+        // Converte qualsiasi valore in testo sicuro da inserire dentro innerHTML.
+        // Va usata su TUTTI i dati provenienti da Firestore o input utente prima
+        // di interpolarli in una stringa HTML.
+        const escapeHtml = (value) => {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+        // Esposta su window per eventuali handler inline.
+        window.escapeHtml = escapeHtml;
+
+        // Per valori interpolati dentro una stringa JS in single-quote all'interno di un
+        // attributo inline (es. onclick="fn('${...}')"). Prima si mette al sicuro la stringa
+        // JS (backslash e apice), poi si applica l'escaping HTML dell'attributo: così il valore
+        // resta confinato sia nel contesto HTML sia in quello JavaScript dopo il decoding.
+        const escapeJsAttr = (value) => escapeHtml(
+            String(value === null || value === undefined ? '' : value)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+        );
+        window.escapeJsAttr = escapeJsAttr;
 
         // ===== MODALI PERSONALIZZATI (sostituiscono alert, confirm, prompt) =====
 
@@ -2909,16 +2941,16 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             <form id="edit-period-form" class="space-y-4" onsubmit="updateAdministrativePeriod(event, '${periodId}')">
                 <div class="form-group">
                     <label for="edit-period-year" class="form-label">Anno Amministrativo</label>
-                    <input type="text" id="edit-period-year" required class="form-input" value="${currentData.year}">
+                    <input type="text" id="edit-period-year" required class="form-input" value="${escapeHtml(currentData.year)}">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="form-group">
                         <label for="edit-period-start-date" class="form-label">Dal</label>
-                        <input type="date" id="edit-period-start-date" required class="form-input" value="${currentData.startDate}">
+                        <input type="date" id="edit-period-start-date" required class="form-input" value="${escapeHtml(currentData.startDate)}">
                     </div>
                     <div class="form-group">
                         <label for="edit-period-end-date" class="form-label">Al</label>
-                        <input type="date" id="edit-period-end-date" required class="form-input" value="${currentData.endDate}">
+                        <input type="date" id="edit-period-end-date" required class="form-input" value="${escapeHtml(currentData.endDate)}">
                     </div>
                 </div>
                 <div class="flex justify-end gap-4 pt-2">
@@ -4280,16 +4312,16 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     <h3 class="card-title">I Tuoi Dati</h3>
                     <form id="profile-form" class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="form-label">Nome</label><input type="text" id="profile-nome" value="${userProfile?.nome || ''}" required class="form-input"></div>
-                            <div><label class="form-label">Cognome</label><input type="text" id="profile-cognome" value="${userProfile?.cognome || ''}" required class="form-input"></div>
+                            <div><label class="form-label">Nome</label><input type="text" id="profile-nome" value="${escapeHtml(userProfile?.nome || '')}" required class="form-input"></div>
+                            <div><label class="form-label">Cognome</label><input type="text" id="profile-cognome" value="${escapeHtml(userProfile?.cognome || '')}" required class="form-input"></div>
                         </div>
-                        <div><label class="form-label">Email</label><input type="email" id="profile-email" value="${currentUser?.email || ''}" required class="form-input"></div>
-                        <div><label class="form-label">Telefono</label><input type="tel" id="profile-telefono" value="${userProfile?.telefono || ''}" placeholder="Nessun numero" class="form-input"></div>
+                        <div><label class="form-label">Email</label><input type="email" id="profile-email" value="${escapeHtml(currentUser?.email || '')}" required class="form-input"></div>
+                        <div><label class="form-label">Telefono</label><input type="tel" id="profile-telefono" value="${escapeHtml(userProfile?.telefono || '')}" placeholder="Nessun numero" class="form-input"></div>
                         <div class="form-group">
                             <label class="form-label">Le Tue Proprietà</label>
                             <div style="background: var(--surface-color-light); padding: 1rem; border-radius: var(--radius-sm);">
                                 ${userProfile?.proprieta && userProfile.proprieta.length > 0
-                ? `<ul>${userProfile.proprieta.map(p => `<li style="list-style-type: disc; margin-left: 20px;">${p.interno} (${(p.millesimi || 0).toFixed(2)} ‰) - Piano: ${p.piano ?? 'N/A'} ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')}</ul>
+                ? `<ul>${userProfile.proprieta.map(p => `<li style="list-style-type: disc; margin-left: 20px;">${escapeHtml(p.interno)} (${(p.millesimi || 0).toFixed(2)} ‰) - Piano: ${escapeHtml(p.piano ?? 'N/A')} ${p.gruppo ? `- <strong>Gruppo:</strong> ${escapeHtml(p.gruppo)}` : ''}</li>`).join('')}</ul>
                                        <hr style="border-color: var(--surface-color); margin: 0.75rem 0;">
                                        <div style="display:flex; justify-content:space-between; font-weight:600;"><span>Millesimi Totali:</span><span>${(userProfile.millesimiTotali || 0).toFixed(2)} ‰</span></div>`
                 : '<p style="color:var(--secondary-text);">Nessuna proprietà associata.</p>'
@@ -4718,12 +4750,12 @@ ${renderBottomNavigation()}
                         usersSnapshot.docs.forEach(doc => {
                             const user = doc.data();
                             const propertiesHtml = user.proprieta && user.proprieta.length > 0
-                                ? user.proprieta.map(p => `<div>${p.interno} (Piano: ${p.piano ?? 'N/A'}, ${(p.millesimi || 0).toFixed(2)} ‰)</div>`).join('')
+                                ? user.proprieta.map(p => `<div>${escapeHtml(p.interno)} (Piano: ${escapeHtml(p.piano ?? 'N/A')}, ${(p.millesimi || 0).toFixed(2)} ‰)</div>`).join('')
                                 : 'N/D';
                             html += `
                                 <tr>
-                                    <td data-label="Cognome e Nome">${user.cognome} ${user.nome}</td>
-                                    <td data-label="Email">${user.email}</td>
+                                    <td data-label="Cognome e Nome">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</td>
+                                    <td data-label="Email">${escapeHtml(user.email)}</td>
                                     <td data-label="Proprietà">${propertiesHtml}</td>
                                     <td data-label="Millesimi Tot." style="text-align:right;">${(user.millesimiTotali || 0).toFixed(2).replace('.', ',')}</td>
                                 </tr>
@@ -4778,7 +4810,7 @@ ${renderBottomNavigation()}
                             const accountSubtotalMillesimi = group.users.reduce((sum, u) => sum + u.millesimi, 0);
                             grandTotalAccounts += group.users.length;
                             grandTotalAccountMillesimi += accountSubtotalMillesimi;
-                            html += `<div class="card" style="margin-bottom: 1.5rem;"><h3 class="card-title" style="text-transform: capitalize;">${groupName.toLowerCase()}</h3><div class="data-table-container"><table class="data-table"><thead><tr><th>Id U.I.</th><th>Proprietario Registrato</th><th style="text-align:right;">Millesimi</th></tr></thead><tbody>${group.users.length > 0 ? group.users.map(u => `<tr><td data-label="Id U.I.">${u.idUI}</td><td data-label="Proprietario">${u.proprietario}</td><td data-label="Millesimi" style="text-align:right;">${u.millesimi.toFixed(2).replace('.', ',')}</td></tr>`).join('') : `<tr><td colspan="3" style="color:var(--secondary-text); text-align:center;">Nessun account registrato per questo gruppo.</td></tr>`}<tr style="font-weight:bold; background-color: var(--surface-color-light);"><td data-label="Riepilogo">Totale Account Registrati</td><td data-label="N. Account" style="text-align:right;">${group.users.length}</td><td data-label="Millesimi" style="text-align:right;">${accountSubtotalMillesimi.toFixed(2).replace('.', ',')}</td></tr><tr style="font-weight:bold; background-color: var(--surface-color-light);"><td data-label="Riepilogo">Totale Unità da Import</td><td data-label="N. Unità" style="text-align:right;">${group.totalPropertiesImport}</td><td data-label="Millesimi" style="text-align:right;">${group.totalMillesimiImport.toFixed(2).replace('.', ',')}</td></tr></tbody></table></div></div>`;
+                            html += `<div class="card" style="margin-bottom: 1.5rem;"><h3 class="card-title" style="text-transform: capitalize;">${escapeHtml(groupName.toLowerCase())}</h3><div class="data-table-container"><table class="data-table"><thead><tr><th>Id U.I.</th><th>Proprietario Registrato</th><th style="text-align:right;">Millesimi</th></tr></thead><tbody>${group.users.length > 0 ? group.users.map(u => `<tr><td data-label="Id U.I.">${escapeHtml(u.idUI)}</td><td data-label="Proprietario">${escapeHtml(u.proprietario)}</td><td data-label="Millesimi" style="text-align:right;">${u.millesimi.toFixed(2).replace('.', ',')}</td></tr>`).join('') : `<tr><td colspan="3" style="color:var(--secondary-text); text-align:center;">Nessun account registrato per questo gruppo.</td></tr>`}<tr style="font-weight:bold; background-color: var(--surface-color-light);"><td data-label="Riepilogo">Totale Account Registrati</td><td data-label="N. Account" style="text-align:right;">${group.users.length}</td><td data-label="Millesimi" style="text-align:right;">${accountSubtotalMillesimi.toFixed(2).replace('.', ',')}</td></tr><tr style="font-weight:bold; background-color: var(--surface-color-light);"><td data-label="Riepilogo">Totale Unità da Import</td><td data-label="N. Unità" style="text-align:right;">${group.totalPropertiesImport}</td><td data-label="Millesimi" style="text-align:right;">${group.totalMillesimiImport.toFixed(2).replace('.', ',')}</td></tr></tbody></table></div></div>`;
                         }
                         html += `<div class="card" style="margin-bottom: 1.5rem;"><h3 class="card-title">Riepilogo Complessivo Confronto</h3><div class="data-table-container"><table class="data-table"><tbody><tr style="font-weight:bold; background-color: var(--surface-color-light);"><td>Totale Account Registrati</td><td style="text-align:right;">${grandTotalAccounts}</td><td style="text-align:right;">${grandTotalAccountMillesimi.toFixed(2).replace('.', ',')}</td></tr><tr style="font-weight:bold; background-color: var(--surface-color-light);"><td>Totale Unità da Import</td><td style="text-align:right;">${grandTotalProperties}</td><td style="text-align:right;">${grandTotalAllMillesimi.toFixed(2).replace('.', ',')}</td></tr></tbody></table></div></div>`;
                     } else { // mode === 'complessiva'
@@ -4786,7 +4818,7 @@ ${renderBottomNavigation()}
                         for (const groupName in groupedData) {
                             const group = groupedData[groupName];
                             if (group.totalPropertiesImport === 0) continue;
-                            html += `<tr><td data-label="Gruppo / Scala" style="text-transform: capitalize;">${groupName.toLowerCase()}</td><td data-label="N. Unità" style="text-align:right;">${group.totalPropertiesImport}</td><td data-label="Somma Millesimi" style="text-align:right;">${group.totalMillesimiImport.toFixed(2).replace('.', ',')}</td></tr>`;
+                            html += `<tr><td data-label="Gruppo / Scala" style="text-transform: capitalize;">${escapeHtml(groupName.toLowerCase())}</td><td data-label="N. Unità" style="text-align:right;">${group.totalPropertiesImport}</td><td data-label="Somma Millesimi" style="text-align:right;">${group.totalMillesimiImport.toFixed(2).replace('.', ',')}</td></tr>`;
                         }
                         html += `<tr style="font-weight:bold; background-color: var(--surface-color-light);"><td>Totale Complessivo</td><td style="text-align:right;">${grandTotalProperties}</td><td style="text-align:right;">${grandTotalAllMillesimi.toFixed(2).replace('.', ',')}</td></tr></tbody></table></div></div>`;
                     }
@@ -4892,13 +4924,13 @@ ${renderBottomNavigation()}
 
                     filteredData.forEach(item => {
                         tableHtml += `<tr>
-                            <td data-label="Proprietà">${item.interno || 'N/D'}</td>
-                            <td data-label="Cognome">${item.cognome || 'N/D'}</td>
-                            <td data-label="Nome">${item.nome || 'N/D'}</td>
-                            <td data-label="Raggruppamento">${item.gruppo || 'N/D'}</td>
-                            <td data-label="Piano">${item.piano ?? 'N/A'}</td>
-                            <td data-label="Telefono">${item.telefono}</td>
-                            <td data-label="Email">${item.email}</td>
+                            <td data-label="Proprietà">${escapeHtml(item.interno || 'N/D')}</td>
+                            <td data-label="Cognome">${escapeHtml(item.cognome || 'N/D')}</td>
+                            <td data-label="Nome">${escapeHtml(item.nome || 'N/D')}</td>
+                            <td data-label="Raggruppamento">${escapeHtml(item.gruppo || 'N/D')}</td>
+                            <td data-label="Piano">${escapeHtml(item.piano ?? 'N/A')}</td>
+                            <td data-label="Telefono">${escapeHtml(item.telefono)}</td>
+                            <td data-label="Email">${escapeHtml(item.email)}</td>
                         </tr>`;
                     });
 
@@ -5751,7 +5783,7 @@ ${renderBottomNavigation()}
 
         const formatActivityLog = (activity) => {
             const { type, details } = activity;
-            const detailsText = (text) => text || 'N/D';
+            const detailsText = (text) => escapeHtml(text || 'N/D');
 
             switch (type) {
                 case 'user_registered': return `si è registrato con il ruolo ${detailsText(details.userType)}.`;
@@ -5772,7 +5804,7 @@ ${renderBottomNavigation()}
                 case 'file_deleted': return `ha eliminato il file dal percorso: ${detailsText(details.path)}.`;
                 case 'folder_created': return `ha creato la cartella nel percorso: ${detailsText(details.path)}.`;
                 case 'folder_deleted': return `ha eliminato la cartella dal percorso: ${detailsText(details.path)}.`;
-                default: return `ha eseguito l'azione di tipo "${type}".`;
+                default: return `ha eseguito l'azione di tipo "${escapeHtml(type)}".`;
             }
         };
 
@@ -5784,7 +5816,7 @@ ${renderBottomNavigation()}
             <div class="list-item" style="background-color: var(--surface-color); flex-direction: column; align-items: flex-start; gap: 0.5rem;">
                 <div class="flex justify-between w-full">
                     <div class="title" style="font-weight: 500;">
-                        <strong style="color: var(--accent-color);">${activity.userName}</strong> (${activity.userType})
+                        <strong style="color: var(--accent-color);">${escapeHtml(activity.userName)}</strong> (${escapeHtml(activity.userType)})
                     </div>
                     <div class="subtitle" style="font-size: 0.8rem;">${timestamp}</div>
                 </div>
@@ -5945,8 +5977,8 @@ ${renderBottomNavigation()}
                         <label class="flex items-center gap-4 w-full cursor-pointer">
                             <input type="checkbox" class="supervisor-permission-checkbox" data-id="${userId}" ${canAccess ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
                             <div class="list-item-content">
-                                <div class="title">${user.cognome} ${user.nome}</div>
-                                <div class="subtitle">${user.tipoUtente} - ${user.email}</div>
+                                <div class="title">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</div>
+                                <div class="subtitle">${escapeHtml(user.tipoUtente)} - ${escapeHtml(user.email)}</div>
                             </div>
                         </label>
                     </div>
@@ -6126,10 +6158,10 @@ ${renderBottomNavigation()}
                     return `
                     <div class="list-item" style="background: var(--surface-color-light);">
                         <div class="list-item-content">
-                            <div class="title">${category.name}</div>
+                            <div class="title">${escapeHtml(category.name)}</div>
                         </div>
                         <div class="list-item-action flex gap-2">
-                            <button onclick="openCategoryEditModal('${docSnap.id}', '${category.name.replace(/'/g, "\\'")}')" class="btn-icon" title="Modifica Categoria">
+                            <button onclick="openCategoryEditModal('${docSnap.id}', '${escapeJsAttr(category.name)}')" class="btn-icon" title="Modifica Categoria">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                             </button>
                             <button onclick="deleteReportCategory('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
@@ -6159,7 +6191,7 @@ ${renderBottomNavigation()}
             <form id="edit-category-form" class="space-y-4" onsubmit="updateReportCategory(event, '${categoryId}')">
                 <div class="form-group">
                     <label for="edit-category-name" class="form-label">Nome Categoria</label>
-                    <input type="text" id="edit-category-name" required class="form-input" value="${currentName}">
+                    <input type="text" id="edit-category-name" required class="form-input" value="${escapeHtml(currentName)}">
                 </div>
                 <div class="flex justify-end gap-4 pt-2">
                     <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
@@ -6250,7 +6282,7 @@ ${renderBottomNavigation()}
                         <label class="flex items-center gap-4 w-full cursor-pointer">
                             <input type="checkbox" class="cleanup-item-checkbox" data-id="${doc.id}" data-type="${type}" onchange="handleCleanupSelectionChange('${type}')" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
                             <div class="list-item-content">
-                                <div class="title">${title}</div>
+                                <div class="title">${escapeHtml(title)}</div>
                                 <div class="subtitle">${date}</div>
                             </div>
                         </label>
@@ -7085,7 +7117,7 @@ ${renderBottomNavigation()}
                     optionsContainer.innerHTML = `<div class="custom-dropdown-item" style="cursor:default;">Nessun risultato</div>`;
                 } else {
                     optionsContainer.innerHTML = filteredNames.map(name =>
-                        `<div class="custom-dropdown-item" data-value="${name}">${name}</div>`
+                        `<div class="custom-dropdown-item" data-value="${escapeHtml(name)}">${escapeHtml(name)}</div>`
                     ).join('');
                 }
                 optionsContainer.classList.remove('hidden');
@@ -7120,7 +7152,7 @@ ${renderBottomNavigation()}
                     item.innerHTML = `
                     <label for="prop-${index}">
                         ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
-                        <span>${prop[apartmentHeader]} - ${prop[millesimiHeader]} ‰</span>
+                        <span>${escapeHtml(prop[apartmentHeader])} - ${escapeHtml(prop[millesimiHeader])} ‰</span>
                     </label>
                     <div class="property-controls-stack">
                         <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
@@ -7188,7 +7220,7 @@ ${renderBottomNavigation()}
                 let totalMillesimi = selectedProperties.reduce((sum, prop) => sum + prop.millesimi, 0);
                 let summaryHtml = '<strong>Unità Selezionate:</strong><ul>';
                 selectedProperties.forEach(prop => {
-                    summaryHtml += `<li style="list-style-type: disc; margin-left: 20px;">${prop.interno} (${prop.millesimi.toFixed(2)} ‰) - <strong>Piano:</strong> ${prop.piano ?? 'N/A'} - <strong>Gruppo:</strong> ${prop.gruppo || 'N/A'}</li>`;
+                    summaryHtml += `<li style="list-style-type: disc; margin-left: 20px;">${escapeHtml(prop.interno)} (${prop.millesimi.toFixed(2)} ‰) - <strong>Piano:</strong> ${prop.piano ?? 'N/A'} - <strong>Gruppo:</strong> ${escapeHtml(prop.gruppo || 'N/A')}</li>`;
                 });
                 summaryHtml += `</ul><hr style="border-color: var(--surface-color); margin: 0.5rem 0;"><strong style="display: flex; justify-content: space-between;"><span>Totale Millesimi:</span><span>${totalMillesimi.toFixed(2)} ‰</span></strong>`;
                 summaryEl.innerHTML = summaryHtml;
@@ -7643,7 +7675,7 @@ ${renderBottomNavigation()}
             function addOptionInput(value = "") {
                 const div = document.createElement("div");
                 div.className = "flex items-center gap-2";
-                div.innerHTML = `<input type="text" class="form-input" style="flex:1" required placeholder="Testo opzione" value="${value}"><button type="button" class="btn-remove-option" style="background:var(--surface-color-light); border:none; color:var(--primary-text); width:36px; height:36px; border-radius:50%; cursor:pointer;">−</button>`;
+                div.innerHTML = `<input type="text" class="form-input" style="flex:1" required placeholder="Testo opzione" value="${escapeHtml(value)}"><button type="button" class="btn-remove-option" style="background:var(--surface-color-light); border:none; color:var(--primary-text); width:36px; height:36px; border-radius:50%; cursor:pointer;">−</button>`;
                 div.querySelector(".btn-remove-option").onclick = () => {
                     optionsList.removeChild(div);
                     if (optionsList.childElementCount < 2) addOptionInput();
@@ -7961,7 +7993,7 @@ ${renderBottomNavigation()}
                     } else {
                         const optionsHtml = snapshot.docs.map(doc => {
                             const category = doc.data();
-                            return `<option value="${category.name.toLowerCase()}">${category.name}</option>`;
+                            return `<option value="${escapeHtml(category.name.toLowerCase())}">${escapeHtml(category.name)}</option>`;
                         }).join('');
                         categorySelect.innerHTML = `<option value="">Seleziona una categoria...</option>${optionsHtml}`;
                     }
@@ -8001,7 +8033,7 @@ ${renderBottomNavigation()}
                     const label = role === 'condomino' ? 'Seleziona Condomino' : 'Seleziona Fornitore';
                     const options = sortedDocs.map(doc => {
                         const user = doc.data();
-                        return `<option value="${doc.id}">${user.cognome} ${user.nome}</option>`;
+                        return `<option value="${doc.id}">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</option>`;
                     }).join('');
 
                     specificRecipientContainer.innerHTML = `
@@ -8485,19 +8517,19 @@ ${renderBottomNavigation()}
 
             const generateTableHTML = (data, isPreview = false) => {
                 if (!data || data.length === 0) return '<p style="color:var(--secondary-text);">Nessun dato da visualizzare.</p>';
-                const groupOptionsHtml = `<option value="">Nessun Gruppo</option>` + partialCondosList.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                const groupOptionsHtml = `<option value="">Nessun Gruppo</option>` + partialCondosList.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
                 let tableHTML = `<table class="data-table" id="millesimi-preview-table">`;
                 const headers = Object.keys(data[0]);
-                tableHTML += '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+                tableHTML += '<thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
                 data.forEach(row => {
                     tableHTML += '<tr>';
                     headers.forEach(header => {
                         const cellValue = row[header] !== undefined ? row[header] : '';
                         if (isPreview && header.toLowerCase() === 'raggruppamento') {
-                            const selectedGroupOptions = groupOptionsHtml.replace(`value="${cellValue}"`, `value="${cellValue}" selected`);
+                            const selectedGroupOptions = groupOptionsHtml.replace(`value="${escapeHtml(cellValue)}"`, `value="${escapeHtml(cellValue)}" selected`);
                             tableHTML += `<td><select class="form-select" style="padding: 0.4rem 0.6rem; font-size: 0.9rem;">${selectedGroupOptions}</select></td>`;
                         } else {
-                            tableHTML += `<td>${cellValue}</td>`;
+                            tableHTML += `<td>${escapeHtml(cellValue)}</td>`;
                         }
                     });
                     tableHTML += '</tr>';
@@ -8652,7 +8684,7 @@ ${renderBottomNavigation()}
 
                 let tableHTML = `<table class="data-table"><thead><tr>`;
                 headers.forEach(header => {
-                    tableHTML += `<th>${header.toUpperCase()}</th>`;
+                    tableHTML += `<th>${escapeHtml(header.toUpperCase())}</th>`;
                 });
                 if (isEditable) {
                     tableHTML += `<th style="text-align:right;">AZIONI</th>`;
@@ -8663,7 +8695,7 @@ ${renderBottomNavigation()}
                     tableHTML += `<tr>`;
                     headers.forEach(header => {
                         const cellValue = row[header] !== undefined ? row[header] : '';
-                        tableHTML += `<td>${cellValue}</td>`;
+                        tableHTML += `<td>${escapeHtml(cellValue)}</td>`;
                     });
 
                     if (isEditable) {
@@ -8821,11 +8853,11 @@ ${renderBottomNavigation()}
                     const orariGiorniValue = [row[keyGiorni], row[keyOrari]].filter(Boolean).join(' ');
 
                     tableHTML += `<tr>
-                        <td>${row[keyRuolo] || ''}</td>
-                        <td>${row[keyNominativo] || ''}</td>
-                        <td>${row[keyTelefono] || ''}</td>
-                        <td>${row[keyEmail] || ''}</td>
-                        <td>${orariGiorniValue}</td>
+                        <td>${escapeHtml(row[keyRuolo] || '')}</td>
+                        <td>${escapeHtml(row[keyNominativo] || '')}</td>
+                        <td>${escapeHtml(row[keyTelefono] || '')}</td>
+                        <td>${escapeHtml(row[keyEmail] || '')}</td>
+                        <td>${escapeHtml(orariGiorniValue)}</td>
                     `;
 
                     if (isEditable) {
@@ -8932,9 +8964,9 @@ ${renderBottomNavigation()}
             const generateTableHTML = (data) => {
                 if (!data || data.length === 0) return '<p>File vuoto o non valido.</p>';
                 const headers = Object.keys(data[0]);
-                let tableHTML = `<table class="data-table"><thead><tr>${headers.map(h => `<th>${h.toUpperCase()}</th>`).join('')}</tr></thead><tbody>`;
+                let tableHTML = `<table class="data-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h.toUpperCase())}</th>`).join('')}</tr></thead><tbody>`;
                 data.forEach(row => {
-                    tableHTML += `<tr>${headers.map(h => `<td>${row[h] !== undefined ? row[h] : ''}</td>`).join('')}</tr>`;
+                    tableHTML += `<tr>${headers.map(h => `<td>${escapeHtml(row[h] !== undefined ? row[h] : '')}</td>`).join('')}</tr>`;
                 });
                 return tableHTML + '</tbody></table>';
             };
@@ -9017,9 +9049,9 @@ ${renderBottomNavigation()}
             const generateTableHTML = (data) => {
                 if (!data || data.length === 0) return '<p style="color:var(--secondary-text);">Nessun dato da visualizzare.</p>';
                 const headers = Object.keys(data[0]);
-                let tableHTML = `<table class="data-table"><thead><tr>${headers.map(h => `<th>${h.toUpperCase()}</th>`).join('')}</tr></thead><tbody>`;
+                let tableHTML = `<table class="data-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h.toUpperCase())}</th>`).join('')}</tr></thead><tbody>`;
                 data.forEach(row => {
-                    tableHTML += `<tr>${headers.map(h => `<td>${row[h] !== undefined ? row[h] : ''}</td>`).join('')}</tr>`;
+                    tableHTML += `<tr>${headers.map(h => `<td>${escapeHtml(row[h] !== undefined ? row[h] : '')}</td>`).join('')}</tr>`;
                 });
                 tableHTML += '</tbody></table>';
                 return tableHTML;
@@ -9284,7 +9316,7 @@ ${renderBottomNavigation()}
                 const lowerFilter = filter.toLowerCase();
                 const filteredNames = Object.keys(groupedProperties).filter(name => name.toLowerCase().includes(lowerFilter)).sort();
                 optionsContainer.innerHTML = filteredNames.length > 0
-                    ? filteredNames.map(name => `<div class="custom-dropdown-item" data-value="${name}">${name}</div>`).join('')
+                    ? filteredNames.map(name => `<div class="custom-dropdown-item" data-value="${escapeHtml(name)}">${escapeHtml(name)}</div>`).join('')
                     : `<div class="custom-dropdown-item" style="cursor:default;">Nessun risultato</div>`;
                 optionsContainer.classList.remove('hidden');
             };
@@ -9432,7 +9464,7 @@ ${renderBottomNavigation()}
                     <div class="list-item">
                         <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 14h-2v2h2v-2m4-4h-2v2h2V10m0-4h-2v2h2V6M12 2L2 7v13h20V7L12 2z"/></svg></div>
                         <div class="list-item-content">
-                            <div class="title">${condo.name}</div>
+                            <div class="title">${escapeHtml(condo.name)}</div>
                             <div class="subtitle">Piani: ${condo.startPlan ?? 'N/D'} a ${condo.endPlan ?? 'N/D'}</div>
                         </div>
                         <div class="list-item-action flex gap-2">
@@ -9452,7 +9484,7 @@ ${renderBottomNavigation()}
                 <form id="edit-group-form" class="space-y-4" onsubmit="updatePartialCondo(event, '${groupId}')">
                     <div class="form-group">
                         <label for="edit-group-name" class="form-label">Nome Gruppo</label>
-                        <input type="text" id="edit-group-name" required class="form-input" value="${currentData.name || ''}">
+                        <input type="text" id="edit-group-name" required class="form-input" value="${escapeHtml(currentData.name || '')}">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="form-group">
@@ -10305,10 +10337,10 @@ ${renderBottomNavigation()}
                             <th style="width: 40px;">
                                 <input type="checkbox" id="select-all-contacts-rubrica-imported" onchange="toggleAllContactsRubricaImported(this)">
                             </th>
-                            ${orderedHeaders.map(h => `<th>${h}</th>`).join('')}
+                            ${orderedHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join('')}
                             <th style="text-align:right;">AZIONI</th>
                         </tr>` :
-                        `<tr>${orderedHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
+                        `<tr>${orderedHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>`;
 
                     let tableHTML = '<table class="data-table"><thead>' + headerRow + '</thead><tbody>';
 
@@ -10317,7 +10349,7 @@ ${renderBottomNavigation()}
                         if (canManage) {
                             tableHTML += `<td><input type="checkbox" class="contact-checkbox-rubrica-imported" value="${index}" onchange="updateBulkActionsRubricaImported()"></td>`;
                         }
-                        orderedHeaders.forEach(h => tableHTML += `<td>${row[h] !== undefined ? row[h] : ''}</td>`);
+                        orderedHeaders.forEach(h => tableHTML += `<td>${escapeHtml(row[h] !== undefined ? row[h] : '')}</td>`);
 
                         if (canManage) {
                             const editIcon = `<button onclick="editImportedContact(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
@@ -10404,18 +10436,18 @@ ${renderBottomNavigation()}
 
                             return `<tr>
                                 <td><input type="checkbox" class="contact-checkbox-rubrica" value="${docSnap.id}" onchange="updateBulkActionsRubrica()"></td>
-                                <td>${contact.title}</td>
-                                <td>${contact.company || '–'}</td>
-                                <td>${contact.number}</td>
-                                <td>${contact.number2 || '–'}</td>
+                                <td>${escapeHtml(contact.title)}</td>
+                                <td>${escapeHtml(contact.company || '–')}</td>
+                                <td>${escapeHtml(contact.number)}</td>
+                                <td>${escapeHtml(contact.number2 || '–')}</td>
                                 <td style="text-align:right;">${editIcon}${deleteIcon}</td>
                             </tr>`;
                         } else {
                             return `<tr>
-                                <td>${contact.title}</td>
-                                <td>${contact.company || '–'}</td>
-                                <td>${contact.number}</td>
-                                <td>${contact.number2 || '–'}</td>
+                                <td>${escapeHtml(contact.title)}</td>
+                                <td>${escapeHtml(contact.company || '–')}</td>
+                                <td>${escapeHtml(contact.number)}</td>
+                                <td>${escapeHtml(contact.number2 || '–')}</td>
                             </tr>`;
                         }
                     }).join('');
@@ -10754,16 +10786,16 @@ ${renderBottomNavigation()}
                             } catch (e) { /* Fallback if URL parsing fails */ }
 
                             if (isImage) {
-                                return `<a href="${url}" target="_blank" class="gallery-item"><img src="${url}" alt="Allegato immagine"></a>`;
+                                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item"><img src="${url}" alt="Allegato immagine"></a>`;
                             } else if (isVideo) {
-                                return `<a href="${url}" target="_blank" class="gallery-item"><video src="${url}" controls preload="metadata"></video></a>`;
+                                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item"><video src="${url}" controls preload="metadata"></video></a>`;
                             } else {
                                 // Fallback for documents (PDF, DOCX, etc.)
                                 return `
-                                    <a href="${url}" target="_blank" class="gallery-item">
+                                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item">
                                         <div class="preview-item-document">
                                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                                            <span>${fileName}</span>
+                                            <span>${escapeHtml(fileName)}</span>
                                         </div>
                                     </a>`;
                             }
@@ -10789,7 +10821,7 @@ ${renderBottomNavigation()}
                         </div>
                     ` : '';
 
-                    const contentHtml = `<p>${comm.content.replace(/\n/g, '<br>')}</p>${attachmentsHtml}${deleteButtonHtml}`;
+                    const contentHtml = `<p>${escapeHtml(comm.content).replace(/\n/g, '<br>')}</p>${attachmentsHtml}${deleteButtonHtml}`;
                     showModal(comm.title, contentHtml);
 
                     const latestCommQuery = query(collection(db, "communications"), orderBy("createdAt", "desc"), limit(1));
@@ -10853,7 +10885,7 @@ ${renderBottomNavigation()}
                         const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
                         const targetGroupHtml = comm.targetGroup && comm.targetGroup !== 'Tutti'
-                            ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${comm.targetGroup}</span>`
+                            ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${escapeHtml(comm.targetGroup)}</span>`
                             : '';
 
                         const custodeBadgeHtml = comm.forwardToCustode
@@ -10865,14 +10897,14 @@ ${renderBottomNavigation()}
     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
     <div class="list-item-content">
         <div class="title" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-            <span style="white-space: normal; flex-grow: 1; padding-right: 0.5rem;">${formattedCommNumber ? `${formattedCommNumber}: ` : ''}${comm.title}</span>
+            <span style="white-space: normal; flex-grow: 1; padding-right: 0.5rem;">${formattedCommNumber ? `${escapeHtml(formattedCommNumber)}: ` : ''}${escapeHtml(comm.title)}</span>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0;">
                 ${targetGroupHtml}
                 ${custodeBadgeHtml}
             </div>
         </div>
-        <div class="subtitle">${comm.content.substring(0, 50)}...</div>
-        <div class="subtitle" style="font-size:0.75rem; margin-top:4px;">${comm.createdBy} - ${dateFormatted}</div>
+        <div class="subtitle">${escapeHtml(comm.content.substring(0, 50))}...</div>
+        <div class="subtitle" style="font-size:0.75rem; margin-top:4px;">${escapeHtml(comm.createdBy)} - ${dateFormatted}</div>
     </div>
 </div>`;
                     }).join("");
@@ -10979,13 +11011,13 @@ ${renderBottomNavigation()}
                         const votersListHtml = poll.voters.map(voter => `
                             <div class="voter-item">
                                 <div style="display: flex; flex-direction: column;">
-                                    <span>${voter.name}</span>
+                                    <span>${escapeHtml(voter.name)}</span>
                                     <span style="font-size: 0.8rem; color: var(--secondary-text); text-transform: capitalize;">
-                                        Gruppo: ${voter.gruppo || 'N/D'} - ${voter.tipoUtente || 'N/D'}
+                                        Gruppo: ${escapeHtml(voter.gruppo || 'N/D')} - ${escapeHtml(voter.tipoUtente || 'N/D')}
                                     </span>
                                 </div>
                                 <span style="color:var(--secondary-text); text-align:right;">
-                                    <div>${voter.vote}</div>
+                                    <div>${escapeHtml(voter.vote)}</div>
                                     <div style="font-size:0.8rem">${(parseFloat(voter.millesimi) || 0).toFixed(2)} </div>
                                 </span>
                             </div>
@@ -11214,7 +11246,7 @@ ${renderBottomNavigation()}
                                                     <td>
                                                         <label class="flex items-center gap-2 cursor-pointer">
                                                             <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} onclick="voteOnPoll('${docSnap.id}')" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
-                                                            <span>${option.text}</span>
+                                                            <span>${escapeHtml(option.text)}</span>
                                                         </label>
                                                     </td>
                                                     <td style="text-align:right;">${option.votes || 0}</td>
@@ -11271,7 +11303,7 @@ ${renderBottomNavigation()}
                                 const rowStyle = isWinner ? 'style="font-weight: 800; background-color: rgba(29, 185, 84, 0.2);"' : '';
                                 return `
                                             <tr ${rowStyle}>
-                                                <td>${option.text}</td>
+                                                <td>${escapeHtml(option.text)}</td>
                                                 <td style="text-align:right;">${option.votes || 0}</td>
                                                 ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
                                             </tr>
@@ -11286,7 +11318,7 @@ ${renderBottomNavigation()}
                             let votingActionsHtml = '';
                             if (showVoteUI) { // Questo blocco ora gestisce solo la scelta singola
                                 votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
-                                <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
+                                <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${escapeHtml(option.text)}"</button>
                             `).join("")}</div>`;
                             }
 
@@ -11318,13 +11350,13 @@ ${renderBottomNavigation()}
                                 <div class="list-item-content">
                                     <div class="title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;">
                                         <span style="font-size: 0.9em; color: var(--secondary-text);">${pollHeaderInfo}</span>
-                                        <span style="white-space: normal;">${pollMainTitleText}</span>
+                                        <span style="white-space: normal;">${escapeHtml(pollMainTitleText)}</span>
                                     </div>
                                     <div class="subtitle">${isExpired ? "Sondaggio chiuso" : "Sondaggio attivo"} ${hasVoted ? "· Hai votato" : ""}</div>
                                 </div>
                             </div>
                             ${typeBadge}
-                            ${poll.description ? `<p style="color: var(--secondary-text); margin-bottom: 1rem; font-style: italic;">${poll.description}</p>` : ''}
+                            ${poll.description ? `<p style="color: var(--secondary-text); margin-bottom: 1rem; font-style: italic;">${escapeHtml(poll.description)}</p>` : ''}
                             ${votingInstructionHtml}
                             ${optionsHtml}
                             ${dateInfoHtml}
@@ -11645,13 +11677,13 @@ ${renderBottomNavigation()}
                     const isImage = url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif');
 
                     if (isImage) {
-                        return `<img src="${url}" alt="${fileName}" style="max-width: 100px; max-height: 100px; border-radius: 4px; cursor: pointer;" onclick="window.open('${url}', '_blank')">`;
+                        return `<img src="${url}" alt="${escapeHtml(fileName)}" style="max-width: 100px; max-height: 100px; border-radius: 4px; cursor: pointer;" onclick="window.open('${url}', '_blank', 'noopener')">`;
                     } else {
-                        return `<a href="${url}" target="_blank" style="display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; background: var(--primary); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem;">
+                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; background: var(--primary); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem;">
                                                     <svg fill="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 0.25rem;">
                                                         <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                                                     </svg>
-                                                    ${fileName}
+                                                    ${escapeHtml(fileName)}
                                                 </a>`;
                     }
                 }).join('')}
@@ -11660,7 +11692,7 @@ ${renderBottomNavigation()}
                             ` : '';
 
                 return `<div style="margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--surface-color-light);">
-                                <div><strong>${upd.at.toDate().toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong> (${upd.by}): ${upd.text}</div>
+                                <div><strong>${upd.at.toDate().toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</strong> (${escapeHtml(upd.by)}): ${escapeHtml(upd.text)}</div>
                                 ${attachmentsHtml}
                             </div>`;
             }).join('')}
@@ -11677,7 +11709,7 @@ ${renderBottomNavigation()}
                     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
                     <div class="list-item-content">
                         <div class="title" style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
-    <span style="flex: 1; min-width: 0;">${report.reportNumber ? `${report.reportNumber}: ` : ''}${report.title}</span>
+    <span style="flex: 1; min-width: 0;">${report.reportNumber ? `${escapeHtml(report.reportNumber)}: ` : ''}${escapeHtml(report.title)}</span>
     ${/* Badge "Non Presa in Carico" rimosso */''}
     ${/* Indicatore visivo per segnalazioni modificate */''}
     ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}` && !['risolta', 'chiusa'].includes(report.status) && !report.returnedToCreator) ? `
@@ -11692,29 +11724,29 @@ ${renderBottomNavigation()}
 </div>
                     </div>
                 </div>
-                <p class="form-label" style="padding-left: 64px; color: var(--secondary-text); margin-top: 0.75rem;">Inviata da: <strong>${report.createdByUserType ? (report.createdByUserType.charAt(0).toUpperCase() + report.createdByUserType.slice(1)) : report.createdBy}</strong></p>
-                ${report.forwardedBy ? `<p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">Inoltrata da: <strong>${report.forwardedBy}</strong> (${report.originalRecipient}) → Attualmente gestita da: <strong>${report.recipientType.charAt(0).toUpperCase() + report.recipientType.slice(1)}</strong></p>` : ''}
+                <p class="form-label" style="padding-left: 64px; color: var(--secondary-text); margin-top: 0.75rem;">Inviata da: <strong>${escapeHtml(report.createdByUserType ? (report.createdByUserType.charAt(0).toUpperCase() + report.createdByUserType.slice(1)) : report.createdBy)}</strong></p>
+                ${report.forwardedBy ? `<p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">Inoltrata da: <strong>${escapeHtml(report.forwardedBy)}</strong> (${escapeHtml(report.originalRecipient)}) → Attualmente gestita da: <strong>${report.recipientType.charAt(0).toUpperCase() + report.recipientType.slice(1)}</strong></p>` : ''}
                 ${isCreatorView && report.specificRecipientName ? `
-                <p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">Inviata a: <strong>${report.specificRecipientName}</strong></p>
+                <p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">Inviata a: <strong>${escapeHtml(report.specificRecipientName)}</strong></p>
                 ` : ''}
-                ${report.communicateOwnerPhone && report.createdByPhone ? `<p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">📞 Telefono condomino: <strong>${report.createdByPhone}</strong></p>` : ''}
-                ${report.otherUiOwner ? `<p class="form-label" style="padding-left: 64px; color: var(--secondary-text); margin-top: 0.5rem;">Proprietario altra U.I.: <strong>${report.otherUiOwner}</strong></p>` : ''}
+                ${report.communicateOwnerPhone && report.createdByPhone ? `<p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">📞 Telefono condomino: <strong>${escapeHtml(report.createdByPhone)}</strong></p>` : ''}
+                ${report.otherUiOwner ? `<p class="form-label" style="padding-left: 64px; color: var(--secondary-text); margin-top: 0.5rem;">Proprietario altra U.I.: <strong>${escapeHtml(report.otherUiOwner)}</strong></p>` : ''}
                 
                 ${/* Informazioni di contatto specifiche per Fornitore */ userProfile?.tipoUtente === 'fornitore' && report.shareContactWithSupplier ? `
                     <div style="padding-left: 64px; margin-top: 0.75rem; padding: 0.75rem; background: var(--surface-color-light); border-radius: var(--radius-sm); border-left: 4px solid var(--accent-color);">
                         <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-color);">📋 Informazioni di Contatto</h4>
-                        ${report.createdByPhone ? `<p style="margin: 0.25rem 0; font-size: 0.85rem;"><strong>Telefono richiedente:</strong> ${report.createdByPhone}</p>` : ''}
-                        <p style="margin: 0.25rem 0; font-size: 0.85rem;"><strong>Nome richiedente:</strong> ${report.createdBy}</p>
-                        ${report.otherUiOwner && report.communicateOtherUiPhone ? `<p style="margin: 0.25rem 0; font-size: 0.85rem;"><strong>Altra U.I. coinvolta:</strong> ${report.otherUiOwner}</p>` : ''}
+                        ${report.createdByPhone ? `<p style="margin: 0.25rem 0; font-size: 0.85rem;"><strong>Telefono richiedente:</strong> ${escapeHtml(report.createdByPhone)}</p>` : ''}
+                        <p style="margin: 0.25rem 0; font-size: 0.85rem;"><strong>Nome richiedente:</strong> ${escapeHtml(report.createdBy)}</p>
+                        ${report.otherUiOwner && report.communicateOtherUiPhone ? `<p style="margin: 0.25rem 0; font-size: 0.85rem;"><strong>Altra U.I. coinvolta:</strong> ${escapeHtml(report.otherUiOwner)}</p>` : ''}
                         <p style="margin: 0.25rem 0; font-size: 0.85rem; color: var(--secondary-text);"><em>Informazioni condivise dall'amministratore</em></p>
                     </div>
                 ` : ''}
                 
-                <p style="color: var(--secondary-text); margin-top: 0.5rem; padding-left: 64px;">${report.description}</p>
+                <p style="color: var(--secondary-text); margin-top: 0.5rem; padding-left: 64px;">${escapeHtml(report.description)}</p>
 
                 <div style="padding-left: 64px; margin-top: 0.75rem; font-size: 0.9rem;">
                     <strong style="color: var(--primary-text);">UBICAZIONE (PIANO):</strong> 
-                    <span style="color: var(--secondary-text);">${report.propertyInfo ? `Interno ${report.propertyInfo.interno}, Piano ${report.propertyInfo.piano}` : report.location}</span>
+                    <span style="color: var(--secondary-text);">${report.propertyInfo ? `Interno ${escapeHtml(report.propertyInfo.interno)}, Piano ${escapeHtml(report.propertyInfo.piano)}` : escapeHtml(report.location)}</span>
                 </div>
                 
                 <!-- SEZIONE TIMESTAMP -->
@@ -11750,7 +11782,7 @@ ${renderBottomNavigation()}
                         ${report.fileUrls.map(url => {
                 const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
                 return `
-                            <a href="${url}" target="_blank" class="gallery-item">
+                            <a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item">
                                 ${isVideo
                         ? `<video src="${url}" preload="metadata"></video>`
                         : `<img src="${url}" alt="Allegato segnalazione">`
@@ -12864,7 +12896,7 @@ ${renderBottomNavigation()}
 
                 return `
                 <div class="property-edit-row grid grid-cols-5 gap-2 items-center" style="margin-bottom: 0.5rem;" data-row-index="${index}">
-                    <input type="text" data-field="interno" value="${prop.interno || ''}" class="form-input" placeholder="ID Unità">
+                    <input type="text" data-field="interno" value="${escapeHtml(prop.interno || '')}" class="form-input" placeholder="ID Unità">
                     <input type="number" step="0.01" data-field="millesimi" value="${prop.millesimi || 0}" class="form-input" placeholder="Millesimi">
                     <select data-field="gruppo" class="form-select">${groupOptionsHtml}</select>
                     <select data-field="piano" class="form-select" ${!isSupervisor ? 'disabled' : ''}>${planOptionsHtml}</select>
@@ -12877,13 +12909,13 @@ ${renderBottomNavigation()}
                 <form id="edit-user-form" class="space-y-4" onsubmit="updateUser(event)">
                     <input type="hidden" id="edit-user-id" value="${user.id}">
                     <div id="edit-user-message" class="message-box"></div>
-                    <div class="form-group"><label class="form-label">Email</label><input type="email" value="${user.email || ''}" class="form-input" disabled></div>
+                    <div class="form-group"><label class="form-label">Email</label><input type="email" value="${escapeHtml(user.email || '')}" class="form-input" disabled></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="form-group"><label for="edit-nome" class="form-label">Nome</label><input id="edit-nome" type="text" required class="form-input" value="${user.nome || ''}"></div>
-                        <div class="form-group"><label for="edit-cognome" class="form-label">Cognome</label><input id="edit-cognome" type="text" required class="form-input" value="${user.cognome || ''}"></div>
+                        <div class="form-group"><label for="edit-nome" class="form-label">Nome</label><input id="edit-nome" type="text" required class="form-input" value="${escapeHtml(user.nome || '')}"></div>
+                        <div class="form-group"><label for="edit-cognome" class="form-label">Cognome</label><input id="edit-cognome" type="text" required class="form-input" value="${escapeHtml(user.cognome || '')}"></div>
                     </div>
                     <div class="form-group"><label for="edit-tipo-utente" class="form-label">Tipo Utente</label><select id="edit-tipo-utente" required class="form-select">${rolesOptions}</select></div>
-                    <div class="form-group"><label for="edit-telefono" class="form-label">Telefono</label><input id="edit-telefono" type="tel" class="form-input" value="${user.telefono || ''}"></div>
+                    <div class="form-group"><label for="edit-telefono" class="form-label">Telefono</label><input id="edit-telefono" type="tel" class="form-input" value="${escapeHtml(user.telefono || '')}"></div>
                     <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
                     <div class="form-group">
                         <div class="flex justify-between items-center mb-2">
@@ -12960,15 +12992,15 @@ ${renderBottomNavigation()}
                             <div class="list-item" style="padding:0; cursor:default; align-items: flex-start;">
                                 <div class="list-item-icon" style="margin-top: 0.5rem;"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg></div>
                                 <div class="list-item-content" style="padding-top: 0.5rem;">
-                                    <div class="title">${user.nome} ${user.cognome}</div>
-                                    <div class="subtitle">${user.email} - ${user.tipoUtente}</div>
+                                    <div class="title">${escapeHtml(user.nome)} ${escapeHtml(user.cognome)}</div>
+                                    <div class="subtitle">${escapeHtml(user.email)} - ${escapeHtml(user.tipoUtente)}</div>
                                 </div>
                                 <div class="list-item-action flex gap-2" style="padding-top: 0.5rem;">
                                     <button class="user-action-btn" onclick='openUserEditModal(${userObjectString})' title="Modifica Utente">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                                     </button>
                                     ${user.tipoUtente !== 'adm' ? `
-                                    <button class="user-action-btn" onclick="deleteUser('${userId}', '${user.nome} ${user.cognome}')" title="Elimina Utente">
+                                    <button class="user-action-btn" onclick="deleteUser('${userId}', '${escapeJsAttr(user.nome + ' ' + user.cognome)}')" title="Elimina Utente">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                     </button>
                                     ` : ''}
@@ -13016,7 +13048,7 @@ ${renderBottomNavigation()}
                     const user = docSnap.data();
                     const userObjectString = JSON.stringify({ id: docSnap.id, ...user }).replace(/'/g, "&apos;");
                     const editIconHtml = `<button class="inline-edit-btn" onclick='openUserEditModal(${userObjectString})' title="Modifica utente"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18.17,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z"/></svg></button>`;
-                    const createCell = (content) => `<div class="cell-content-wrapper"><span>${content}</span>${editIconHtml}</div>`;
+                    const createCell = (content) => `<div class="cell-content-wrapper"><span>${escapeHtml(content)}</span>${editIconHtml}</div>`;
 
                     if (user.proprieta && user.proprieta.length > 0) {
                         user.proprieta.forEach((prop, index) => {
@@ -13170,18 +13202,18 @@ ${renderBottomNavigation()}
 
                             return `<tr>
                                 <td><input type="checkbox" class="contact-checkbox" value="${docSnap.id}" onchange="updateBulkActions()"></td>
-                                <td>${contact.title}</td>
-                                <td>${contact.company || '–'}</td>
-                                <td>${contact.number}</td>
-                                <td>${contact.number2 || '–'}</td>
+                                <td>${escapeHtml(contact.title)}</td>
+                                <td>${escapeHtml(contact.company || '–')}</td>
+                                <td>${escapeHtml(contact.number)}</td>
+                                <td>${escapeHtml(contact.number2 || '–')}</td>
                                 <td style="text-align:right;">${editIcon}${deleteIcon}</td>
                             </tr>`;
                         } else {
                             return `<tr>
-                                <td>${contact.title}</td>
-                                <td>${contact.company || '–'}</td>
-                                <td>${contact.number}</td>
-                                <td>${contact.number2 || '–'}</td>
+                                <td>${escapeHtml(contact.title)}</td>
+                                <td>${escapeHtml(contact.company || '–')}</td>
+                                <td>${escapeHtml(contact.number)}</td>
+                                <td>${escapeHtml(contact.number2 || '–')}</td>
                             </tr>`;
                         }
                     }).join('');
@@ -13214,10 +13246,10 @@ ${renderBottomNavigation()}
                             <th style="width: 40px;">
                                 <input type="checkbox" id="select-all-contacts-imported" onchange="toggleAllContactsImported(this)">
                             </th>
-                            ${orderedHeaders.map(h => `<th>${h}</th>`).join('')}
+                            ${orderedHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join('')}
                             <th style="text-align:right;">AZIONI</th>
                         </tr>` :
-                        `<tr>${orderedHeaders.map(h => `<th>${h}</th>`).join('')}</tr>`;
+                        `<tr>${orderedHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>`;
 
                     let tableHTML = '<table class="data-table"><thead>' + headerRow + '</thead><tbody>';
 
@@ -13226,7 +13258,7 @@ ${renderBottomNavigation()}
                         if (canManage) {
                             tableHTML += `<td><input type="checkbox" class="contact-checkbox-imported" value="${index}" onchange="updateBulkActionsImported()"></td>`;
                         }
-                        orderedHeaders.forEach(h => tableHTML += `<td>${row[h] !== undefined ? row[h] : ''}</td>`);
+                        orderedHeaders.forEach(h => tableHTML += `<td>${escapeHtml(row[h] !== undefined ? row[h] : '')}</td>`);
 
                         if (canManage) {
                             const editIcon = `<button onclick="editImportedContact(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
@@ -13864,8 +13896,8 @@ ${renderBottomNavigation()}
                         <label class="flex items-center gap-4 cursor-pointer" style="flex: 1; min-width: 0;">
                              <input type="checkbox" class="validation-checkbox" data-id="${userId}" ${user.isValidated ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
                             <div class="list-item-content" style="min-width: 0;">
-                                <div class="title">${user.cognome} ${user.nome}</div>
-                                <div class="subtitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${user.email}</div>
+                                <div class="title">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</div>
+                                <div class="subtitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(user.email)}</div>
                             </div>
                         </label>
                         <button onclick="showUserDetails('${userId}')" class="btn-icon" style="flex-shrink: 0;" title="Visualizza dettagli">
@@ -14201,7 +14233,7 @@ ${renderBottomNavigation()}
                     }
                     const sortedDocs = snapshot.docs.sort((a, b) => (a.data().cognome || '').localeCompare(b.data().cognome || ''));
                     const label = role === 'condomino' ? 'Seleziona Condomino Specifico' : 'Seleziona Fornitore Specifico';
-                    const options = sortedDocs.map(doc => `<option value="${doc.id}">${doc.data().cognome} ${doc.data().nome}</option>`).join('');
+                    const options = sortedDocs.map(doc => `<option value="${doc.id}">${escapeHtml(doc.data().cognome)} ${escapeHtml(doc.data().nome)}</option>`).join('');
                     specificRecipientContainer.innerHTML = `
                         <label for="specific-reassign-select" class="form-label">${label}</label>
                         <select id="specific-reassign-select" required class="form-select"><option value="">Seleziona...</option>${options}</select>
@@ -15658,9 +15690,9 @@ ${renderBottomNavigation()}
             const usersList = pendingUsers.map(user =>
                 `<div style="padding: 0.75rem; border-bottom: 1px solid var(--surface-color-light); display: flex; align-items: center; gap: 0.75rem;">
                     <div style="flex-grow: 1;">
-                        <strong>${user.cognome} ${user.nome}</strong><br>
-                        <span style="font-size: 0.9rem; color: var(--secondary-text);">${user.email}</span><br>
-                        <span style="font-size: 0.9rem; color: var(--secondary-text);">Tel: ${user.telefono || 'N/D'}</span>
+                        <strong>${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</strong><br>
+                        <span style="font-size: 0.9rem; color: var(--secondary-text);">${escapeHtml(user.email)}</span><br>
+                        <span style="font-size: 0.9rem; color: var(--secondary-text);">Tel: ${escapeHtml(user.telefono || 'N/D')}</span>
                     </div>
                     <button onclick="showUserDetails('${user.id}')" class="btn-icon" style="flex-shrink: 0;">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
@@ -15734,7 +15766,7 @@ ${renderBottomNavigation()}
 
                 const properties = user.properties || [];
                 const propertiesList = properties.length > 0
-                    ? properties.map(p => `<li>${p.name} - Gruppo: ${p.group || 'N/D'} - Piano: ${p.plan || 'N/D'}</li>`).join('')
+                    ? properties.map(p => `<li>${escapeHtml(p.name)} - Gruppo: ${escapeHtml(p.group || 'N/D')} - Piano: ${escapeHtml(p.plan || 'N/D')}</li>`).join('')
                     : '<li>Nessuna proprietà selezionata</li>';
 
                 const detailsHtml = `
@@ -15747,22 +15779,22 @@ ${renderBottomNavigation()}
                             <div class="modal-body">
                                 ${user.registrationPhotoUrl ? `
                                 <div style="text-align: center; margin-bottom: 1.5rem;">
-                                    <img src="${user.registrationPhotoUrl}" alt="Foto profilo di ${user.nome}" class="clickable-photo" onclick="openFullscreenImage('${user.registrationPhotoUrl}', 'Foto profilo di ${user.nome}')" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-color);">
+                                    <img src="${user.registrationPhotoUrl}" alt="Foto profilo di ${escapeHtml(user.nome)}" class="clickable-photo" onclick="openFullscreenImage('${user.registrationPhotoUrl}', 'Foto profilo di ${escapeJsAttr(user.nome)}')" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-color);">
                                     <p style="font-size: 0.75rem; color: var(--warning); margin-top: 0.5rem;">📸 Foto per verifica identità (clicca per ingrandire)</p>
                                 </div>
                                 ` : ''}
                                 <div style="margin-bottom: 1.5rem;">
                                     <div style="margin-bottom: 1rem;">
                                         <strong style="color: var(--primary-text);">Nome Completo:</strong><br>
-                                        <span style="color: var(--secondary-text);">${user.cognome} ${user.nome}</span>
+                                        <span style="color: var(--secondary-text);">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</span>
                                     </div>
                                     <div style="margin-bottom: 1rem;">
                                         <strong style="color: var(--primary-text);">Email:</strong><br>
-                                        <span style="color: var(--secondary-text);">${user.email}</span>
+                                        <span style="color: var(--secondary-text);">${escapeHtml(user.email)}</span>
                                     </div>
                                     <div style="margin-bottom: 1rem;">
                                         <strong style="color: var(--primary-text);">Telefono:</strong><br>
-                                        <span style="color: var(--secondary-text);">${user.telefono || 'N/D'}</span>
+                                        <span style="color: var(--secondary-text);">${escapeHtml(user.telefono || 'N/D')}</span>
                                     </div>
                                     <div style="margin-bottom: 1rem;">
                                         <strong style="color: var(--primary-text);">Data Registrazione:</strong><br>
@@ -16065,9 +16097,9 @@ ${renderBottomNavigation()}
 
                     const modalTitle = `Aggiornamento Segnalazione ${report.reportNumber || ''}`;
                     const modalBody = `
-                        <p>La tua segnalazione "<strong>${report.title}</strong>" è stata aggiornata da <strong>${lastUpdate.by}</strong>.</p>
+                        <p>La tua segnalazione "<strong>${escapeHtml(report.title)}</strong>" è stata aggiornata da <strong>${escapeHtml(lastUpdate.by)}</strong>.</p>
                         <div style="margin-top: 1rem; padding: 0.75rem; background-color: var(--surface-color-light); border-radius: var(--radius-sm);">
-                            <p style="margin: 0; white-space: pre-wrap;">${lastUpdate.text}</p>
+                            <p style="margin: 0; white-space: pre-wrap;">${escapeHtml(lastUpdate.text)}</p>
                         </div>
                         <div class="flex justify-end mt-4">
                             <button onclick="viewReportDetail('${reportId}')" class="btn btn-primary">Vedi Dettagli</button>
@@ -16191,8 +16223,8 @@ ${renderBottomNavigation()}
             // Aspettiamo che la pagina sia completamente caricata per non rallentare l'avvio
             window.addEventListener('load', () => {
                 // Registriamo il nostro file sw.js
-                // Il percorso è fondamentale per GitHub Pages!
-                navigator.serviceWorker.register('/Con-bridge/sw.js')
+                // Il percorso deve combaciare con il base path di GitHub Pages (nome repo: PWA-CONDO-APP)
+                navigator.serviceWorker.register('/PWA-CONDO-APP/sw.js')
                     .then(registration => {
                         console.log('Service Worker registrato con successo:', registration);
                     })
