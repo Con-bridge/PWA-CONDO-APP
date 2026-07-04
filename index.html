@@ -23,6 +23,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 
+    <!-- Favicon e icone -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <meta name="theme-color" content="#1DB954">
+
     <!-- Link al manifest per la PWA -->
     <link rel="manifest" href="manifest.json">
 
@@ -1771,6 +1777,27 @@
                 .replace(/'/g, "\\'")
         );
         window.escapeJsAttr = escapeJsAttr;
+
+        // ===== SICUREZZA: sanitizzazione URL prima di src/href/onclick =====
+        // Consente solo schemi sicuri (http, https, blob, mailto, tel) e gli URL
+        // relativi/ancora; blocca javascript:, vbscript:, data:, file: e simili,
+        // che nei contesti src/href sono vettori XSS. Va combinata con escapeHtml
+        // (contesto attributo HTML) o escapeJsAttr (contesto stringa JS in onclick).
+        const sanitizeUrl = (value) => {
+            const url = String(value === null || value === undefined ? '' : value).trim();
+            if (url === '') return '';
+            // Rimuove caratteri di controllo/spazi che possono mascherare lo schema
+            // (es. "java\tscript:") prima di analizzarlo.
+            const probe = url.replace(/[\u0000-\u001F\u007F-\u009F\s]+/g, '');
+            const schemeMatch = probe.match(/^([a-z][a-z0-9+.-]*):/i);
+            if (schemeMatch) {
+                const allowed = ['http', 'https', 'blob', 'mailto', 'tel'];
+                return allowed.includes(schemeMatch[1].toLowerCase()) ? url : '';
+            }
+            // Nessuno schema esplicito: URL relativo, protocol-relative, ancora o query.
+            return url;
+        };
+        window.sanitizeUrl = sanitizeUrl;
 
         // ===== MODALI PERSONALIZZATI (sostituiscono alert, confirm, prompt) =====
 
@@ -7862,11 +7889,12 @@ ${renderBottomNavigation()}
             container.innerHTML = selectedReportFiles.map((file, index) => {
                 const isVideo = file.type.startsWith('video/');
                 const objectURL = URL.createObjectURL(file);
+                const safeObjectURL = escapeHtml(sanitizeUrl(objectURL));
                 return `
                 <div class="preview-item">
                     ${isVideo
-                        ? `<video src="${objectURL}" preload="metadata"></video>`
-                        : `<img src="${objectURL}" alt="${file.name}">`
+                        ? `<video src="${safeObjectURL}" preload="metadata"></video>`
+                        : `<img src="${safeObjectURL}" alt="${escapeHtml(file.name)}">`
                     }
                     <button class="preview-remove-btn" onclick="removeReportFile(${index})">&times;</button>
                 </div>`;
@@ -7891,12 +7919,13 @@ ${renderBottomNavigation()}
                 const isImage = file.type.startsWith('image/');
                 const isVideo = file.type.startsWith('video/');
                 const objectURL = URL.createObjectURL(file);
+                const safeObjectURL = escapeHtml(sanitizeUrl(objectURL));
                 let previewHtml;
 
                 if (isImage) {
-                    previewHtml = `<img src="${objectURL}" alt="${file.name}">`;
+                    previewHtml = `<img src="${safeObjectURL}" alt="${escapeHtml(file.name)}">`;
                 } else if (isVideo) {
-                    previewHtml = `<video src="${objectURL}" preload="metadata"></video>`;
+                    previewHtml = `<video src="${safeObjectURL}" preload="metadata"></video>`;
                 } else {
                     // Generic preview for documents and other files
                     previewHtml = `
@@ -10785,14 +10814,15 @@ ${renderBottomNavigation()}
                                 }
                             } catch (e) { /* Fallback if URL parsing fails */ }
 
+                            const safeUrl = escapeHtml(sanitizeUrl(url));
                             if (isImage) {
-                                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item"><img src="${url}" alt="Allegato immagine"></a>`;
+                                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="gallery-item"><img src="${safeUrl}" alt="Allegato immagine"></a>`;
                             } else if (isVideo) {
-                                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item"><video src="${url}" controls preload="metadata"></video></a>`;
+                                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="gallery-item"><video src="${safeUrl}" controls preload="metadata"></video></a>`;
                             } else {
                                 // Fallback for documents (PDF, DOCX, etc.)
                                 return `
-                                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item">
+                                    <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="gallery-item">
                                         <div class="preview-item-document">
                                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                                             <span>${escapeHtml(fileName)}</span>
@@ -11675,11 +11705,13 @@ ${renderBottomNavigation()}
                                         ${upd.fileUrls.map(url => {
                     const fileName = url.split('/').pop().split('?')[0].split('_').slice(1).join('_') || 'File';
                     const isImage = url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif');
+                    const safeUrl = escapeHtml(sanitizeUrl(url));
+                    const safeUrlJs = escapeJsAttr(sanitizeUrl(url));
 
                     if (isImage) {
-                        return `<img src="${url}" alt="${escapeHtml(fileName)}" style="max-width: 100px; max-height: 100px; border-radius: 4px; cursor: pointer;" onclick="window.open('${url}', '_blank', 'noopener')">`;
+                        return `<img src="${safeUrl}" alt="${escapeHtml(fileName)}" style="max-width: 100px; max-height: 100px; border-radius: 4px; cursor: pointer;" onclick="window.open('${safeUrlJs}', '_blank', 'noopener')">`;
                     } else {
-                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; background: var(--primary); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem;">
+                        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; background: var(--primary); color: white; text-decoration: none; border-radius: 4px; font-size: 0.75rem;">
                                                     <svg fill="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 0.25rem;">
                                                         <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                                                     </svg>
@@ -11781,11 +11813,12 @@ ${renderBottomNavigation()}
                     <div class="report-attachments-gallery">
                         ${report.fileUrls.map(url => {
                 const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
+                const safeUrl = escapeHtml(sanitizeUrl(url));
                 return `
-                            <a href="${url}" target="_blank" rel="noopener noreferrer" class="gallery-item">
+                            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="gallery-item">
                                 ${isVideo
-                        ? `<video src="${url}" preload="metadata"></video>`
-                        : `<img src="${url}" alt="Allegato segnalazione">`
+                        ? `<video src="${safeUrl}" preload="metadata"></video>`
+                        : `<img src="${safeUrl}" alt="Allegato segnalazione">`
                     }
                             </a>`;
             }).join('')}
@@ -15779,7 +15812,7 @@ ${renderBottomNavigation()}
                             <div class="modal-body">
                                 ${user.registrationPhotoUrl ? `
                                 <div style="text-align: center; margin-bottom: 1.5rem;">
-                                    <img src="${user.registrationPhotoUrl}" alt="Foto profilo di ${escapeHtml(user.nome)}" class="clickable-photo" onclick="openFullscreenImage('${user.registrationPhotoUrl}', 'Foto profilo di ${escapeJsAttr(user.nome)}')" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-color);">
+                                    <img src="${escapeHtml(sanitizeUrl(user.registrationPhotoUrl))}" alt="Foto profilo di ${escapeHtml(user.nome)}" class="clickable-photo" onclick="openFullscreenImage('${escapeJsAttr(sanitizeUrl(user.registrationPhotoUrl))}', 'Foto profilo di ${escapeJsAttr(user.nome)}')" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-color);">
                                     <p style="font-size: 0.75rem; color: var(--warning); margin-top: 0.5rem;">📸 Foto per verifica identità (clicca per ingrandire)</p>
                                 </div>
                                 ` : ''}
@@ -15853,7 +15886,7 @@ ${renderBottomNavigation()}
                 <div id="fullscreen-image-overlay" class="fullscreen-image-overlay" onclick="closeFullscreenImage(event)">
                     <div class="fullscreen-image-container" onclick="event.stopPropagation()">
                         <button class="fullscreen-close-btn" onclick="closeFullscreenImage(event)">×</button>
-                        <img src="${imageUrl}" alt="${altText || 'Immagine a schermo intero'}">
+                        <img src="${escapeHtml(sanitizeUrl(imageUrl))}" alt="${escapeHtml(altText || 'Immagine a schermo intero')}">
                     </div>
                 </div>
             `;
