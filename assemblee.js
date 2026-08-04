@@ -7,7 +7,7 @@ window.AssembleeModule = {
 
         const adminButtons = isAdmin ? `
             <div onclick="navigateTo('assemblea_crea')" class="dashboard-item">
-                <div class="dashboard-card" style="border: 2px solid var(--warning);">
+                <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 </div>
                 <p>Crea Assemblea</p>
@@ -16,17 +16,27 @@ window.AssembleeModule = {
 
         const admDeleteAllButton = userProfile?.tipoUtente === 'adm' ? `
             <div onclick="deleteAllAssemblies()" class="dashboard-item">
-                <div class="dashboard-card" style="border: 2px solid var(--danger);">
+                <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </div>
                 <p style="color: var(--danger);">Elimina Tutte le Assemblee (ADM)</p>
             </div>
         ` : '';
 
-        // TESSERA QR VISIBILE SOLO SE NON SI È AMMINISTRATORI
+        // DELEGHE E TESSERA QR VISIBILI SOLO SE NON SI È AMMINISTRATORI
+        const delegheButton = isCondomino ? `
+            <div onclick="navigateTo('assemblea_deleghe')" class="dashboard-item">
+                <div class="dashboard-card" style="position: relative;">
+                    <span id="deleghe-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
+                    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                </div>
+                <p>Le Mie Deleghe</p>
+            </div>
+        ` : '';
+
         const tesseraButton = isCondomino ? `
             <div onclick="navigateTo('assemblea_tessera')" class="dashboard-item">
-                <div class="dashboard-card" style="border: 2px solid var(--accent-color);">
+                <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3,3H9V9H3V3M5,5V7H7V5H5M15,3H21V9H15V3M17,5V7H19V5H17M3,15H9V21H3V15M5,17V19H7V17H5M18,15H21V18H18V15M15,11H18V14H15V11M18,18H21V21H18V18M11,3H14V6H11V3M11,18H14V21H11V18M11,8H14V11H11V8M11,13H14V16H11V13M8,11H11V14H8V11Z"/></svg>
                 </div>
                 <p>La Mia Tessera (QR)</p>
@@ -49,12 +59,7 @@ window.AssembleeModule = {
                         </div>
                         <p>Elenco Assemblee</p>
                     </div>
-                    <div onclick="navigateTo('assemblea_deleghe')" class="dashboard-item">
-                        <div class="dashboard-card" style="border: 2px solid var(--warning);">
-                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        </div>
-                        <p>Le Mie Deleghe</p>
-                    </div>
+                    ${delegheButton}
                     ${tesseraButton}
                     ${admDeleteAllButton}
                 </div>
@@ -104,14 +109,17 @@ window.AssembleeModule = {
                         </div>
                         <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
                         <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="form-label" style="margin-bottom:0;">Ordine del Giorno (OdG)</label>
-                                <button type="button" id="add-agenda-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size:0.8rem;">+ Aggiungi Punto</button>
+                            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                                <div>
+                                    <label class="form-label" style="margin-bottom:0; font-weight: 700;">Ordine del Giorno (OdG)</label>
+                                    <p style="font-size:0.8rem; color:var(--secondary-text); margin:0;">Aggiungi i punti di discussione e votazione</p>
+                                </div>
+                                <button type="button" id="add-agenda-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size:0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">➕ Aggiungi Punto</button>
                             </div>
-                            <div id="agenda-list" class="space-y-4"></div>
+                            <div id="agenda-list" style="display: flex; flex-direction: column; gap: 0.85rem; margin-top: 1rem;"></div>
                         </div>
-                        <div class="flex justify-end pt-4">
-                            <button type="submit" id="btn-save-assembly" class="btn btn-primary">Salva Assemblea</button>
+                        <div class="flex justify-end pt-4" style="margin-top: 1.5rem;">
+                            <button type="submit" id="btn-save-assembly" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700;">Salva Assemblea</button>
                         </div>
                     </form>
                 </div>
@@ -155,7 +163,7 @@ window.AssembleeModule = {
             ${renderHeader('Assemblea Live')}
             <main style="padding-bottom: 2rem;">
                 <!-- STRUMENTI ADMIN NELLA STANZA LIVE -->
-                <div id="room-admin-bar" class="card hidden" style="border: 2px solid var(--warning); margin-bottom: 1rem; padding: 1rem;">
+                <div id="room-admin-bar" class="card hidden" style="margin-bottom: 1rem; padding: 1rem;">
                     <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">🛠️ Strumenti Amministratore</h4>
                     <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
                         <button onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">📷 Scanner QR</button>
@@ -174,7 +182,7 @@ window.AssembleeModule = {
                 </div>
 
                 <!-- BANNER DI STATO LIVE -->
-                <div class="card" style="border: 2px solid var(--accent-color); margin-bottom: 1rem; padding: 1rem;">
+                <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem;">Assemblea in Corso</h3>
                         <span id="room-status-badge" class="badge" style="background-color: var(--accent-color); color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE 🟢</span>
@@ -205,7 +213,7 @@ window.AssembleeModule = {
                 </div>
 
                 <!-- QR CODE ACCREDITO COMPATTO (VISIBILE SOLO SE NON SCANSIONATO) -->
-                <div id="room-qr-accreditation" class="card hidden" style="text-align: center; border: 2px solid var(--warning); margin-bottom: 1rem; padding: 1rem;">
+                <div id="room-qr-accreditation" class="card hidden" style="text-align: center; margin-bottom: 1rem; padding: 1rem;">
                     <h4 style="color: var(--warning); margin-bottom: 0.25rem; font-size: 0.95rem; font-weight: 700;">🔒 Accredito Ingresso Richiesto</h4>
                     <p style="font-size: 0.8rem; color: var(--secondary-text); margin-bottom: 0.75rem;">
                         Mostra questo QR Code all'Amministratore per essere accreditato ed abilitare il voto.
