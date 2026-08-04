@@ -3264,9 +3264,12 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
         }
 
         const renderLoginPage = () => `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:1rem;">
-                <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--accent-color);">Con-bridge</h1>
-                <h2 id="auth-title" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 2rem;">Accedi</h2>
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:1.5rem 1rem;">
+                <div style="margin-bottom: 1rem; text-align: center;">
+                    <img src="icons/icon-512x512.png" alt="Con-bridge Logo" style="width: 96px; height: 96px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); object-fit: contain; background: var(--surface-color); padding: 4px;">
+                </div>
+                <h1 style="font-size: 2.4rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--accent-color); letter-spacing: -0.5px;">Con-bridge</h1>
+                <h2 id="auth-title" style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1.75rem; color: var(--secondary-text);">Accedi</h2>
                 
                 <div id="error-message" class="message-box error w-full" style="max-width:400px;"></div>
                 <div id="success-message" class="message-box success w-full" style="max-width:400px;"></div>
@@ -3508,7 +3511,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             // PULSANTE ASSEMBLEE (Per ora visibile a tutti)
             dashboardItemsHtml.push(`
                 <div onclick="navigateTo('assemblee_menu')" class="dashboard-item">
-                    <div class="dashboard-card" style="position: relative; border: 2px solid var(--accent-color);">
+                    <div class="dashboard-card" style="position: relative;">
                         <span id="dashboard-assemblee-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                     </div>
@@ -4136,7 +4139,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             if (['supervisore', 'adm', 'amministratore', 'consigliere', 'condomino', 'fornitore', 'custode'].includes(userRole)) {
                 menuItemsHtml.push(`
                     <div onclick="navigateTo('solleciti_menu')" class="dashboard-item">
-                        <div class="dashboard-card" style="position: relative; border: 2px solid var(--danger);">
+                        <div class="dashboard-card" style="position: relative;">
                             <span id="solleciti-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                         </div>
@@ -4717,7 +4720,11 @@ ${renderBottomNavigation()}
             }
 
             const importSectionHtml = `
-                <div class="flex gap-4 mt-4">
+                <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: var(--surface-color-light); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                    <span style="font-size: 0.85rem; color: var(--secondary-text);">📄 Modello file Excel:</span>
+                    <button type="button" onclick="downloadImportTemplate('numeri_utili')" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">📥 Scarica Template (.xlsx)</button>
+                </div>
+                <div class="flex gap-4 mt-3">
                     <button id="trigger-phone-import-btn" class="btn btn-primary flex-grow">Importa Nuovo File</button>
                     <button onclick="navigateTo('importazione')" class="btn btn-secondary">Gestione Avanzata</button>
                 </div>
@@ -5163,9 +5170,18 @@ ${renderBottomNavigation()}
                 <!-- SEZIONE UNICA: IMPORTAZIONE MILLESIMI / ANAGRAFICA -->
                 <div class="card">
                     <h3 class="card-title">Importa Anagrafica e Millesimi</h3>
-                    <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
+                    <p class="form-label" style="margin-bottom: 1.25rem; color: var(--secondary-text);">
                         Carica il file Excel contenente i dati anagrafici dei proprietari, le unità immobiliari e i relativi millesimi. Questo file è <strong>fondamentale</strong> per la registrazione degli utenti e per i report.
                     </p>
+                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: 8px;">
+                        <div>
+                            <strong style="font-size: 0.9rem;">📄 Template Excel Anagrafica e Millesimi</strong>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato con le colonne corrette.</p>
+                        </div>
+                        <button type="button" onclick="downloadImportTemplate('anagrafica')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            📥 Scarica Template (.xlsx)
+                        </button>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Carica Nuovo File Anagrafica (.xlsx, .xls)</label>
                         <input type="file" id="excel-file-input-millesimi" class="form-input" accept=".xlsx, .xls">
@@ -5278,9 +5294,18 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card">
                     <h3 class="card-title">Importa da File</h3>
-                    <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
+                    <p class="form-label" style="margin-bottom: 1.25rem; color: var(--secondary-text);">
                         Carica un file Excel per sostituire tutti i dati degli orari esistenti. Questa azione è irreversibile.
                     </p>
+                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: 8px;">
+                        <div>
+                            <strong style="font-size: 0.9rem;">📄 Template Excel Orari Custode</strong>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato per la gestione orari.</p>
+                        </div>
+                        <button type="button" onclick="downloadImportTemplate('orari_custode')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            📥 Scarica Template (.xlsx)
+                        </button>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Carica File Orari Custode (.xlsx, .xls)</label>
                         <input type="file" id="excel-file-input-orari-custode" class="form-input" accept=".xlsx, .xls">
@@ -5422,9 +5447,18 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card">
                     <h3 class="card-title">Importa da File</h3>
-                    <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
+                    <p class="form-label" style="margin-bottom: 1.25rem; color: var(--secondary-text);">
                         Carica un file Excel per sostituire tutti i dati dell'amministratore. Questa azione è irreversibile.
                     </p>
+                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: 8px;">
+                        <div>
+                            <strong style="font-size: 0.9rem;">📄 Template Dati Amministratore</strong>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato con i dati dello studio.</p>
+                        </div>
+                        <button type="button" onclick="downloadImportTemplate('dati_amministratore')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            📥 Scarica Template (.xlsx)
+                        </button>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Carica File Dati Amministratore (.xlsx, .xls)</label>
                         <input type="file" id="file-input-admin-data" class="form-input" accept=".xlsx, .xls">
@@ -7231,8 +7265,15 @@ ${renderBottomNavigation()}
                         setupCreaAssembleaHandlers();
                     }
                     break;
+                case 'assemblee_menu':
                 case 'assemblea_lista':
-                    loadAssembleeList();
+                    if (currentUser) {
+                        localStorage.setItem(`lastSeenAssembly_${currentUser.uid}`, Date.now());
+                        checkForNewAssemblies();
+                    }
+                    if (currentPage === 'assemblea_lista') {
+                        loadAssembleeList();
+                    }
                     break;
                 case 'assemblea_gestione':
                     if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) {
@@ -15575,26 +15616,47 @@ ${renderBottomNavigation()}
             });
         };
 
-        // Controlla se ci sono nuove assemblee per qualsiasi utente loggato
+        // Controlla se ci sono nuove assemblee o deleghe pendenti per qualsiasi utente loggato
         const checkForNewAssemblies = () => {
             if (!currentUser) return;
             if (assembliesListener) assembliesListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenAssembly_${currentUser.uid}`), 10) || 0;
-            const lastSeenDate = new Date(lastSeen);
 
             const q = query(
                 collection(db, "assemblies"),
-                where("createdAt", ">", lastSeenDate)
+                where("status", "in", ["programmata", "in_corso"])
             );
 
             assembliesListener = onSnapshot(q, snapshot => {
-                const unreadCount = snapshot.docs.filter(docSnap => {
-                    const data = docSnap.data();
-                    return data.status === 'programmata'; // Notifica solo per assemblee pianificate attive
-                }).length;
+                let newAssembliesCount = 0;
+                let pendingDelegheCount = 0;
 
-                updateNotificationUI('assemblee', unreadCount);
+                snapshot.docs.forEach(docSnap => {
+                    const data = docSnap.data();
+
+                    // Assemblea programmata creata dopo l'ultima visita o in corso LIVE
+                    const createdTime = data.createdAt ? (data.createdAt.toMillis ? data.createdAt.toMillis() : new Date(data.createdAt).getTime()) : 0;
+                    const isNew = createdTime > lastSeen;
+                    const isLive = data.status === 'in_corso';
+                    if (isNew || isLive) {
+                        newAssembliesCount++;
+                    }
+
+                    // Deleghe pendenti per l'utente loggato
+                    if (data.proxies && Array.isArray(data.proxies)) {
+                        const userPendingProxy = data.proxies.find(p => p.delegateId === currentUser.uid && p.status === 'pending');
+                        if (userPendingProxy) {
+                            pendingDelegheCount++;
+                        }
+                    }
+                });
+
+                // Aggiorna il badge specifico per le deleghe (nel sotto-menu assemblee)
+                updateNotificationUI('deleghe', pendingDelegheCount);
+
+                // Aggiorna il badge principale delle assemblee (nuove assemblee/live + deleghe pendenti)
+                updateNotificationUI('assemblee', newAssembliesCount + pendingDelegheCount);
             }, error => {
                 console.error("Errore listener notifiche assemblee:", error);
             });
@@ -15610,10 +15672,10 @@ ${renderBottomNavigation()}
             // Funzione per aggiungere riga OdG
             const addAgendaItem = (value = "") => {
                 const div = document.createElement("div");
-                div.className = "flex items-center gap-2";
+                div.style.cssText = "display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;";
                 div.innerHTML = `
-                    <input type="text" class="form-input" style="flex:1" required placeholder="Es. Approvazione Bilancio" value="${escapeHtml(value)}">
-                    <button type="button" class="btn-remove-agenda" style="background:var(--surface-color-light); border:none; color:var(--primary-text); width:36px; height:36px; border-radius:50%; cursor:pointer;">&times;</button>
+                    <input type="text" class="form-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio Consuntivo" value="${escapeHtml(value)}">
+                    <button type="button" class="btn-remove-agenda" style="background:var(--surface-color-light); border:1px solid var(--surface-color-light); color:var(--danger); width:40px; height:40px; border-radius:8px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.3rem; transition: background 0.2s;" title="Rimuovi punto">&times;</button>
                 `;
                 div.querySelector(".btn-remove-agenda").onclick = () => {
                     agendaList.removeChild(div);
@@ -18282,6 +18344,66 @@ ${renderBottomNavigation()}
                 await customAlert('Nessuna tabella disponibile per il download.');
             }
         };
+
+        const downloadImportTemplate = (type) => {
+            let filename = "";
+            let data = [];
+
+            if (type === 'anagrafica') {
+                filename = "Template_Import_Anagrafica_Condominio.xlsx";
+                data = [
+                    ["Nominativo", "Interno", "Sub", "Scala", "Piano", "Millesimi", "Telefono", "Email", "Raggruppamento"],
+                    ["Rossi Mario", "UI-101", "1", "A", "1", "125.50", "+393401234567", "mario.rossi@esempio.it", "Scala A"],
+                    ["Bianchi Luigi", "UI-102", "2", "A", "1", "85.20", "+393409876543", "luigi.bianchi@esempio.it", "Scala A"],
+                    ["Verdi Giuseppe", "UI-103", "3", "B", "2", "110.00", "+393331122334", "giuseppe.verdi@esempio.it", "Scala B"]
+                ];
+            } else if (type === 'numeri_utili') {
+                filename = "Template_Import_Numeri_Utili.xlsx";
+                data = [
+                    ["INTERVENTO RICHIESTO", "IMPRESA", "1 NUM. TELEFONICO", "2 NUM. TELEFONICO", "NOTE"],
+                    ["Pronto Intervento Idraulico", "IdroTermica Rossi S.r.l.", "+3902123456", "+39340112233", "Disponibile 24/7 per emergenze"],
+                    ["Elettricista Condominiale", "ElettroImpianti Bianchi", "+3902987654", "+39349887766", "Referente Ing. Bianchi"],
+                    ["Amministrazione Studio", "Studio Amministrativo Verdi", "+3902555666", "+3902555777", "Orario ricevimento: 9:00 - 18:00"]
+                ];
+            } else if (type === 'orari_custode') {
+                filename = "Template_Import_Orari_Custode.xlsx";
+                data = [
+                    ["Nominativo", "Ruolo", "Lun - Ven", "Sabato", "Telefono", "Note"],
+                    ["Mario Rossi", "Custode Principale", "08:00 - 12:00 / 15:00 - 18:00", "08:00 - 12:00", "+393401234567", "Presenza in portineria Scala A"],
+                    ["Luigi Bianchi", "Manutenzione e Giardino", "08:00 - 12:00", "Chiuso", "+393409876543", "Pulizia aree comuni e verde"]
+                ];
+            } else if (type === 'dati_amministratore') {
+                filename = "Template_Import_Dati_Amministratore.xlsx";
+                data = [
+                    ["Ruolo", "Nominativo", "Telefono", "Email", "Giorni Lavorativi", "Orari Ricevimento"],
+                    ["Amministratore Condominiale", "Dott. Mario Bianchi", "+3902112233", "info@studiobianchi.it", "Lunedì - Venerdì", "09:00 - 12:00 / 15:00 - 18:00"],
+                    ["Referente Contabilità Studio", "Giulia Verdi", "+3902112234", "contabilita@studiobianchi.it", "Lunedì - Giovedì", "09:00 - 12:00"]
+                ];
+            }
+
+            try {
+                if (data.length > 0 && typeof XLSX !== 'undefined') {
+                    const ws = XLSX.utils.aoa_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "Template");
+                    XLSX.writeFile(wb, filename);
+                } else if (data.length > 0) {
+                    const csvContent = "\uFEFF" + data.map(e => e.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(",")).join("\n");
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    const csvFilename = filename.replace('.xlsx', '.csv');
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute("download", csvFilename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            } catch (err) {
+                console.error("Errore download template:", err);
+            }
+        };
+
+        window.downloadImportTemplate = downloadImportTemplate;
     </script>
 </body>
 
