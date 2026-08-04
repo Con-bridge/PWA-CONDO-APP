@@ -17,7 +17,7 @@
          'unsafe-inline' è necessario per gli stili inline e gli handler onclick usati dall'app;
          la protezione principale contro l'XSS è comunque l'escaping dell'output lato JS. -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://cloud.activepieces.com https://primary-production-36d20.up.railway.app; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://cloud.activepieces.com https://primary-production-36d20.up.railway.app; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Con-bridge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1406,11 +1406,6 @@
         .pdf-download-btn svg {
             width: 16px;
             height: 16px;
-        }
-
-        accent-color: var(--accent-color);
-        flex-shrink: 0;
-        cursor: pointer;
         }
 
         .form-check-input:disabled {
@@ -3446,7 +3441,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg>
         <span>Sondaggi</span>
     </a>` : ''}
-    <a href="#" onclick="navigateTo('assemblee_menu', event)" class="nav-item ${['assemblee_menu', 'assemblea_crea', 'assemblea_lista', 'assemblea_gestione', 'assemblea_tessera'].includes(currentPage) ? 'active' : ''}">
+    <a href="#" onclick="navigateTo('assemblee_menu', event)" class="nav-item ${['assemblee_menu', 'assemblea_crea', 'assemblea_lista', 'assemblea_gestione', 'assemblea_tessera', 'assemblea_deleghe'].includes(currentPage) ? 'active' : ''}">
         <span id="assemblee-notification-badge" class="notification-badge hidden"></span>
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         <span>Assemblee</span>
@@ -6441,6 +6436,7 @@ ${renderBottomNavigation()}
                         <div id="cleanup-chip-communications" class="chip" onclick="loadItemsForCleanup('communications')">Comunicazioni</div>
                         <div id="cleanup-chip-reports" class="chip" onclick="loadItemsForCleanup('reports')">Segnalazioni</div>
                         <div id="cleanup-chip-polls" class="chip" onclick="loadItemsForCleanup('polls')">Sondaggi</div>
+                        <div id="cleanup-chip-assemblies" class="chip" onclick="loadItemsForCleanup('assemblies')">Assemblee</div>
                     </div>
                     <div id="cleanup-list-container" class="list-container" style="min-height: 200px; max-height: 60vh; overflow-y: auto;">
                         <p style="color:var(--secondary-text);">Seleziona una categoria per iniziare.</p>
@@ -6469,7 +6465,8 @@ ${renderBottomNavigation()}
             const typeMap = {
                 communications: { collection: 'communications', titleField: 'title', dateField: 'createdAt' },
                 reports: { collection: 'reports', titleField: 'title', dateField: 'createdAt' },
-                polls: { collection: 'polls', titleField: 'title', dateField: 'createdAt' }
+                polls: { collection: 'polls', titleField: 'title', dateField: 'createdAt' },
+                assemblies: { collection: 'assemblies', titleField: 'title', dateField: 'scheduledDate' }
             };
 
             if (!typeMap[type]) return;
@@ -7054,14 +7051,19 @@ ${renderBottomNavigation()}
                     else navigateTo('dashboard');
                     break;
                 case 'assemblea_gestione':
-                    if (['amministratore', 'adm'].includes(userType)) content = window.AssembleeModule.renderGestione(renderHeader, renderBottomNavigation);
-                    else navigateTo('dashboard');
+                    navigateTo('assemblea_lista');
+                    return;
+                case 'assemblea_room':
+                    content = window.AssembleeModule.renderStanzaLive(renderHeader, renderBottomNavigation);
                     break;
                 case 'assemblea_lista':
                     content = window.AssembleeModule.renderLista(renderHeader, renderBottomNavigation);
                     break;
                 case 'assemblea_tessera':
                     content = window.AssembleeModule.renderTessera(renderHeader, renderBottomNavigation);
+                    break;
+                case 'assemblea_deleghe':
+                    content = window.AssembleeModule.renderDeleghe(renderHeader, renderBottomNavigation);
                     break;
                 case 'abilitaServizi':
                     if (userProfile?.tipoUtente === 'adm') content = renderAbilitaServizi();
@@ -7237,8 +7239,14 @@ ${renderBottomNavigation()}
                         setupAssembleaGestioneHandlers();
                     }
                     break;
+                case 'assemblea_room':
+                    setupStanzaLiveHandlers();
+                    break;
                 case 'assemblea_tessera':
                     window.AssembleeModule.initQR(currentUser);
+                    break;
+                case 'assemblea_deleghe':
+                    loadUserDeleghePage();
                     break;
             }
 
@@ -7259,6 +7267,8 @@ ${renderBottomNavigation()}
                 checkForSentReminderUpdates();
                 checkForNewArchivioActivity();
                 checkForNewAssemblies();
+                listenForLiveVotes();
+                listenForPendingProxies();
             }
         };
 
@@ -15565,18 +15575,14 @@ ${renderBottomNavigation()}
             });
         };
 
-        // Controlla se ci sono nuove assemblee create dopo l'ultima visita dell'utente
+        // Controlla se ci sono nuove assemblee per qualsiasi utente loggato
         const checkForNewAssemblies = () => {
             if (!currentUser) return;
-            assembliesListener && assembliesListener();
+            if (assembliesListener) assembliesListener();
 
-            let lastSeen = parseInt(localStorage.getItem(`lastSeenAssembly_${currentUser.uid}`), 10);
-            if (!lastSeen) {
-                lastSeen = Date.now();
-                localStorage.setItem(`lastSeenAssembly_${currentUser.uid}`, lastSeen);
-            }
-
+            let lastSeen = parseInt(localStorage.getItem(`lastSeenAssembly_${currentUser.uid}`), 10) || 0;
             const lastSeenDate = new Date(lastSeen);
+
             const q = query(
                 collection(db, "assemblies"),
                 where("createdAt", ">", lastSeenDate)
@@ -15585,7 +15591,7 @@ ${renderBottomNavigation()}
             assembliesListener = onSnapshot(q, snapshot => {
                 const unreadCount = snapshot.docs.filter(docSnap => {
                     const data = docSnap.data();
-                    return data.status !== 'annullata'; // Non notificare per quelle annullate
+                    return data.status === 'programmata'; // Notifica solo per assemblee pianificate attive
                 }).length;
 
                 updateNotificationUI('assemblee', unreadCount);
@@ -15688,7 +15694,6 @@ ${renderBottomNavigation()}
             const container = document.getElementById('assemblies-list-container');
             if (!container) return;
 
-            // Reset notifiche quando l'utente visita la lista
             if (currentUser) {
                 localStorage.setItem(`lastSeenAssembly_${currentUser.uid}`, Date.now());
                 updateNotificationUI('assemblee', 0);
@@ -15708,28 +15713,48 @@ ${renderBottomNavigation()}
                     const dateFormatted = dateObj.toLocaleDateString("it-IT", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                     const timeFormatted = dateObj.toLocaleTimeString("it-IT", { hour: '2-digit', minute: '2-digit' });
 
+                    const year = dateObj.getFullYear();
+                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    const formattedIsoDate = `${year}-${month}-${day}`;
+
+                    // AUTOMATIC LIVE: Se l'assemblea è in stato 'programmata' ed è giunto l'orario, passa in LIVE!
+                    if (assembly.status === 'programmata' && Date.now() >= dateObj.getTime()) {
+                        assembly.status = 'in_corso';
+                        updateDoc(doc(db, "assemblies", docSnap.id), { status: 'in_corso' }).catch(console.error);
+                    }
+
                     let statusBadge = '';
                     if (assembly.status === 'programmata') statusBadge = `<span class="badge status-aperta">Programmata</span>`;
-                    if (assembly.status === 'in_corso') statusBadge = `<span class="badge status-in-corso" style="animation: pulse 2s infinite;">In Corso 🔴</span>`;
+                    if (assembly.status === 'in_corso') statusBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE 🟢</span>`;
                     if (assembly.status === 'conclusa') statusBadge = `<span class="badge status-chiusa">Conclusa</span>`;
                     if (assembly.status === 'annullata') statusBadge = `<span class="badge" style="background-color: var(--danger); color: white;">Annullata ❌</span>`;
 
-                    // LOGICA DI SICUREZZA:
-                    // I pulsanti compaiono SOLO per l'Amministratore o ADM e SOLO se l'assemblea è ancora "programmata"
                     const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
+
+                    // Tasto "Entra nella Stanza Live" (Accessibile a tutti per assemblee in corso o se Admin)
+                    let liveRoomBtnHtml = '';
+                    if (assembly.status === 'in_corso' || (isAdmin && assembly.status === 'programmata')) {
+                        const isLiveNow = assembly.status === 'in_corso';
+                        liveRoomBtnHtml = `
+                            <div style="margin-top: 1rem;">
+                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 1rem; padding: 0.8rem;">
+                                    ${isLiveNow ? '🔴 ENTRA NELLA STANZA LIVE' : '▶️ AVVIA / ENTRA NELLA STANZA LIVE'}
+                                </button>
+                            </div>
+                        `;
+                    }
+
                     const canManage = isAdmin && assembly.status === 'programmata';
                     let actionButtonsHtml = '';
 
                     if (canManage) {
-                        const year = dateObj.getFullYear();
-                        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                        const day = String(dateObj.getDate()).padStart(2, '0');
                         const hours = String(dateObj.getHours()).padStart(2, '0');
                         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
 
                         const safeAssemblyData = JSON.stringify({
                             title: assembly.title,
-                            date: `${year}-${month}-${day}`,
+                            date: formattedIsoDate,
                             time: `${hours}:${minutes}`
                         }).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
 
@@ -15741,7 +15766,6 @@ ${renderBottomNavigation()}
                         `;
                     }
 
-                    // Se l'assemblea è stata annullata, mostriamo la causa in rosso
                     let cancellationReasonHtml = '';
                     if (assembly.status === 'annullata' && assembly.cancellationReason) {
                         cancellationReasonHtml = `
@@ -15752,8 +15776,65 @@ ${renderBottomNavigation()}
                         `;
                     }
 
+                    // DELEGHE SULLA CARD (PER DELEGANTE E PER DELEGATO)
+                    let userDelegateBtnHtml = '';
+                    if (!isAdmin && assembly.status === 'programmata') {
+                        const existingProxy = assembly.proxies?.find(p => p.delegatorId === currentUser.uid);
+                        if (existingProxy) {
+                            const pStatus = existingProxy.status || 'accepted';
+                            if (pStatus === 'pending') {
+                                userDelegateBtnHtml = `
+                                    <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-color-light); border-radius: 8px; font-size: 0.85rem; color: var(--warning);">
+                                        🤝 Delega inviata a <strong>${escapeHtml(existingProxy.delegateName)}</strong> (In attesa di accettazione)
+                                    </div>
+                                `;
+                            } else if (pStatus === 'accepted') {
+                                userDelegateBtnHtml = `
+                                    <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-color-light); border-radius: 8px; font-size: 0.85rem; color: var(--accent-color);">
+                                        🔒 Delega ACCETTATA da <strong>${escapeHtml(existingProxy.delegateName)}</strong>
+                                    </div>
+                                `;
+                            } else if (pStatus === 'rejected') {
+                                userDelegateBtnHtml = `
+                                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(231,76,60,0.15); border-radius: 8px; font-size: 0.85rem; color: var(--danger);">
+                                        ⚠️ Delega RIFIUTATA da <strong>${escapeHtml(existingProxy.delegateName)}</strong>. Puoi votare autonomamente o inviare delega a un altro condomino.
+                                        <div style="margin-top: 0.5rem;">
+                                            <button onclick="openUserDelegateModal('${docSnap.id}')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">🤝 Delega ad un altro condomino</button>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            userDelegateBtnHtml = `
+                                <div style="margin-top: 1rem; text-align: right;">
+                                    <button onclick="openUserDelegateModal('${docSnap.id}')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">🤝 Delega Voto</button>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    // NOTIFICA DELEGA RICEVUTA PER IL DELEGATO
+                    let receivedProxyHtml = '';
+                    if (!isAdmin) {
+                        const receivedProxy = assembly.proxies?.find(p => p.delegateId === currentUser.uid && p.status === 'pending');
+                        if (receivedProxy) {
+                            receivedProxyHtml = `
+                                <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(241, 196, 15, 0.15); border-left: 4px solid var(--warning); border-radius: 6px;">
+                                    <strong style="color: var(--warning); font-size: 0.85rem; text-transform: uppercase; display: block;">🤝 Delega di Voto Ricevuta!</strong>
+                                    <p style="margin: 0.25rem 0 0.5rem 0; font-size: 0.85rem; color: var(--primary-text);">
+                                        <strong>${escapeHtml(receivedProxy.delegatorName)}</strong> ti ha conferito la sua delega di voto (${(receivedProxy.delegatorMillesimi || 0).toFixed(2)} ‰).
+                                    </p>
+                                    <div class="flex gap-2">
+                                        <button onclick="respondToProxy('${docSnap.id}', '${receivedProxy.id || receivedProxy.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">🟢 Accetta Delega</button>
+                                        <button onclick="respondToProxy('${docSnap.id}', '${receivedProxy.id || receivedProxy.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.75rem; padding: 0.35rem 0.7rem;">🔴 Rifiuta / Rimanda indietro</button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+
                     return `
-                        <div class="card" style="margin-bottom: 1rem; padding: 1.5rem; ${assembly.status === 'annullata' ? 'opacity: 0.8;' : ''}">
+                        <div class="card assembly-card-item" data-title="${escapeHtml(assembly.title.toLowerCase())}" data-date="${formattedIsoDate}" data-status="${assembly.status}" style="margin-bottom: 1rem; padding: 1.5rem; ${assembly.status === 'annullata' ? 'opacity: 0.8;' : ''}">
                             <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom: 1rem;">
                                 <div>
                                     <h4 style="font-size: 1.2rem; font-weight: 700; ${assembly.status === 'annullata' ? 'text-decoration: line-through;' : ''}">${escapeHtml(assembly.title)}</h4>
@@ -15772,6 +15853,9 @@ ${renderBottomNavigation()}
                             </div>
 
                             ${cancellationReasonHtml}
+                            ${receivedProxyHtml}
+                            ${userDelegateBtnHtml}
+                            ${liveRoomBtnHtml}
                             ${actionButtonsHtml}
                         </div>
                     `;
@@ -15783,122 +15867,723 @@ ${renderBottomNavigation()}
         };
 
         const setupAssembleaGestioneHandlers = () => {
-            const messageBox = document.getElementById("scanner-message");
-            const attendeesList = document.getElementById("attendees-list");
-            const totTesteEl = document.getElementById("tot-teste");
-            const totMillesimiEl = document.getElementById("tot-millesimi");
+            const selectAssembly = document.getElementById("select-active-assembly");
+            const actionContainer = document.getElementById("assembly-control-actions");
+            const btnToggleLive = document.getElementById("btn-toggle-live");
+            const scannerSection = document.getElementById("scanner-section");
+            const quorumSection = document.getElementById("quorum-section");
+            const liveVotingControl = document.getElementById("live-voting-control");
+            const attendeesSection = document.getElementById("attendees-section");
 
-            // Array per tenere traccia temporanea dei presenti (per non fare query continue al DB)
-            let presenti = [];
+            if (!selectAssembly) return;
 
-            // Inizializza lo scanner
-            window.html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader",
-                { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }
-            );
-
-            // Funzione eseguita quando il QR viene letto
-            const onScanSuccess = async (decodedText, decodedResult) => {
-                try {
-                    // Mette in pausa lo scanner per evitare doppie letture
-                    html5QrcodeScanner.pause(true);
-
-                    // 1. Decodifica la stringa Base64
-                    const jsonString = atob(decodedText);
-                    const securityData = JSON.parse(jsonString);
-
-                    const qrUid = securityData.uid;
-                    const qrTimestamp = securityData.ts;
-
-                    // 2. Controllo Sicurezza: Il QR è più vecchio di 40 secondi?
-                    const now = Date.now();
-                    const ageInSeconds = (now - qrTimestamp) / 1000;
-
-                    if (ageInSeconds > 40) {
-                        throw new Error("QR Code Scaduto. Fai generare un nuovo codice al condomino.");
-                    }
-
-                    // 3. Controllo: È già stato scansionato?
-                    if (presenti.some(p => p.uid === qrUid)) {
-                        throw new Error("Condomino già registrato.");
-                    }
-
-                    // 4. Recupera dati utente da Firestore
-                    messageBox.className = 'message-box';
-                    messageBox.textContent = "Verifica utente in corso...";
-                    messageBox.style.display = 'block';
-
-                    const userDoc = await getDoc(doc(db, "users", qrUid));
-                    if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
-
-                    const user = userDoc.data();
-
-                    // 5. Aggiungi alla lista presenti
-                    presenti.push({
-                        uid: qrUid,
-                        nome: `${user.nome} ${user.cognome}`,
-                        millesimi: user.millesimiTotali || 0
-                    });
-
-                    // 6. Aggiorna interfaccia UI
-                    aggiornaInterfacciaPresenti();
-
-                    messageBox.className = 'message-box success';
-                    messageBox.textContent = `Registrato: ${user.nome} ${user.cognome}`;
-
-                } catch (error) {
-                    console.error(error);
-                    messageBox.className = 'message-box error';
-                    messageBox.textContent = error.message;
-                } finally {
-                    // Riavvia lo scanner dopo 2 secondi
-                    setTimeout(() => {
-                        try { html5QrcodeScanner.resume(); } catch (e) { }
-                        messageBox.style.display = 'none';
-                    }, 2500);
+            // 1. Popola la tendina con le assemblee attive
+            const q = query(collection(db, "assemblies"), where("status", "in", ["programmata", "in_corso"]));
+            onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) {
+                    selectAssembly.innerHTML = '<option value="">Nessuna assemblea disponibile</option>';
+                    return;
                 }
-            };
 
-            const aggiornaInterfacciaPresenti = () => {
-                let totMillesimi = 0;
-                let listHtml = '';
+                selectAssembly.innerHTML = '<option value="">Seleziona un\'assemblea...</option>' +
+                    snapshot.docs.map(d => `<option value="${d.id}">${escapeHtml(d.data().title)} (${d.data().status === 'in_corso' ? 'LIVE 🟢' : 'Programmata'})</option>`).join('');
+            });
 
-                presenti.forEach(p => {
-                    totMillesimi += p.millesimi;
-                    listHtml += `
-                        <div class="list-item" style="background: var(--surface-color-light);">
-                            <div class="list-item-content">
-                                <div class="title">${escapeHtml(p.nome)}</div>
-                            </div>
-                            <div style="font-weight: 700; color: var(--warning);">
-                                ${p.millesimi.toFixed(2)} ‰
-                            </div>
-                        </div>
-                    `;
+            // 2. Quando l'Admin seleziona un'assemblea
+            selectAssembly.addEventListener('change', async (e) => {
+                const assemblyId = e.target.value;
+                if (!assemblyId) {
+                    actionContainer?.classList.add('hidden');
+                    scannerSection?.classList.add('hidden');
+                    quorumSection?.classList.add('hidden');
+                    liveVotingControl?.classList.add('hidden');
+                    attendeesSection?.classList.add('hidden');
+                    return;
+                }
+
+                actionContainer?.classList.remove('hidden');
+                scannerSection?.classList.remove('hidden');
+                quorumSection?.classList.remove('hidden');
+                liveVotingControl?.classList.remove('hidden');
+                attendeesSection?.classList.remove('hidden');
+
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                onSnapshot(assemblyRef, (docSnap) => {
+                    if (!docSnap.exists()) return;
+                    const assembly = docSnap.data();
+
+                    if (assembly.status === 'programmata') {
+                        btnToggleLive.textContent = "🔴 Metti Assemblea in LIVE";
+                        btnToggleLive.style.backgroundColor = "#1DB954";
+                        btnToggleLive.onclick = () => updateDoc(assemblyRef, { status: 'in_corso' });
+                    } else if (assembly.status === 'in_corso') {
+                        btnToggleLive.textContent = "🏁 Concludi Assemblea";
+                        btnToggleLive.style.backgroundColor = "var(--danger)";
+                        btnToggleLive.onclick = () => updateDoc(assemblyRef, { status: 'conclusa' });
+                    }
+
+                    const attendees = assembly.attendees || [];
+                    let totMillesimi = 0;
+                    attendees.forEach(a => totMillesimi += (a.millesimi || 0));
+
+                    document.getElementById("tot-teste").textContent = attendees.length;
+                    document.getElementById("tot-millesimi").textContent = totMillesimi.toFixed(2);
+
+                    const attendeesList = document.getElementById("attendees-list");
+                    if (attendeesList) {
+                        if (attendees.length === 0) {
+                            attendeesList.innerHTML = '<p style="color:var(--secondary-text);">Nessun condomino registrato.</p>';
+                        } else {
+                            attendeesList.innerHTML = attendees.map(a => `
+                                <div class="list-item" style="background: var(--surface-color-light);">
+                                    <div class="list-item-content">
+                                        <div class="title">${escapeHtml(a.nome)}</div>
+                                    </div>
+                                    <div style="font-weight: 700; color: var(--warning);">
+                                        ${a.millesimi.toFixed(2)} ‰
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                    }
+
+                    const odgContainer = document.getElementById("admin-odg-voting-list");
+                    if (odgContainer && assembly.agenda) {
+                        odgContainer.innerHTML = assembly.agenda.map((item, idx) => {
+                            let voteBtnHtml = '';
+                            if (item.status === 'pending') {
+                                voteBtnHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="font-size:0.8rem;">Apri Voto</button>`;
+                            } else if (item.status === 'voting') {
+                                voteBtnHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="background-color:var(--danger); color:white; font-size:0.8rem;">Chiudi Voto</button>`;
+                            } else {
+                                voteBtnHtml = `<span class="badge status-chiusa">Votato</span>`;
+                            }
+
+                            return `
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color-light); padding:0.75rem; border-radius:8px;">
+                                    <div><strong>Punto ${idx + 1}:</strong> ${escapeHtml(item.title)}</div>
+                                    <div>${voteBtnHtml}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
                 });
 
-                totTesteEl.textContent = presenti.length;
-                totMillesimiEl.textContent = totMillesimi.toFixed(2);
-
-                if (presenti.length > 0) {
-                    attendeesList.innerHTML = listHtml;
-                }
-            };
-
-            // Avvia lo scanner
-            html5QrcodeScanner.render(onScanSuccess, (errorMessage) => {
-                // Gli errori di "non trovato" avvengono ogni frame, li ignoriamo
+                initScannerForAssembly(assemblyId);
             });
         };
 
-        // Funzione per aprire il popup per l'annullamento con motivazione
+        const initScannerForAssembly = (assemblyId) => {
+            const messageBox = document.getElementById("scanner-message");
+
+            if (window.html5QrcodeScanner) {
+                try { window.html5QrcodeScanner.clear(); } catch (e) { }
+            }
+
+            const scanTypes = (typeof Html5QrcodeScanType !== 'undefined') ? [Html5QrcodeScanType.SCAN_TYPE_CAMERA] : [0];
+            window.html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, supportedScanTypes: scanTypes },
+                false
+            );
+
+            const onScanSuccess = async (decodedText) => {
+                try {
+                    window.html5QrcodeScanner.pause(true);
+
+                    const jsonString = atob(decodedText);
+                    const securityData = JSON.parse(jsonString);
+                    const qrUid = securityData.uid;
+                    const qrTimestamp = securityData.ts;
+
+                    if ((Date.now() - qrTimestamp) / 1000 > 40) {
+                        throw new Error("QR Code Scaduto. Fai rigenerare il codice.");
+                    }
+
+                    const assemblyRef = doc(db, "assemblies", assemblyId);
+                    const docSnap = await getDoc(assemblyRef);
+                    if (!docSnap.exists()) throw new Error("Assemblea non trovata.");
+
+                    const assembly = docSnap.data();
+                    const attendees = assembly.attendees || [];
+
+                    if (attendees.some(a => a.uid === qrUid)) {
+                        throw new Error("Condomino già registrato come Presente.");
+                    }
+
+                    const userDoc = await getDoc(doc(db, "users", qrUid));
+                    if (!userDoc.exists()) throw new Error("Utente non trovato.");
+
+                    const user = userDoc.data();
+
+                    // LOGICA DELEGHE: Controlla se l'utente scansionato ha ricevuto deleghe da altri vicini
+                    let totalMillesimiAccreditati = user.millesimiTotali || 0;
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === qrUid) || [];
+
+                    let proxyNoticeText = '';
+                    if (heldProxies.length > 0) {
+                        heldProxies.forEach(p => {
+                            totalMillesimiAccreditati += (p.delegatorMillesimi || 0);
+                        });
+                        proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
+                    }
+
+                    const newAttendee = {
+                        uid: qrUid,
+                        nome: `${user.nome} ${user.cognome}${proxyNoticeText}`,
+                        millesimi: totalMillesimiAccreditati,
+                        heldProxiesCount: heldProxies.length
+                    };
+
+                    await updateDoc(assemblyRef, {
+                        attendees: arrayUnion(newAttendee)
+                    });
+
+                    messageBox.className = 'message-box success';
+                    messageBox.textContent = `Accreditato: ${user.nome} ${user.cognome} con ${totalMillesimiAccreditati.toFixed(2)} ‰${proxyNoticeText}`;
+
+                } catch (error) {
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = error.message;
+                } finally {
+                    setTimeout(() => {
+                        try { window.html5QrcodeScanner.resume(); } catch (e) { }
+                        if (messageBox) messageBox.style.display = 'none';
+                    }, 3000);
+                }
+            };
+
+            window.html5QrcodeScanner.render(onScanSuccess, () => { });
+        };
+
+        const toggleOdgVote = async (assemblyId, itemId, newStatus) => {
+            const assemblyRef = doc(db, "assemblies", assemblyId);
+            const docSnap = await getDoc(assemblyRef);
+            if (!docSnap.exists()) return;
+
+            const assembly = docSnap.data();
+            const updatedAgenda = assembly.agenda.map(item => {
+                if (item.id === itemId) {
+                    return { ...item, status: newStatus };
+                }
+                return item;
+            });
+
+            await updateDoc(assemblyRef, { agenda: updatedAgenda });
+        };
+
+        const enterLiveRoom = (assemblyId) => {
+            sessionStorage.setItem('activeLiveAssemblyId', assemblyId);
+            navigateTo('assemblea_room');
+        };
+
+        const setupStanzaLiveHandlers = () => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) return;
+
+            const assemblyRef = doc(db, "assemblies", assemblyId);
+            onSnapshot(assemblyRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                // Auto transition if time reached
+                const dateObj = assembly.scheduledDate ? assembly.scheduledDate.toDate() : null;
+                if (assembly.status === 'programmata' && dateObj && Date.now() >= dateObj.getTime()) {
+                    updateDoc(assemblyRef, { status: 'in_corso' }).catch(console.error);
+                }
+
+                const titleEl = document.getElementById('room-assembly-title');
+                if (titleEl) titleEl.textContent = assembly.title || 'Assemblea in Corso';
+
+                const attendees = assembly.attendees || [];
+                let totMillesimi = 0;
+                attendees.forEach(a => totMillesimi += (a.millesimi || 0));
+
+                const totTesteEl = document.getElementById('room-tot-teste');
+                const totMillesimiEl = document.getElementById('room-tot-millesimi');
+                if (totTesteEl) totTesteEl.textContent = `${attendees.length} Teste`;
+                if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
+
+                const adminBar = document.getElementById('room-admin-bar');
+                const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
+                if (adminBar) {
+                    adminBar.classList.toggle('hidden', !isAdmin);
+                }
+
+                const qrAccreditation = document.getElementById('room-qr-accreditation');
+                const isAttendee = attendees.some(a => a.uid === currentUser.uid);
+                if (qrAccreditation) {
+                    if (!isAdmin && !isAttendee) {
+                        qrAccreditation.classList.remove('hidden');
+                        window.AssembleeModule.initQR(currentUser, "room-qrcode-container", "room-qr-timer");
+                    } else {
+                        qrAccreditation.classList.add('hidden');
+                    }
+                }
+
+                // POPOLAMENTO ELENCO PRESENTI
+                const attendeesListEl = document.getElementById('room-attendees-list');
+                const totTesteBadgeEl = document.getElementById('room-tot-teste-badge');
+                if (totTesteBadgeEl) totTesteBadgeEl.textContent = attendees.length;
+
+                if (attendeesListEl) {
+                    if (attendees.length === 0) {
+                        attendeesListEl.innerHTML = '<p style="color:var(--secondary-text); font-size:0.85rem;">Nessun condomino accreditato.</p>';
+                    } else {
+                        attendeesListEl.innerHTML = attendees.map(a => {
+                            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid);
+                            let proxyInfo = '';
+                            if (heldProxies.length > 0) {
+                                proxyInfo = `<div style="font-size:0.75rem; color:var(--accent-color);">📜 Deleghe da: ${heldProxies.map(p => escapeHtml(p.delegatorName)).join(', ')}</div>`;
+                            }
+                            return `
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color-light); padding:0.6rem 0.8rem; border-radius:8px; font-size:0.85rem;">
+                                    <div>
+                                        <strong>${escapeHtml(a.nome)}</strong>
+                                        ${proxyInfo}
+                                    </div>
+                                    <div style="font-weight:700; color:var(--warning);">
+                                        ${(a.millesimi || 0).toFixed(2)} ‰
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                // RENDERING SONDAGGI-STYLE ODG LIST (#room-odg-poll-list) CON DETTAGLIO VOTANTI E DELEGHE
+                const odgPollContainer = document.getElementById('room-odg-poll-list');
+                if (odgPollContainer && assembly.agenda) {
+                    odgPollContainer.innerHTML = assembly.agenda.map((item, idx) => {
+                        let favMil = 0, contMil = 0, astMil = 0;
+                        let favTeste = 0, contTeste = 0, astTeste = 0;
+
+                        (item.votes || []).forEach(v => {
+                            if (v.choice === 'Favorevole') { favMil += (v.millesimi || 0); favTeste += (v.heads || 1); }
+                            if (v.choice === 'Contrario') { contMil += (v.millesimi || 0); contTeste += (v.heads || 1); }
+                            if (v.choice === 'Astenuto') { astMil += (v.millesimi || 0); astTeste += (v.heads || 1); }
+                        });
+
+                        const baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
+                        const favPercent = ((favMil / baseMillesimi) * 100).toFixed(1);
+                        const contPercent = ((contMil / baseMillesimi) * 100).toFixed(1);
+                        const astPercent = ((astMil / baseMillesimi) * 100).toFixed(1);
+
+                        let itemBadge = '';
+                        if (item.status === 'pending') {
+                            itemBadge = `<span class="badge status-aperta">In Attesa</span>`;
+                        } else if (item.status === 'voting') {
+                            itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:800; animation: pulse 1.5s infinite;">IN VOTAZIONE 🔴</span>`;
+                        } else if (item.status === 'closed') {
+                            if (favMil > contMil) {
+                                itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700;">APPROVATO 🟢</span>`;
+                            } else {
+                                itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700;">RESPINTO 🔴</span>`;
+                            }
+                        }
+
+                        let adminActionHtml = '';
+                        if (isAdmin) {
+                            if (item.status === 'pending') {
+                                adminActionHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">▶️ Avvia Votazione</button>`;
+                            } else if (item.status === 'voting') {
+                                adminActionHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="background-color:var(--danger); color:white; font-size:0.8rem; padding:0.4rem 0.8rem;">⏹️ Chiudi Votazione</button>`;
+                            } else {
+                                adminActionHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.6rem;">🔄 Riapri Voto</button>`;
+                            }
+                        }
+
+                        const userVote = item.votes?.find(v => v.voterId === currentUser.uid);
+                        let voteButtonsHtml = '';
+                        if (item.status === 'voting' && (isAttendee || isAdmin)) {
+                            if (userVote) {
+                                voteButtonsHtml = `
+                                    <div style="margin-top:0.75rem; padding:0.6rem; background:rgba(29,185,84,0.15); border-radius:6px; font-size:0.85rem; color:var(--accent-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                        <span>✓ Hai votato: <strong>${userVote.choice}</strong> (${userVote.millesimi.toFixed(2)} ‰)</span>
+                                        <div class="flex gap-1">
+                                            <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Favorevole')" class="btn ${userVote.choice === 'Favorevole' ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.25rem 0.5rem;">🟢</button>
+                                            <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Contrario')" class="btn ${userVote.choice === 'Contrario' ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.25rem 0.5rem;">🔴</button>
+                                            <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Astenuto')" class="btn ${userVote.choice === 'Astenuto' ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.25rem 0.5rem;">⚪</button>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                voteButtonsHtml = `
+                                    <div class="grid grid-cols-3 gap-2 mt-3">
+                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Favorevole')" class="btn" style="background-color: #1DB954; color: black; font-weight: 700; font-size: 0.8rem; padding: 0.5rem;">🟢 Favorevole</button>
+                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Contrario')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size: 0.8rem; padding: 0.5rem;">🔴 Contrario</button>
+                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Astenuto')" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;">⚪ Astenuto</button>
+                                    </div>
+                                `;
+                            }
+                        }
+
+                        // DETTAGLIO VOTANTI E DELEGHE PER LA QUESTIONE
+                        const votesList = item.votes || [];
+                        let votersDetailHtml = '';
+                        if (votesList.length > 0) {
+                            const votersItemsHtml = votesList.map(v => {
+                                let choiceBadge = '';
+                                if (v.choice === 'Favorevole') choiceBadge = '<span style="color:var(--accent-color); font-weight:700;">🟢 Favorevole</span>';
+                                else if (v.choice === 'Contrario') choiceBadge = '<span style="color:var(--danger); font-weight:700;">🔴 Contrario</span>';
+                                else choiceBadge = '<span style="color:var(--secondary-text); font-weight:700;">⚪ Astenuto</span>';
+
+                                const voterHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === v.voterId);
+                                let proxyDetailText = '';
+                                if (voterHeldProxies.length > 0) {
+                                    proxyDetailText = `<div style="font-size:0.75rem; color:var(--secondary-text); margin-top:0.15rem;">(Inclusa delega di: ${voterHeldProxies.map(p => `${escapeHtml(p.delegatorName)} [${(p.delegatorMillesimi || 0).toFixed(2)} ‰]`).join(', ')})</div>`;
+                                }
+
+                                return `
+                                    <div style="padding:0.4rem 0.6rem; background:var(--surface-color-light); border-radius:6px; font-size:0.8rem; margin-bottom:0.3rem;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <span><strong>${escapeHtml(v.voterName)}</strong> ${choiceBadge}</span>
+                                            <strong style="color:var(--warning);">${(v.millesimi || 0).toFixed(2)} ‰</strong>
+                                        </div>
+                                        ${proxyDetailText}
+                                    </div>
+                                `;
+                            }).join('');
+
+                            votersDetailHtml = `
+                                <details style="margin-top: 0.75rem; font-size: 0.8rem;">
+                                    <summary style="cursor: pointer; color: var(--accent-color); font-weight: 600;">📋 Dettaglio Votanti (${votesList.length})</summary>
+                                    <div style="margin-top: 0.5rem;">
+                                        ${votersItemsHtml}
+                                    </div>
+                                </details>
+                            `;
+                        } else {
+                            votersDetailHtml = `<p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--secondary-text);">Nessun voto ancora registrato per questa questione.</p>`;
+                        }
+
+                        return `
+                            <div class="card" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 1.25rem; margin-bottom: 1rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom: 0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                    <div>
+                                        <h4 style="font-size: 1.05rem; font-weight: 700;">Punto ${idx + 1}: ${escapeHtml(item.title)}</h4>
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                                        ${itemBadge}
+                                        ${adminActionHtml}
+                                    </div>
+                                </div>
+
+                                ${voteButtonsHtml}
+
+                                <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO -->
+                                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light);">
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
+                                            <span>🟢 Favorevoli</span>
+                                            <strong>${favMil.toFixed(2)} ‰ (${favPercent}%) - ${favTeste} teste</strong>
+                                        </div>
+                                        <div style="background: var(--surface-color-light); border-radius: 4px; height: 8px; overflow: hidden;">
+                                            <div style="background: #1DB954; width: ${favPercent}%; height: 100%; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
+                                            <span>🔴 Contrari</span>
+                                            <strong style="color: var(--danger);">${contMil.toFixed(2)} ‰ (${contPercent}%) - ${contTeste} teste</strong>
+                                        </div>
+                                        <div style="background: var(--surface-color-light); border-radius: 4px; height: 8px; overflow: hidden;">
+                                            <div style="background: var(--danger); width: ${contPercent}%; height: 100%; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
+                                            <span>⚪ Astenuti</span>
+                                            <strong style="color: var(--secondary-text);">${astMil.toFixed(2)} ‰ (${astPercent}%) - ${astTeste} teste</strong>
+                                        </div>
+                                        <div style="background: var(--surface-color-light); border-radius: 4px; height: 8px; overflow: hidden;">
+                                            <div style="background: var(--secondary-text); width: ${astPercent}%; height: 100%; transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                ${votersDetailHtml}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            });
+
+            const btnConclude = document.getElementById('btn-room-conclude');
+            if (btnConclude) {
+                btnConclude.onclick = concludeLiveRoom;
+            }
+        };
+
+        const toggleRoomScanner = () => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            const container = document.getElementById('room-scanner-container');
+            if (!container || !assemblyId) return;
+
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                initScannerForAssembly(assemblyId);
+            } else {
+                container.classList.add('hidden');
+                if (window.html5QrcodeScanner) {
+                    try {
+                        window.html5QrcodeScanner.clear();
+                        window.html5QrcodeScanner = null;
+                    } catch (e) { }
+                }
+            }
+        };
+
+        const openManualAttendanceModal = async () => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) return;
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                const attendees = assembly.attendees || [];
+
+                const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"));
+                const snapshot = await getDocs(q);
+                const allCondomini = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const availableUsers = allCondomini
+                    .filter(u => !attendees.some(a => a.uid === u.id))
+                    .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+
+                if (availableUsers.length === 0) {
+                    await customAlert("Tutti i condomini sono già registrati come presenti o non ci sono condomini.");
+                    return;
+                }
+
+                const optionsHtml = availableUsers.map(u => 
+                    `<option value="${u.id}">${escapeHtml(u.cognome)} ${escapeHtml(u.nome)} (${(u.millesimiTotali || 0).toFixed(2)} ‰)</option>`
+                ).join('');
+
+                const modalContent = `
+                    <form onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-4">
+                        <p style="color: var(--secondary-text); font-size: 0.9rem;">
+                            Registra manualmente la presenza di un condomino all'assemblea.
+                        </p>
+                        <div>
+                            <label class="form-label">Condomino</label>
+                            <select id="select-manual-attendee" required class="form-select">
+                                <option value="">Seleziona condomino...</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div class="flex justify-end gap-4 pt-4">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Registra Presenza</button>
+                        </div>
+                    </form>
+                `;
+                showModal('Registra Presenza Manuale', modalContent);
+            } catch (error) {
+                console.error("Errore apertura modal presenza:", error);
+                await customAlert("Errore durante il caricamento dei condomini.");
+            }
+        };
+
+        const saveManualAttendance = async (event, assemblyId) => {
+            event.preventDefault();
+            const select = document.getElementById("select-manual-attendee");
+            const userId = select.value;
+            if (!userId) return;
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const userDoc = await getDoc(doc(db, "users", userId));
+                if (!userDoc.exists()) throw new Error("Utente non trovato.");
+                const user = userDoc.data();
+
+                const docSnap = await getDoc(assemblyRef);
+                const assembly = docSnap.data();
+
+                let totalMillesimiAccreditati = user.millesimiTotali || 0;
+                const heldProxies = assembly.proxies?.filter(p => p.delegateId === userId) || [];
+                let proxyNoticeText = '';
+                if (heldProxies.length > 0) {
+                    heldProxies.forEach(p => {
+                        totalMillesimiAccreditati += (p.delegatorMillesimi || 0);
+                    });
+                    proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
+                }
+
+                const newAttendee = {
+                    uid: userId,
+                    nome: `${user.nome} ${user.cognome}${proxyNoticeText}`,
+                    millesimi: totalMillesimiAccreditati,
+                    heldProxiesCount: heldProxies.length
+                };
+
+                await updateDoc(assemblyRef, {
+                    attendees: arrayUnion(newAttendee)
+                });
+
+                hideModal();
+                await customAlert(`Presenza registrata per ${user.nome} ${user.cognome} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
+            } catch (error) {
+                console.error("Errore salvataggio presenza:", error);
+                await customAlert("Errore durante la registrazione della presenza: " + error.message);
+            }
+        };
+
+        const openManualProxyModal = async () => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) return;
+
+            try {
+                const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"));
+                const snapshot = await getDocs(q);
+                const allCondomini = snapshot.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+
+                const optionsHtml = allCondomini.map(u =>
+                    `<option value="${u.id}">${escapeHtml(u.cognome)} ${escapeHtml(u.nome)} (${(u.millesimiTotali || 0).toFixed(2)} ‰)</option>`
+                ).join('');
+
+                const modalContent = `
+                    <form onsubmit="saveManualProxy(event, '${assemblyId}')" class="space-y-4">
+                        <p style="color: var(--secondary-text); font-size: 0.9rem;">
+                            Registra una delega cartacea ricevuta da un condomino assente ad un condomino delegato.
+                        </p>
+                        <div>
+                            <label class="form-label">Delegante (Chi consegna la delega)</label>
+                            <select id="select-proxy-delegator" required class="form-select">
+                                <option value="">Seleziona delegante...</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Delegato (Chi vota al suo posto)</label>
+                            <select id="select-proxy-delegate" required class="form-select">
+                                <option value="">Seleziona delegato...</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div class="flex justify-end gap-4 pt-4">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Registra Delega Cartacea</button>
+                        </div>
+                    </form>
+                `;
+                showModal('Registra Delega Cartacea', modalContent);
+            } catch (error) {
+                console.error("Errore apertura modal delega cartacea:", error);
+                await customAlert("Errore durante il caricamento dei condomini.");
+            }
+        };
+
+        const saveManualProxy = async (event, assemblyId) => {
+            event.preventDefault();
+            const delegatorId = document.getElementById("select-proxy-delegator").value;
+            const delegateId = document.getElementById("select-proxy-delegate").value;
+
+            if (!delegatorId || !delegateId) {
+                await customAlert("Seleziona sia il delegante che il delegato.");
+                return;
+            }
+            if (delegatorId === delegateId) {
+                await customAlert("Il delegante e il delegato non possono essere la stessa persona.");
+                return;
+            }
+
+            try {
+                const delegatorDoc = await getDoc(doc(db, "users", delegatorId));
+                const delegateDoc = await getDoc(doc(db, "users", delegateId));
+
+                if (!delegatorDoc.exists() || !delegateDoc.exists()) {
+                    throw new Error("Dati utenti non trovati.");
+                }
+
+                const delegator = delegatorDoc.data();
+                const delegate = delegateDoc.data();
+
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const assemblySnap = await getDoc(assemblyRef);
+                if (!assemblySnap.exists()) throw new Error("Assemblea non trovata.");
+                const assembly = assemblySnap.data();
+
+                const existingProxy = assembly.proxies?.find(p => p.delegatorId === delegatorId);
+                if (existingProxy) {
+                    throw new Error(`Il condomino ${delegator.nome} ${delegator.cognome} ha già conferito una delega a ${existingProxy.delegateName}.`);
+                }
+
+                const proxyData = {
+                    id: 'proxy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                    delegatorId: delegatorId,
+                    delegatorName: `${delegator.nome} ${delegator.cognome}`,
+                    delegatorMillesimi: delegator.millesimiTotali || 0,
+                    delegateId: delegateId,
+                    delegateName: `${delegate.nome} ${delegate.cognome}`,
+                    isDigital: false,
+                    status: 'accepted',
+                    createdAt: new Date().toISOString()
+                };
+
+                const updatedProxies = [...(assembly.proxies || []), proxyData];
+
+                let updatedAttendees = assembly.attendees || [];
+                const delegateAttendeeIndex = updatedAttendees.findIndex(a => a.uid === delegateId);
+                if (delegateAttendeeIndex !== -1) {
+                    const heldProxies = updatedProxies.filter(p => p.delegateId === delegateId);
+                    let totalMillesimi = delegate.millesimiTotali || 0;
+                    heldProxies.forEach(p => { totalMillesimi += (p.delegatorMillesimi || 0); });
+
+                    updatedAttendees[delegateAttendeeIndex] = {
+                        ...updatedAttendees[delegateAttendeeIndex],
+                        nome: `${delegate.nome} ${delegate.cognome} (+${heldProxies.length} deleghe ricevute)`,
+                        millesimi: totalMillesimi,
+                        heldProxiesCount: heldProxies.length
+                    };
+                }
+
+                await updateDoc(assemblyRef, {
+                    proxies: updatedProxies,
+                    attendees: updatedAttendees
+                });
+
+                await logActivity("proxy_manual_assigned", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId, delegatorId, delegateId });
+                hideModal();
+                await customAlert(`Delega cartacea registrata: ${delegator.nome} ${delegator.cognome} -> ${delegate.nome} ${delegate.cognome}`);
+            } catch (error) {
+                console.error("Errore salvataggio delega cartacea:", error);
+                await customAlert("Errore: " + error.message);
+            }
+        };
+
+        const concludeLiveRoom = async () => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) return;
+
+            const confirmed = confirm("Sei sicuro di voler concludere definitivamente l'assemblea?");
+            if (confirmed) {
+                try {
+                    const assemblyRef = doc(db, "assemblies", assemblyId);
+                    await updateDoc(assemblyRef, { status: 'conclusa', endedAt: serverTimestamp() });
+                    sessionStorage.removeItem('activeLiveAssemblyId');
+                    await customAlert("Assemblea conclusa con successo.");
+                    navigateTo('assemblee_menu');
+                } catch (error) {
+                    console.error("Errore nella conclusione dell'assemblea:", error);
+                    await customAlert("Errore durante la conclusione dell'assemblea.");
+                }
+            }
+        };
+
         const openCancelAssemblyModal = (id) => {
             const modalContent = `
                 <form id="cancel-assembly-form" onsubmit="cancelAssembly(event, '${id}')" class="space-y-4">
                     <p style="color: var(--secondary-text); text-align: left; white-space: normal; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem;">Per annullare l'assemblea è obbligatorio inserire la motivazione. Questa sarà visibile a tutti i condomini.</p>
                     <div>
                         <label class="form-label">Motivazione dell'Annullamento</label>
-                        <textarea id="cancel-assembly-reason" rows="4" required class="form-textarea" placeholder="Es. Mancanza del raggiungimento del quorum in prima convocazione / Imprevisto dell'amministratore..."></textarea>
+                        <textarea id="cancel-assembly-reason" rows="4" required class="form-textarea" placeholder="Es. Mancanza del raggiungimento del quorum in prima convocazione..."></textarea>
                     </div>
                     <div class="flex justify-end gap-4 pt-4">
                         <button type="button" class="btn btn-secondary" onclick="hideModal()">Chiudi</button>
@@ -15909,7 +16594,6 @@ ${renderBottomNavigation()}
             showModal('Annulla Assemblea', modalContent);
         };
 
-        // Funzione per salvare l'annullamento su Firebase (senza cancellare la scheda)
         const cancelAssembly = async (event, id) => {
             event.preventDefault();
             const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -15942,7 +16626,6 @@ ${renderBottomNavigation()}
             }
         };
 
-        // Funzione per aprire il popup di riprogrammazione
         const openEditAssemblyModal = (id, data) => {
             const modalContent = `
                 <form id="edit-assembly-form" onsubmit="updateAssembly(event, '${id}')" class="space-y-4">
@@ -15969,7 +16652,6 @@ ${renderBottomNavigation()}
             showModal('Riprogramma Assemblea', modalContent);
         };
 
-        // Funzione per salvare le modifiche su Firebase
         const updateAssembly = async (event, id) => {
             event.preventDefault();
             const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -15997,11 +16679,545 @@ ${renderBottomNavigation()}
             }
         };
 
-        // Esposizione funzioni al window
+        const openUserDelegateModal = async (assemblyId) => {
+            try {
+                const snapshot = await getDocs(collection(db, "users"));
+
+                const otherUsers = snapshot.docs
+                    .filter(d => d.id !== currentUser.uid)
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .filter(u => ['condomino', 'consigliere', 'amministratore', 'adm', 'fornitore', 'custode'].includes(u.tipoUtente) || u.nome || u.cognome)
+                    .sort((a, b) => ((a.cognome || a.nome || '').localeCompare(b.cognome || b.nome || '')));
+
+                const optionsHtml = otherUsers.map(u => `<option value="${u.id}">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} (${escapeHtml(u.tipoUtente || 'utente')})</option>`).join('');
+
+                const modalContent = `
+                    <form onsubmit="saveDigitalProxy(event, '${assemblyId}')" class="space-y-4">
+                        <p style="color: var(--secondary-text); font-size: 0.9rem;">
+                            Seleziona il condomino a cui vuoi conferire la tua delega di voto. <strong>Puoi conferire al massimo 1 delega per ciascuna assemblea.</strong>
+                        </p>
+                        <div>
+                            <label class="form-label">Delegato</label>
+                            <select id="select-delegate-user" required class="form-select">
+                                <option value="">Seleziona un condomino...</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div class="flex justify-end gap-4 pt-4">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Conferma Delega</button>
+                        </div>
+                    </form>
+                `;
+                showModal('Conferisci Delega di Voto', modalContent);
+            } catch (error) {
+                console.error("Errore caricamento utenti per delega:", error);
+                await customAlert("Errore caricamento lista condomini: " + error.message);
+            }
+        };
+
+        const saveDigitalProxy = async (event, assemblyId) => {
+            event.preventDefault();
+            const delegateSelect = document.getElementById("select-delegate-user");
+            const delegateId = delegateSelect.value;
+            const delegateName = delegateSelect.options[delegateSelect.selectedIndex].text;
+
+            if (!delegateId) return;
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+
+                // Rimuovi eventuale delega precedente inviata dallo stesso utente (massimo 1 delega per assemblea)
+                const existingProxies = (assembly.proxies || []).filter(p => p.delegatorId !== currentUser.uid);
+
+                const proxyData = {
+                    id: 'proxy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                    delegatorId: currentUser.uid,
+                    delegatorName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim() || 'Condomino',
+                    delegatorMillesimi: userProfile.millesimiTotali || 0,
+                    delegateId: delegateId,
+                    delegateName: delegateName,
+                    isDigital: true,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                };
+
+                await updateDoc(assemblyRef, {
+                    proxies: [...existingProxies, proxyData]
+                });
+
+                await logActivity("proxy_assigned", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId, delegateName });
+                hideModal();
+                await customAlert(`Delega conferita con successo a ${delegateName}`);
+
+                if (currentPage === 'assemblea_deleghe') {
+                    loadUserDeleghePage();
+                } else if (currentPage === 'assemblea_lista') {
+                    loadAssembleeList();
+                }
+            } catch (error) {
+                console.error("Errore salvataggio delega:", error);
+                await customAlert("Errore durante il salvataggio della delega.");
+            }
+        };
+
+        let activeVotingListener = null;
+
+        const listenForLiveVotes = () => {
+            if (activeVotingListener) activeVotingListener();
+            if (!currentUser) return;
+
+            const q = query(collection(db, "assemblies"), where("status", "==", "in_corso"));
+
+            activeVotingListener = onSnapshot(q, snapshot => {
+                snapshot.docs.forEach(docSnap => {
+                    const assembly = docSnap.data();
+                    const assemblyId = docSnap.id;
+
+                    const isAttendee = assembly.attendees?.some(a => a.uid === currentUser.uid);
+                    if (!isAttendee) return;
+
+                    const activeVotingItem = assembly.agenda?.find(item => item.status === 'voting');
+                    if (activeVotingItem) {
+                        const hasVoted = activeVotingItem.votes?.some(v => v.voterId === currentUser.uid);
+                        if (!hasVoted) {
+                            showLiveVotingModal(assemblyId, activeVotingItem);
+                        }
+                    }
+                });
+            });
+        };
+
+        const showLiveVotingModal = (assemblyId, agendaItem) => {
+            const modalContent = `
+                <div class="space-y-4 text-center">
+                    <div style="font-size: 0.85rem; color: var(--warning); font-weight: 700; text-transform: uppercase;">🔴 VOTAZIONE IN CORSO</div>
+                    <h3 style="font-size: 1.2rem; font-weight: 700;">${escapeHtml(agendaItem.title)}</h3>
+                    <p style="color: var(--secondary-text); font-size: 0.9rem;">Esprimi il tuo voto. Il tuo voto includerà i tuoi millesimi più quelli di eventuali deleghe ricevute.</p>
+                    
+                    <div class="flex flex-col gap-3 pt-2">
+                        <button onclick="submitLiveVote('${assemblyId}', '${agendaItem.id}', 'Favorevole')" class="btn" style="background-color: var(--accent-color); color: black; font-weight: 700;">🟢 FAVOREVOLE</button>
+                        <button onclick="submitLiveVote('${assemblyId}', '${agendaItem.id}', 'Contrario')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700;">🔴 CONTRARIO</button>
+                        <button onclick="submitLiveVote('${assemblyId}', '${agendaItem.id}', 'Astenuto')" class="btn btn-secondary">⚪ ASTENUTO</button>
+                    </div>
+                </div>
+            `;
+            showModal('Votazione Assemblea', modalContent, false);
+        };
+
+        const submitLiveVote = async (assemblyId, itemId, choice) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+
+                let userMillesimi = userProfile.millesimiTotali || 0;
+                let userHeads = 1;
+
+                const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
+                heldProxies.forEach(p => {
+                    userMillesimi += (p.delegatorMillesimi || 0);
+                    userHeads += 1;
+                });
+
+                const voteRecord = {
+                    voterId: currentUser.uid,
+                    voterName: `${userProfile.nome} ${userProfile.cognome}`,
+                    choice: choice,
+                    millesimi: userMillesimi,
+                    heads: userHeads
+                };
+
+                const updatedAgenda = assembly.agenda.map(item => {
+                    if (item.id === itemId) {
+                        const votes = (item.votes || []).filter(v => v.voterId !== currentUser.uid);
+                        votes.push(voteRecord);
+                        return { ...item, votes: votes };
+                    }
+                    return item;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                try { hideModal(); } catch (e) { }
+
+            } catch (error) {
+                console.error("Errore invio voto live:", error);
+                await customAlert("Si è verificato un errore durante l'invio del voto.");
+            }
+        };
+
+        const deleteAllAssemblies = async () => {
+            if (userProfile?.tipoUtente !== 'adm') {
+                await customAlert("Operazione consentita solo agli account ADM.");
+                return;
+            }
+
+            const confirmed = confirm("ATTENZIONE OPERAZIONE IRREVERSIBILE!\nSei sicuro di voler eliminare DEFINITIVAMENTE TUTTE le assemblee?");
+            if (!confirmed) return;
+
+            const secondConfirm = confirm("Confermi di voler procedere con l'eliminazione totale di tutte le assemblee del condominio?");
+            if (!secondConfirm) return;
+
+            try {
+                const snapshot = await getDocs(collection(db, "assemblies"));
+                if (snapshot.empty) {
+                    await customAlert("Nessuna assemblea da eliminare.");
+                    return;
+                }
+
+                const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, "assemblies", docSnap.id)));
+                await Promise.all(deletePromises);
+
+                await logActivity("assemblies_bulk_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`);
+                await customAlert("Tutte le assemblee sono state eliminate con successo.");
+                navigateTo('assemblee_menu');
+            } catch (error) {
+                console.error("Errore durante l'eliminazione di tutte le assemblee:", error);
+                await customAlert("Errore durante l'eliminazione delle assemblee: " + error.message);
+            }
+        };
+
+        const respondToProxy = async (assemblyId, proxyId, newStatus) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                const updatedProxies = (assembly.proxies || []).map(p => {
+                    if (p.id === proxyId || p.delegatorId === proxyId) {
+                        return { ...p, status: newStatus, respondedAt: new Date().toISOString() };
+                    }
+                    return p;
+                });
+
+                let updatedAttendees = assembly.attendees || [];
+                const delegateAttendeeIndex = updatedAttendees.findIndex(a => a.uid === currentUser.uid);
+                if (delegateAttendeeIndex !== -1) {
+                    const acceptedProxies = updatedProxies.filter(p => p.delegateId === currentUser.uid && (p.status === 'accepted' || !p.status));
+                    let totalMillesimi = userProfile?.millesimiTotali || 0;
+                    acceptedProxies.forEach(p => { totalMillesimi += (p.delegatorMillesimi || 0); });
+
+                    updatedAttendees[delegateAttendeeIndex] = {
+                        ...updatedAttendees[delegateAttendeeIndex],
+                        nome: `${userProfile.nome} ${userProfile.cognome}${acceptedProxies.length > 0 ? ` (+${acceptedProxies.length} deleghe)` : ''}`,
+                        millesimi: totalMillesimi,
+                        heldProxiesCount: acceptedProxies.length
+                    };
+                }
+
+                await updateDoc(assemblyRef, {
+                    proxies: updatedProxies,
+                    attendees: updatedAttendees
+                });
+
+                hideModal();
+                if (newStatus === 'accepted') {
+                    await customAlert("Delega accettata con successo!");
+                } else {
+                    await customAlert("Delega rifiutata e rimandata indietro al delegante.");
+                }
+            } catch (error) {
+                console.error("Errore risposta delega:", error);
+                await customAlert("Errore durante l'aggiornamento della delega: " + error.message);
+            }
+        };
+
+        let pendingProxyListener = null;
+        const listenForPendingProxies = () => {
+            if (pendingProxyListener) pendingProxyListener();
+            if (!currentUser) return;
+
+            const q = query(collection(db, "assemblies"), where("status", "in", ["programmata", "in_corso"]));
+            pendingProxyListener = onSnapshot(q, snapshot => {
+                snapshot.docs.forEach(docSnap => {
+                    const assembly = docSnap.data();
+                    const assemblyId = docSnap.id;
+                    const pendingProxy = assembly.proxies?.find(p => p.delegateId === currentUser.uid && p.status === 'pending');
+
+                    if (pendingProxy) {
+                        showProxyNotificationModal(assemblyId, pendingProxy, assembly.title);
+                    }
+                });
+            });
+        };
+
+        const showProxyNotificationModal = (assemblyId, proxy, assemblyTitle) => {
+            const proxyKey = proxy.id || (proxy.delegatorId + '_' + assemblyId);
+            if (window.lastNotifiedProxyId === proxyKey) return;
+            window.lastNotifiedProxyId = proxyKey;
+
+            const modalContent = `
+                <div class="space-y-4 text-center">
+                    <div style="font-size: 0.85rem; color: var(--accent-color); font-weight: 700; text-transform: uppercase;">🤝 DELEGA RICEVUTA</div>
+                    <h3 style="font-size: 1.1rem; font-weight: 700;">${escapeHtml(assemblyTitle || 'Assemblea')}</h3>
+                    <p style="color: var(--secondary-text); font-size: 0.9rem;">
+                        Il condomino <strong>${escapeHtml(proxy.delegatorName)}</strong> ti ha conferito la sua delega di voto (${(proxy.delegatorMillesimi || 0).toFixed(2)} ‰).
+                    </p>
+                    <p style="color: var(--primary-text); font-size: 0.85rem; background: var(--surface-color-light); padding: 0.75rem; border-radius: 8px;">
+                        Vuoi accettare la delega per votare a suo nome o rifiutarla/rimandarla indietro?
+                    </p>
+                    <div class="flex flex-col gap-2 pt-2">
+                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'accepted')" class="btn btn-primary" style="font-weight: 700;">🟢 ACCETTA DELEGA</button>
+                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700;">🔴 RIFIUTA / RIMANDA INDIETRO</button>
+                    </div>
+                </div>
+            `;
+            showModal('Delega di Voto Ricevuta', modalContent, false);
+        };
+
+        const filterAssembleeList = () => {
+            const selectedStatus = document.getElementById('assembly-search-status')?.value || 'tutti';
+
+            const cards = document.querySelectorAll('#assemblies-list-container .assembly-card-item');
+            cards.forEach(card => {
+                const status = card.getAttribute('data-status') || '';
+
+                if (selectedStatus === 'tutti' || status === selectedStatus) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        };
+
+        const resetAssemblyFilters = () => {
+            const statusSelect = document.getElementById('assembly-search-status');
+            if (statusSelect) statusSelect.value = 'tutti';
+            filterAssembleeList();
+        };
+
+        const loadUserDeleghePage = async () => {
+            const container = document.getElementById('user-deleghe-container');
+            if (!container || !currentUser) return;
+
+            try {
+                const q = query(collection(db, "assemblies"), orderBy("scheduledDate", "desc"));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    container.innerHTML = `
+                        <div class="card" style="text-align: center; padding: 2rem;">
+                            <p style="color: var(--secondary-text); margin: 0;">Nessuna assemblea trovata.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+
+                snapshot.docs.forEach(docSnap => {
+                    const assembly = docSnap.data();
+                    const assemblyId = docSnap.id;
+                    const dateObj = assembly.scheduledDate.toDate();
+                    const dateFormatted = dateObj.toLocaleDateString("it-IT", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                    const sentProxy = assembly.proxies?.find(p => p.delegatorId === currentUser.uid);
+                    const receivedProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
+
+                    if (!sentProxy && receivedProxies.length === 0 && (assembly.status === 'conclusa' || assembly.status === 'annullata')) {
+                        return;
+                    }
+
+                    let sentSectionHtml = '';
+                    if (assembly.status === 'programmata' || sentProxy) {
+                        if (sentProxy) {
+                            const pStatus = sentProxy.status || 'accepted';
+                            let statusBadge = '';
+                            let actionBtn = '';
+
+                            if (pStatus === 'pending') {
+                                statusBadge = `<span class="badge" style="background-color: var(--warning); color: black;">⏳ In attesa di accettazione</span>`;
+                                actionBtn = `<button onclick="revokeProxy('${assemblyId}', '${sentProxy.id || sentProxy.delegatorId}')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.8rem; padding: 0.4rem 0.8rem;">🗑️ Ritira Delega</button>`;
+                            } else if (pStatus === 'accepted') {
+                                statusBadge = `<span class="badge status-aperta">🟢 Accettata da ${escapeHtml(sentProxy.delegateName)}</span>`;
+                                actionBtn = `<button onclick="revokeProxy('${assemblyId}', '${sentProxy.id || sentProxy.delegatorId}')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.8rem; padding: 0.4rem 0.8rem;">🗑️ Ritira Delega</button>`;
+                            } else if (pStatus === 'rejected') {
+                                statusBadge = `<span class="badge status-chiusa">🔴 Rifiutata / Rimandata indietro</span>`;
+                                actionBtn = `<button onclick="openUserDelegateModal('${assemblyId}')" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">🤝 Invia Nuova Delega</button>`;
+                            }
+
+                            sentSectionHtml = `
+                                <div style="background: var(--surface-color-light); padding: 1rem; border-radius: 8px; margin-top: 0.75rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                        <div>
+                                            <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase;">La Tua Delega Inviata:</strong>
+                                            <div style="font-weight: 700; font-size: 0.95rem; margin-top: 0.25rem;">
+                                                Delegato: ${escapeHtml(sentProxy.delegateName)}
+                                            </div>
+                                        </div>
+                                        <div>${statusBadge}</div>
+                                    </div>
+                                    <div style="margin-top: 0.75rem; text-align: right;">
+                                        ${actionBtn}
+                                    </div>
+                                </div>
+                            `;
+                        } else if (assembly.status === 'programmata') {
+                            sentSectionHtml = `
+                                <div style="background: var(--surface-color-light); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                    <div>
+                                        <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase;">La Tua Delega:</strong>
+                                        <div style="font-size: 0.9rem; color: var(--secondary-text); margin-top: 0.25rem;">Nessuna delega conferita per questa assemblea.</div>
+                                    </div>
+                                    <div>
+                                        <button onclick="openUserDelegateModal('${assemblyId}')" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.45rem 0.9rem;">🤝 Invia Delega</button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    let receivedSectionHtml = '';
+                    if (receivedProxies.length > 0) {
+                        receivedSectionHtml = `
+                            <div style="margin-top: 1rem;">
+                                <strong style="font-size: 0.85rem; color: var(--accent-color); text-transform: uppercase;">📜 Deleghe Ricevute (${receivedProxies.length}):</strong>
+                                <div class="space-y-2" style="margin-top: 0.5rem;">
+                                    ${receivedProxies.map(p => {
+                                        const pStatus = p.status || 'accepted';
+                                        let badge = '';
+                                        let actionButtons = '';
+
+                                        if (pStatus === 'pending') {
+                                            badge = `<span class="badge" style="background-color: var(--warning); color: black;">⏳ In Attesa</span>`;
+                                            actionButtons = `
+                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">🟢 Accetta</button>
+                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.75rem; padding: 0.35rem 0.7rem;">🔴 Rifiuta</button>
+                                            `;
+                                        } else if (pStatus === 'accepted') {
+                                            badge = `<span class="badge status-aperta">🟢 Accettata (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
+                                            actionButtons = `
+                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">↩️ Rimanda indietro</button>
+                                            `;
+                                        } else if (pStatus === 'rejected') {
+                                            badge = `<span class="badge status-chiusa">🔴 Rifiutata / Rimandata</span>`;
+                                            actionButtons = `
+                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">🟢 Accetta Ora</button>
+                                            `;
+                                        }
+
+                                        return `
+                                            <div style="background: var(--surface-color-light); padding: 0.75rem; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                                <div>
+                                                    <strong>${escapeHtml(p.delegatorName)}</strong>
+                                                    <div style="font-size: 0.8rem; color: var(--secondary-text);">${(p.delegatorMillesimi || 0).toFixed(2)} ‰</div>
+                                                </div>
+                                                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                                    ${badge}
+                                                    ${actionButtons}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                        <div class="card" style="margin-bottom: 1rem; padding: 1.25rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h4 style="font-size: 1.1rem; font-weight: 700; margin: 0;">${escapeHtml(assembly.title)}</h4>
+                                <span class="badge status-${assembly.status === 'in_corso' ? 'aperta' : 'chiusa'}">${assembly.status.toUpperCase()}</span>
+                            </div>
+                            <div style="color: var(--secondary-text); font-size: 0.85rem; margin-top: 0.25rem;">📅 ${dateFormatted}</div>
+                            ${sentSectionHtml}
+                            ${receivedSectionHtml}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html || `
+                    <div class="card" style="text-align: center; padding: 2rem;">
+                        <p style="color: var(--secondary-text); margin: 0;">Nessuna delega attiva trovata.</p>
+                    </div>
+                `;
+            } catch (error) {
+                console.error("Errore caricamento le mie deleghe:", error);
+                container.innerHTML = `<div class="card" style="text-align: center; padding: 2rem;"><p style="color: var(--danger);">Errore nel caricamento delle deleghe.</p></div>`;
+            }
+        };
+
+        const revokeProxy = async (assemblyId, proxyId) => {
+            const confirmed = confirm("Sei sicuro di voler ritirare/annullare la tua delega di voto?");
+            if (!confirmed) return;
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                const updatedProxies = (assembly.proxies || []).filter(p => p.id !== proxyId && p.delegatorId !== currentUser.uid);
+
+                let updatedAttendees = assembly.attendees || [];
+                const oldProxy = assembly.proxies?.find(p => p.id === proxyId || p.delegatorId === currentUser.uid);
+                if (oldProxy) {
+                    const delegateAttendeeIndex = updatedAttendees.findIndex(a => a.uid === oldProxy.delegateId);
+                    if (delegateAttendeeIndex !== -1) {
+                        const acceptedProxies = updatedProxies.filter(p => p.delegateId === oldProxy.delegateId && (p.status === 'accepted' || !p.status));
+                        const delegateDoc = await getDoc(doc(db, "users", oldProxy.delegateId));
+                        const delegateUser = delegateDoc.data();
+                        let totalMillesimi = delegateUser?.millesimiTotali || 0;
+                        acceptedProxies.forEach(p => { totalMillesimi += (p.delegatorMillesimi || 0); });
+
+                        updatedAttendees[delegateAttendeeIndex] = {
+                            ...updatedAttendees[delegateAttendeeIndex],
+                            nome: `${delegateUser.nome} ${delegateUser.cognome}${acceptedProxies.length > 0 ? ` (+${acceptedProxies.length} deleghe)` : ''}`,
+                            millesimi: totalMillesimi,
+                            heldProxiesCount: acceptedProxies.length
+                        };
+                    }
+                }
+
+                await updateDoc(assemblyRef, {
+                    proxies: updatedProxies,
+                    attendees: updatedAttendees
+                });
+
+                await logActivity("proxy_revoked", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId });
+                await customAlert("Delega ritirata con successo! Ora puoi votare autonomamente o conferire una nuova delega.");
+                
+                if (currentPage === 'assemblea_deleghe') {
+                    loadUserDeleghePage();
+                } else {
+                    loadAssembleeList();
+                }
+            } catch (error) {
+                console.error("Errore ritiro delega:", error);
+                await customAlert("Errore durante il ritiro della delega: " + error.message);
+            }
+        };
+
         window.openCancelAssemblyModal = openCancelAssemblyModal;
         window.cancelAssembly = cancelAssembly;
         window.openEditAssemblyModal = openEditAssemblyModal;
         window.updateAssembly = updateAssembly;
+        window.openUserDelegateModal = openUserDelegateModal;
+        window.saveDigitalProxy = saveDigitalProxy;
+        window.submitLiveVote = submitLiveVote;
+        window.toggleOdgVote = toggleOdgVote;
+        window.enterLiveRoom = enterLiveRoom;
+        window.setupStanzaLiveHandlers = setupStanzaLiveHandlers;
+        window.toggleRoomScanner = toggleRoomScanner;
+        window.openManualAttendanceModal = openManualAttendanceModal;
+        window.saveManualAttendance = saveManualAttendance;
+        window.openManualProxyModal = openManualProxyModal;
+        window.saveManualProxy = saveManualProxy;
+        window.concludeLiveRoom = concludeLiveRoom;
+        window.deleteAllAssemblies = deleteAllAssemblies;
+        window.respondToProxy = respondToProxy;
+        window.filterAssembleeList = filterAssembleeList;
+        window.resetAssemblyFilters = resetAssemblyFilters;
+        window.loadUserDeleghePage = loadUserDeleghePage;
+        window.revokeProxy = revokeProxy;
 
         // --- FINE FUNZIONI ASSEMBLEE ---
 
@@ -16102,7 +17318,7 @@ ${renderBottomNavigation()}
             if (selectedCount > 0) {
                 bulkActionsContainer.classList.remove('hidden');
                 deleteBtn.disabled = false;
-                deleteBtn.textContent = `Elimina Selezionati (${selectedCount})`;
+                deleteBtn.textContent = `Elimina Selezionati(${selectedCount})`;
             } else {
                 bulkActionsContainer.classList.add('hidden');
                 deleteBtn.disabled = true;
@@ -16125,7 +17341,7 @@ ${renderBottomNavigation()}
             const selectedCheckboxes = document.querySelectorAll('.archive-item-checkbox:checked');
             if (selectedCheckboxes.length === 0) return;
 
-            if (!await customConfirm(`Sei sicuro di voler eliminare ${selectedCheckboxes.length} elementi? L'azione è irreversibile e cancellerà anche tutto il contenuto delle cartelle selezionate.`)) {
+            if (!await customConfirm(`Sei sicuro di voler eliminare ${selectedCheckboxes.length} elementi ? L'azione è irreversibile e cancellerà anche tutto il contenuto delle cartelle selezionate.`)) {
                 return;
             }
 
@@ -16862,7 +18078,7 @@ ${renderBottomNavigation()}
             window.addEventListener('load', () => {
                 // Registriamo il nostro file sw.js
                 // Il percorso deve combaciare con il base path di GitHub Pages (nome repo: PWA-CONDO-APP)
-                navigator.serviceWorker.register('/PWA-CONDO-APP/sw.js')
+                navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
                         console.log('Service Worker registrato con successo:', registration);
                     })
