@@ -1,25 +1,29 @@
-// File: assemblee.js - Versione Unificata Stanza Live Admin/Condomini
-
 window.AssembleeModule = {
     renderMenu: function (renderHeader, renderBottomNavigation, userProfile) {
         const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
         const isCondomino = !isAdmin;
 
         const adminButtons = isAdmin ? `
-            <div onclick="navigateTo('assemblea_crea')" class="dashboard-item">
-                <div class="dashboard-card">
+            <div onclick="showCreateAssemblyModal()" class="dashboard-item">
+                <div class="dashboard-card" style="position: relative; background: linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(29, 185, 84, 0.05)); border: 1px solid var(--accent-color);">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 </div>
-                <p>Crea Assemblea</p>
+                <p style="font-weight: 700; color: var(--accent-color);">➕ Nuova Assemblea</p>
+            </div>
+            <div onclick="startQuickAdminQRScanner()" class="dashboard-item">
+                <div class="dashboard-card" style="position: relative; background: linear-gradient(135deg, rgba(241, 196, 15, 0.15), rgba(241, 196, 15, 0.05)); border: 1px solid var(--warning);">
+                    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
+                </div>
+                <p style="font-weight: 700; color: var(--warning);">📷 Scan QR Presenze</p>
             </div>
         ` : '';
 
         const admDeleteAllButton = userProfile?.tipoUtente === 'adm' ? `
-            <div onclick="deleteAllAssemblies()" class="dashboard-item">
-                <div class="dashboard-card">
+            <div onclick="showDeleteAllAssembliesModal()" class="dashboard-item">
+                <div class="dashboard-card" style="background: linear-gradient(135deg, rgba(231, 76, 60, 0.15), rgba(231, 76, 60, 0.05)); border: 1px solid var(--danger);">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </div>
-                <p style="color: var(--danger);">Elimina Tutte le Assemblee (ADM)</p>
+                <p style="color: var(--danger); font-weight: 700;">🗑️ Elimina Tutte le Assemblee</p>
             </div>
         ` : '';
 
@@ -30,7 +34,7 @@ window.AssembleeModule = {
                     <span id="deleghe-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 </div>
-                <p>Le Mie Deleghe</p>
+                <p>🤝 Le Mie Deleghe</p>
             </div>
         ` : '';
 
@@ -39,25 +43,26 @@ window.AssembleeModule = {
                 <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3,3H9V9H3V3M5,5V7H7V5H5M15,3H21V9H15V3M17,5V7H19V5H17M3,15H9V21H3V15M5,17V19H7V17H5M18,15H21V18H18V15M15,11H18V14H15V11M18,18H21V21H18V18M11,3H14V6H11V3M11,18H14V21H11V18M11,8H14V11H11V8M11,13H14V16H11V13M8,11H11V14H8V11Z"/></svg>
                 </div>
-                <p>La Mia Tessera (QR)</p>
+                <p>📇 La Mia Tessera (QR)</p>
             </div>
         ` : '';
 
         return `
-            ${renderHeader('Assemblee')}
+            ${renderHeader('Assemblee Condominiali')}
             <main>
                 <div class="card" style="margin-bottom: 2rem;">
-                    <p class="form-label" style="color: var(--secondary-text);">
-                        Gestione delle presenze, deleghe e votazioni in tempo reale.
+                    <p class="form-label" style="color: var(--secondary-text); margin: 0;">
+                        🏛️ Gestione delle presenze, deleghe di voto e votazioni in tempo reale.
                     </p>
                 </div>
                 <div class="dashboard-grid">
                     ${adminButtons}
                     <div onclick="navigateTo('assemblea_lista')" class="dashboard-item">
-                        <div class="dashboard-card">
+                        <div class="dashboard-card" style="position: relative;">
+                            <span id="assemblee-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
                         </div>
-                        <p>Elenco Assemblee</p>
+                        <p>📋 Tutte le Assemblee</p>
                     </div>
                     ${delegheButton}
                     ${tesseraButton}
@@ -74,7 +79,7 @@ window.AssembleeModule = {
             <main>
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <p style="color:var(--secondary-text); margin: 0; font-size: 0.9rem;">
-                        Gestisci tutte le tue deleghe per le assemblee di condominio: invia o ritira una delega a tuo nome, oppure accetta/rifiuta le deleghe ricevute da altri condomini.
+                        🤝 Gestisci le tue deleghe di voto per le assemblee: invia una delega a tuo nome o gestisci le deleghe ricevute dai tuoi vicini.
                     </p>
                 </div>
                 <div id="user-deleghe-container" class="space-y-4">
@@ -86,42 +91,13 @@ window.AssembleeModule = {
     },
 
     renderCrea: function (renderHeader, renderBottomNavigation) {
+        setTimeout(() => showCreateAssemblyModal(), 100);
         return `
             ${renderHeader('Crea Assemblea')}
             <main>
-                <div class="card">
-                    <h3 class="card-title">Pianifica Nuova Assemblea</h3>
-                    <div id="assembly-creation-message" class="message-box"></div>
-                    <form id="create-assembly-form" class="space-y-4">
-                        <div>
-                            <label class="form-label">Titolo Assemblea</label>
-                            <input type="text" id="assembly-title" required class="form-input" placeholder="Es. Assemblea Ordinaria 2025">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="form-label">Data</label>
-                                <input type="date" id="assembly-date" required class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">Ora d'inizio</label>
-                                <input type="time" id="assembly-time" required class="form-input">
-                            </div>
-                        </div>
-                        <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
-                        <div>
-                            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-                                <div>
-                                    <label class="form-label" style="margin-bottom:0; font-weight: 700;">Ordine del Giorno (OdG)</label>
-                                    <p style="font-size:0.8rem; color:var(--secondary-text); margin:0;">Aggiungi i punti di discussione e votazione</p>
-                                </div>
-                                <button type="button" id="add-agenda-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size:0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">➕ Aggiungi Punto</button>
-                            </div>
-                            <div id="agenda-list" style="display: flex; flex-direction: column; gap: 0.85rem; margin-top: 1rem;"></div>
-                        </div>
-                        <div class="flex justify-end pt-4" style="margin-top: 1.5rem;">
-                            <button type="submit" id="btn-save-assembly" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700;">Salva Assemblea</button>
-                        </div>
-                    </form>
+                <div class="card text-center" style="padding: 2rem;">
+                    <p style="color: var(--secondary-text);">Apertura modale di creazione assemblea in corso...</p>
+                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">➕ Apri Modale Nuova Assemblea</button>
                 </div>
             </main>
             ${renderBottomNavigation()}
