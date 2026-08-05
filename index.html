@@ -15855,10 +15855,9 @@ ${renderBottomNavigation()}
                         `;
                     }
 
-                    const canManage = isAdmin && assembly.status === 'programmata';
                     let actionButtonsHtml = '';
 
-                    if (canManage) {
+                    if (isAdmin && ['programmata', 'in_corso'].includes(assembly.status)) {
                         const hours = String(dateObj.getHours()).padStart(2, '0');
                         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
 
@@ -15869,9 +15868,9 @@ ${renderBottomNavigation()}
                         }).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
 
                         actionButtonsHtml = `
-                            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--surface-color-light); display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--surface-color-light); display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
                                 <button onclick="openEditAssemblyModal('${docSnap.id}', ${safeAssemblyData})" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Riprogramma</button>
-                                <button onclick="openCancelAssemblyModal('${docSnap.id}')" class="btn" style="background-color: var(--danger); color: white; padding: 0.5rem 1rem; font-size: 0.85rem;">Annulla</button>
+                                <button onclick="openCancelAssemblyModal('${docSnap.id}')" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; padding: 0.5rem 1rem; font-size: 0.85rem;">Annulla</button>
                             </div>
                         `;
                     }
@@ -16695,9 +16694,9 @@ ${renderBottomNavigation()}
                         <label class="form-label">Motivazione dell'Annullamento</label>
                         <textarea id="cancel-assembly-reason" rows="4" required class="form-textarea" placeholder="Es. Mancanza del raggiungimento del quorum in prima convocazione..."></textarea>
                     </div>
-                    <div class="flex justify-end gap-4 pt-4">
-                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Chiudi</button>
-                        <button type="submit" class="btn" style="background-color: var(--danger); color: white;">Conferma Annullamento</button>
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; flex-wrap: nowrap; margin-top: 1.5rem;">
+                        <button type="button" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; margin: 0; padding: 0.7rem 1.2rem;" onclick="hideModal()">Chiudi</button>
+                        <button type="submit" class="btn" style="background-color: var(--warning, #F1C40F); color: black; font-weight: 700; margin: 0; padding: 0.7rem 1.2rem;">Conferma Annullamento</button>
                     </div>
                 </form>
             `;
@@ -16753,13 +16752,90 @@ ${renderBottomNavigation()}
                             <input type="time" id="edit-assembly-time" value="${data.time}" required class="form-input">
                         </div>
                     </div>
-                    <div class="flex justify-end gap-4 pt-4">
-                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; flex-wrap: nowrap; margin-top: 1.5rem;">
+                        <button type="button" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; margin: 0; padding: 0.7rem 1.2rem;" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="font-weight: 700; margin: 0; padding: 0.7rem 1.2rem;">Salva Modifiche</button>
                     </div>
                 </form>
             `;
             showModal('Riprogramma Assemblea', modalContent);
+        };
+
+        const openDeleteSingleAssemblyModal = async (id, title) => {
+            const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
+            if (!isAdmin) {
+                await customAlert("Operazione riservata all'Amministratore o ADM.");
+                return;
+            }
+
+            const targetId = id || sessionStorage.getItem('activeLiveAssemblyId');
+            if (!targetId) {
+                await customAlert("Nessuna assemblea selezionata per l'eliminazione.");
+                return;
+            }
+
+            let displayTitle = title;
+            if (!displayTitle) {
+                try {
+                    const docSnap = await getDoc(doc(db, "assemblies", targetId));
+                    if (docSnap.exists()) {
+                        displayTitle = docSnap.data().title;
+                    }
+                } catch (e) { }
+            }
+            displayTitle = displayTitle || "questa assemblea";
+
+            const modalContent = `
+                <div class="space-y-4" style="text-align: left !important;">
+                    <div style="background: rgba(231, 76, 60, 0.15); border-left: 4px solid var(--danger); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: var(--danger); font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem;">⚠️ CONFERMA ELIMINAZIONE</h4>
+                        <p style="color: var(--primary-text); font-size: 0.9rem; margin: 0; line-height: 1.5;">
+                            Stai per eliminare DEFINITIVAMENTE l'assemblea <strong>"${escapeHtml(displayTitle)}"</strong>.
+                        </p>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--secondary-text); line-height: 1.4;">
+                        Questa operazione cancellerà l'assemblea, i verbali, i voti registrati e l'elenco presenze da Firestore. L'azione non può essere annullata.
+                    </p>
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem;">
+                        <button type="button" onclick="hideModal()" class="btn btn-secondary" style="margin: 0; flex: 1;">Annulla</button>
+                        <button type="button" onclick="deleteSingleAssembly('${targetId}')" id="btn-confirm-delete-single" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; margin: 0; flex: 1.5;">
+                            🗑️ Elimina Assemblea
+                        </button>
+                    </div>
+                </div>
+            `;
+            showModal('🗑️ Eliminazione Assemblea', modalContent, true);
+        };
+
+        const deleteSingleAssembly = async (id) => {
+            const btn = document.getElementById('btn-confirm-delete-single');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = "Eliminazione in corso...";
+            }
+
+            try {
+                await deleteDoc(doc(db, "assemblies", id));
+                await logActivity("assembly_single_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId: id });
+
+                if (sessionStorage.getItem('activeLiveAssemblyId') === id) {
+                    sessionStorage.removeItem('activeLiveAssemblyId');
+                }
+
+                hideModal();
+                await customAlert("L'assemblea è stata eliminata con successo.");
+
+                if (['assemblea_gestione', 'assemblea_room'].includes(currentPage)) {
+                    navigateTo('assemblee_menu');
+                }
+            } catch (error) {
+                console.error("Errore eliminazione singola assemblea:", error);
+                await customAlert("Errore durante l'eliminazione: " + error.message);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = "🗑️ Elimina Assemblea";
+                }
+            }
         };
 
         const updateAssembly = async (event, id) => {
@@ -16995,9 +17071,9 @@ ${renderBottomNavigation()}
                             </div>
                             <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;"></div>
                         </div>
-                        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem;">
-                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="margin: 0; min-width: 100px;">Annulla</button>
-                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="font-weight: 700; margin: 0; min-width: 150px;">💾 Salva Assemblea</button>
+                        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; flex-wrap: nowrap; margin-top: 1.5rem;">
+                            <button type="button" onclick="hideModal()" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; margin: 0; padding: 0.7rem 1.2rem;">Annulla</button>
+                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="font-weight: 700; margin: 0; padding: 0.7rem 1.2rem;">💾 Salva</button>
                         </div>
                     </form>
                 </div>
@@ -17078,7 +17154,7 @@ ${renderBottomNavigation()}
                         messageBox.style.display = 'block';
                     } finally {
                         btnSave.disabled = false;
-                        btnSave.textContent = "💾 Salva Assemblea";
+                        btnSave.textContent = "💾 Salva";
                     }
                 });
             }, 50);
@@ -17602,6 +17678,8 @@ ${renderBottomNavigation()}
 
         window.openCancelAssemblyModal = openCancelAssemblyModal;
         window.cancelAssembly = cancelAssembly;
+        window.openDeleteSingleAssemblyModal = openDeleteSingleAssemblyModal;
+        window.deleteSingleAssembly = deleteSingleAssembly;
         window.openEditAssemblyModal = openEditAssemblyModal;
         window.updateAssembly = updateAssembly;
         window.openUserDelegateModal = openUserDelegateModal;
