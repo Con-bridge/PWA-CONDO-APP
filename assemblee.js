@@ -5,25 +5,25 @@ window.AssembleeModule = {
 
         const adminButtons = isAdmin ? `
             <div onclick="showCreateAssemblyModal()" class="dashboard-item">
-                <div class="dashboard-card" style="position: relative; background: linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(29, 185, 84, 0.05)); border: 1px solid var(--accent-color);">
+                <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 </div>
-                <p style="font-weight: 700; color: var(--accent-color);">➕ Nuova Assemblea</p>
+                <p>➕ Nuova Assemblea</p>
             </div>
             <div onclick="startQuickAdminQRScanner()" class="dashboard-item">
-                <div class="dashboard-card" style="position: relative; background: linear-gradient(135deg, rgba(241, 196, 15, 0.15), rgba(241, 196, 15, 0.05)); border: 1px solid var(--warning);">
+                <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
                 </div>
-                <p style="font-weight: 700; color: var(--warning);">📷 Scan QR Presenze</p>
+                <p>📷 Scan QR Presenze</p>
             </div>
         ` : '';
 
         const admDeleteAllButton = userProfile?.tipoUtente === 'adm' ? `
             <div onclick="showDeleteAllAssembliesModal()" class="dashboard-item">
-                <div class="dashboard-card" style="background: linear-gradient(135deg, rgba(231, 76, 60, 0.15), rgba(231, 76, 60, 0.05)); border: 1px solid var(--danger);">
+                <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </div>
-                <p style="color: var(--danger); font-weight: 700;">🗑️ Elimina Tutte le Assemblee</p>
+                <p>🗑️ Elimina Tutte le Assemblee</p>
             </div>
         ` : '';
 
