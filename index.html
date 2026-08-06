@@ -1031,6 +1031,10 @@
         .modal-title {
             font-size: 1.2rem;
             font-weight: 700;
+            padding: 0 2.2rem;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .modal-close-btn {
@@ -1122,20 +1126,35 @@
             border-color: var(--accent-color);
         }
 
+        /* Force action buttons (Annulla / Conferma etc.) side-by-side in modals & forms */
+        .flex.justify-end,
         .custom-dialog-buttons {
-            display: flex;
-            gap: 1rem !important;
-            justify-content: flex-end;
-            align-items: center;
-            flex-wrap: wrap;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 0.75rem !important;
+            width: 100% !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .flex.justify-end > .btn,
+        .custom-dialog-buttons > .custom-dialog-btn,
+        .custom-dialog-buttons > .btn {
+            flex: 1 1 0% !important;
+            margin: 0 !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            text-align: center !important;
+            white-space: nowrap !important;
         }
 
         .custom-dialog-btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             border-radius: var(--radius-md);
             border: none;
             font-family: 'Poppins', sans-serif;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -2158,6 +2177,9 @@
         };
 
         const hideModal = () => {
+            if (typeof window.stopQuickQRScanner === 'function') {
+                try { window.stopQuickQRScanner(); } catch (e) { }
+            }
             // --- MODIFICA INIZIO: Aggiunta pulizia listener real-time ---
             // Se c'è un listener attivo per il dettaglio della segnalazione, lo rimuoviamo
             // per evitare memory leak e aggiornamenti in background non necessari.
@@ -17259,46 +17281,62 @@ ${renderBottomNavigation()}
                 });
 
                 const targetAssembly = assemblies[0];
-                const statusLabel = targetAssembly.status === 'in_corso' ? '🟢 LIVE' : '📅 Programmata';
+                const statusLabel = targetAssembly.status === 'in_corso' ? 'LIVE' : 'Programmata';
 
                 const modalContent = `
-                    <div class="space-y-4" style="text-align: left !important;">
-                        <div style="padding: 0.85rem; background: var(--surface-color-light); border-radius: 8px; text-align: left !important; border-left: 4px solid var(--accent-color);">
-                            <strong style="color: var(--accent-color); font-size: 0.85rem; text-transform: uppercase; display: block; text-align: left !important;">Assemblea Selezionata:</strong>
-                            <h4 style="font-size: 1rem; font-weight: 700; margin: 0.2rem 0; text-align: left !important;">${escapeHtml(targetAssembly.title)}</h4>
-                            <span class="badge ${targetAssembly.status === 'in_corso' ? 'status-in-corso' : 'status-aperta'}" style="margin-top: 0.25rem; display: inline-block;">${statusLabel}</span>
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem; text-align: left !important; padding: 0.25rem 0;">
+                        <div style="padding: 1rem; background: var(--surface-color-light); border-radius: 10px; text-align: left !important; border-left: 4px solid var(--accent-color);">
+                            <strong style="color: var(--accent-color); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; display: block; text-align: left !important; margin-bottom: 0.25rem;">Assemblea Selezionata:</strong>
+                            <h4 style="font-size: 1.05rem; font-weight: 700; margin: 0 0 0.5rem 0; text-align: left !important;">${escapeHtml(targetAssembly.title)}</h4>
+                            <span class="badge ${targetAssembly.status === 'in_corso' ? 'status-in-corso' : 'status-aperta'}" style="display: inline-block;">${statusLabel}</span>
                         </div>
 
-                        <p style="font-size: 0.85rem; color: var(--secondary-text); margin: 0; text-align: left !important; line-height: 1.5; white-space: normal !important;">📷 Inquadra il QR Code del condomino per accreditare la sua presenza ed i suoi millesimi.</p>
+                        <div>
+                            <p style="font-size: 0.88rem; color: var(--secondary-text); margin: 0; text-align: left !important; line-height: 1.5; white-space: normal !important;">Inquadra il QR Code del condomino per accreditare la sua presenza ed i suoi millesimi.</p>
+                        </div>
 
-                        <div id="quick-qr-reader" style="width: 100%; max-width: 300px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color);"></div>
-                        <div id="quick-scanner-message" class="message-box mt-2" style="text-align: left !important;"></div>
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
+                            <div id="quick-qr-reader" style="width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;"></div>
+                        </div>
 
-                        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.25rem;">
-                            <button type="button" onclick="stopQuickQRScanner(); hideModal();" class="btn btn-secondary" style="margin: 0; min-width: 130px;">Chiudi Scanner</button>
+                        <div id="quick-scanner-message" class="message-box" style="display: none; text-align: left !important; margin: 0;"></div>
+
+                        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                            <button type="button" onclick="stopQuickQRScanner(); hideModal();" class="btn btn-secondary" style="margin: 0; min-width: 130px; padding: 0.6rem 1.2rem;">Chiudi Scanner</button>
                         </div>
                     </div>
                 `;
 
-                showModal('📷 Registro Presenze QR Rapido', modalContent, true);
+                showModal('Registro Presenze QR Rapido', modalContent, true);
 
                 setTimeout(() => {
                     const messageBox = document.getElementById("quick-scanner-message");
                     let isProcessingScan = false;
 
-                    window.quickScanner = new Html5QrcodeScanner("quick-qr-reader", {
-                        fps: 10,
-                        qrbox: { width: 220, height: 220 }
-                    }, false);
-
                     window.stopQuickQRScanner = () => {
                         if (window.quickScanner) {
-                            try { window.quickScanner.clear(); } catch (e) {}
-                            window.quickScanner = null;
+                            try {
+                                if (typeof window.quickScanner.stop === 'function') {
+                                    if (window.quickScanner.isScanning) {
+                                        window.quickScanner.stop().then(() => {
+                                            try { window.quickScanner.clear(); } catch (e) { }
+                                            window.quickScanner = null;
+                                        }).catch(() => { window.quickScanner = null; });
+                                    } else {
+                                        try { window.quickScanner.clear(); } catch (e) { }
+                                        window.quickScanner = null;
+                                    }
+                                } else if (typeof window.quickScanner.clear === 'function') {
+                                    try { window.quickScanner.clear(); } catch (e) { }
+                                    window.quickScanner = null;
+                                }
+                            } catch (e) {
+                                window.quickScanner = null;
+                            }
                         }
                     };
 
-                    window.quickScanner.render(async (decodedText) => {
+                    const onScanSuccess = async (decodedText) => {
                         if (isProcessingScan) return;
                         isProcessingScan = true;
 
@@ -17351,7 +17389,43 @@ ${renderBottomNavigation()}
                         } finally {
                             setTimeout(() => { isProcessingScan = false; }, 2000);
                         }
-                    }, (scanErr) => {});
+                    };
+
+                    if (typeof Html5Qrcode !== 'undefined') {
+                        const html5QrCode = new Html5Qrcode("quick-qr-reader");
+                        window.quickScanner = html5QrCode;
+                        const qrConfig = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+                        html5QrCode.start(
+                            { facingMode: "environment" },
+                            qrConfig,
+                            onScanSuccess,
+                            () => { }
+                        ).catch(err => {
+                            console.warn("Avvio fotocamera posteriore fallito, tento fotocamera utente:", err);
+                            html5QrCode.start(
+                                { facingMode: "user" },
+                                qrConfig,
+                                onScanSuccess,
+                                () => { }
+                            ).catch(e => {
+                                console.error("Errore fotocamera:", e);
+                                messageBox.className = "message-box error";
+                                messageBox.textContent = `Impossibile avviare la fotocamera: ${e.message || e}`;
+                                messageBox.style.display = "block";
+                            });
+                        });
+                    } else {
+                        const scanTypes = (typeof Html5QrcodeScanType !== 'undefined') ? [Html5QrcodeScanType.SCAN_TYPE_CAMERA] : [0];
+                        window.quickScanner = new Html5QrcodeScanner("quick-qr-reader", {
+                            fps: 10,
+                            qrbox: { width: 220, height: 220 },
+                            aspectRatio: 1.0,
+                            supportedScanTypes: scanTypes,
+                            videoConstraints: { facingMode: { exact: "environment" } }
+                        }, false);
+                        window.quickScanner.render(onScanSuccess, () => { });
+                    }
 
                 }, 100);
 
