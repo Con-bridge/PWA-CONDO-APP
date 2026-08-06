@@ -8,13 +8,13 @@ window.AssembleeModule = {
                 <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 </div>
-                <p>➕ Nuova Assemblea</p>
+                <p>Nuova Assemblea</p>
             </div>
             <div onclick="startQuickAdminQRScanner()" class="dashboard-item">
                 <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
                 </div>
-                <p>📷 Scan QR Presenze</p>
+                <p>Scan QR Presenze</p>
             </div>
         ` : '';
 
@@ -23,7 +23,7 @@ window.AssembleeModule = {
                 <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </div>
-                <p>🗑️ Elimina Tutte le Assemblee</p>
+                <p>Elimina Tutte le Assemblee</p>
             </div>
         ` : '';
 
@@ -34,7 +34,7 @@ window.AssembleeModule = {
                     <span id="deleghe-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 </div>
-                <p>🤝 Le Mie Deleghe</p>
+                <p>Le Mie Deleghe</p>
             </div>
         ` : '';
 
@@ -43,18 +43,13 @@ window.AssembleeModule = {
                 <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3,3H9V9H3V3M5,5V7H7V5H5M15,3H21V9H15V3M17,5V7H19V5H17M3,15H9V21H3V15M5,17V19H7V17H5M18,15H21V18H18V15M15,11H18V14H15V11M18,18H21V21H18V18M11,3H14V6H11V3M11,18H14V21H11V18M11,8H14V11H11V8M11,13H14V16H11V13M8,11H11V14H8V11Z"/></svg>
                 </div>
-                <p>📇 La Mia Tessera (QR)</p>
+                <p>La Mia Tessera (QR)</p>
             </div>
         ` : '';
 
         return `
             ${renderHeader('Assemblee Condominiali')}
             <main>
-                <div class="card" style="margin-bottom: 2rem;">
-                    <p class="form-label" style="color: var(--secondary-text); margin: 0;">
-                        🏛️ Gestione delle presenze, deleghe di voto e votazioni in tempo reale.
-                    </p>
-                </div>
                 <div class="dashboard-grid">
                     ${adminButtons}
                     <div onclick="navigateTo('assemblea_lista')" class="dashboard-item">
@@ -62,7 +57,7 @@ window.AssembleeModule = {
                             <span id="assemblee-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
                         </div>
-                        <p>📋 Tutte le Assemblee</p>
+                        <p>Tutte le Assemblee</p>
                     </div>
                     ${delegheButton}
                     ${tesseraButton}
@@ -79,7 +74,7 @@ window.AssembleeModule = {
             <main>
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <p style="color:var(--secondary-text); margin: 0; font-size: 0.9rem;">
-                        🤝 Gestisci le tue deleghe di voto per le assemblee: invia una delega a tuo nome o gestisci le deleghe ricevute dai tuoi vicini.
+                        Gestisci le tue deleghe di voto per le assemblee: invia una delega a tuo nome o gestisci le deleghe ricevute dai tuoi vicini.
                     </p>
                 </div>
                 <div id="user-deleghe-container" class="space-y-4">
@@ -97,7 +92,7 @@ window.AssembleeModule = {
             <main>
                 <div class="card text-center" style="padding: 2rem;">
                     <p style="color: var(--secondary-text);">Apertura modale di creazione assemblea in corso...</p>
-                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">➕ Apri Modale Nuova Assemblea</button>
+                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">Apri Modale Nuova Assemblea</button>
                 </div>
             </main>
             ${renderBottomNavigation()}
@@ -111,13 +106,13 @@ window.AssembleeModule = {
                 <!-- FILTRI DI RICERCA ED ASSEMBLEE -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div>
-                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">📌 Filtra per Stato Assemblea</label>
+                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Filtra per Stato Assemblea</label>
                         <select id="assembly-search-status" onchange="filterAssembleeList()" class="form-select" style="padding: 0.5rem 0.75rem; font-size: 0.9rem;">
                             <option value="tutti">Tutti gli stati</option>
-                            <option value="programmata">📅 Programmata</option>
-                            <option value="in_corso">🔴 In Corso (Live)</option>
-                            <option value="conclusa">✅ Conclusa</option>
-                            <option value="annullata">❌ Annullata</option>
+                            <option value="programmata">Programmata</option>
+                            <option value="in_corso">In Corso (Live)</option>
+                            <option value="conclusa">Conclusa</option>
+                            <option value="annullata">Annullata</option>
                         </select>
                     </div>
                     <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
@@ -140,14 +135,14 @@ window.AssembleeModule = {
             <main style="padding-bottom: 2rem;">
                 <!-- STRUMENTI ADMIN NELLA STANZA LIVE -->
                 <div id="room-admin-bar" class="card hidden" style="margin-bottom: 1rem; padding: 1rem;">
-                    <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">🛠️ Strumenti Amministratore</h4>
+                    <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">Strumenti Amministratore</h4>
                     <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                        <button onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">📷 Scanner QR</button>
-                        <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">👤 + Presenza</button>
+                        <button onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
+                        <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">📜 + Delega Cartacea</button>
-                        <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size:0.8rem; padding:0.6rem;">🏁 Concludi</button>
+                        <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
+                        <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size:0.8rem; padding:0.6rem;">Concludi</button>
                     </div>
 
                     <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
@@ -161,7 +156,7 @@ window.AssembleeModule = {
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem;">Assemblea in Corso</h3>
-                        <span id="room-status-badge" class="badge" style="background-color: var(--accent-color); color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE 🟢</span>
+                        <span id="room-status-badge" class="badge" style="background-color: var(--accent-color); color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-3" style="text-align: center; background: var(--surface-color-light); padding: 0.5rem; border-radius: 8px;">
                         <div>
@@ -178,7 +173,7 @@ window.AssembleeModule = {
                 <!-- ELENCO PRESENTI ACCREDITATI -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 1rem;">👥 Elenco Presenti Accreditati (<span id="room-tot-teste-badge">0</span>)</h3>
+                        <h3 class="card-title" style="margin: 0; font-size: 1rem;">Elenco Presenti Accreditati (<span id="room-tot-teste-badge">0</span>)</h3>
                         <span style="font-size: 0.8rem; color: var(--accent-color);">Mostra/Nascondi ▼</span>
                     </div>
                     <div id="room-attendees-collapsible" class="mt-3 hidden space-y-2">
@@ -190,7 +185,7 @@ window.AssembleeModule = {
 
                 <!-- QR CODE ACCREDITO COMPATTO (VISIBILE SOLO SE NON SCANSIONATO) -->
                 <div id="room-qr-accreditation" class="card hidden" style="text-align: center; margin-bottom: 1rem; padding: 1rem;">
-                    <h4 style="color: var(--warning); margin-bottom: 0.25rem; font-size: 0.95rem; font-weight: 700;">🔒 Accredito Ingresso Richiesto</h4>
+                    <h4 style="color: var(--warning); margin-bottom: 0.25rem; font-size: 0.95rem; font-weight: 700;">Accredito Ingresso Richiesto</h4>
                     <p style="font-size: 0.8rem; color: var(--secondary-text); margin-bottom: 0.75rem;">
                         Mostra questo QR Code all'Amministratore per essere accreditato ed abilitare il voto.
                     </p>
@@ -204,7 +199,7 @@ window.AssembleeModule = {
 
                 <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
                 <div class="card" style="padding: 1rem;">
-                    <h3 class="card-title" style="margin-bottom: 1rem; font-size: 1rem;">📊 Ordine del Giorno & Votazioni</h3>
+                    <h3 class="card-title" style="margin-bottom: 1rem; font-size: 1rem;">Ordine del Giorno & Votazioni</h3>
                     <div id="room-odg-poll-list" class="space-y-4">
                         <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
                     </div>
