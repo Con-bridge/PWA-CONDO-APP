@@ -1825,6 +1825,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
         // ===== SICUREZZA: escaping HTML per prevenire XSS (stored/reflected) =====
         // Converte qualsiasi valore in testo sicuro da inserire dentro innerHTML.
@@ -2027,6 +2028,45 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
+        const messaging = getMessaging(app);
+
+        // --- FUNZIONE REGISTRAZIONE WEB PUSH PER PWA ---
+        const initPushNotifications = async (userId) => {
+            if (!userId || !('Notification' in window) || !('serviceWorker' in navigator)) return;
+
+            try {
+                const permission = await Notification.requestPermission();
+                
+                if (permission === 'granted') {
+                    const registration = await navigator.serviceWorker.ready;
+                    
+                    // INCOLLA QUI LA CHIAVE VAPID PRESA DA FIREBASE CONSOLE (PASSO 1)
+                    const VAPID_KEY = "BNq3tozZjXGtyo6BNAq6Kj4N1swwSG7oi2vSdxI3JXyLnhblRbq7icVyMi5D4L4b7JvfHXq3V02giGZnZDsfg-Y";
+
+                    const currentToken = await getToken(messaging, {
+                        serviceWorkerRegistration: registration,
+                        vapidKey: VAPID_KEY
+                    });
+
+                    if (currentToken) {
+                        console.log('Token Web Push PWA:', currentToken);
+                        
+                        // Salviamo il token Web Push nel campo fcmToken dell'utente
+                        await updateDoc(doc(db, "users", userId), {
+                            fcmToken: currentToken,
+                            notificationsEnabled: true
+                        }).catch(err => console.warn("Errore salvataggio token FCM PWA:", err));
+
+                        if (userProfile) {
+                            userProfile.fcmToken = currentToken;
+                            userProfile.notificationsEnabled = true;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Errore registrazione Web Push PWA:", err);
+            }
+        };
 
         let currentUser = null;
         let userProfile = null;
@@ -2725,10 +2765,20 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
         };
         const login = async (t, e) => await signInWithEmailAndPassword(auth, t, e);
 
-        // --- FUNZIONE LOGOUT CORRETTA ---
+        // --- FUNZIONE LOGOUT CORRETTA (CON PULIZIA TOKEN PUSH) ---
         const logout = async () => {
             communicationsListener && (communicationsListener(), communicationsListener = null);
-            // Si limita a chiamare signOut. Sarà onAuthStateChanged a gestire il resto.
+
+            if (currentUser) {
+                try {
+                    await updateDoc(doc(db, "users", currentUser.uid), {
+                        fcmToken: null
+                    });
+                } catch (err) {
+                    console.warn("Impossibile rimuovere fcmToken al logout:", err);
+                }
+            }
+
             await signOut(auth);
         };
 
@@ -18553,6 +18603,8 @@ ${renderBottomNavigation()}
                 checkPendingUsersAndNotify();
                 // Listener globale per assemblee e deleghe
                 checkForNewAssemblies();
+                // Inizializza Notifiche Web Push PWA
+                initPushNotifications(user.uid);
 
                 const hash = window.location.hash.substring(1);
 
