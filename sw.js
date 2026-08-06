@@ -1,8 +1,7 @@
 // Definiamo nuovo nome per la cache
-const CACHE_NAME = 'condo-app-pwa-cache-v1';
+const CACHE_NAME = 'condo-app-pwa-cache-v2';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
-// IMPORTANTE: Percorso aggiornato con il nome della tua nuova repo.
 const URLS_TO_CACHE = [
   '/PWA-CONDO-APP/',
   '/PWA-CONDO-APP/index.html',
@@ -12,6 +11,7 @@ const URLS_TO_CACHE = [
 
 // Quando il service worker viene installato, apriamo la cache e salviamo i file
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -21,99 +21,83 @@ self.addEventListener('install', event => {
   );
 });
 
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
+
 // Quando l'app richiede un file, intercettiamo la richiesta
 self.addEventListener('fetch', event => {
   event.respondWith(
-    // Controlliamo se il file è già nella nostra cache
     caches.match(event.request)
-      .then(response => {
-        // Se c'è, lo restituiamo dalla cache (velocissimo e offline!)
-        // Altrimenti, lo chiediamo alla rete normalmente
-        return response || fetch(event.request);
-      })
+      .then(response => response || fetch(event.request))
   );
-
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ============================================================================
+// GESTIONE NOTIFICHE PUSH WEB (FUNZIONA ANCHE A BROWSER / PWA CHIUSA)
+// ============================================================================
+self.addEventListener('push', event => {
+  let title = "Con-bridge Notifica";
+  let body = "Hai una nuova notifica condominiale.";
+  let icon = "/PWA-CONDO-APP/icons/icon-192x192.png";
+  let badge = "/PWA-CONDO-APP/icons/icon-192x192.png";
+  let targetPage = "dashboard";
+
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      
+      if (payload.notification) {
+        title = payload.notification.title || title;
+        body = payload.notification.body || body;
+      }
+      
+      if (payload.data) {
+        targetPage = payload.data.page || targetPage;
+        if (payload.data.title) title = payload.data.title;
+        if (payload.data.body) body = payload.data.body;
+      }
+    } catch (e) {
+      body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: body,
+    icon: icon,
+    badge: badge,
+    vibrate: [100, 50, 100],
+    data: {
+      url: `/PWA-CONDO-APP/#${targetPage}`
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// ============================================================================
+// CLICK SULLA NOTIFICA (Apertura PWA sulla pagina richiesta)
+// ============================================================================
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data && event.notification.data.url 
+    ? event.notification.data.url 
+    : '/PWA-CONDO-APP/#dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (let client of windowClients) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
