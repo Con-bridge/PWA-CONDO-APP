@@ -27,7 +27,7 @@ window.AssembleeModule = {
             </div>
         ` : '';
 
-        // DELEGHE E TESSERA QR VISIBILI SOLO SE NON SI È AMMINISTRATORI
+        // DELEGHE + TESSERA QR VISIBILI SOLO SE NON SI È AMMINISTRATORI
         const delegheButton = isCondomino ? `
             <div onclick="navigateTo('assemblea_deleghe')" class="dashboard-item">
                 <div class="dashboard-card" style="position: relative;">
