@@ -2324,7 +2324,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                 <ul style="padding-left: 20px; list-style-position: inside;">
                     <li style="margin-bottom: 0.5rem;"><strong>Altri utenti dell'applicazione:</strong> In base ai ruoli e alle autorizzazioni (es. l'amministratore, il custode, i fornitori per le segnalazioni di loro competenza).</li>
                     <li style="margin-bottom: 0.5rem;"><strong>Fornitori di servizi tecnici:</strong> Google Firebase per l'infrastruttura tecnica (database, autenticazione, hosting file).</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>Servizi di terze parti per le notifiche:</strong> Le notifiche push sono inviate tramite Firebase Cloud Messaging, servizio incluso nell'infrastruttura Google Firebase indicata al punto precedente. Nessun dato viene condiviso con ulteriori fornitori esterni per questa finalità.</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Servizi di terze parti per le notifiche:</strong> Per l'invio di notifiche email, il tuo indirizzo email e il contenuto della notifica vengono condivisi con i nostri fornitori di webhook (es. <strong>Activepieces.com</strong>).</li>
                 </ul>
 
                 <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">5. Modalità di Trattamento e Trasferimento Dati Extra-UE</h4>
@@ -3490,18 +3490,12 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     <!-- RIMOSSO DA QUI -->
                     
                     <button type="submit" id="auth-submit" class="btn btn-primary w-full">Accedi</button>
-
-                    <div id="error-message" class="message-box error w-full" style="max-width:400px; margin-top: 1rem;"></div>
-                    <div id="success-message" class="message-box success w-full" style="max-width:400px; margin-top: 1rem;"></div>
                 </form>
 
                 <div class="flex w-full mt-4" style="max-width:400px; justify-content: space-between;">
                     <button type="button" id="toggle-auth" style="background:none; border:none; color:var(--secondary-text); cursor:pointer;">Registrati</button>
                     <button type="button" id="forgot-password" style="background:none; border:none; color:var(--secondary-text); cursor:pointer;">Password dimenticata?</button>
                 </div>
-
-                <div id="error-message" class="message-box error w-full" style="max-width:400px; margin-top: 1rem;"></div>
-                <div id="success-message" class="message-box success w-full" style="max-width:400px; margin-top: 1rem;"></div>
             </div>`;
 
         const renderBottomNavigation = () => {
@@ -7765,7 +7759,7 @@ ${renderBottomNavigation()}
                         }
 
                         await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent, betaTestAccepted: betaTestConsent, profilePhoto: selectedProfilePhoto });
-                        r.textContent = "Registrazione completata! Ora puoi accedere."; r.style.display = "block"; authForm.reset();
+                        r.textContent = "Registrazione completata! Il tuo account è in attesa di approvazione da parte dell'amministratore."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
                         summaryEl.innerHTML = 'Seleziona un nominativo per continuare...';
@@ -7777,13 +7771,36 @@ ${renderBottomNavigation()}
                             photoPreview.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>`;
                         }
                     } else { await login(o, n); }
-                } catch (p) { d.textContent = p.message; d.style.display = "block"; }
+                } catch (p) {
+                    d.textContent = p.message;
+                    d.style.display = "block";
+                    d.scrollIntoView({ behavior: "smooth", block: "center" });
+                    await customAlert(p.message);
+                }
             });
 
             forgotPasswordBtn?.addEventListener("click", async t => {
                 t.preventDefault(); const e = document.getElementById("email").value, o = document.getElementById("error-message"), n = document.getElementById("success-message");
-                if (!e) { o.textContent = "Inserisci la tua email per reimpostare la password"; o.style.display = "block"; return; }
-                try { await resetPassword(e); n.textContent = "Email di reset password inviata!"; n.style.display = "block"; o.style.display = "none"; } catch (d) { o.textContent = d.message; o.style.display = "block"; }
+                if (!e) {
+                    o.textContent = "Inserisci la tua email per reimpostare la password";
+                    o.style.display = "block";
+                    o.scrollIntoView({ behavior: "smooth", block: "center" });
+                    await customAlert("Inserisci la tua email per reimpostare la password");
+                    return;
+                }
+                try {
+                    await resetPassword(e);
+                    n.textContent = "Email di reset password inviata!";
+                    n.style.display = "block";
+                    n.scrollIntoView({ behavior: "smooth", block: "center" });
+                    await customAlert("Email di reset password inviata!");
+                    o.style.display = "none";
+                } catch (d) {
+                    o.textContent = d.message;
+                    o.style.display = "block";
+                    o.scrollIntoView({ behavior: "smooth", block: "center" });
+                    await customAlert(d.message);
+                }
             });
 
             document.querySelectorAll('.password-toggle-btn').forEach(btn => {
@@ -16289,13 +16306,30 @@ ${renderBottomNavigation()}
                 if (titleEl) titleEl.textContent = assembly.title || 'Assemblea in Corso';
 
                 const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
                 let totMillesimi = 0;
-                attendees.forEach(a => totMillesimi += (a.millesimi || 0));
+                activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
 
                 const totTesteEl = document.getElementById('room-tot-teste');
                 const totMillesimiEl = document.getElementById('room-tot-millesimi');
-                if (totTesteEl) totTesteEl.textContent = `${attendees.length} Teste`;
+                if (totTesteEl) totTesteEl.textContent = `${activeAttendees.length} Teste`;
                 if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
+
+                // ALLARME SCIOGLIMENTO ASSEMBLEA (SE QUORUM COSTITUTIVO SOTTO 333.33 ‰)
+                const warningBanner = document.getElementById('room-quorum-warning-banner');
+                const warningText = document.getElementById('room-quorum-warning-text');
+                const isQuorumFallen = (totMillesimi < 333.33);
+
+                if (warningBanner) {
+                    if (isQuorumFallen && attendees.length > 0) {
+                        warningBanner.classList.remove('hidden');
+                        if (warningText) {
+                            warningText.textContent = `A seguito dell'allontanamento di condòmini, i presenti attivi (${totMillesimi.toFixed(2)} ‰) sono scesi sotto la soglia legale di 1/3 (333.33 ‰). L'assemblea non è più idonea a deliberare e deve essere dichiarata sciolta.`;
+                        }
+                    } else {
+                        warningBanner.classList.add('hidden');
+                    }
+                }
 
                 const adminBar = document.getElementById('room-admin-bar');
                 const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
@@ -16304,7 +16338,7 @@ ${renderBottomNavigation()}
                 }
 
                 const qrAccreditation = document.getElementById('room-qr-accreditation');
-                const isAttendee = attendees.some(a => a.uid === currentUser.uid);
+                const isAttendee = activeAttendees.some(a => a.uid === currentUser.uid);
                 if (qrAccreditation) {
                     if (!isAdmin && !isAttendee) {
                         qrAccreditation.classList.remove('hidden');
@@ -16317,30 +16351,66 @@ ${renderBottomNavigation()}
                 // POPOLAMENTO ELENCO PRESENTI
                 const attendeesListEl = document.getElementById('room-attendees-list');
                 const totTesteBadgeEl = document.getElementById('room-tot-teste-badge');
-                if (totTesteBadgeEl) totTesteBadgeEl.textContent = attendees.length;
+                if (totTesteBadgeEl) totTesteBadgeEl.textContent = activeAttendees.length;
 
                 if (attendeesListEl) {
                     if (attendees.length === 0) {
                         attendeesListEl.innerHTML = '<p style="color:var(--secondary-text); font-size:0.85rem;">Nessun condomino accreditato.</p>';
                     } else {
                         attendeesListEl.innerHTML = attendees.map(a => {
-                            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid);
+                            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
                             let proxyInfo = '';
                             if (heldProxies.length > 0) {
                                 proxyInfo = `<div style="font-size:0.75rem; color:var(--accent-color);">📜 Deleghe da: ${heldProxies.map(p => escapeHtml(p.delegatorName)).join(', ')}</div>`;
                             }
+
+                            const isLeft = a.status === 'uscito';
+                            let statusBadge = isLeft
+                                ? `<span class="badge" style="background:rgba(239,68,68,0.2); color:var(--danger); font-size:0.75rem;">🔴 Uscito</span>`
+                                : `<span class="badge" style="background:rgba(29,185,84,0.2); color:#1DB954; font-size:0.75rem;">🟢 Presente</span>`;
+
+                            let toggleButtonHtml = '';
+                            if (isAdmin) {
+                                if (isLeft) {
+                                    toggleButtonHtml = `<button onclick="toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
+                                } else {
+                                    toggleButtonHtml = `<button onclick="toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger); color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala abbandono/uscita dall'aula">🚪 Uscita</button>`;
+                                }
+                            }
+
                             return `
-                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color-light); padding:0.6rem 0.8rem; border-radius:8px; font-size:0.85rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color-light); padding:0.6rem 0.8rem; border-radius:8px; font-size:0.85rem; ${isLeft ? 'opacity:0.6;' : ''}">
                                     <div>
-                                        <strong>${escapeHtml(a.nome)}</strong>
+                                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                                            <strong>${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')}</strong>
+                                            ${statusBadge}
+                                        </div>
                                         ${proxyInfo}
                                     </div>
-                                    <div style="font-weight:700; color:var(--warning);">
-                                        ${(a.millesimi || 0).toFixed(2)} ‰
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <strong style="color:var(--warning);">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                                        ${toggleButtonHtml}
                                     </div>
                                 </div>
                             `;
                         }).join('');
+                    }
+                }
+
+                // POPOLAMENTO AUDIT LOG
+                const eventLogListEl = document.getElementById('room-event-log-list');
+                if (eventLogListEl) {
+                    const logs = assembly.eventLog || [];
+                    if (logs.length === 0) {
+                        eventLogListEl.innerHTML = '<p style="color:var(--secondary-text); font-size:0.8rem;">Nessun evento ancora registrato.</p>';
+                    } else {
+                        eventLogListEl.innerHTML = logs.slice().reverse().map(l => `
+                            <div style="font-size:0.8rem; padding:0.4rem 0.6rem; background:var(--surface-color-light); border-radius:6px; margin-bottom:0.3rem; text-align:left;">
+                                <span style="color:var(--accent-color); font-weight:700;">[${l.timeStr || ''}]</span>
+                                <strong style="color:var(--warning); margin-left:0.25rem;">${l.type}:</strong>
+                                <span style="margin-left:0.25rem;">${escapeHtml(l.description)}</span>
+                            </div>
+                        `).join('');
                     }
                 }
 
@@ -16357,7 +16427,29 @@ ${renderBottomNavigation()}
                             if (v.choice === 'Astenuto') { astMil += (v.millesimi || 0); astTeste += (v.heads || 1); }
                         });
 
-                        const baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
+                        const itemScope = item.scope || 'intero';
+                        const itemGroup = item.targetGroup || '';
+
+                        let scopeBadge = '';
+                        if (itemScope === 'gruppo') {
+                            scopeBadge = `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700;">🪜 ${escapeHtml(itemGroup || 'Singola Scala')}</span>`;
+                        } else {
+                            scopeBadge = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:600;">🏢 Intero Condominio</span>`;
+                        }
+
+                        let baseMillesimi = 1000;
+                        if (itemScope === 'gruppo' && itemGroup) {
+                            let groupMillesimiPresent = 0;
+                            activeAttendees.forEach(a => {
+                                const userPropsInGroup = (a.proprieta || []).filter(p => p.gruppo === itemGroup);
+                                const groupMil = userPropsInGroup.reduce((s, p) => s + (parseFloat(p.millesimi) || 0), 0);
+                                groupMillesimiPresent += groupMil;
+                            });
+                            baseMillesimi = groupMillesimiPresent > 0 ? groupMillesimiPresent : ((favMil + contMil + astMil) || 1000);
+                        } else {
+                            baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
+                        }
+
                         const favPercent = ((favMil / baseMillesimi) * 100).toFixed(1);
                         const contPercent = ((contMil / baseMillesimi) * 100).toFixed(1);
                         const astPercent = ((astMil / baseMillesimi) * 100).toFixed(1);
@@ -16377,13 +16469,37 @@ ${renderBottomNavigation()}
 
                         let adminActionHtml = '';
                         if (isAdmin) {
+                            let btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.6rem;" title="Cambia ambito di votazione">⚙️ Ambito</button>`;
+                            
+                            let btnStatus = '';
                             if (item.status === 'pending') {
-                                adminActionHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">▶️ Avvia Votazione</button>`;
+                                btnStatus = isQuorumFallen
+                                    ? `<button class="btn btn-secondary" disabled style="font-size:0.8rem; padding:0.4rem 0.8rem; opacity:0.5;" title="Quorum costitutivo decaduto">⛔ Voto Bloccato</button>`
+                                    : `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">▶️ Avvia Votazione</button>`;
                             } else if (item.status === 'voting') {
-                                adminActionHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="background-color:var(--danger); color:white; font-size:0.8rem; padding:0.4rem 0.8rem;">⏹️ Chiudi Votazione</button>`;
+                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="background-color:var(--danger); color:white; font-size:0.8rem; padding:0.4rem 0.8rem;">⏹️ Chiudi Votazione</button>`;
                             } else {
-                                adminActionHtml = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.6rem;">🔄 Riapri Voto</button>`;
+                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.6rem;">🔄 Riapri Voto</button>`;
                             }
+
+                            let btnManualVote = '';
+                            if (item.status === 'voting' || item.status === 'pending') {
+                                btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="background:#3498db; color:white; font-size:0.75rem; padding:0.3rem 0.6rem;" title="Inserisci voto manuale per condòmino privo di smartphone">✍️ Voto Manuale</button>`;
+                            }
+
+                            let btnSubordinated = '';
+                            if (item.status === 'closed' && (favMil <= contMil) && itemScope === 'intero') {
+                                btnSubordinated = `<button onclick="openSubordinatedVoteModal('${assemblyId}', '${item.id}')" class="btn" style="background:var(--warning); color:black; font-weight:700; font-size:0.75rem; padding:0.3rem 0.6rem;" title="Avvia votazione di ripiego per singola scala">🪜 Votazione Subordinata</button>`;
+                            }
+
+                            adminActionHtml = `
+                                <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                                    ${btnScope}
+                                    ${btnStatus}
+                                    ${btnManualVote}
+                                    ${btnSubordinated}
+                                </div>
+                            `;
                         }
 
                         const userVote = item.votes?.find(v => v.voterId === currentUser.uid);
@@ -16454,9 +16570,12 @@ ${renderBottomNavigation()}
                             <div class="card" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 1.25rem; margin-bottom: 1rem;">
                                 <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom: 0.75rem; flex-wrap:wrap; gap:0.5rem;">
                                     <div>
-                                        <h4 style="font-size: 1.05rem; font-weight: 700;">Punto ${idx + 1}: ${escapeHtml(item.title)}</h4>
+                                        <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom:0.25rem;">Punto ${idx + 1}: ${escapeHtml(item.title)}</h4>
+                                        <div style="display:flex; gap:0.4rem; align-items:center;">
+                                            ${scopeBadge}
+                                        </div>
                                     </div>
-                                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                                    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
                                         ${itemBadge}
                                         ${adminActionHtml}
                                     </div>
@@ -16597,6 +16716,18 @@ ${renderBottomNavigation()}
                 const docSnap = await getDoc(assemblyRef);
                 const assembly = docSnap.data();
 
+                const existingAttendee = (assembly.attendees || []).find(a => a.uid === userId);
+                if (existingAttendee) {
+                    if (existingAttendee.status === 'uscito') {
+                        await toggleAttendeeStatus(assemblyId, userId, 'presente');
+                        hideModal();
+                        return;
+                    } else {
+                        await customAlert(`Il condomino ${user.nome} ${user.cognome} è già accreditato come presente in aula.`);
+                        return;
+                    }
+                }
+
                 let totalMillesimiAccreditati = user.millesimiTotali || 0;
                 const heldProxies = assembly.proxies?.filter(p => p.delegateId === userId) || [];
                 let proxyNoticeText = '';
@@ -16610,13 +16741,19 @@ ${renderBottomNavigation()}
                 const newAttendee = {
                     uid: userId,
                     nome: `${user.nome} ${user.cognome}${proxyNoticeText}`,
+                    cognome: user.cognome || '',
                     millesimi: totalMillesimiAccreditati,
-                    heldProxiesCount: heldProxies.length
+                    proprieta: user.proprieta || [],
+                    heldProxiesCount: heldProxies.length,
+                    status: 'presente',
+                    joinedAt: Date.now()
                 };
 
                 await updateDoc(assemblyRef, {
                     attendees: arrayUnion(newAttendee)
                 });
+
+                await logAssemblyEvent(assemblyId, 'INGRESSO', `Accreditata presenza in aula per ${user.nome} ${user.cognome} [${totalMillesimiAccreditati.toFixed(2)} ‰]${proxyNoticeText}`);
 
                 hideModal();
                 await customAlert(`Presenza registrata per ${user.nome} ${user.cognome} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
@@ -16703,9 +16840,33 @@ ${renderBottomNavigation()}
                 if (!assemblySnap.exists()) throw new Error("Assemblea non trovata.");
                 const assembly = assemblySnap.data();
 
+                // VERIFICA SE DELEGANTE È GIÀ PRESENTE
+                const isDelegatorPresent = (assembly.attendees || []).some(a => a.uid === delegatorId && a.status !== 'uscito');
+                if (isDelegatorPresent) {
+                    await customAlert(`Impossibile registrare delega: il condomino delegante ${delegator.nome} ${delegator.cognome} è già registrato come presente di persona in aula.`);
+                    return;
+                }
+
                 const existingProxy = assembly.proxies?.find(p => p.delegatorId === delegatorId);
                 if (existingProxy) {
                     throw new Error(`Il condomino ${delegator.nome} ${delegator.cognome} ha già conferito una delega a ${existingProxy.delegateName}.`);
+                }
+
+                // CHECK TETTO LEGALE DELEGHE (ART. 67 DISP. ATT. C.C.)
+                const condominiSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "==", "condomino")));
+                const totalCondoCount = condominiSnapshot.size;
+
+                if (totalCondoCount > 20) {
+                    const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === delegateId && p.status !== 'rejected');
+                    const totalHeads = 1 + heldProxies.length + 1; // delegato + deleghe esistenti + nuova delega
+                    let totalMillesimi = (delegate.millesimiTotali || 0) + (delegator.millesimiTotali || 0);
+                    heldProxies.forEach(p => totalMillesimi += (p.delegatorMillesimi || 0));
+
+                    const maxHeadsAllowed = Math.floor(totalCondoCount / 5);
+                    if (totalHeads > maxHeadsAllowed || totalMillesimi > 200.00) {
+                        await customAlert(`⚠️ LIMITE LEGALE DELEGHE SUPERATO (Art. 67 disp. att. c.c.): In condomini con oltre 20 proprietari, un delegato non può rappresentare più di 1/5 dei condòmini (${maxHeadsAllowed}) e 200.00 ‰ generali. Attualmente rappresenterebbe ${totalHeads} teste e ${totalMillesimi.toFixed(2)} ‰.`);
+                        return;
+                    }
                 }
 
                 const proxyData = {
@@ -17088,15 +17249,39 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
 
                 const assembly = docSnap.data();
+                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                if (!item) return;
 
-                let userMillesimi = userProfile.millesimiTotali || 0;
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+
+                let userMillesimi = 0;
                 let userHeads = 1;
 
-                const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
-                heldProxies.forEach(p => {
-                    userMillesimi += (p.delegatorMillesimi || 0);
-                    userHeads += 1;
-                });
+                if (itemScope === 'gruppo' && targetGroup) {
+                    const userGroupProps = (userProfile.proprieta || []).filter(p => p.gruppo === targetGroup);
+                    userMillesimi = userGroupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
+                    heldProxies.forEach(p => {
+                        if (p.delegatorGroup === targetGroup || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                            userMillesimi += (p.delegatorMillesimi || 0);
+                            userHeads += 1;
+                        }
+                    });
+
+                    if (userMillesimi <= 0 && userGroupProps.length === 0 && heldProxies.length === 0) {
+                        await customAlert(`Non possiedi unità immobiliari e non hai deleghe nel gruppo "${targetGroup}" per partecipare a questa votazione.`);
+                        return;
+                    }
+                } else {
+                    userMillesimi = userProfile.millesimiTotali || 0;
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
+                    heldProxies.forEach(p => {
+                        userMillesimi += (p.delegatorMillesimi || 0);
+                        userHeads += 1;
+                    });
+                }
 
                 const voteRecord = {
                     voterId: currentUser.uid,
@@ -17106,13 +17291,13 @@ ${renderBottomNavigation()}
                     heads: userHeads
                 };
 
-                const updatedAgenda = assembly.agenda.map(item => {
-                    if (item.id === itemId) {
-                        const votes = (item.votes || []).filter(v => v.voterId !== currentUser.uid);
+                const updatedAgenda = assembly.agenda.map(agendaItem => {
+                    if (agendaItem.id === itemId) {
+                        const votes = (agendaItem.votes || []).filter(v => v.voterId !== currentUser.uid);
                         votes.push(voteRecord);
-                        return { ...item, votes: votes };
+                        return { ...agendaItem, votes: votes };
                     }
-                    return item;
+                    return agendaItem;
                 });
 
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
@@ -17124,7 +17309,417 @@ ${renderBottomNavigation()}
             }
         };
 
-        window.showCreateAssemblyModal = () => {
+        const openChangeScopeModal = async (assemblyId, itemId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                if (!item) return;
+
+                let groupOptionsHtml = '<option value="" disabled selected>Seleziona scala/gruppo...</option>';
+                try {
+                    const q = query(collection(db, "partialCondos"), orderBy("name"));
+                    const snapshot = await getDocs(q);
+                    snapshot.forEach(doc => {
+                        const g = doc.data().name;
+                        if (g && g.toLowerCase() !== 'portineria') {
+                            const sel = (item.targetGroup === g) ? 'selected' : '';
+                            groupOptionsHtml += `<option value="${escapeHtml(g)}" ${sel}>${escapeHtml(g)}</option>`;
+                        }
+                    });
+                } catch (e) { console.error(e); }
+
+                const isGroup = item.scope === 'gruppo';
+
+                const modalContent = `
+                    <form onsubmit="saveScopeChange(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
+                        <p style="font-size:0.9rem; color:var(--secondary-text);">
+                            Modifica l'ambito di votazione per il punto: <strong>${escapeHtml(item.title)}</strong>
+                        </p>
+                        <div>
+                            <label class="form-label">Ambito di Votazione</label>
+                            <div class="space-y-2" style="margin-top:0.5rem;">
+                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
+                                    <input type="radio" name="modal-scope-type" value="intero" ${!isGroup ? 'checked' : ''} onchange="document.getElementById('modal-group-select-wrapper').classList.add('hidden')" style="accent-color:var(--accent-color); width:18px; height:18px;">
+                                    <span>🏢 Intero Condominio (Tutti i condòmini)</span>
+                                </label>
+                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
+                                    <input type="radio" name="modal-scope-type" value="gruppo" ${isGroup ? 'checked' : ''} onchange="document.getElementById('modal-group-select-wrapper').classList.remove('hidden')" style="accent-color:var(--accent-color); width:18px; height:18px;">
+                                    <span>🪜 Singola Scala / Gruppo di Condòmini</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="modal-group-select-wrapper" class="${!isGroup ? 'hidden' : ''}">
+                            <label class="form-label">Seleziona Scala / Gruppo</label>
+                            <select id="modal-scope-target-group" class="form-select">
+                                ${groupOptionsHtml}
+                            </select>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-3">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">Salva Ambito</button>
+                        </div>
+                    </form>
+                `;
+                showModal('⚙️ Cambia Ambito Votazione', modalContent);
+            } catch (err) {
+                console.error("Errore apertura modal cambio ambito:", err);
+                await customAlert("Si è verificato un errore.");
+            }
+        };
+
+        const saveScopeChange = async (e, assemblyId, itemId) => {
+            e.preventDefault();
+            const scopeType = document.querySelector('input[name="modal-scope-type"]:checked')?.value || 'intero';
+            let targetGroup = null;
+            if (scopeType === 'gruppo') {
+                targetGroup = document.getElementById('modal-scope-target-group')?.value;
+                if (!targetGroup) {
+                    await customAlert("Seleziona una scala o gruppo di riferimento.");
+                    return;
+                }
+            }
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const updatedAgenda = (assembly.agenda || []).map(item => {
+                    if (item.id === itemId) {
+                        return {
+                            ...item,
+                            scope: scopeType,
+                            targetGroup: targetGroup
+                        };
+                    }
+                    return item;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                hideModal();
+            } catch (err) {
+                console.error("Errore salvataggio ambito:", err);
+                await customAlert("Errore durante il salvataggio dell'ambito.");
+            }
+        };
+
+        const openSubordinatedVoteModal = async (assemblyId, itemId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                if (!item) return;
+
+                let groupOptionsHtml = '<option value="" disabled selected>Seleziona gruppo/scala...</option>';
+                try {
+                    const q = query(collection(db, "partialCondos"), orderBy("name"));
+                    const snapshot = await getDocs(q);
+                    snapshot.forEach(doc => {
+                        const g = doc.data().name;
+                        if (g && g.toLowerCase() !== 'portineria') {
+                            groupOptionsHtml += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
+                        }
+                    });
+                } catch (e) { console.error(e); }
+
+                const modalContent = `
+                    <form onsubmit="startSubordinatedVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
+                        <div style="background:rgba(243,156,18,0.15); padding:0.75rem; border-radius:8px; color:var(--warning); font-size:0.85rem; line-height:1.4;">
+                            <strong>🪜 Votazione Subordinata (a Cascata)</strong><br>
+                            La proposta generale per l'intero condominio è stata respinta. Puoi ora avviare la votazione subordinata limitata ai soli proprietari di una singola scala.
+                        </div>
+                        <p style="font-size:0.9rem; color:var(--secondary-text);">
+                            Punto OdG: <strong>${escapeHtml(item.title)}</strong>
+                        </p>
+                        <div>
+                            <label class="form-label">Seleziona la Scala / Gruppo interessato</label>
+                            <select id="modal-subordinated-group" class="form-select" required>
+                                ${groupOptionsHtml}
+                            </select>
+                        </div>
+                        <p style="font-size:0.8rem; color:var(--secondary-text);">
+                            <em>I voti precedenti verranno archiviati e la votazione verrà riaperta ricalcolando il quorum sulla scala selezionata.</em>
+                        </p>
+                        <div class="flex justify-end gap-3 pt-3">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                            <button type="submit" class="btn" style="background:var(--warning); color:black; font-weight:700;">▶️ Avvia Votazione di Scala</button>
+                        </div>
+                    </form>
+                `;
+                showModal('🪜 Votazione Subordinata', modalContent);
+            } catch (err) {
+                console.error("Errore apertura modal votazione subordinata:", err);
+                await customAlert("Si è verificato un errore.");
+            }
+        };
+
+        const startSubordinatedVote = async (e, assemblyId, itemId) => {
+            e.preventDefault();
+            const targetGroup = document.getElementById('modal-subordinated-group')?.value;
+            if (!targetGroup) {
+                await customAlert("Seleziona la scala o gruppo interessato.");
+                return;
+            }
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const updatedAgenda = (assembly.agenda || []).map(item => {
+                    if (item.id === itemId) {
+                        const previousGeneralVotes = item.votes || [];
+                        return {
+                            ...item,
+                            scope: 'gruppo',
+                            targetGroup: targetGroup,
+                            status: 'voting',
+                            previousGeneralVotes: previousGeneralVotes,
+                            votes: []
+                        };
+                    }
+                    return item;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                hideModal();
+                await customAlert(`Votazione subordinata per ${targetGroup} avviata con successo!`);
+            } catch (err) {
+                console.error("Errore avvio votazione subordinata:", err);
+                await customAlert("Errore durante l'avvio della votazione subordinata.");
+            }
+        };
+
+        const logAssemblyEvent = async (assemblyId, eventType, description) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                const eventLog = assembly.eventLog || [];
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                eventLog.push({
+                    timestamp: Date.now(),
+                    timeStr: timeStr,
+                    type: eventType,
+                    description: description
+                });
+
+                await updateDoc(assemblyRef, { eventLog: eventLog });
+            } catch (err) {
+                console.error("Errore registrazione evento assemblea:", err);
+            }
+        };
+
+        const toggleAttendeeStatus = async (assemblyId, attendeeUid, newStatus) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                let targetName = "";
+
+                const updatedAttendees = (assembly.attendees || []).map(a => {
+                    if (a.uid === attendeeUid) {
+                        targetName = `${a.nome} ${a.cognome || ''}`.trim();
+                        return {
+                            ...a,
+                            status: newStatus,
+                            leftAt: newStatus === 'uscito' ? Date.now() : null,
+                            reenteredAt: newStatus === 'presente' ? Date.now() : a.reenteredAt
+                        };
+                    }
+                    return a;
+                });
+
+                await updateDoc(assemblyRef, { attendees: updatedAttendees });
+
+                const eventDescription = newStatus === 'uscito'
+                    ? `Abbandono/Uscita dall'aula registrata per ${targetName}`
+                    : `Rientro in aula registrato per ${targetName}`;
+
+                await logAssemblyEvent(assemblyId, newStatus === 'uscito' ? 'USCITA' : 'RIENTRO', eventDescription);
+                await customAlert(eventDescription);
+            } catch (err) {
+                console.error("Errore modifica stato partecipante:", err);
+                await customAlert("Errore durante l'aggiornamento dello stato del partecipante.");
+            }
+        };
+
+        const openAdminManualVoteModal = async (assemblyId, itemId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                if (!item) return;
+
+                const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                const votes = item.votes || [];
+
+                const unvotedAttendees = activeAttendees.filter(a => !votes.some(v => v.voterId === a.uid));
+
+                if (unvotedAttendees.length === 0) {
+                    await customAlert("Tutti i condòmini presenti in aula hanno già espresso il proprio voto per questo punto.");
+                    return;
+                }
+
+                const optionsHtml = unvotedAttendees.map(a => 
+                    `<option value="${a.uid}">${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} (${(a.millesimi || 0).toFixed(2)} ‰)</option>`
+                ).join('');
+
+                const modalContent = `
+                    <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
+                        <p style="font-size:0.9rem; color:var(--secondary-text);">
+                            Punto OdG: <strong>${escapeHtml(item.title)}</strong><br>
+                            <span style="font-size:0.8rem;">Inserimento manuale del voto per condòmini privi di smartphone o con delega cartacea al banco.</span>
+                        </p>
+                        <div>
+                            <label class="form-label">Seleziona Condòmino Presente</label>
+                            <select id="manual-vote-voter-id" required class="form-select">
+                                <option value="" disabled selected>Seleziona condòmino...</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Espressione di Voto</label>
+                            <div class="grid grid-cols-3 gap-2 mt-1">
+                                <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:rgba(29,185,84,0.1);">
+                                    <input type="radio" name="manual-vote-choice" value="Favorevole" required style="accent-color:#1DB954;">
+                                    <span style="font-weight:700; color:#1DB954;">🟢 Favorevole</span>
+                                </label>
+                                <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:rgba(239,68,68,0.1);">
+                                    <input type="radio" name="manual-vote-choice" value="Contrario" style="accent-color:var(--danger);">
+                                    <span style="font-weight:700; color:var(--danger);">🔴 Contrario</span>
+                                </label>
+                                <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:var(--surface-color-light);">
+                                    <input type="radio" name="manual-vote-choice" value="Astenuto" style="accent-color:var(--secondary-text);">
+                                    <span style="font-weight:700; color:var(--secondary-text);">⚪ Astenuto</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-3">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                            <button type="submit" class="btn btn-primary">💾 Registra Voto Manuale</button>
+                        </div>
+                    </form>
+                `;
+                showModal('✍️ Inserisci Voto Manuale (Admin)', modalContent);
+
+            } catch (err) {
+                console.error("Errore apertura modal voto manuale admin:", err);
+                await customAlert("Si è verificato un errore.");
+            }
+        };
+
+        const submitAdminManualVote = async (e, assemblyId, itemId) => {
+            e.preventDefault();
+            const voterUid = document.getElementById('manual-vote-voter-id')?.value;
+            const choice = document.querySelector('input[name="manual-vote-choice"]:checked')?.value;
+
+            if (!voterUid || !choice) {
+                await customAlert("Seleziona il condòmino e l'espressione di voto.");
+                return;
+            }
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                if (!item) return;
+
+                const targetVoter = (assembly.attendees || []).find(a => a.uid === voterUid);
+                if (!targetVoter) return;
+
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+
+                let voterMillesimi = 0;
+                let voterHeads = 1;
+
+                if (itemScope === 'gruppo' && targetGroup) {
+                    const groupProps = (targetVoter.proprieta || []).filter(p => p.gruppo === targetGroup);
+                    voterMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
+                    heldProxies.forEach(p => {
+                        if (p.delegatorGroup === targetGroup || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                            voterMillesimi += (p.delegatorMillesimi || 0);
+                            voterHeads += 1;
+                        }
+                    });
+                } else {
+                    voterMillesimi = targetVoter.millesimi || 0;
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
+                    heldProxies.forEach(p => {
+                        voterMillesimi += (p.delegatorMillesimi || 0);
+                        voterHeads += 1;
+                    });
+                }
+
+                const voteRecord = {
+                    voterId: voterUid,
+                    voterName: `${targetVoter.nome} ${targetVoter.cognome || ''} (Admin)`,
+                    choice: choice,
+                    millesimi: voterMillesimi,
+                    heads: voterHeads,
+                    isManualAdminVote: true,
+                    recordedAt: Date.now()
+                };
+
+                const updatedAgenda = (assembly.agenda || []).map(agendaItem => {
+                    if (agendaItem.id === itemId) {
+                        const votes = (agendaItem.votes || []).filter(v => v.voterId !== voterUid);
+                        votes.push(voteRecord);
+                        return { ...agendaItem, votes: votes };
+                    }
+                    return agendaItem;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+
+                const fullName = `${targetVoter.nome} ${targetVoter.cognome || ''}`.trim();
+                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato voto assistito dall'amministratore per ${fullName} (${choice} - ${voterMillesimi.toFixed(2)} ‰)`);
+
+                hideModal();
+                await customAlert(`Voto per ${fullName} (${choice}) registrato con successo!`);
+
+            } catch (err) {
+                console.error("Errore invio voto manuale admin:", err);
+                await customAlert("Errore durante l'invio del voto manuale.");
+            }
+        };
+
+        window.showCreateAssemblyModal = async () => {
+            let partialGroupsOptions = '';
+            try {
+                const q = query(collection(db, "partialCondos"), orderBy("name"));
+                const snapshot = await getDocs(q);
+                snapshot.forEach(doc => {
+                    const g = doc.data().name;
+                    if (g && g.toLowerCase() !== 'portineria') {
+                        partialGroupsOptions += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
+                    }
+                });
+            } catch (e) { console.error("Errore caricamento gruppi parziali per assemblea:", e); }
+
             const modalContent = `
                 <div class="space-y-4" style="text-align: left !important;">
                     <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem; text-align: left !important; line-height: 1.5; white-space: normal !important;">🏛️ Pianifica una nuova assemblea condominiale impostando titolo, data, ora e punti dell'Ordine del Giorno (OdG).</p>
@@ -17149,7 +17744,7 @@ ${renderBottomNavigation()}
                             <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
                                 <div>
                                     <label class="form-label" style="margin-bottom:0; font-weight: 700; text-align: left !important;">📋 Ordine del Giorno (OdG)</label>
-                                    <p style="font-size:0.8rem; color:var(--secondary-text); margin:0; text-align: left !important;">Punti di discussione e votazione</p>
+                                    <p style="font-size:0.8rem; color:var(--secondary-text); margin:0; text-align: left !important;">Punti di discussione e ambito di votazione</p>
                                 </div>
                                 <button type="button" id="modal-add-agenda-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size:0.85rem;">➕ Aggiungi Punto</button>
                             </div>
@@ -17170,13 +17765,36 @@ ${renderBottomNavigation()}
                 const form = document.getElementById('modal-create-assembly-form');
                 if (!agendaList || !addBtn || !form) return;
 
-                const addAgendaItem = (val = "") => {
+                const addAgendaItem = (val = "", scope = "intero", targetGroup = "") => {
                     const div = document.createElement("div");
-                    div.style.cssText = "display: flex; align-items: center; gap: 0.5rem;";
+                    div.className = "odg-item-row card";
+                    div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.5rem; text-align:left;";
                     div.innerHTML = `
-                        <input type="text" class="form-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio Consuntivo" value="${escapeHtml(val)}">
-                        <button type="button" class="btn-remove-agenda" style="background:var(--surface-color-light); color:var(--danger); border:1px solid var(--surface-color-light); width:36px; height:36px; border-radius:8px; cursor:pointer; flex-shrink:0; font-size:1.2rem;" title="Rimuovi">&times;</button>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="text" class="form-input odg-title-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
+                            <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger); border:none; width:32px; height:32px; font-size:1.4rem; cursor:pointer; flex-shrink:0;" title="Rimuovi">&times;</button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem;">
+                            <label style="font-weight:600; color:var(--secondary-text);">Ambito Votazione:</label>
+                            <select class="form-select odg-scope-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
+                                <option value="intero" ${scope === 'intero' ? 'selected' : ''}>🏢 Intero Condominio</option>
+                                <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>🪜 Singola Scala / Gruppo</option>
+                            </select>
+                            <select class="form-select odg-group-select ${scope === 'intero' ? 'hidden' : ''}" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
+                                <option value="" disabled ${!targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
+                                ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
+                            </select>
+                        </div>
                     `;
+                    const scopeSelect = div.querySelector('.odg-scope-select');
+                    const groupSelect = div.querySelector('.odg-group-select');
+                    scopeSelect.onchange = () => {
+                        if (scopeSelect.value === 'gruppo') {
+                            groupSelect.classList.remove('hidden');
+                        } else {
+                            groupSelect.classList.add('hidden');
+                        }
+                    };
                     div.querySelector(".btn-remove-agenda").onclick = () => agendaList.removeChild(div);
                     agendaList.appendChild(div);
                 };
@@ -17192,11 +17810,35 @@ ${renderBottomNavigation()}
                     const dateVal = document.getElementById('modal-assembly-date').value;
                     const timeVal = document.getElementById('modal-assembly-time').value;
 
-                    const agendaInputs = agendaList.querySelectorAll('input[type="text"]');
-                    const agendaItems = Array.from(agendaInputs).map(input => input.value.trim()).filter(Boolean);
+                    const itemRows = agendaList.querySelectorAll('.odg-item-row');
+                    const agendaItems = [];
+                    let hasGroupError = false;
+
+                    itemRows.forEach((row, index) => {
+                        const titleVal = row.querySelector('.odg-title-input')?.value.trim();
+                        const scopeVal = row.querySelector('.odg-scope-select')?.value || 'intero';
+                        const groupVal = row.querySelector('.odg-group-select')?.value || '';
+                        if (titleVal) {
+                            if (scopeVal === 'gruppo' && !groupVal) {
+                                hasGroupError = true;
+                            }
+                            agendaItems.push({
+                                id: `punto_${index + 1}`,
+                                title: titleVal,
+                                scope: scopeVal,
+                                targetGroup: scopeVal === 'gruppo' ? groupVal : null,
+                                status: 'pending',
+                                votes: []
+                            });
+                        }
+                    });
 
                     if (agendaItems.length === 0) {
                         await customAlert("Inserisci almeno un punto all'ordine del giorno.");
+                        return;
+                    }
+                    if (hasGroupError) {
+                        await customAlert("È obbligatorio selezionare una scala/gruppo per i punti impostati su 'Singola Scala'.");
                         return;
                     }
 
@@ -17209,11 +17851,7 @@ ${renderBottomNavigation()}
                         const assemblyData = {
                             title: title,
                             scheduledDate: scheduledDate,
-                            agenda: agendaItems.map((item, index) => ({
-                                id: `punto_${index + 1}`,
-                                title: item,
-                                status: 'pending'
-                            })),
+                            agenda: agendaItems,
                             status: 'programmata',
                             createdBy: currentUser.uid,
                             createdAt: serverTimestamp(),
@@ -17231,17 +17869,16 @@ ${renderBottomNavigation()}
                             navigateTo('assemblea_lista');
                         }, 1200);
 
-                    } catch (err) {
-                        console.error("Errore salvataggio assemblea:", err);
+                    } catch (error) {
+                        console.error("Errore salvataggio assemblea:", error);
                         messageBox.className = 'message-box error';
-                        messageBox.textContent = `Errore: ${err.message}`;
+                        messageBox.textContent = 'Errore durante la creazione dell\'assemblea. Riprova.';
                         messageBox.style.display = 'block';
-                    } finally {
                         btnSave.disabled = false;
                         btnSave.textContent = "💾 Salva";
                     }
                 });
-            }, 50);
+            }, 100);
         };
 
         window.showDeleteAllAssembliesModal = async () => {
@@ -17822,6 +18459,13 @@ ${renderBottomNavigation()}
         window.saveDigitalProxy = saveDigitalProxy;
         window.submitLiveVote = submitLiveVote;
         window.toggleOdgVote = toggleOdgVote;
+        window.openChangeScopeModal = openChangeScopeModal;
+        window.saveScopeChange = saveScopeChange;
+        window.openSubordinatedVoteModal = openSubordinatedVoteModal;
+        window.startSubordinatedVote = startSubordinatedVote;
+        window.toggleAttendeeStatus = toggleAttendeeStatus;
+        window.openAdminManualVoteModal = openAdminManualVoteModal;
+        window.submitAdminManualVote = submitAdminManualVote;
         window.enterLiveRoom = enterLiveRoom;
         window.setupStanzaLiveHandlers = setupStanzaLiveHandlers;
         window.toggleRoomScanner = toggleRoomScanner;
