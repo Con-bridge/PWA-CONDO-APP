@@ -15819,13 +15819,34 @@ ${renderBottomNavigation()}
             if (!form || !agendaList || !addAgendaBtn) return;
 
             // Funzione per aggiungere riga OdG
-            const addAgendaItem = (value = "") => {
+            const addAgendaItem = (value = "", optionsType = "standard", customOptions = "") => {
                 const div = document.createElement("div");
-                div.style.cssText = "display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;";
+                div.className = "odg-item-row card";
+                div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.75rem; text-align:left;";
                 div.innerHTML = `
-                    <input type="text" class="form-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio Consuntivo" value="${escapeHtml(value)}">
-                    <button type="button" class="btn-remove-agenda" style="background:var(--surface-color-light); border:1px solid var(--surface-color-light); color:var(--danger); width:40px; height:40px; border-radius:8px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.3rem; transition: background 0.2s;" title="Rimuovi punto">&times;</button>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <input type="text" class="form-input odg-title-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio Consuntivo" value="${escapeHtml(value)}">
+                        <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger); border:none; width:32px; height:32px; font-size:1.4rem; cursor:pointer; flex-shrink:0;" title="Rimuovi">&times;</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem;">
+                        <label style="font-weight:600; color:var(--secondary-text);">Tipologia Risposte:</label>
+                        <select class="form-select odg-options-type-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
+                            <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
+                            <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
+                            <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>✏️ Opzioni Personalizzate...</option>
+                        </select>
+                        <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="flex:1; min-width:180px; font-size:0.85rem; padding:0.3rem 0.5rem;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
+                    </div>
                 `;
+                const typeSelect = div.querySelector('.odg-options-type-select');
+                const customInput = div.querySelector('.odg-custom-options-input');
+                typeSelect.onchange = () => {
+                    if (typeSelect.value === 'custom') {
+                        customInput.classList.remove('hidden');
+                    } else {
+                        customInput.classList.add('hidden');
+                    }
+                };
                 div.querySelector(".btn-remove-agenda").onclick = () => {
                     agendaList.removeChild(div);
                 };
@@ -15847,8 +15868,32 @@ ${renderBottomNavigation()}
                 const timeVal = document.getElementById('assembly-time').value;
 
                 // Raccogli OdG
-                const agendaInputs = agendaList.querySelectorAll('input[type="text"]');
-                const agendaItems = Array.from(agendaInputs).map(input => input.value.trim()).filter(Boolean);
+                const itemRows = agendaList.querySelectorAll('.odg-item-row');
+                const agendaItems = [];
+                itemRows.forEach((row, index) => {
+                    const titleVal = row.querySelector('.odg-title-input')?.value.trim();
+                    const typeVal = row.querySelector('.odg-options-type-select')?.value || 'standard';
+                    const customVal = row.querySelector('.odg-custom-options-input')?.value.trim() || '';
+
+                    let voteOptions = ["Favorevole", "Contrario", "Astenuto"];
+                    if (typeVal === 'sino') voteOptions = ["Sì", "No", "Astenuto"];
+                    if (typeVal === 'custom' && customVal) {
+                        const parsed = customVal.split(',').map(s => s.trim()).filter(Boolean);
+                        if (parsed.length > 0) voteOptions = parsed;
+                    }
+
+                    if (titleVal) {
+                        agendaItems.push({
+                            id: `punto_${index + 1}`,
+                            title: titleVal,
+                            voteOptionsType: typeVal,
+                            customOptionsStr: customVal,
+                            voteOptions: voteOptions,
+                            status: 'pending',
+                            votes: []
+                        });
+                    }
+                });
 
                 if (agendaItems.length === 0) {
                     await customAlert("Inserisci almeno un punto all'ordine del giorno.");
@@ -15866,11 +15911,7 @@ ${renderBottomNavigation()}
                     const assemblyData = {
                         title: title,
                         scheduledDate: scheduledDate,
-                        agenda: agendaItems.map((item, index) => ({
-                            id: `punto_${index + 1}`,
-                            title: item,
-                            status: 'pending' // pending, voting, closed
-                        })),
+                        agenda: agendaItems,
                         status: 'programmata', // programmata, in_corso, conclusa
                         createdBy: currentUser.uid,
                         createdAt: serverTimestamp(),
@@ -15943,14 +15984,37 @@ ${renderBottomNavigation()}
 
                     const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
 
-                    // Tasto "Entra nella Stanza Live" (Accessibile a tutti per assemblee in corso o se Admin)
+                    // Tasto "Entra nella Stanza Live / Dettagli Stanza" (Accessibile a tutti per qualsiasi assemblea)
                     let liveRoomBtnHtml = '';
-                    if (assembly.status === 'in_corso' || (isAdmin && assembly.status === 'programmata')) {
-                        const isLiveNow = assembly.status === 'in_corso';
+                    if (assembly.status === 'in_corso') {
                         liveRoomBtnHtml = `
                             <div style="margin-top: 1rem;">
-                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 1rem; padding: 0.8rem;">
-                                    ${isLiveNow ? '🔴 ENTRA NELLA STANZA LIVE' : '▶️ AVVIA / ENTRA NELLA STANZA LIVE'}
+                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 0.95rem; padding: 0.75rem;">
+                                    🔴 ENTRA NELLA STANZA LIVE
+                                </button>
+                            </div>
+                        `;
+                    } else if (assembly.status === 'conclusa') {
+                        liveRoomBtnHtml = `
+                            <div style="margin-top: 1rem;">
+                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn btn-secondary w-full" style="font-weight: 700; font-size: 0.9rem; padding: 0.65rem;">
+                                    👁️ Apri Dettagli / Stanza
+                                </button>
+                            </div>
+                        `;
+                    } else if (assembly.status === 'programmata') {
+                        liveRoomBtnHtml = `
+                            <div style="margin-top: 1rem;">
+                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: ${isAdmin ? '#1DB954' : 'var(--accent-color, #3498db)'}; color: ${isAdmin ? 'black' : 'white'}; font-weight: 800; font-size: 0.9rem; padding: 0.7rem;">
+                                    ${isAdmin ? '▶️ AVVIA / ENTRA NELLA STANZA LIVE' : '🔍 APRI DETTAGLI STANZA'}
+                                </button>
+                            </div>
+                        `;
+                    } else if (assembly.status === 'annullata') {
+                        liveRoomBtnHtml = `
+                            <div style="margin-top: 1rem;">
+                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn btn-secondary w-full" style="font-weight: 600; font-size: 0.85rem; padding: 0.6rem;">
+                                    🔍 Apri Dettagli Assemblea
                                 </button>
                             </div>
                         `;
@@ -16227,13 +16291,18 @@ ${renderBottomNavigation()}
                     const user = userDoc.data();
 
                     // LOGICA DELEGHE: Controlla se l'utente scansionato ha ricevuto deleghe da altri vicini
-                    let totalMillesimiAccreditati = user.millesimiTotali || 0;
-                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === qrUid) || [];
+                    let userBaseMillesimi = parseFloat(user.millesimiTotali) || 0;
+                    if (userBaseMillesimi <= 0 && Array.isArray(user.proprieta)) {
+                        userBaseMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                    }
+
+                    let totalMillesimiAccreditati = userBaseMillesimi;
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === qrUid && p.status !== 'rejected') || [];
 
                     let proxyNoticeText = '';
                     if (heldProxies.length > 0) {
                         heldProxies.forEach(p => {
-                            totalMillesimiAccreditati += (p.delegatorMillesimi || 0);
+                            totalMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
                         });
                         proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
                     }
@@ -16242,7 +16311,9 @@ ${renderBottomNavigation()}
                         uid: qrUid,
                         nome: `${user.nome} ${user.cognome}${proxyNoticeText}`,
                         millesimi: totalMillesimiAccreditati,
-                        heldProxiesCount: heldProxies.length
+                        heldProxiesCount: heldProxies.length,
+                        status: 'presente',
+                        scannedAt: new Date().toISOString()
                     };
 
                     await updateDoc(assemblyRef, {
@@ -16320,17 +16391,26 @@ ${renderBottomNavigation()}
                 if (totTesteEl) totTesteEl.textContent = `${activeAttendees.length} Teste`;
                 if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
 
-                // ALLARME SCIOGLIMENTO ASSEMBLEA (SE QUORUM COSTITUTIVO SOTTO 333.33 ‰)
+                // QUORUM INFORMATIONAL ONLY / STATUS BANNER
+                const isClosedOrCancelled = ['conclusa', 'annullata'].includes(assembly.status);
                 const warningBanner = document.getElementById('room-quorum-warning-banner');
-                const warningText = document.getElementById('room-quorum-warning-text');
-                const isQuorumFallen = (totMillesimi < 333.33);
-
                 if (warningBanner) {
-                    if (isQuorumFallen && attendees.length > 0) {
+                    if (assembly.status === 'conclusa') {
                         warningBanner.classList.remove('hidden');
-                        if (warningText) {
-                            warningText.textContent = `A seguito dell'allontanamento di condòmini, i presenti attivi (${totMillesimi.toFixed(2)} ‰) sono scesi sotto la soglia legale di 1/3 (333.33 ‰). L'assemblea non è più idonea a deliberare e deve essere dichiarata sciolta.`;
-                        }
+                        warningBanner.innerHTML = `
+                            <div style="background: rgba(46, 204, 113, 0.15); border-left: 4px solid #2ecc71; padding: 0.75rem 1rem; border-radius: 8px;">
+                                <strong style="color: #2ecc71; font-size: 0.9rem; display: block; margin-bottom: 0.2rem;">🔒 ASSEMBLEA CONCLUSA</strong>
+                                <span style="font-size: 0.85rem; color: var(--primary-text);">Stai consultando lo storico verbale, i voti finali e il registro presenze in sola lettura.</span>
+                            </div>
+                        `;
+                    } else if (assembly.status === 'annullata') {
+                        warningBanner.classList.remove('hidden');
+                        warningBanner.innerHTML = `
+                            <div style="background: rgba(231, 76, 60, 0.15); border-left: 4px solid var(--danger); padding: 0.75rem 1rem; border-radius: 8px;">
+                                <strong style="color: var(--danger); font-size: 0.9rem; display: block; margin-bottom: 0.2rem;">❌ ASSEMBLEA ANNULLATA</strong>
+                                <span style="font-size: 0.85rem; color: var(--primary-text);">${escapeHtml(assembly.cancellationReason || 'Assemblea annullata dall\'amministratore.')}</span>
+                            </div>
+                        `;
                     } else {
                         warningBanner.classList.add('hidden');
                     }
@@ -16339,13 +16419,13 @@ ${renderBottomNavigation()}
                 const adminBar = document.getElementById('room-admin-bar');
                 const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
                 if (adminBar) {
-                    adminBar.classList.toggle('hidden', !isAdmin);
+                    adminBar.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
                 }
 
                 const qrAccreditation = document.getElementById('room-qr-accreditation');
                 const isAttendee = activeAttendees.some(a => a.uid === currentUser.uid);
                 if (qrAccreditation) {
-                    if (!isAdmin && !isAttendee) {
+                    if (!isAdmin && !isAttendee && assembly.status === 'in_corso') {
                         qrAccreditation.classList.remove('hidden');
                         window.AssembleeModule.initQR(currentUser, "room-qrcode-container", "room-qr-timer");
                     } else {
@@ -16375,7 +16455,7 @@ ${renderBottomNavigation()}
                                 : `<span class="badge" style="background:rgba(29,185,84,0.2); color:#1DB954; font-size:0.75rem;">🟢 Presente</span>`;
 
                             let toggleButtonHtml = '';
-                            if (isAdmin) {
+                            if (isAdmin && !isClosedOrCancelled) {
                                 if (isLeft) {
                                     toggleButtonHtml = `<button onclick="toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
                                 } else {
@@ -16423,13 +16503,18 @@ ${renderBottomNavigation()}
                 const odgPollContainer = document.getElementById('room-odg-poll-list');
                 if (odgPollContainer && assembly.agenda) {
                     odgPollContainer.innerHTML = assembly.agenda.map((item, idx) => {
-                        let favMil = 0, contMil = 0, astMil = 0;
-                        let favTeste = 0, contTeste = 0, astTeste = 0;
+                        const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+                        
+                        const tally = {};
+                        voteOptions.forEach(opt => { tally[opt] = { mil: 0, teste: 0 }; });
+                        let totalVotesMil = 0;
 
                         (item.votes || []).forEach(v => {
-                            if (v.choice === 'Favorevole') { favMil += (v.millesimi || 0); favTeste += (v.heads || 1); }
-                            if (v.choice === 'Contrario') { contMil += (v.millesimi || 0); contTeste += (v.heads || 1); }
-                            if (v.choice === 'Astenuto') { astMil += (v.millesimi || 0); astTeste += (v.heads || 1); }
+                            const optKey = voteOptions.includes(v.choice) ? v.choice : (tally[v.choice] ? v.choice : voteOptions[0]);
+                            if (!tally[optKey]) tally[optKey] = { mil: 0, teste: 0 };
+                            tally[optKey].mil += (v.millesimi || 0);
+                            tally[optKey].teste += (v.heads || 1);
+                            totalVotesMil += (v.millesimi || 0);
                         });
 
                         const itemScope = item.scope || 'intero';
@@ -16450,14 +16535,32 @@ ${renderBottomNavigation()}
                                 const groupMil = userPropsInGroup.reduce((s, p) => s + (parseFloat(p.millesimi) || 0), 0);
                                 groupMillesimiPresent += groupMil;
                             });
-                            baseMillesimi = groupMillesimiPresent > 0 ? groupMillesimiPresent : ((favMil + contMil + astMil) || 1000);
+                            baseMillesimi = groupMillesimiPresent > 0 ? groupMillesimiPresent : (totalVotesMil || 1000);
                         } else {
                             baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
                         }
 
-                        const favPercent = ((favMil / baseMillesimi) * 100).toFixed(1);
-                        const contPercent = ((contMil / baseMillesimi) * 100).toFixed(1);
-                        const astPercent = ((astMil / baseMillesimi) * 100).toFixed(1);
+                        const optionsProgressHtml = voteOptions.map(opt => {
+                            const mil = tally[opt]?.mil || 0;
+                            const teste = tally[opt]?.teste || 0;
+                            const percent = ((mil / baseMillesimi) * 100).toFixed(1);
+                            let color = 'var(--accent-color)';
+                            if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) color = '#1DB954';
+                            else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) color = 'var(--danger)';
+                            else if (opt.toLowerCase().includes('astenuto')) color = '#f1c40f';
+
+                            return `
+                                <div style="margin-top: 0.4rem;">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.15rem;">
+                                        <span><strong>${escapeHtml(opt)}:</strong> ${mil.toFixed(2)} ‰ (${teste} ${teste === 1 ? 'testa' : 'teste'})</span>
+                                        <span style="font-weight:700;">${percent}%</span>
+                                    </div>
+                                    <div style="width:100%; background:var(--surface-color-light); height:8px; border-radius:4px; overflow:hidden;">
+                                        <div style="width:${Math.min(100, parseFloat(percent))}%; background:${color}; height:100%; transition:width 0.3s;"></div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
 
                         let itemBadge = '';
                         if (item.status === 'pending') {
@@ -16465,22 +16568,24 @@ ${renderBottomNavigation()}
                         } else if (item.status === 'voting') {
                             itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:800; animation: pulse 1.5s infinite;">IN VOTAZIONE 🔴</span>`;
                         } else if (item.status === 'closed') {
-                            if (favMil > contMil) {
-                                itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700;">APPROVATO 🟢</span>`;
-                            } else {
-                                itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700;">RESPINTO 🔴</span>`;
-                            }
+                            let leadingOpt = voteOptions[0];
+                            let maxMil = -1;
+                            voteOptions.forEach(opt => {
+                                if ((tally[opt]?.mil || 0) > maxMil) {
+                                    maxMil = tally[opt]?.mil || 0;
+                                    leadingOpt = opt;
+                                }
+                            });
+                            itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700;">ESITO: ${escapeHtml(leadingOpt).toUpperCase()} 🟢</span>`;
                         }
 
                         let adminActionHtml = '';
-                        if (isAdmin) {
+                        if (isAdmin && !isClosedOrCancelled) {
                             let btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">⚙️ Ambito</button>`;
                             
                             let btnStatus = '';
                             if (item.status === 'pending') {
-                                btnStatus = isQuorumFallen
-                                    ? `<button class="btn btn-secondary" disabled style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; opacity:0.5; border-radius:6px; white-space:nowrap;" title="Quorum costitutivo decaduto">⛔ Voto Bloccato</button>`
-                                    : `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">▶️ Avvia Votazione</button>`;
+                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">▶️ Avvia Votazione</button>`;
                             } else if (item.status === 'voting') {
                                 btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">⏹️ Chiudi Votazione</button>`;
                             } else {
@@ -16493,7 +16598,7 @@ ${renderBottomNavigation()}
                             }
 
                             let btnSubordinated = '';
-                            if (item.status === 'closed' && (favMil <= contMil) && itemScope === 'intero') {
+                            if (item.status === 'closed' && itemScope === 'intero') {
                                 btnSubordinated = `<button onclick="openSubordinatedVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; font-weight:700; font-size:0.75rem; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Avvia votazione subordinata per singola scala">🪜 Subordinata</button>`;
                             }
 
@@ -16519,27 +16624,35 @@ ${renderBottomNavigation()}
 
                         const userVote = item.votes?.find(v => v.voterId === currentUser.uid);
                         let voteButtonsHtml = '';
-                        if (item.status === 'voting' && (isAttendee || isAdmin)) {
-                            if (userVote) {
-                                voteButtonsHtml = `
-                                    <div style="margin-top:0.75rem; padding:0.65rem; background:rgba(29,185,84,0.15); border-radius:6px; font-size:0.85rem; color:var(--accent-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                                        <span>✓ Hai votato: <strong>${userVote.choice}</strong> (${userVote.millesimi.toFixed(2)} ‰)</span>
-                                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem;">
-                                            <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Favorevole')" class="btn ${userVote.choice === 'Favorevole' ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.3rem 0.5rem; height:32px;">🟢</button>
-                                            <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Contrario')" class="btn ${userVote.choice === 'Contrario' ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.3rem 0.5rem; height:32px;">🔴</button>
-                                            <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Astenuto')" class="btn ${userVote.choice === 'Astenuto' ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.3rem 0.5rem; height:32px;">⚪</button>
-                                        </div>
+                        if (item.status === 'voting' && !isClosedOrCancelled && (isAttendee || isAdmin)) {
+                            voteButtonsHtml = `
+                                <div style="margin-top:0.75rem;">
+                                    ${userVote ? `<div style="font-size:0.85rem; color:var(--accent-color); margin-bottom:0.4rem;">✓ Hai votato: <strong>${escapeHtml(userVote.choice)}</strong> (${userVote.millesimi.toFixed(2)} ‰)</div>` : ''}
+                                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
+                                        ${voteOptions.map(opt => {
+                                            let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
+                                            let icon = "🔹";
+                                            if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
+                                                btnStyle = "background-color: #1DB954; color: black;";
+                                                icon = "🟢";
+                                            } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
+                                                btnStyle = "background-color: var(--danger); color: white;";
+                                                icon = "🔴";
+                                            } else if (opt.toLowerCase().includes('astenuto')) {
+                                                btnStyle = "background-color: #f1c40f; color: black;";
+                                                icon = "⚪";
+                                            }
+                                            const isSelected = userVote && userVote.choice === opt;
+                                            const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
+                                            return `
+                                                <button onclick="submitLiveVote('${assemblyId}', '${item.id}', '${safeOpt}')" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 40px; flex: 1; min-width: 100px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
+                                                    ${icon} ${escapeHtml(opt)}
+                                                </button>
+                                            `;
+                                        }).join('')}
                                     </div>
-                                `;
-                            } else {
-                                voteButtonsHtml = `
-                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-top: 0.75rem; width: 100%;">
-                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Favorevole')" class="btn" style="background-color: #1DB954; color: black; font-weight: 700; font-size: 0.8rem; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; width: 100%; border-radius: 6px; white-space: nowrap;">🟢 Favorevole</button>
-                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Contrario')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size: 0.8rem; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; width: 100%; border-radius: 6px; white-space: nowrap;">🔴 Contrario</button>
-                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', 'Astenuto')" class="btn btn-secondary" style="font-size: 0.8rem; font-weight: 600; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; width: 100%; border-radius: 6px; white-space: nowrap;">⚪ Astenuto</button>
-                                    </div>
-                                `;
-                            }
+                                </div>
+                            `;
                         }
 
                         // DETTAGLIO VOTANTI E DELEGHE PER LA QUESTIONE
@@ -16597,35 +16710,8 @@ ${renderBottomNavigation()}
 
                                 <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO -->
                                 <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light);">
-                                    <div style="margin-bottom: 0.5rem;">
-                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
-                                            <span>🟢 Favorevoli</span>
-                                            <strong>${favMil.toFixed(2)} ‰ (${favPercent}%) - ${favTeste} teste</strong>
-                                        </div>
-                                        <div style="background: var(--surface-color-light); border-radius: 4px; height: 8px; overflow: hidden;">
-                                            <div style="background: #1DB954; width: ${favPercent}%; height: 100%; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-
-                                    <div style="margin-bottom: 0.5rem;">
-                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
-                                            <span>🔴 Contrari</span>
-                                            <strong style="color: var(--danger);">${contMil.toFixed(2)} ‰ (${contPercent}%) - ${contTeste} teste</strong>
-                                        </div>
-                                        <div style="background: var(--surface-color-light); border-radius: 4px; height: 8px; overflow: hidden;">
-                                            <div style="background: var(--danger); width: ${contPercent}%; height: 100%; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
-                                            <span>⚪ Astenuti</span>
-                                            <strong style="color: var(--secondary-text);">${astMil.toFixed(2)} ‰ (${astPercent}%) - ${astTeste} teste</strong>
-                                        </div>
-                                        <div style="background: var(--surface-color-light); border-radius: 4px; height: 8px; overflow: hidden;">
-                                            <div style="background: var(--secondary-text); width: ${astPercent}%; height: 100%; transition: width 0.3s ease;"></div>
-                                        </div>
-                                    </div>
+                                    <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">📊 Esito & Avanzamento Voti</div>
+                                    ${optionsProgressHtml}
                                 </div>
 
                                 ${votersDetailHtml}
@@ -17629,6 +17715,23 @@ ${renderBottomNavigation()}
                     `<option value="${a.uid}">${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} (${(a.millesimi || 0).toFixed(2)} ‰)</option>`
                 ).join('');
 
+                const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+                const voteChoicesHtml = voteOptions.map((opt, idx) => {
+                    let color = 'var(--secondary-text)';
+                    let bg = 'var(--surface-color-light)';
+                    let icon = '🔹';
+                    if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) { color = '#1DB954'; bg = 'rgba(29,185,84,0.1)'; icon = '🟢'; }
+                    else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) { color = 'var(--danger)'; bg = 'rgba(239,68,68,0.1)'; icon = '🔴'; }
+                    else if (opt.toLowerCase().includes('astenuto')) { color = '#f1c40f'; bg = 'rgba(241,196,15,0.1)'; icon = '⚪'; }
+
+                    return `
+                        <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:${bg};">
+                            <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'required' : ''} style="accent-color:${color};">
+                            <span style="font-weight:700; color:${color};">${icon} ${escapeHtml(opt)}</span>
+                        </label>
+                    `;
+                }).join('');
+
                 const modalContent = `
                     <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
                         <p style="font-size:0.9rem; color:var(--secondary-text);">
@@ -17644,19 +17747,8 @@ ${renderBottomNavigation()}
                         </div>
                         <div>
                             <label class="form-label">Espressione di Voto</label>
-                            <div class="grid grid-cols-3 gap-2 mt-1">
-                                <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:rgba(29,185,84,0.1);">
-                                    <input type="radio" name="manual-vote-choice" value="Favorevole" required style="accent-color:#1DB954;">
-                                    <span style="font-weight:700; color:#1DB954;">🟢 Favorevole</span>
-                                </label>
-                                <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:rgba(239,68,68,0.1);">
-                                    <input type="radio" name="manual-vote-choice" value="Contrario" style="accent-color:var(--danger);">
-                                    <span style="font-weight:700; color:var(--danger);">🔴 Contrario</span>
-                                </label>
-                                <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:var(--surface-color-light);">
-                                    <input type="radio" name="manual-vote-choice" value="Astenuto" style="accent-color:var(--secondary-text);">
-                                    <span style="font-weight:700; color:var(--secondary-text);">⚪ Astenuto</span>
-                                </label>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                ${voteChoicesHtml}
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
@@ -17812,7 +17904,7 @@ ${renderBottomNavigation()}
                 const form = document.getElementById('modal-create-assembly-form');
                 if (!agendaList || !addBtn || !form) return;
 
-                const addAgendaItem = (val = "", scope = "intero", targetGroup = "") => {
+                const addAgendaItem = (val = "", scope = "intero", targetGroup = "", optionsType = "standard", customOptions = "") => {
                     const div = document.createElement("div");
                     div.className = "odg-item-row card";
                     div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.5rem; text-align:left;";
@@ -17832,9 +17924,21 @@ ${renderBottomNavigation()}
                                 ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
                             </select>
                         </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem; margin-top:0.25rem;">
+                            <label style="font-weight:600; color:var(--secondary-text);">Risposte:</label>
+                            <select class="form-select odg-options-type-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
+                                <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
+                                <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
+                                <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>✏️ Opzioni Personalizzate...</option>
+                            </select>
+                            <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="flex:1; min-width:180px; font-size:0.85rem; padding:0.3rem 0.5rem;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
+                        </div>
                     `;
                     const scopeSelect = div.querySelector('.odg-scope-select');
                     const groupSelect = div.querySelector('.odg-group-select');
+                    const typeSelect = div.querySelector('.odg-options-type-select');
+                    const customInput = div.querySelector('.odg-custom-options-input');
+
                     scopeSelect.onchange = () => {
                         if (scopeSelect.value === 'gruppo') {
                             groupSelect.classList.remove('hidden');
@@ -17842,6 +17946,14 @@ ${renderBottomNavigation()}
                             groupSelect.classList.add('hidden');
                         }
                     };
+                    typeSelect.onchange = () => {
+                        if (typeSelect.value === 'custom') {
+                            customInput.classList.remove('hidden');
+                        } else {
+                            customInput.classList.add('hidden');
+                        }
+                    };
+
                     div.querySelector(".btn-remove-agenda").onclick = () => agendaList.removeChild(div);
                     agendaList.appendChild(div);
                 };
@@ -17865,6 +17977,17 @@ ${renderBottomNavigation()}
                         const titleVal = row.querySelector('.odg-title-input')?.value.trim();
                         const scopeVal = row.querySelector('.odg-scope-select')?.value || 'intero';
                         const groupVal = row.querySelector('.odg-group-select')?.value || '';
+                        const typeVal = row.querySelector('.odg-options-type-select')?.value || 'standard';
+                        const customVal = row.querySelector('.odg-custom-options-input')?.value.trim() || '';
+
+                        let voteOptions = ["Favorevole", "Contrario", "Astenuto"];
+                        if (typeVal === 'sino') voteOptions = ["Sì", "No", "Astenuto"];
+                        if (typeVal === 'approvato') voteOptions = ["Approvato", "Respinto"];
+                        if (typeVal === 'custom' && customVal) {
+                            const parsed = customVal.split(',').map(s => s.trim()).filter(Boolean);
+                            if (parsed.length > 0) voteOptions = parsed;
+                        }
+
                         if (titleVal) {
                             if (scopeVal === 'gruppo' && !groupVal) {
                                 hasGroupError = true;
@@ -17874,6 +17997,9 @@ ${renderBottomNavigation()}
                                 title: titleVal,
                                 scope: scopeVal,
                                 targetGroup: scopeVal === 'gruppo' ? groupVal : null,
+                                voteOptionsType: typeVal,
+                                customOptionsStr: customVal,
+                                voteOptions: voteOptions,
                                 status: 'pending',
                                 votes: []
                             });
@@ -18098,12 +18224,23 @@ ${renderBottomNavigation()}
 
                             const scannedUser = userDocSnap.data();
                             const userFullName = `${scannedUser.nome} ${scannedUser.cognome}`;
-                            const userMillesimi = scannedUser.millesimiTotali || 0;
+                            let userMillesimi = parseFloat(scannedUser.millesimiTotali) || 0;
+                            if (userMillesimi <= 0 && Array.isArray(scannedUser.proprieta)) {
+                                userMillesimi = scannedUser.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                            }
 
                             const assemblyRef = doc(db, "assemblies", targetAssembly.id);
                             const currentSnap = await getDoc(assemblyRef);
                             const currentAssembly = currentSnap.data();
                             const currentAttendees = currentAssembly.attendees || [];
+
+                            // Check proxies held by scanned user
+                            const heldProxies = currentAssembly.proxies?.filter(p => p.delegateId === scannedUid && p.status !== 'rejected') || [];
+                            if (heldProxies.length > 0) {
+                                heldProxies.forEach(p => {
+                                    userMillesimi += (parseFloat(p.delegatorMillesimi) || 0);
+                                });
+                            }
 
                             if (currentAttendees.some(a => a.uid === scannedUid)) {
                                 messageBox.className = "message-box error";
