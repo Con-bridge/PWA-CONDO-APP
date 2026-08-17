@@ -153,6 +153,12 @@ window.AssembleeModule = {
                     </div>
                 </div>
 
+                <!-- BANNER DI ALLARME SCIOGLIMENTO QUORUM (SE SOTTO 333.33 ‰) -->
+                <div id="room-quorum-warning-banner" class="hidden card" style="background:rgba(239,68,68,0.15); border:2px solid var(--danger); padding:1rem; margin-bottom:1rem; text-align:center;">
+                    <h4 style="color:var(--danger); font-weight:800; margin:0 0 0.25rem 0;">⛔ SCIOGLIMENTO ASSEMBLEA - QUORUM COSTITUTIVO DECADUTO</h4>
+                    <p id="room-quorum-warning-text" style="color:var(--primary-text); font-size:0.85rem; margin:0;">A seguito dell'allontanamento di condòmini, i presenti sono scesi sotto la soglia legale di 1/3 (333.33 ‰). L'assemblea non è più idonea a deliberare e deve essere dichiarata sciolta.</p>
+                </div>
+
                 <!-- BANNER DI STATO LIVE -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -199,10 +205,23 @@ window.AssembleeModule = {
                 </div>
 
                 <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
-                <div class="card" style="padding: 1rem;">
+                <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
                     <h3 class="card-title" style="margin-bottom: 1rem; font-size: 1rem;">Ordine del Giorno & Votazioni</h3>
                     <div id="room-odg-poll-list" class="space-y-4">
                         <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
+                    </div>
+                </div>
+
+                <!-- REGISTRO EVENTI ASSEMBLEA (AUDIT LOG) -->
+                <div class="card" style="padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
+                        <h3 class="card-title" style="margin: 0; font-size: 0.95rem;">📜 Registro Eventi Assemblea (Audit Log)</h3>
+                        <span style="font-size: 0.8rem; color: var(--accent-color);">Mostra/Nascondi ▼</span>
+                    </div>
+                    <div id="room-event-log-collapsible" class="mt-3 hidden space-y-2">
+                        <div id="room-event-log-list">
+                            <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento registro eventi...</p>
+                        </div>
                     </div>
                 </div>
             </main>
