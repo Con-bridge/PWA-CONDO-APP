@@ -179,9 +179,9 @@ window.AssembleeModule = {
 
                 <!-- ELENCO PRESENTI ACCREDITATI -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 1rem;">Elenco Presenti Accreditati (<span id="room-tot-teste-badge">0</span>)</h3>
-                        <span style="font-size: 0.8rem; color: var(--accent-color);">Mostra/Nascondi ▼</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; cursor: pointer;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
+                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3;">Elenco Presenti Accreditati (<span id="room-tot-teste-badge">0</span>)</h3>
+                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0;">Mostra/Nascondi ▼</span>
                     </div>
                     <div id="room-attendees-collapsible" class="mt-3 hidden space-y-2">
                         <div id="room-attendees-list">
@@ -214,9 +214,9 @@ window.AssembleeModule = {
 
                 <!-- REGISTRO EVENTI ASSEMBLEA (AUDIT LOG) -->
                 <div class="card" style="padding: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 0.95rem;">📜 Registro Eventi Assemblea (Audit Log)</h3>
-                        <span style="font-size: 0.8rem; color: var(--accent-color);">Mostra/Nascondi ▼</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
+                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3;">📜 Registro Eventi Assemblea (Audit Log)</h3>
+                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0;">Mostra/Nascondi ▼</span>
                     </div>
                     <div id="room-event-log-collapsible" class="mt-3 hidden space-y-2">
                         <div id="room-event-log-list">
