@@ -14,7 +14,7 @@ window.AssembleeModule = {
                 <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
                 </div>
-                <p>Registra Presenze</p>
+                <p>Scansione presenze</p>
             </div>
         ` : '';
 
@@ -27,7 +27,7 @@ window.AssembleeModule = {
             </div>
         ` : '';
 
-        // DELEGHE + TESSERA QR VISIBILI SOLO SE NON SI È AMMINISTRATORI
+        // DELEGHE E TESSERA QR VISIBILI SOLO SE NON SI È AMMINISTRATORI
         const delegheButton = isCondomino ? `
             <div onclick="navigateTo('assemblea_deleghe')" class="dashboard-item">
                 <div class="dashboard-card" style="position: relative;">
@@ -141,10 +141,11 @@ window.AssembleeModule = {
                         <button onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
                         <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
                         <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
                         <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size:0.8rem; padding:0.6rem;">Concludi</button>
                     </div>
+                    <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn btn-secondary" style="width:100%; font-size:0.8rem; padding:0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">📥 Esporta Esiti Votazioni (CSV)</button>
 
                     <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
                     <div id="room-scanner-container" class="mt-3 hidden" style="text-align:center;">
