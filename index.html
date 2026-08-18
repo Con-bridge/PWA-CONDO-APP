@@ -2412,7 +2412,8 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                         'sondaggi': { enabled: true, allowedRoles: ['tutti'] },
                         'numeri_utili': { enabled: true, allowedRoles: ['tutti'] },
                         'report': { enabled: true, allowedRoles: ['tutti'] },
-                        'archivio': { enabled: true, allowedRoles: ['tutti'] }
+                        'archivio': { enabled: true, allowedRoles: ['tutti'] },
+                        'assemblee': { enabled: true, allowedRoles: ['condomino', 'amministratore', 'consigliere', 'supervisore'] }
                     };
                 }
             } catch (error) {
@@ -3551,11 +3552,11 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg>
         <span>Sondaggi</span>
     </a>` : ''}
-    <a href="#" onclick="navigateTo('assemblee_menu', event)" class="nav-item ${['assemblee_menu', 'assemblea_crea', 'assemblea_lista', 'assemblea_gestione', 'assemblea_tessera', 'assemblea_deleghe'].includes(currentPage) ? 'active' : ''}">
+    ${isServiceEnabledForCurrentUser('assemblee') && userProfile?.tipoUtente !== 'custode' && userProfile?.tipoUtente !== 'fornitore' ? `<a href="#" onclick="navigateTo('assemblee_menu', event)" class="nav-item ${['assemblee_menu', 'assemblea_crea', 'assemblea_lista', 'assemblea_gestione', 'assemblea_tessera', 'assemblea_deleghe'].includes(currentPage) ? 'active' : ''}">
         <span id="assemblee-notification-badge" class="notification-badge hidden"></span>
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         <span>Assemblee</span>
-    </a>
+    </a>` : ''}
 `;
             return `<nav class="bottom-nav">${navItems}</nav>`;
         };
@@ -3615,16 +3616,18 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     </div>
                 `);
             }
-            // PULSANTE ASSEMBLEE (Per ora visibile a tutti)
-            dashboardItemsHtml.push(`
-                <div onclick="navigateTo('assemblee_menu')" class="dashboard-item">
-                    <div class="dashboard-card" style="position: relative;">
-                        <span id="dashboard-assemblee-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
-                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            // PULSANTE ASSEMBLEE
+            if (isServiceEnabledForCurrentUser('assemblee') && userProfile?.tipoUtente !== 'custode' && userProfile?.tipoUtente !== 'fornitore') {
+                dashboardItemsHtml.push(`
+                    <div onclick="navigateTo('assemblee_menu')" class="dashboard-item">
+                        <div class="dashboard-card" style="position: relative;">
+                            <span id="dashboard-assemblee-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        </div>
+                        <p>Assemblee</p>
                     </div>
-                    <p>Assemblee</p>
-                </div>
-            `);
+                `);
+            }
 
             if (isServiceEnabledForCurrentUser('report')) {
                 dashboardItemsHtml.push(`
@@ -6393,6 +6396,7 @@ ${renderBottomNavigation()}
                 { id: 'numeri_utili', name: 'Numeri Utili' },
                 { id: 'report', name: 'Report' },
                 { id: 'archivio', name: 'Archivio' },
+                { id: 'assemblee', name: 'Assemblee Condominiali' },
             ];
 
             const roles = [
@@ -6982,7 +6986,7 @@ ${renderBottomNavigation()}
                 submitBtn.textContent = 'Salvataggio...';
 
                 const newPermissions = {};
-                const services = ['all_services', 'bacheca', 'segnalazioni', 'sondaggi', 'numeri_utili', 'report', 'archivio'];
+                const services = ['all_services', 'bacheca', 'segnalazioni', 'sondaggi', 'numeri_utili', 'report', 'archivio', 'assemblee'];
 
                 services.forEach(serviceId => {
                     const serviceToggle = document.getElementById(`toggle-${serviceId}`);
@@ -7203,6 +7207,10 @@ ${renderBottomNavigation()}
                     content = renderArchivio();
                     break;
                 case 'assemblee_menu':
+                    if (!isServiceEnabledForCurrentUser('assemblee') || userType === 'custode' || userType === 'fornitore') {
+                        navigateTo('dashboard');
+                        return;
+                    }
                     content = window.AssembleeModule.renderMenu(renderHeader, renderBottomNavigation, userProfile);
                     break;
                 case 'assemblea_crea':
@@ -15768,6 +15776,8 @@ ${renderBottomNavigation()}
         // Controlla se ci sono nuove assemblee o deleghe pendenti per qualsiasi utente loggato
         const checkForNewAssemblies = () => {
             if (!currentUser) return;
+            if (userProfile?.tipoUtente === 'custode' || userProfile?.tipoUtente === 'fornitore') return;
+            if (!isServiceEnabledForCurrentUser('assemblee')) return;
             if (assembliesListener) assembliesListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenAssembly_${currentUser.uid}`), 10) || 0;
