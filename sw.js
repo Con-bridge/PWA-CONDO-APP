@@ -1,10 +1,10 @@
-// Definiamo nuovo nome per la cache
-const CACHE_NAME = 'condo-app-pwa-cache-v2';
+// Definiamo nuovo nome per la cache (BUMP v10)
+const CACHE_NAME = 'condo-app-pwa-cache-v10';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
-  '/PWA-CONDO-APP/',
-  '/PWA-CONDO-APP/index.html',
+  './',
+  './index.html',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
@@ -16,17 +16,40 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Cache aperta e file salvati per uso offline');
-        return cache.addAll(URLS_TO_CACHE);
+        return Promise.allSettled(
+          URLS_TO_CACHE.map(url => cache.add(url).catch(err => console.warn('SW Cache skip:', url, err)))
+        );
       })
   );
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Eliminazione vecchia cache SW:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
-// Quando l'app richiede un file, intercettiamo la richiesta
+// Strategia Network-First per navigazione e index.html per mostrare subito le modifiche
 self.addEventListener('fetch', event => {
+  if (event.request.mode === 'navigate' || event.request.url.includes('index.html')) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))
