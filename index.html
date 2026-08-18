@@ -16358,6 +16358,14 @@ ${renderBottomNavigation()}
             await logAssemblyEvent(assemblyId, newStatus === 'voting' ? 'VOTAZIONE_APERTA' : 'VOTAZIONE_CHIUSA', `${statusText} per il punto OdG "${itemTitle}" dall'amministratore`);
         };
 
+        window.isScaleInTargetGroup = (propGroup, targetGroup) => {
+            if (!targetGroup) return true;
+            if (targetGroup === 'Tutte le scale') return true;
+            if (!propGroup) return false;
+            const allowed = targetGroup.split(',').map(s => s.trim().toLowerCase());
+            return allowed.includes(propGroup.trim().toLowerCase());
+        };
+
         const enterLiveRoom = (assemblyId) => {
             sessionStorage.setItem('activeLiveAssemblyId', assemblyId);
             navigateTo('assemblea_room');
@@ -16533,7 +16541,7 @@ ${renderBottomNavigation()}
                         if (itemScope === 'gruppo' && itemGroup) {
                             let groupMillesimiPresent = 0;
                             activeAttendees.forEach(a => {
-                                const userPropsInGroup = (a.proprieta || []).filter(p => p.gruppo === itemGroup);
+                                const userPropsInGroup = (a.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, itemGroup));
                                 const groupMil = userPropsInGroup.reduce((s, p) => s + (parseFloat(p.millesimi) || 0), 0);
                                 groupMillesimiPresent += groupMil;
                             });
@@ -17542,19 +17550,19 @@ ${renderBottomNavigation()}
                 let userHeads = 1;
 
                 if (itemScope === 'gruppo' && targetGroup) {
-                    const userGroupProps = (userProfile.proprieta || []).filter(p => p.gruppo === targetGroup);
+                    const userGroupProps = (userProfile.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
                     userMillesimi = userGroupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
 
                     const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
                     heldProxies.forEach(p => {
-                        if (p.delegatorGroup === targetGroup || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                        if (isScaleInTargetGroup(p.delegatorGroup, targetGroup) || (!p.delegatorGroup && p.delegatorMillesimi)) {
                             userMillesimi += (p.delegatorMillesimi || 0);
                             userHeads += 1;
                         }
                     });
 
                     if (userMillesimi <= 0 && userGroupProps.length === 0 && heldProxies.length === 0) {
-                        await customAlert(`Non possiedi unità immobiliari e non hai deleghe nel gruppo "${targetGroup}" per partecipare a questa votazione.`);
+                        await customAlert(`Non possiedi unità immobiliari e non hai deleghe nelle scale "${targetGroup}" per partecipare a questa votazione.`);
                         return;
                     }
                 } else {
@@ -17627,7 +17635,14 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                const userSelfMillesimi = userProfile?.millesimiTotali || 0;
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+
+                let userSelfMillesimi = userProfile?.millesimiTotali || 0;
+                if (itemScope === 'gruppo' && targetGroup) {
+                    const groupProps = (userProfile?.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
+                    userSelfMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
                 const userName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim();
 
                 const newVotes = [{
@@ -18207,12 +18222,12 @@ ${renderBottomNavigation()}
                     let voterHeads = 1;
 
                     if (itemScope === 'gruppo' && targetGroup) {
-                        const groupProps = (targetVoter.proprieta || []).filter(p => p.gruppo === targetGroup);
+                        const groupProps = (targetVoter.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
                         voterMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
 
                         const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
                         heldProxies.forEach(p => {
-                            if (p.delegatorGroup === targetGroup || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                            if (isScaleInTargetGroup(p.delegatorGroup, targetGroup) || (!p.delegatorGroup && p.delegatorMillesimi)) {
                                 voterMillesimi += (p.delegatorMillesimi || 0);
                                 voterHeads += 1;
                             }
