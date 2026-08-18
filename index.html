@@ -16383,12 +16383,14 @@ ${renderBottomNavigation()}
 
                 const attendees = assembly.attendees || [];
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && activeAttendees.some(a => a.uid === p.delegateId));
+                const totalPresences = activeAttendees.length + activeProxies.length;
                 let totMillesimi = 0;
                 activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
 
                 const totTesteEl = document.getElementById('room-tot-teste');
                 const totMillesimiEl = document.getElementById('room-tot-millesimi');
-                if (totTesteEl) totTesteEl.textContent = `${activeAttendees.length} Teste`;
+                if (totTesteEl) totTesteEl.textContent = `${activeAttendees.length} Fisici + ${activeProxies.length} Deleghe (${totalPresences})`;
                 if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
 
                 // QUORUM INFORMATIONAL ONLY / STATUS BANNER
@@ -16436,7 +16438,7 @@ ${renderBottomNavigation()}
                 // POPOLAMENTO ELENCO PRESENTI
                 const attendeesListEl = document.getElementById('room-attendees-list');
                 const totTesteBadgeEl = document.getElementById('room-tot-teste-badge');
-                if (totTesteBadgeEl) totTesteBadgeEl.textContent = activeAttendees.length;
+                if (totTesteBadgeEl) totTesteBadgeEl.textContent = `${activeAttendees.length} in aula + ${activeProxies.length} deleghe`;
 
                 if (attendeesListEl) {
                     if (attendees.length === 0) {
@@ -16622,37 +16624,98 @@ ${renderBottomNavigation()}
                             `;
                         }
 
-                        const userVote = item.votes?.find(v => v.voterId === currentUser.uid);
+                        const currentUid = currentUser?.uid;
+                        const userVote = item.votes?.find(v => v.voterId === currentUid);
+                        const userHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUid && p.status !== 'rejected');
+                        const isAccreditedCondominoAttendee = activeAttendees.some(a => a.uid === currentUid);
+
                         let voteButtonsHtml = '';
-                        if (item.status === 'voting' && !isClosedOrCancelled && (isAttendee || isAdmin)) {
-                            voteButtonsHtml = `
-                                <div style="margin-top:0.75rem;">
-                                    ${userVote ? `<div style="font-size:0.85rem; color:var(--accent-color); margin-bottom:0.4rem;">✓ Hai votato: <strong>${escapeHtml(userVote.choice)}</strong> (${userVote.millesimi.toFixed(2)} ‰)</div>` : ''}
-                                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
-                                        ${voteOptions.map(opt => {
-                                            let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
-                                            let icon = "🔹";
-                                            if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
-                                                btnStyle = "background-color: #1DB954; color: black;";
-                                                icon = "🟢";
-                                            } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
-                                                btnStyle = "background-color: var(--danger); color: white;";
-                                                icon = "🔴";
-                                            } else if (opt.toLowerCase().includes('astenuto')) {
-                                                btnStyle = "background-color: #f1c40f; color: black;";
-                                                icon = "⚪";
-                                            }
-                                            const isSelected = userVote && userVote.choice === opt;
-                                            const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
-                                            return `
-                                                <button onclick="submitLiveVote('${assemblyId}', '${item.id}', '${safeOpt}')" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 40px; flex: 1; min-width: 100px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
-                                                    ${icon} ${escapeHtml(opt)}
-                                                </button>
-                                            `;
-                                        }).join('')}
+                        if (item.status === 'voting' && !isClosedOrCancelled) {
+                            if (isAdmin && !isAccreditedCondominoAttendee) {
+                                voteButtonsHtml = `
+                                    <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
+                                        ℹ️ <strong>Modalità Amministratore:</strong> Non sei accreditato come condòmino in quest'assemblea. Utilizza il pulsante <strong>✍️ Voto Manuale</strong> per registrare i voti dei condòmini presenti.
                                     </div>
-                                </div>
-                            `;
+                                `;
+                            } else if (isAttendee || isAdmin) {
+                                let masterFlagHtml = '';
+                                if (userHeldProxies.length > 0) {
+                                    masterFlagHtml = `
+                                        <div style="background:var(--surface-color-light); padding:0.5rem 0.6rem; border-radius:6px; margin-bottom:0.5rem;">
+                                            <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                                                <input type="checkbox" id="proxy-master-flag-${item.id}" checked onchange="toggleDisjointVoteUI('${item.id}', this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                                                <span>☑️ La mia votazione vale per tutte le altre deleghe (${userHeldProxies.length})</span>
+                                            </label>
+                                        </div>
+                                    `;
+                                }
+
+                                const disjointRowsHtml = userHeldProxies.map(p => `
+                                    <div style="padding:0.4rem 0.6rem; background:rgba(255,255,255,0.03); border-radius:6px; margin-bottom:0.4rem;">
+                                        <div style="font-size:0.8rem; font-weight:700; color:var(--warning); margin-bottom:0.25rem;">
+                                            📜 Delega: ${escapeHtml(p.delegatorName)} (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)
+                                        </div>
+                                        <div style="display:flex; gap:0.3rem;">
+                                            ${voteOptions.map(opt => `
+                                                <label style="flex:1; font-size:0.75rem; text-align:center; padding:0.3rem; background:var(--surface-color-light); border-radius:4px; cursor:pointer;">
+                                                    <input type="radio" name="disjoint-choice-proxy-${p.delegatorId}-${item.id}" value="${escapeHtml(opt)}" style="accent-color:var(--accent-color);"> ${escapeHtml(opt)}
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('');
+
+                                const disjointContainerHtml = `
+                                    <div id="disjoint-vote-container-${item.id}" class="hidden" style="margin-top:0.5rem; text-align:left; background:var(--surface-color); padding:0.75rem; border-radius:8px; border:1px solid var(--accent-color);">
+                                        <div style="font-size:0.85rem; font-weight:700; color:var(--accent-color); margin-bottom:0.5rem;">⚙️ Votazione Disgiunta per Deleghe</div>
+                                        <div style="padding:0.4rem 0.6rem; background:rgba(255,255,255,0.03); border-radius:6px; margin-bottom:0.4rem;">
+                                            <div style="font-size:0.8rem; font-weight:700; color:var(--primary-text); margin-bottom:0.25rem;">
+                                                👤 Voto Personale (${escapeHtml(userProfile?.nome || '')} ${escapeHtml(userProfile?.cognome || '')})
+                                            </div>
+                                            <div style="display:flex; gap:0.3rem;">
+                                                ${voteOptions.map(opt => `
+                                                    <label style="flex:1; font-size:0.75rem; text-align:center; padding:0.3rem; background:var(--surface-color-light); border-radius:4px; cursor:pointer;">
+                                                        <input type="radio" name="disjoint-choice-self-${item.id}" value="${escapeHtml(opt)}" style="accent-color:var(--accent-color);"> ${escapeHtml(opt)}
+                                                    </label>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                        ${disjointRowsHtml}
+                                        <button onclick="submitDisjointLiveVote('${assemblyId}', '${item.id}')" class="btn btn-primary" style="width:100%; height:38px; margin-top:0.5rem; font-size:0.85rem; font-weight:700;">Invia Voti Disgiunti</button>
+                                    </div>
+                                `;
+
+                                voteButtonsHtml = `
+                                    <div style="margin-top:0.75rem;">
+                                        ${userVote ? `<div style="font-size:0.85rem; color:var(--accent-color); margin-bottom:0.4rem;">✓ Hai votato: <strong>${escapeHtml(userVote.choice)}</strong> (${userVote.millesimi.toFixed(2)} ‰)</div>` : ''}
+                                        ${masterFlagHtml}
+                                        <div id="unified-vote-buttons-${item.id}" style="display: flex; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
+                                            ${voteOptions.map(opt => {
+                                                let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
+                                                let icon = "🔹";
+                                                if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
+                                                    btnStyle = "background-color: #1DB954; color: black;";
+                                                    icon = "🟢";
+                                                } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
+                                                    btnStyle = "background-color: var(--danger); color: white;";
+                                                    icon = "🔴";
+                                                } else if (opt.toLowerCase().includes('astenuto')) {
+                                                    btnStyle = "background-color: #f1c40f; color: black;";
+                                                    icon = "⚪";
+                                                }
+                                                const isSelected = userVote && userVote.choice === opt;
+                                                const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
+                                                return `
+                                                    <button onclick="submitLiveVote('${assemblyId}', '${item.id}', '${safeOpt}')" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 40px; flex: 1; min-width: 100px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
+                                                        ${icon} ${escapeHtml(opt)}
+                                                    </button>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                        ${disjointContainerHtml}
+                                    </div>
+                                `;
+                            }
                         }
 
                         // DETTAGLIO VOTANTI E DELEGHE PER LA QUESTIONE
@@ -16746,7 +16809,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        const openManualAttendanceModal = async () => {
+        window.openManualAttendanceModal = async () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             if (!assemblyId) return;
 
@@ -16770,25 +16833,35 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                const optionsHtml = availableUsers.map(u => 
-                    `<option value="${u.id}">${escapeHtml(u.cognome)} ${escapeHtml(u.nome)} (${(u.millesimiTotali || 0).toFixed(2)} ‰)</option>`
-                ).join('');
+                const listCardsHtml = availableUsers.map((u, idx) => `
+                    <label class="manual-attendee-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
+                        <div style="display:flex; align-items:center; gap:0.6rem;">
+                            <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
+                            <div>
+                                <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')}</div>
+                                <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                            </div>
+                        </div>
+                        <strong style="color:var(--warning); font-size:0.85rem;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                    </label>
+                `).join('');
 
                 const modalContent = `
-                    <form onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-4">
+                    <form onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-4" style="text-align:left;">
                         <p style="color: var(--secondary-text); font-size: 0.9rem;">
                             Registra manualmente la presenza di un condomino all'assemblea.
                         </p>
                         <div>
-                            <label class="form-label">Condomino</label>
-                            <select id="select-manual-attendee" required class="form-select">
-                                <option value="">Seleziona condomino...</option>
-                                ${optionsHtml}
-                            </select>
+                            <label class="form-label" style="font-weight:700;">🔍 Digita nome o cognome condomino</label>
+                            <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.6rem; font-size:0.9rem; padding:0.45rem 0.7rem;" autofocus>
+                            
+                            <div id="container-manual-attendees-list" style="max-height:240px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.4rem;">
+                                ${listCardsHtml}
+                            </div>
                         </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra</button>
+                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
                         </div>
                     </form>
                 `;
@@ -16799,11 +16872,31 @@ ${renderBottomNavigation()}
             }
         };
 
-        const saveManualAttendance = async (event, assemblyId) => {
+        window.filterManualAttendeesList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.manual-attendee-card');
+            let firstVisibleRadio = null;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = text.includes(q);
+                card.style.display = isMatch ? 'flex' : 'none';
+                if (isMatch && !firstVisibleRadio) {
+                    firstVisibleRadio = card.querySelector('.manual-attendee-radio');
+                }
+            });
+            if (firstVisibleRadio) {
+                firstVisibleRadio.checked = true;
+            }
+        };
+
+        window.saveManualAttendance = async (event, assemblyId) => {
             event.preventDefault();
-            const select = document.getElementById("select-manual-attendee");
-            const userId = select.value;
-            if (!userId) return;
+            const selectedRadio = document.querySelector('input[name="manual-attendee-radio"]:checked');
+            if (!selectedRadio) {
+                await customAlert("Seleziona o digita il nome di un condomino.");
+                return;
+            }
+            const userId = selectedRadio.value;
 
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
@@ -16861,7 +16954,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        const openManualProxyModal = async () => {
+        window.openManualProxyModal = async () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             if (!assemblyId) return;
 
@@ -16872,32 +16965,57 @@ ${renderBottomNavigation()}
                     .map(d => ({ id: d.id, ...d.data() }))
                     .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
 
-                const optionsHtml = allCondomini.map(u =>
-                    `<option value="${u.id}">${escapeHtml(u.cognome)} ${escapeHtml(u.nome)} (${(u.millesimiTotali || 0).toFixed(2)} ‰)</option>`
-                ).join('');
+                const delegatorCardsHtml = allCondomini.map((u, idx) => `
+                    <label class="proxy-delegator-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="radio" name="proxy-delegator-radio" value="${u.id}" class="proxy-delegator-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 0 ? 'checked' : ''}>
+                            <div>
+                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')}</div>
+                                <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                            </div>
+                        </div>
+                        <strong style="color:var(--warning); font-size:0.8rem;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                    </label>
+                `).join('');
+
+                const delegateCardsHtml = allCondomini.map((u, idx) => `
+                    <label class="proxy-delegate-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="radio" name="proxy-delegate-radio" value="${u.id}" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 1 ? 'checked' : (idx === 0 && allCondomini.length === 1 ? 'checked' : '')}>
+                            <div>
+                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')}</div>
+                                <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                            </div>
+                        </div>
+                        <strong style="color:var(--warning); font-size:0.8rem;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                    </label>
+                `).join('');
 
                 const modalContent = `
-                    <form onsubmit="saveManualProxy(event, '${assemblyId}')" class="space-y-4">
-                        <p style="color: var(--secondary-text); font-size: 0.9rem;">
+                    <form onsubmit="saveManualProxy(event, '${assemblyId}')" class="space-y-4" style="text-align:left;">
+                        <p style="color: var(--secondary-text); font-size: 0.85rem;">
                             Registra una delega cartacea ricevuta da un condomino assente ad un condomino delegato.
                         </p>
+                        
                         <div>
-                            <label class="form-label">Delegante (Chi consegna la delega)</label>
-                            <select id="select-proxy-delegator" required class="form-select">
-                                <option value="">Seleziona delegante...</option>
-                                ${optionsHtml}
-                            </select>
+                            <label class="form-label" style="font-weight:700;">1. Selezione Delegante (Chi consegna la delega)</label>
+                            <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Digita nome o cognome delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;">
+                            <div id="container-proxy-delegators-list" style="max-height:150px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                                ${delegatorCardsHtml}
+                            </div>
                         </div>
+
                         <div>
-                            <label class="form-label">Delegato (Chi vota al suo posto)</label>
-                            <select id="select-proxy-delegate" required class="form-select">
-                                <option value="">Seleziona delegato...</option>
-                                ${optionsHtml}
-                            </select>
+                            <label class="form-label" style="font-weight:700; margin-top:0.5rem;">2. Selezione Delegato (Chi vota in aula)</label>
+                            <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Digita nome o cognome delegato..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;">
+                            <div id="container-proxy-delegates-list" style="max-height:150px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                                ${delegateCardsHtml}
+                            </div>
                         </div>
+
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra</button>
+                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Delega</button>
                         </div>
                     </form>
                 `;
@@ -16908,10 +17026,47 @@ ${renderBottomNavigation()}
             }
         };
 
-        const saveManualProxy = async (event, assemblyId) => {
+        window.filterProxyDelegatorsList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.proxy-delegator-card');
+            let firstVisibleRadio = null;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = text.includes(q);
+                card.style.display = isMatch ? 'flex' : 'none';
+                if (isMatch && !firstVisibleRadio) {
+                    firstVisibleRadio = card.querySelector('.proxy-delegator-radio');
+                }
+            });
+            if (firstVisibleRadio) {
+                firstVisibleRadio.checked = true;
+            }
+        };
+
+        window.filterProxyDelegatesList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.proxy-delegate-card');
+            let firstVisibleRadio = null;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = text.includes(q);
+                card.style.display = isMatch ? 'flex' : 'none';
+                if (isMatch && !firstVisibleRadio) {
+                    firstVisibleRadio = card.querySelector('.proxy-delegate-radio');
+                }
+            });
+            if (firstVisibleRadio) {
+                firstVisibleRadio.checked = true;
+            }
+        };
+
+        window.saveManualProxy = async (event, assemblyId) => {
             event.preventDefault();
-            const delegatorId = document.getElementById("select-proxy-delegator").value;
-            const delegateId = document.getElementById("select-proxy-delegate").value;
+            const delegatorRadio = document.querySelector('input[name="proxy-delegator-radio"]:checked');
+            const delegateRadio = document.querySelector('input[name="proxy-delegate-radio"]:checked');
+
+            const delegatorId = delegatorRadio?.value;
+            const delegateId = delegateRadio?.value;
 
             if (!delegatorId || !delegateId) {
                 await customAlert("Seleziona sia il delegante che il delegato.");
@@ -17442,7 +17597,134 @@ ${renderBottomNavigation()}
             }
         };
 
-        const openChangeScopeModal = async (assemblyId, itemId) => {
+        window.toggleDisjointVoteUI = (itemId, isMasterChecked) => {
+            const unifiedContainer = document.getElementById(`unified-vote-buttons-${itemId}`);
+            const disjointContainer = document.getElementById(`disjoint-vote-container-${itemId}`);
+            if (unifiedContainer && disjointContainer) {
+                if (isMasterChecked) {
+                    unifiedContainer.classList.remove('hidden');
+                    disjointContainer.classList.add('hidden');
+                } else {
+                    unifiedContainer.classList.add('hidden');
+                    disjointContainer.classList.remove('hidden');
+                }
+            }
+        };
+
+        window.submitDisjointLiveVote = async (assemblyId, itemId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                if (!item) return;
+
+                const selfChoice = document.querySelector(`input[name="disjoint-choice-self-${itemId}"]:checked`)?.value;
+                if (!selfChoice) {
+                    await customAlert("Seleziona la tua espressione di voto personale.");
+                    return;
+                }
+
+                const userSelfMillesimi = userProfile?.millesimiTotali || 0;
+                const userName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim();
+
+                const newVotes = [{
+                    voterId: currentUser?.uid,
+                    voterName: userName,
+                    choice: selfChoice,
+                    millesimi: userSelfMillesimi,
+                    heads: 1
+                }];
+
+                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser?.uid && p.status !== 'rejected');
+                for (const p of heldProxies) {
+                    const proxyChoice = document.querySelector(`input[name="disjoint-choice-proxy-${p.delegatorId}-${itemId}"]:checked`)?.value;
+                    if (!proxyChoice) {
+                        await customAlert(`Seleziona l'espressione di voto per la delega di ${p.delegatorName}.`);
+                        return;
+                    }
+                    newVotes.push({
+                        voterId: p.delegatorId,
+                        voterName: `${p.delegatorName} (Delega a ${userName})`,
+                        choice: proxyChoice,
+                        millesimi: p.delegatorMillesimi || 0,
+                        heads: 1,
+                        isProxyVote: true,
+                        delegateId: currentUser?.uid
+                    });
+                }
+
+                const voterIdsToRemove = [currentUser?.uid, ...heldProxies.map(hp => hp.delegatorId)];
+                const updatedAgenda = (assembly.agenda || []).map(agendaItem => {
+                    if (agendaItem.id === itemId) {
+                        const existingVotes = (agendaItem.votes || []).filter(v => !voterIdsToRemove.includes(v.voterId));
+                        return { ...agendaItem, votes: [...existingVotes, ...newVotes] };
+                    }
+                    return agendaItem;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await logAssemblyEvent(assemblyId, 'VOTO_DISGIUNTO', `Registrata votazione disgiunta per ${userName} ed i suoi deleganti.`);
+                await customAlert("Votazione disgiunta inviata con successo!");
+
+            } catch (err) {
+                console.error("Errore invio voto disgiunto:", err);
+                await customAlert("Si è verificato un errore durante l'invio del voto disgiunto.");
+            }
+        };
+
+        window.exportAssemblyResults = async (assemblyId) => {
+            try {
+                if (!assemblyId) {
+                    await customAlert("Nessuna assemblea selezionata per l'esportazione.");
+                    return;
+                }
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) {
+                    await customAlert("Assemblea non trovata.");
+                    return;
+                }
+                const assembly = docSnap.data();
+
+                let csvLines = [];
+                csvLines.push(`"ESITI VOTAZIONI ASSEMBLEA CONDOMINIALE"`);
+                csvLines.push(`"Titolo: ${assembly.title || 'Assemblea'}"`);
+                csvLines.push(`"Stato: ${(assembly.status || '').toUpperCase()}"`);
+                csvLines.push(`"Data: ${assembly.scheduledDate ? new Date(assembly.scheduledDate.toDate ? assembly.scheduledDate.toDate() : assembly.scheduledDate).toLocaleString('it-IT') : ''}"`);
+                csvLines.push(``);
+
+                (assembly.agenda || []).forEach((item, idx) => {
+                    csvLines.push(`"Punto ${idx + 1}: ${item.title || ''}"`);
+                    csvLines.push(`"Ambito: ${item.scope || 'intero'}","Stato: ${item.status || ''}"`);
+                    csvLines.push(`"Votante","Scelta Voto","Millesimi","Teste"`);
+                    (item.votes || []).forEach(v => {
+                        csvLines.push(`"${v.voterName || ''}","${v.choice || ''}","${(v.millesimi || 0).toFixed(2)}","${v.heads || 1}"`);
+                    });
+                    csvLines.push(``);
+                });
+
+                const csvString = csvLines.join('\n');
+                const blob = new Blob(["\ufeff" + csvString], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Esiti_Votazioni_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                await customAlert("Esiti votazione esportati in CSV con successo!");
+            } catch (err) {
+                console.error("Errore esportazione esiti:", err);
+                await customAlert("Errore durante l'esportazione degli esiti.");
+            }
+        };
+
+        window.openChangeScopeModal = async (assemblyId, itemId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
@@ -17451,20 +17733,35 @@ ${renderBottomNavigation()}
                 const item = (assembly.agenda || []).find(i => i.id === itemId);
                 if (!item) return;
 
-                let groupOptionsHtml = '<option value="" disabled selected>Seleziona scala/gruppo...</option>';
+                let groupNames = [];
                 try {
                     const q = query(collection(db, "partialCondos"), orderBy("name"));
                     const snapshot = await getDocs(q);
                     snapshot.forEach(doc => {
                         const g = doc.data().name;
                         if (g && g.toLowerCase() !== 'portineria') {
-                            const sel = (item.targetGroup === g) ? 'selected' : '';
-                            groupOptionsHtml += `<option value="${escapeHtml(g)}" ${sel}>${escapeHtml(g)}</option>`;
+                            groupNames.push(g);
                         }
                     });
                 } catch (e) { console.error(e); }
 
                 const isGroup = item.scope === 'gruppo';
+                const isScale = item.scope === 'scale';
+                const isIntero = !isGroup && !isScale;
+
+                const singleGroupOptionsHtml = groupNames.map(g => 
+                    `<option value="${escapeHtml(g)}" ${item.targetGroup === g ? 'selected' : ''}>${escapeHtml(g)}</option>`
+                ).join('');
+
+                const multiScaleCheckboxesHtml = groupNames.map(g => {
+                    const isChecked = item.targetGroup === 'Tutte le scale' || (item.targetGroup || '').split(', ').includes(g);
+                    return `
+                        <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
+                            <input type="checkbox" name="modal-scale-checkbox" value="${escapeHtml(g)}" ${isChecked ? 'checked' : ''} class="modal-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                            <span>${escapeHtml(g)}</span>
+                        </label>
+                    `;
+                }).join('');
 
                 const modalContent = `
                     <form onsubmit="saveScopeChange(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
@@ -17472,24 +17769,46 @@ ${renderBottomNavigation()}
                             Modifica l'ambito di votazione per il punto: <strong>${escapeHtml(item.title)}</strong>
                         </p>
                         <div>
-                            <label class="form-label">Ambito di Votazione</label>
+                            <label class="form-label" style="font-weight:700;">Ambito di Votazione</label>
                             <div class="space-y-2" style="margin-top:0.5rem;">
                                 <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
-                                    <input type="radio" name="modal-scope-type" value="intero" ${!isGroup ? 'checked' : ''} onchange="document.getElementById('modal-group-select-wrapper').classList.add('hidden')" style="accent-color:var(--accent-color); width:18px; height:18px;">
-                                    <span>🏢 Intero Condominio (Tutti i condòmini)</span>
+                                    <input type="radio" name="modal-scope-type" value="intero" ${isIntero ? 'checked' : ''} onchange="toggleScopeInputsModal('intero')" style="accent-color:var(--accent-color); width:18px; height:18px;">
+                                    <span>🏢 1. Intero condominio (Tutti i condòmini)</span>
                                 </label>
                                 <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
-                                    <input type="radio" name="modal-scope-type" value="gruppo" ${isGroup ? 'checked' : ''} onchange="document.getElementById('modal-group-select-wrapper').classList.remove('hidden')" style="accent-color:var(--accent-color); width:18px; height:18px;">
-                                    <span>🪜 Singola Scala / Gruppo di Condòmini</span>
+                                    <input type="radio" name="modal-scope-type" value="scale" ${isScale ? 'checked' : ''} onchange="toggleScopeInputsModal('scale')" style="accent-color:var(--accent-color); width:18px; height:18px;">
+                                    <span>🪜 2. Scale / Gruppi (Selezione Multipla)</span>
+                                </label>
+                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
+                                    <input type="radio" name="modal-scope-type" value="gruppo" ${isGroup ? 'checked' : ''} onchange="toggleScopeInputsModal('gruppo')" style="accent-color:var(--accent-color); width:18px; height:18px;">
+                                    <span>🪜 3. Singola Scala/Gruppo</span>
                                 </label>
                             </div>
                         </div>
-                        <div id="modal-group-select-wrapper" class="${!isGroup ? 'hidden' : ''}">
-                            <label class="form-label">Seleziona Scala / Gruppo</label>
+
+                        <!-- CONTENITORE SELEZIONE MULTIPLA SCALE -->
+                        <div id="modal-scope-scale-wrapper" class="${!isScale ? 'hidden' : ''}" style="background:var(--surface-color-light); padding:0.75rem; border-radius:8px; margin-top:0.5rem;">
+                            <label class="form-label" style="font-weight:700; margin-bottom:0.4rem;">Seleziona una o più scale</label>
+                            <div style="margin-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
+                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-weight:700; color:var(--accent-color); font-size:0.85rem;">
+                                    <input type="checkbox" id="modal-all-scales-cb" ${item.targetGroup === 'Tutte le scale' ? 'checked' : ''} onchange="toggleAllScaleCheckboxes(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                                    <span>🏢 Tutte le scale</span>
+                                </label>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                ${multiScaleCheckboxesHtml}
+                            </div>
+                        </div>
+
+                        <!-- CONTENITORE SELEZIONE SINGOLA SCALA -->
+                        <div id="modal-scope-group-wrapper" class="${!isGroup ? 'hidden' : ''}" style="margin-top:0.5rem;">
+                            <label class="form-label" style="font-weight:700;">Seleziona Singola Scala / Gruppo</label>
                             <select id="modal-scope-target-group" class="form-select">
-                                ${groupOptionsHtml}
+                                <option value="" disabled ${!item.targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
+                                ${singleGroupOptionsHtml}
                             </select>
                         </div>
+
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
                             <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Conferma</button>
@@ -17503,15 +17822,38 @@ ${renderBottomNavigation()}
             }
         };
 
-        const saveScopeChange = async (e, assemblyId, itemId) => {
+        window.toggleScopeInputsModal = (selectedType) => {
+            const scaleWrapper = document.getElementById('modal-scope-scale-wrapper');
+            const groupWrapper = document.getElementById('modal-scope-group-wrapper');
+            if (scaleWrapper) scaleWrapper.classList.toggle('hidden', selectedType !== 'scale');
+            if (groupWrapper) groupWrapper.classList.toggle('hidden', selectedType !== 'gruppo');
+        };
+
+        window.toggleAllScaleCheckboxes = (isChecked) => {
+            const cbs = document.querySelectorAll('.modal-scale-item-cb');
+            cbs.forEach(cb => cb.checked = isChecked);
+        };
+
+        window.saveScopeChange = async (e, assemblyId, itemId) => {
             e.preventDefault();
             const scopeType = document.querySelector('input[name="modal-scope-type"]:checked')?.value || 'intero';
             let targetGroup = null;
+
             if (scopeType === 'gruppo') {
                 targetGroup = document.getElementById('modal-scope-target-group')?.value;
                 if (!targetGroup) {
                     await customAlert("Seleziona una scala o gruppo di riferimento.");
                     return;
+                }
+            } else if (scopeType === 'scale') {
+                const isAll = document.getElementById('modal-all-scales-cb')?.checked;
+                const checkedScaleCbs = document.querySelectorAll('.modal-scale-item-cb:checked');
+                const selectedScales = Array.from(checkedScaleCbs).map(cb => cb.value);
+
+                if (isAll || selectedScales.length === 0) {
+                    targetGroup = 'Tutte le scale';
+                } else {
+                    targetGroup = selectedScales.join(', ');
                 }
             }
 
@@ -17534,13 +17876,14 @@ ${renderBottomNavigation()}
 
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
                 hideModal();
+                await customAlert("Ambito di votazione aggiornato con successo.");
             } catch (err) {
                 console.error("Errore salvataggio ambito:", err);
                 await customAlert("Errore durante il salvataggio dell'ambito.");
             }
         };
 
-        const openSubordinatedVoteModal = async (assemblyId, itemId) => {
+        window.openSubordinatedVoteModal = async (assemblyId, itemId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
@@ -17549,39 +17892,54 @@ ${renderBottomNavigation()}
                 const item = (assembly.agenda || []).find(i => i.id === itemId);
                 if (!item) return;
 
-                let groupOptionsHtml = '<option value="" disabled selected>Seleziona gruppo/scala...</option>';
+                let groupNames = [];
                 try {
                     const q = query(collection(db, "partialCondos"), orderBy("name"));
                     const snapshot = await getDocs(q);
                     snapshot.forEach(doc => {
                         const g = doc.data().name;
                         if (g && g.toLowerCase() !== 'portineria') {
-                            groupOptionsHtml += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
+                            groupNames.push(g);
                         }
                     });
                 } catch (e) { console.error(e); }
+
+                const multiScaleCheckboxesHtml = groupNames.map(g => `
+                    <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
+                        <input type="checkbox" name="subordinated-scale-checkbox" value="${escapeHtml(g)}" class="subordinated-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                        <span>${escapeHtml(g)}</span>
+                    </label>
+                `).join('');
 
                 const modalContent = `
                     <form onsubmit="startSubordinatedVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
                         <div style="background:rgba(243,156,18,0.15); padding:0.75rem; border-radius:8px; color:var(--warning); font-size:0.85rem; line-height:1.4;">
                             <strong>🪜 Votazione Subordinata (a Cascata)</strong><br>
-                            La proposta generale per l'intero condominio è stata respinta. Puoi ora avviare la votazione subordinata limitata ai soli proprietari di una singola scala.
+                            La proposta generale per l'intero condominio è stata respinta. Puoi ora avviare la votazione subordinata limitata ai soli proprietari delle scale selezionate.
                         </div>
                         <p style="font-size:0.9rem; color:var(--secondary-text);">
                             Punto OdG: <strong>${escapeHtml(item.title)}</strong>
                         </p>
-                        <div>
-                            <label class="form-label">Seleziona la Scala / Gruppo interessato</label>
-                            <select id="modal-subordinated-group" class="form-select" required>
-                                ${groupOptionsHtml}
-                            </select>
+                        
+                        <div style="background:var(--surface-color-light); padding:0.75rem; border-radius:8px;">
+                            <label class="form-label" style="font-weight:700; margin-bottom:0.4rem;">Seleziona Scala / Gruppi Interessati</label>
+                            <div style="margin-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
+                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-weight:700; color:var(--accent-color); font-size:0.85rem;">
+                                    <input type="checkbox" id="subordinated-all-scales-cb" onchange="const cbs=document.querySelectorAll('.subordinated-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                                    <span>🏢 Tutte le scale</span>
+                                </label>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                ${multiScaleCheckboxesHtml}
+                            </div>
                         </div>
+
                         <p style="font-size:0.8rem; color:var(--secondary-text);">
-                            <em>I voti precedenti verranno archiviati e la votazione verrà riaperta ricalcolando il quorum sulla scala selezionata.</em>
+                            <em>I voti precedenti verranno archiviati e la votazione verrà riaperta ricalcolando il quorum sulle scale selezionate.</em>
                         </p>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; font-size:0.85rem; font-weight:700;">Conferma</button>
+                            <button type="submit" class="btn" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; font-size:0.85rem; font-weight:700;">Conferma Subordinata</button>
                         </div>
                     </form>
                 `;
@@ -17592,11 +17950,17 @@ ${renderBottomNavigation()}
             }
         };
 
-        const startSubordinatedVote = async (e, assemblyId, itemId) => {
+        window.startSubordinatedVote = async (e, assemblyId, itemId) => {
             e.preventDefault();
-            const targetGroup = document.getElementById('modal-subordinated-group')?.value;
-            if (!targetGroup) {
-                await customAlert("Seleziona la scala o gruppo interessato.");
+            const isAll = document.getElementById('subordinated-all-scales-cb')?.checked;
+            const checkedCbs = document.querySelectorAll('.subordinated-scale-item-cb:checked');
+            const selectedScales = Array.from(checkedCbs).map(cb => cb.value);
+
+            let targetGroup = 'Tutte le scale';
+            if (!isAll && selectedScales.length > 0) {
+                targetGroup = selectedScales.join(', ');
+            } else if (!isAll && selectedScales.length === 0) {
+                await customAlert("Seleziona almeno una scala per la votazione subordinata.");
                 return;
             }
 
@@ -17630,7 +17994,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        const logAssemblyEvent = async (assemblyId, eventType, description) => {
+        window.logAssemblyEvent = async (assemblyId, eventType, description) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
@@ -17654,7 +18018,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        const toggleAttendeeStatus = async (assemblyId, attendeeUid, newStatus) => {
+        window.toggleAttendeeStatus = async (assemblyId, attendeeUid, newStatus) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
@@ -17690,7 +18054,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        const openAdminManualVoteModal = async (assemblyId, itemId) => {
+        window.openAdminManualVoteModal = async (assemblyId, itemId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
@@ -17711,10 +18075,6 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                const optionsHtml = unvotedAttendees.map(a => 
-                    `<option value="${a.uid}">${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} (${(a.millesimi || 0).toFixed(2)} ‰)</option>`
-                ).join('');
-
                 const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
                 const voteChoicesHtml = voteOptions.map((opt, idx) => {
                     let color = 'var(--secondary-text)';
@@ -17725,35 +18085,61 @@ ${renderBottomNavigation()}
                     else if (opt.toLowerCase().includes('astenuto')) { color = '#f1c40f'; bg = 'rgba(241,196,15,0.1)'; icon = '⚪'; }
 
                     return `
-                        <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:${bg};">
-                            <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'required' : ''} style="accent-color:${color};">
-                            <span style="font-weight:700; color:${color};">${icon} ${escapeHtml(opt)}</span>
+                        <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:${bg}; margin:0;">
+                            <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'checked' : ''} style="accent-color:${color};">
+                            <span style="font-weight:700; color:${color}; font-size:0.85rem;">${icon} ${escapeHtml(opt)}</span>
                         </label>
                     `;
                 }).join('');
 
+                const votersCheckboxesHtml = unvotedAttendees.map(a => `
+                    <label class="manual-voter-item flex items-center justify-between p-2 card" style="cursor:pointer; margin-bottom:0.35rem; text-align:left; background:var(--surface-color-light);" data-search-name="${escapeHtml(((a.cognome || '') + ' ' + (a.nome || '')).toLowerCase())}">
+                        <div style="display:flex; align-items:center; gap:0.6rem;">
+                            <input type="checkbox" name="manual-voter-checkbox" value="${a.uid}" class="manual-voter-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px;">
+                            <div>
+                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(a.cognome || '')} ${escapeHtml(a.nome || '')}</div>
+                            </div>
+                        </div>
+                        <strong style="color:var(--warning); font-size:0.85rem;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                    </label>
+                `).join('');
+
                 const modalContent = `
                     <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
-                        <p style="font-size:0.9rem; color:var(--secondary-text);">
+                        <p style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:0.5rem;">
                             Punto OdG: <strong>${escapeHtml(item.title)}</strong><br>
-                            <span style="font-size:0.8rem;">Inserimento manuale del voto per condòmini privi di smartphone o con delega cartacea al banco.</span>
+                            <span style="font-size:0.8rem;">Seleziona l'esito del voto e i condòmini a cui applicarlo (singoli o massivo per tutti i non votanti).</span>
                         </p>
+                        
                         <div>
-                            <label class="form-label">Seleziona Condòmino Presente</label>
-                            <select id="manual-vote-voter-id" required class="form-select">
-                                <option value="" disabled selected>Seleziona condòmino...</option>
-                                ${optionsHtml}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Espressione di Voto</label>
+                            <label class="form-label" style="font-weight:700;">1. Espressione di Voto</label>
                             <div class="grid grid-cols-2 gap-2 mt-1">
                                 ${voteChoicesHtml}
                             </div>
                         </div>
+
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                <label class="form-label" style="font-weight:700; margin:0;">2. Selezione Condòmini Non Votanti (${unvotedAttendees.length})</label>
+                            </div>
+                            
+                            <input type="text" placeholder="🔍 Digita nome o cognome condomino..." oninput="filterManualVotersList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.4rem 0.6rem;" autofocus>
+                            
+                            <div style="background:var(--surface-color-light); padding:0.4rem 0.6rem; border-radius:6px; margin-bottom:0.5rem; display:flex; align-items:center; justify-content:space-between;">
+                                <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                                    <input type="checkbox" id="toggle-all-voters-btn" onchange="toggleSelectAllNonVoters(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                                    <span>☑️ Seleziona tutti i non votanti</span>
+                                </label>
+                            </div>
+
+                            <div id="manual-voters-list-container" style="max-height:200px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                                ${votersCheckboxesHtml}
+                            </div>
+                        </div>
+
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra</button>
+                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Voto/i</button>
                         </div>
                     </form>
                 `;
@@ -17765,13 +18151,36 @@ ${renderBottomNavigation()}
             }
         };
 
-        const submitAdminManualVote = async (e, assemblyId, itemId) => {
+        window.filterManualVotersList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.manual-voter-item');
+            items.forEach(item => {
+                const name = item.getAttribute('data-search-name') || '';
+                item.style.display = name.includes(q) ? 'flex' : 'none';
+            });
+        };
+
+        window.toggleSelectAllNonVoters = (isChecked) => {
+            const checkboxes = document.querySelectorAll('.manual-voter-checkbox');
+            checkboxes.forEach(cb => {
+                if (cb.closest('.manual-voter-item').style.display !== 'none') {
+                    cb.checked = isChecked;
+                }
+            });
+        };
+
+        window.submitAdminManualVote = async (e, assemblyId, itemId) => {
             e.preventDefault();
-            const voterUid = document.getElementById('manual-vote-voter-id')?.value;
+            const checkedBoxes = document.querySelectorAll('.manual-voter-checkbox:checked');
+            const selectedUids = Array.from(checkedBoxes).map(cb => cb.value);
             const choice = document.querySelector('input[name="manual-vote-choice"]:checked')?.value;
 
-            if (!voterUid || !choice) {
-                await customAlert("Seleziona il condòmino e l'espressione di voto.");
+            if (selectedUids.length === 0) {
+                await customAlert("Seleziona almeno un condòmino a cui applicare il voto.");
+                return;
+            }
+            if (!choice) {
+                await customAlert("Seleziona l'espressione di voto.");
                 return;
             }
 
@@ -17784,61 +18193,66 @@ ${renderBottomNavigation()}
                 const item = (assembly.agenda || []).find(i => i.id === itemId);
                 if (!item) return;
 
-                const targetVoter = (assembly.attendees || []).find(a => a.uid === voterUid);
-                if (!targetVoter) return;
-
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
 
-                let voterMillesimi = 0;
-                let voterHeads = 1;
+                const newVotes = [];
+                let totalVoterNames = [];
 
-                if (itemScope === 'gruppo' && targetGroup) {
-                    const groupProps = (targetVoter.proprieta || []).filter(p => p.gruppo === targetGroup);
-                    voterMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                selectedUids.forEach(voterUid => {
+                    const targetVoter = (assembly.attendees || []).find(a => a.uid === voterUid);
+                    if (!targetVoter) return;
 
-                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
-                    heldProxies.forEach(p => {
-                        if (p.delegatorGroup === targetGroup || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                    let voterMillesimi = 0;
+                    let voterHeads = 1;
+
+                    if (itemScope === 'gruppo' && targetGroup) {
+                        const groupProps = (targetVoter.proprieta || []).filter(p => p.gruppo === targetGroup);
+                        voterMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+
+                        const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
+                        heldProxies.forEach(p => {
+                            if (p.delegatorGroup === targetGroup || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                                voterMillesimi += (p.delegatorMillesimi || 0);
+                                voterHeads += 1;
+                            }
+                        });
+                    } else {
+                        voterMillesimi = targetVoter.millesimi || 0;
+                        const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
+                        heldProxies.forEach(p => {
                             voterMillesimi += (p.delegatorMillesimi || 0);
                             voterHeads += 1;
-                        }
-                    });
-                } else {
-                    voterMillesimi = targetVoter.millesimi || 0;
-                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
-                    heldProxies.forEach(p => {
-                        voterMillesimi += (p.delegatorMillesimi || 0);
-                        voterHeads += 1;
-                    });
-                }
+                        });
+                    }
 
-                const voteRecord = {
-                    voterId: voterUid,
-                    voterName: `${targetVoter.nome} ${targetVoter.cognome || ''} (Admin)`,
-                    choice: choice,
-                    millesimi: voterMillesimi,
-                    heads: voterHeads,
-                    isManualAdminVote: true,
-                    recordedAt: Date.now()
-                };
+                    totalVoterNames.push(`${targetVoter.nome} ${targetVoter.cognome || ''}`.trim());
+
+                    newVotes.push({
+                        voterId: voterUid,
+                        voterName: `${targetVoter.nome} ${targetVoter.cognome || ''} (Admin)`,
+                        choice: choice,
+                        millesimi: voterMillesimi,
+                        heads: voterHeads,
+                        isManualAdminVote: true,
+                        recordedAt: Date.now()
+                    });
+                });
 
                 const updatedAgenda = (assembly.agenda || []).map(agendaItem => {
                     if (agendaItem.id === itemId) {
-                        const votes = (agendaItem.votes || []).filter(v => v.voterId !== voterUid);
-                        votes.push(voteRecord);
-                        return { ...agendaItem, votes: votes };
+                        const existingVotes = (agendaItem.votes || []).filter(v => !selectedUids.includes(v.voterId));
+                        return { ...agendaItem, votes: [...existingVotes, ...newVotes] };
                     }
                     return agendaItem;
                 });
 
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
 
-                const fullName = `${targetVoter.nome} ${targetVoter.cognome || ''}`.trim();
-                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato voto assistito dall'amministratore per ${fullName} (${choice} - ${voterMillesimi.toFixed(2)} ‰)`);
+                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato voto manuale per ${selectedUids.length} condòmini: ${choice}`);
 
                 hideModal();
-                await customAlert(`Voto per ${fullName} (${choice}) registrato con successo!`);
+                await customAlert(`Voto (${choice}) registrato con successo per ${selectedUids.length} condòmini!`);
 
             } catch (err) {
                 console.error("Errore invio voto manuale admin:", err);
@@ -17848,12 +18262,14 @@ ${renderBottomNavigation()}
 
         window.showCreateAssemblyModal = async () => {
             let partialGroupsOptions = '';
+            let groupNames = [];
             try {
                 const q = query(collection(db, "partialCondos"), orderBy("name"));
                 const snapshot = await getDocs(q);
                 snapshot.forEach(doc => {
                     const g = doc.data().name;
                     if (g && g.toLowerCase() !== 'portineria') {
+                        groupNames.push(g);
                         partialGroupsOptions += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
                     }
                 });
@@ -17908,6 +18324,14 @@ ${renderBottomNavigation()}
                     const div = document.createElement("div");
                     div.className = "odg-item-row card";
                     div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.5rem; text-align:left;";
+                    
+                    const multiScaleCheckboxesHtml = groupNames.map(g => `
+                        <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
+                            <input type="checkbox" value="${escapeHtml(g)}" class="odg-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                            <span>${escapeHtml(g)}</span>
+                        </label>
+                    `).join('');
+
                     div.innerHTML = `
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <input type="text" class="form-input odg-title-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
@@ -17916,14 +18340,27 @@ ${renderBottomNavigation()}
                         <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem;">
                             <label style="font-weight:600; color:var(--secondary-text);">Ambito Votazione:</label>
                             <select class="form-select odg-scope-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
-                                <option value="intero" ${scope === 'intero' ? 'selected' : ''}>🏢 Intero Condominio</option>
-                                <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>🪜 Singola Scala / Gruppo</option>
+                                <option value="intero" ${scope === 'intero' ? 'selected' : ''}>🏢 1. Intero Condominio</option>
+                                <option value="scale" ${scope === 'scale' ? 'selected' : ''}>🪜 2. Scale / Gruppi (Selezione Multipla)</option>
+                                <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>🪜 3. Singola Scala / Gruppo</option>
                             </select>
-                            <select class="form-select odg-group-select ${scope === 'intero' ? 'hidden' : ''}" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
+                            <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
                                 <option value="" disabled ${!targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
                                 ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
                             </select>
                         </div>
+
+                        <!-- CONTENITORE CHECKBOX SELEZIONE MULTIPLA SCALE -->
+                        <div class="odg-scale-multi-wrapper ${scope === 'scale' ? '' : 'hidden'}" style="background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.3rem; width:100%;">
+                            <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; cursor:pointer;">
+                                <input type="checkbox" class="odg-all-scales-cb" onchange="const cbs=this.closest('.odg-scale-multi-wrapper').querySelectorAll('.odg-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                                <span>🏢 Tutte le scale</span>
+                            </label>
+                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                ${multiScaleCheckboxesHtml}
+                            </div>
+                        </div>
+
                         <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem; margin-top:0.25rem;">
                             <label style="font-weight:600; color:var(--secondary-text);">Risposte:</label>
                             <select class="form-select odg-options-type-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
@@ -17936,13 +18373,19 @@ ${renderBottomNavigation()}
                     `;
                     const scopeSelect = div.querySelector('.odg-scope-select');
                     const groupSelect = div.querySelector('.odg-group-select');
+                    const scaleMultiWrapper = div.querySelector('.odg-scale-multi-wrapper');
                     const typeSelect = div.querySelector('.odg-options-type-select');
                     const customInput = div.querySelector('.odg-custom-options-input');
 
                     scopeSelect.onchange = () => {
-                        if (scopeSelect.value === 'gruppo') {
+                        if (scopeSelect.value === 'scale') {
+                            scaleMultiWrapper.classList.remove('hidden');
+                            groupSelect.classList.add('hidden');
+                        } else if (scopeSelect.value === 'gruppo') {
+                            scaleMultiWrapper.classList.add('hidden');
                             groupSelect.classList.remove('hidden');
                         } else {
+                            scaleMultiWrapper.classList.add('hidden');
                             groupSelect.classList.add('hidden');
                         }
                     };
@@ -17976,9 +18419,28 @@ ${renderBottomNavigation()}
                     itemRows.forEach((row, index) => {
                         const titleVal = row.querySelector('.odg-title-input')?.value.trim();
                         const scopeVal = row.querySelector('.odg-scope-select')?.value || 'intero';
-                        const groupVal = row.querySelector('.odg-group-select')?.value || '';
                         const typeVal = row.querySelector('.odg-options-type-select')?.value || 'standard';
                         const customVal = row.querySelector('.odg-custom-options-input')?.value.trim() || '';
+
+                        let targetGroup = null;
+                        if (scopeVal === 'scale') {
+                            const isAll = row.querySelector('.odg-all-scales-cb')?.checked;
+                            const checkedScaleCbs = row.querySelectorAll('.odg-scale-item-cb:checked');
+                            const selectedScales = Array.from(checkedScaleCbs).map(cb => cb.value);
+
+                            if (isAll || (selectedScales.length === groupNames.length && groupNames.length > 0)) {
+                                targetGroup = 'Tutte le scale';
+                            } else if (selectedScales.length > 0) {
+                                targetGroup = selectedScales.join(', ');
+                            } else {
+                                hasGroupError = true;
+                            }
+                        } else if (scopeVal === 'gruppo') {
+                            targetGroup = row.querySelector('.odg-group-select')?.value || '';
+                            if (!targetGroup) {
+                                hasGroupError = true;
+                            }
+                        }
 
                         let voteOptions = ["Favorevole", "Contrario", "Astenuto"];
                         if (typeVal === 'sino') voteOptions = ["Sì", "No", "Astenuto"];
@@ -17989,14 +18451,11 @@ ${renderBottomNavigation()}
                         }
 
                         if (titleVal) {
-                            if (scopeVal === 'gruppo' && !groupVal) {
-                                hasGroupError = true;
-                            }
                             agendaItems.push({
                                 id: `punto_${index + 1}`,
                                 title: titleVal,
                                 scope: scopeVal,
-                                targetGroup: scopeVal === 'gruppo' ? groupVal : null,
+                                targetGroup: targetGroup,
                                 voteOptionsType: typeVal,
                                 customOptionsStr: customVal,
                                 voteOptions: voteOptions,
