@@ -182,11 +182,11 @@ window.AssembleeModule = {
                     </div>
                 </div>
 
-                <!-- ELENCO PRESENTI ACCREDITATI -->
+                <!-- Presenti -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; cursor: pointer;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3;">Elenco Presenti Accreditati (<span id="room-tot-teste-badge">0</span>)</h3>
-                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0;">Mostra/Nascondi ▼</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; cursor: pointer; margin-bottom: 0.5rem;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
+                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3; flex: 1; min-width: 0;">Presenti (<span id="room-tot-teste-badge">0</span>)</h3>
+                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; margin-left: 0.5rem;">Mostra/Nascondi ▼</span>
                     </div>
                     <div id="room-attendees-collapsible" class="mt-3 hidden space-y-2">
                         <div id="room-attendees-list">
@@ -212,27 +212,23 @@ window.AssembleeModule = {
                 <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
                 <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3 class="card-title" style="margin:0; font-size: 1rem;">Ordine del Giorno & Votazioni</h3>
-                        <button type="button" id="btn-room-reorder" onclick="showInteractiveReorderModal(sessionStorage.getItem('activeLiveAssemblyId'))" title="Modifica / Riordina Punti OdG" style="background: rgba(29, 185, 84, 0.12); border: 1px solid rgba(29, 185, 84, 0.3); color: var(--accent-color); cursor: pointer; padding: 0.25rem 0.55rem; border-radius: 6px; display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                            <span>Modifica</span>
-                        </button>
+                        <h3 class="card-title" style="margin:0; font-size: 1rem;">Punti di discussione</h3>
                     </div>
                     <div id="room-odg-poll-list" class="space-y-4">
                         <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
                     </div>
                 </div>
 
-                <!-- REGISTRO EVENTI ASSEMBLEA (AUDIT LOG) -->
+                <!-- Log Assemblea -->
                 <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3; display:flex; align-items:center; gap:0.4rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; cursor: pointer; margin-bottom: 0.5rem;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
+                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3; display:flex; align-items:center; gap:0.4rem; flex: 1; min-width: 0;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                            Registro Eventi Assemblea (Audit Log)
+                            <span>Log Assemblea</span>
                         </h3>
-                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0;">Mostra/Nascondi ▼</span>
+                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; margin-left: 0.5rem;">Mostra/Nascondi ▼</span>
                     </div>
-                    <div id="room-event-log-collapsible" class="mt-3 hidden space-y-2">
+                    <div id="room-event-log-collapsible" class="mt-3 hidden space-y-2" style="margin-top: 0.75rem;">
                         <div id="room-event-log-list">
                             <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento registro eventi...</p>
                         </div>
@@ -241,7 +237,7 @@ window.AssembleeModule = {
 
                 <!-- PULSANTE CONCLUDI ASSEMBLEA (POSIZIONATO IN FONDO ALLA SCHERMATA) -->
                 <div id="room-admin-conclude-bottom" class="hidden card" style="padding: 1rem; text-align: center; background: rgba(239,68,68,0.08); border: 1px dashed var(--danger);">
-                    <p style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.75rem;">Al termine di tutte le discussioni e votazioni dell'Ordine del Giorno, concludi ufficialmente la seduta live.</p>
+                    <p style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.75rem;">Al termine di tutte le discussioni e votazioni, concludi ufficialmente l'assemblea.</p>
                     <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 800; font-size:0.9rem; padding:0.75rem 1.5rem; width:100%; max-width:340px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
                         Concludi Assemblea
