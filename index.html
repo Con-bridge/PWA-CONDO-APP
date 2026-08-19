@@ -16261,20 +16261,25 @@ ${renderBottomNavigation()}
             const messageBox = document.getElementById("scanner-message");
 
             if (window.html5QrcodeScanner) {
-                try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                try {
+                    if (typeof window.html5QrcodeScanner.stop === 'function') {
+                        window.html5QrcodeScanner.stop().catch(() => {});
+                    }
+                    try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                } catch (e) { }
+                window.html5QrcodeScanner = null;
             }
 
-            const scanTypes = (typeof Html5QrcodeScanType !== 'undefined') ? [Html5QrcodeScanType.SCAN_TYPE_CAMERA] : [0];
-            window.html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader",
-                { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0, supportedScanTypes: scanTypes },
-                false
-            );
+            const readerEl = document.getElementById("reader");
+            if (!readerEl) return;
+
+            let isProcessingScan = false;
 
             const onScanSuccess = async (decodedText) => {
-                try {
-                    window.html5QrcodeScanner.pause(true);
+                if (isProcessingScan) return;
+                isProcessingScan = true;
 
+                try {
                     const jsonString = atob(decodedText);
                     const securityData = JSON.parse(jsonString);
                     const qrUid = securityData.uid;
@@ -16291,7 +16296,7 @@ ${renderBottomNavigation()}
                     const assembly = docSnap.data();
                     const attendees = assembly.attendees || [];
 
-                    if (attendees.some(a => a.uid === qrUid)) {
+                    if (attendees.some(a => a.uid === qrUid && a.status !== 'uscito')) {
                         throw new Error("Condomino già registrato come Presente.");
                     }
 
@@ -16300,7 +16305,6 @@ ${renderBottomNavigation()}
 
                     const user = userDoc.data();
 
-                    // LOGICA DELEGHE: Controlla se l'utente scansionato ha ricevuto deleghe da altri vicini
                     let userBaseMillesimi = parseFloat(user.millesimiTotali) || 0;
                     if (userBaseMillesimi <= 0 && Array.isArray(user.proprieta)) {
                         userBaseMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
@@ -16330,21 +16334,63 @@ ${renderBottomNavigation()}
                         attendees: arrayUnion(newAttendee)
                     });
 
-                    messageBox.className = 'message-box success';
-                    messageBox.textContent = `Accreditato: ${user.nome} ${user.cognome} con ${totalMillesimiAccreditati.toFixed(2)} ‰${proxyNoticeText}`;
+                    if (messageBox) {
+                        messageBox.className = 'message-box success';
+                        messageBox.textContent = `✅ Accreditato: ${user.nome} ${user.cognome} (${totalMillesimiAccreditati.toFixed(2)} ‰)${proxyNoticeText}`;
+                        messageBox.style.display = 'block';
+                    }
 
                 } catch (error) {
-                    messageBox.className = 'message-box error';
-                    messageBox.textContent = error.message;
+                    if (messageBox) {
+                        messageBox.className = 'message-box error';
+                        messageBox.textContent = `⚠️ Errore: ${error.message}`;
+                        messageBox.style.display = 'block';
+                    }
                 } finally {
                     setTimeout(() => {
-                        try { window.html5QrcodeScanner.resume(); } catch (e) { }
+                        isProcessingScan = false;
                         if (messageBox) messageBox.style.display = 'none';
                     }, 3000);
                 }
             };
 
-            window.html5QrcodeScanner.render(onScanSuccess, () => { });
+            if (typeof Html5Qrcode !== 'undefined') {
+                const html5QrCode = new Html5Qrcode("reader");
+                window.html5QrcodeScanner = html5QrCode;
+                const qrConfig = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    qrConfig,
+                    onScanSuccess,
+                    () => { }
+                ).catch(err => {
+                    console.warn("Fotocamera posteriore fallita, tento fotocamera utente:", err);
+                    html5QrCode.start(
+                        { facingMode: "user" },
+                        qrConfig,
+                        onScanSuccess,
+                        () => { }
+                    ).catch(e => {
+                        console.error("Errore avvio fotocamera:", e);
+                        if (messageBox) {
+                            messageBox.className = "message-box error";
+                            messageBox.textContent = `Impossibile avviare fotocamera: ${e.message || e}`;
+                            messageBox.style.display = "block";
+                        }
+                    });
+                });
+            } else {
+                const scanTypes = (typeof Html5QrcodeScanType !== 'undefined') ? [Html5QrcodeScanType.SCAN_TYPE_CAMERA] : [0];
+                window.html5QrcodeScanner = new Html5QrcodeScanner("reader", {
+                    fps: 10,
+                    qrbox: { width: 220, height: 220 },
+                    aspectRatio: 1.0,
+                    supportedScanTypes: scanTypes,
+                    videoConstraints: { facingMode: { exact: "environment" } }
+                }, false);
+                window.html5QrcodeScanner.render(onScanSuccess, () => { });
+            }
         };
 
         const toggleOdgVote = async (assemblyId, itemId, newStatus) => {
@@ -16820,9 +16866,18 @@ ${renderBottomNavigation()}
                 container.classList.add('hidden');
                 if (window.html5QrcodeScanner) {
                     try {
-                        window.html5QrcodeScanner.clear();
+                        if (typeof window.html5QrcodeScanner.stop === 'function') {
+                            window.html5QrcodeScanner.stop().catch(() => {}).finally(() => {
+                                try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                                window.html5QrcodeScanner = null;
+                            });
+                        } else {
+                            try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                            window.html5QrcodeScanner = null;
+                        }
+                    } catch (e) {
                         window.html5QrcodeScanner = null;
-                    } catch (e) { }
+                    }
                 }
             }
         };
@@ -18348,7 +18403,7 @@ ${renderBottomNavigation()}
                 const addAgendaItem = (val = "", scope = "intero", targetGroup = "", optionsType = "standard", customOptions = "") => {
                     const div = document.createElement("div");
                     div.className = "odg-item-row card";
-                    div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.5rem; text-align:left;";
+                    div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.6rem; text-align:left; width:100%; box-sizing:border-box; overflow:hidden;";
                     
                     const multiScaleCheckboxesHtml = groupNames.map(g => `
                         <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
@@ -18358,25 +18413,28 @@ ${renderBottomNavigation()}
                     `).join('');
 
                     div.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <input type="text" class="form-input odg-title-input" style="flex:1;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
+                        <div style="display:flex; align-items:center; gap:0.5rem; width:100%; box-sizing:border-box;">
+                            <input type="text" class="form-input odg-title-input" style="flex:1; min-width:0; box-sizing:border-box;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
                             <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger); border:none; width:32px; height:32px; font-size:1.4rem; cursor:pointer; flex-shrink:0;" title="Rimuovi">&times;</button>
                         </div>
-                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem;">
+
+                        <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
                             <label style="font-weight:600; color:var(--secondary-text);">Ambito Votazione:</label>
-                            <select class="form-select odg-scope-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
-                                <option value="intero" ${scope === 'intero' ? 'selected' : ''}>🏢 1. Intero Condominio</option>
-                                <option value="scale" ${scope === 'scale' ? 'selected' : ''}>🪜 2. Scale / Gruppi (Selezione Multipla)</option>
-                                <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>🪜 3. Singola Scala / Gruppo</option>
-                            </select>
-                            <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
-                                <option value="" disabled ${!targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
-                                ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
-                            </select>
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
+                                <select class="form-select odg-scope-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; flex:1; min-width:200px; max-width:100%; box-sizing:border-box;">
+                                    <option value="intero" ${scope === 'intero' ? 'selected' : ''}>🏢 1. Intero Condominio</option>
+                                    <option value="scale" ${scope === 'scale' ? 'selected' : ''}>🪜 2. Scale / Gruppi (Selezione Multipla)</option>
+                                    <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>🪜 3. Singola Scala / Gruppo</option>
+                                </select>
+                                <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; flex:1; min-width:180px; max-width:100%; box-sizing:border-box;">
+                                    <option value="" disabled ${!targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
+                                    ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
+                                </select>
+                            </div>
                         </div>
 
                         <!-- CONTENITORE CHECKBOX SELEZIONE MULTIPLA SCALE -->
-                        <div class="odg-scale-multi-wrapper ${scope === 'scale' ? '' : 'hidden'}" style="background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.3rem; width:100%;">
+                        <div class="odg-scale-multi-wrapper ${scope === 'scale' ? '' : 'hidden'}" style="background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.2rem; width:100%; box-sizing:border-box;">
                             <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; cursor:pointer;">
                                 <input type="checkbox" class="odg-all-scales-cb" onchange="const cbs=this.closest('.odg-scale-multi-wrapper').querySelectorAll('.odg-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px;">
                                 <span>🏢 Tutte le scale</span>
@@ -18386,14 +18444,16 @@ ${renderBottomNavigation()}
                             </div>
                         </div>
 
-                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; font-size:0.85rem; margin-top:0.25rem;">
+                        <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                             <label style="font-weight:600; color:var(--secondary-text);">Risposte:</label>
-                            <select class="form-select odg-options-type-select" style="padding:0.3rem 0.5rem; font-size:0.85rem; width:auto;">
-                                <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
-                                <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
-                                <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>✏️ Opzioni Personalizzate...</option>
-                            </select>
-                            <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="flex:1; min-width:180px; font-size:0.85rem; padding:0.3rem 0.5rem;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
+                                <select class="form-select odg-options-type-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; flex:1; min-width:200px; max-width:100%; box-sizing:border-box;">
+                                    <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
+                                    <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
+                                    <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>✏️ Opzioni Personalizzate...</option>
+                                </select>
+                                <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="flex:1; min-width:180px; font-size:0.85rem; padding:0.4rem 0.6rem; max-width:100%; box-sizing:border-box;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
+                            </div>
                         </div>
                     `;
                     const scopeSelect = div.querySelector('.odg-scope-select');
