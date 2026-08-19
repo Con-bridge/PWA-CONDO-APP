@@ -16230,8 +16230,16 @@ ${renderBottomNavigation()}
                             </div>
 
                             <div style="background: var(--surface-color-light); padding: 1rem; border-radius: 8px;">
-                                <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase;">Ordine del Giorno:</strong>
-                                <ol style="margin-top: 0.5rem; padding-left: 1.5rem; font-size: 0.95rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                    <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase;">Ordine del Giorno:</strong>
+                                    ${(isAdmin && ['programmata', 'in_corso'].includes(assembly.status)) ? `
+                                        <button type="button" onclick="showInteractiveReorderModal('${docSnap.id}')" title="Modifica / Riordina Punti OdG" style="background: rgba(29, 185, 84, 0.12); border: 1px solid rgba(29, 185, 84, 0.3); color: var(--accent-color); cursor: pointer; padding: 0.25rem 0.55rem; border-radius: 6px; display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                            <span>Modifica</span>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <ol style="margin-top: 0.25rem; padding-left: 1.5rem; font-size: 0.95rem;">
                                     ${assembly.agenda.map(item => `<li>${escapeHtml(item.title)}</li>`).join('')}
                                 </ol>
                             </div>
@@ -16607,6 +16615,25 @@ ${renderBottomNavigation()}
                 }
                 if (adminConcludeBottom) {
                     adminConcludeBottom.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
+                }
+
+                const btnStart = document.getElementById('btn-room-start');
+                if (btnStart) {
+                    if (assembly.status === 'in_corso' || assembly.sessionStage === 'active' || assembly.sessionStage === 'reorder_phase') {
+                        btnStart.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                        btnStart.style.color = '#10B981';
+                        btnStart.style.border = '1.5px solid #10B981';
+                        btnStart.style.cursor = 'default';
+                        btnStart.onclick = null;
+                        btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Seduta Avviata`;
+                    } else {
+                        btnStart.style.backgroundColor = '#10B981';
+                        btnStart.style.color = 'white';
+                        btnStart.style.border = 'none';
+                        btnStart.style.cursor = 'pointer';
+                        btnStart.onclick = () => startLiveAssemblySession();
+                        btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia`;
+                    }
                 }
 
                 const qrAccreditation = document.getElementById('room-qr-accreditation');
@@ -17410,7 +17437,9 @@ ${renderBottomNavigation()}
 
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
-                await updateDoc(assemblyRef, { status: 'conclusa', endedAt: serverTimestamp() });
+                const nowTs = Date.now();
+                await updateDoc(assemblyRef, { status: 'conclusa', endedAt: serverTimestamp(), concludedAt: nowTs });
+                await logAssemblyEvent(assemblyId, 'CONCLUSIONE_ASSEMBLEA', `Assemblea conclusa ufficialmente il ${new Date(nowTs).toLocaleString('it-IT')}`);
                 sessionStorage.removeItem('activeLiveAssemblyId');
                 hideModal();
                 await customAlert("Assemblea conclusa con successo.");
@@ -17921,14 +17950,45 @@ ${renderBottomNavigation()}
 
                 const attendees = assembly.attendees || [];
                 const proxies = assembly.proxies || [];
+                const agenda = assembly.agenda || [];
+                const eventLog = assembly.eventLog || [];
 
-                let rows = [];
+                const formatTimestamp = (ts) => {
+                    if (!ts) return '-';
+                    let d;
+                    if (ts.toDate) d = ts.toDate();
+                    else d = new Date(ts);
+                    if (isNaN(d.getTime())) return '-';
+                    return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                };
+
+                const scheduledDateStr = formatTimestamp(assembly.scheduledDate);
+                const startedAtStr = formatTimestamp(assembly.startedAt);
+                const concludedAtStr = formatTimestamp(assembly.concludedAt || assembly.endedAt);
+
+                let csvLines = [];
+
+                // --- SEZIONE 1: DATI GENERALI ASSEMBLEA ---
+                csvLines.push(`"==============================================================="`);
+                csvLines.push(`"VERBALE E REPORT COMPLETO ASSEMBLEA CONDOMINIALE"`);
+                csvLines.push(`"==============================================================="`);
+                csvLines.push(`"Titolo Assemblea","${(assembly.title || 'Assemblea').replace(/"/g, '""')}"`);
+                csvLines.push(`"Stato Attuale","${(assembly.status || '').toUpperCase()}"`);
+                csvLines.push(`"Data Programmata","${scheduledDateStr}"`);
+                csvLines.push(`"Data e Ora Avvio Formale","${startedAtStr}"`);
+                csvLines.push(`"Data e Ora Conclusione","${concludedAtStr}"`);
+                csvLines.push(``);
+
+                // --- SEZIONE 2: QUORUM COSTITUTIVO E REGISTRO PRESENZE ---
+                csvLines.push(`"--- REGISTRO PRESENZE E QUORUM COSTITUTIVO ---"`);
+                csvLines.push(`"Unità Immobiliare","Intestatario / Condòmino","Millesimi","Stato Presenza","Eventuale Delegato / Delegante"`);
+
+                let attendanceRows = [];
                 allUsers.forEach(u => {
                     if (!['condomino', 'consigliere'].includes(u.tipoUtente)) return;
-                    
                     const attendeeInfo = attendees.find(a => a.uid === u.id);
                     const proxyHeld = proxies.find(p => p.delegatorId === u.id && p.status !== 'rejected');
-                    
+
                     let statusStr = "Assente";
                     let delegateName = "";
                     let personName = `${u.cognome || ''} ${u.nome || ''}`.trim();
@@ -17942,26 +18002,63 @@ ${renderBottomNavigation()}
                         statusStr = "Uscito dall'Aula";
                     }
 
-                    rows.push({
-                        personName: personName,
+                    attendanceRows.push({
                         unita: u.unitaImmobiliare || '-',
+                        personName: personName,
                         millesimi: (u.millesimiTotali || 0).toFixed(2),
                         status: statusStr,
                         delegateName: delegateName
                     });
                 });
 
-                rows.sort((a, b) => a.personName.localeCompare(b.personName));
-
-                let csvLines = [];
-                csvLines.push(`"ESITO PER QUORUM COSTITUTIVO ASSEMBLEA CONDOMINIALE"`);
-                csvLines.push(`"Titolo: ${assembly.title || 'Assemblea'}"`);
-                csvLines.push(`"Data: ${assembly.scheduledDate ? new Date(assembly.scheduledDate.toDate ? assembly.scheduledDate.toDate() : assembly.scheduledDate).toLocaleString('it-IT') : ''}"`);
-                csvLines.push(``);
-                csvLines.push(`"Unità Immobiliare","Intestatario / Condomino","Millesimi","Stato Presenza","Eventuale Delegato / Delegante"`);
-
-                rows.forEach(r => {
+                attendanceRows.sort((a, b) => a.personName.localeCompare(b.personName));
+                attendanceRows.forEach(r => {
                     csvLines.push(`"${r.unita}","${r.personName}","${r.millesimi}","${r.status}","${r.delegateName}"`);
+                });
+                csvLines.push(``);
+
+                // --- SEZIONE 3: DETTAGLIO ESITO VOTAZIONI PER OGNI PUNTO ODG ---
+                csvLines.push(`"--- ESITO DETTAGLIATO VOTAZIONI ORDINE DEL GIORNO ---"`);
+                agenda.forEach((item, idx) => {
+                    csvLines.push(`"Punto ${idx + 1}","${(item.title || '').replace(/"/g, '""')}"`);
+                    csvLines.push(`"Ambito Votazione","${item.scope === 'gruppo' ? 'Gruppo/Scala' : 'Intero Condominio'}"`);
+
+                    const votes = item.votes || [];
+                    let voteSummary = {};
+                    let totalVotedMillesimi = 0;
+                    let totalVotedHeads = 0;
+
+                    votes.forEach(v => {
+                        const c = v.choice || 'Non espresso';
+                        if (!voteSummary[c]) voteSummary[c] = { heads: 0, millesimi: 0 };
+                        voteSummary[c].heads += (v.heads || 1);
+                        voteSummary[c].millesimi += (v.millesimi || 0);
+                        totalVotedMillesimi += (v.millesimi || 0);
+                        totalVotedHeads += (v.heads || 1);
+                    });
+
+                    csvLines.push(`"Totale Votanti","${totalVotedHeads} teste","${totalVotedMillesimi.toFixed(2)} ‰"`);
+                    Object.keys(voteSummary).forEach(choice => {
+                        const s = voteSummary[choice];
+                        csvLines.push(`"Espressione: ${choice}","${s.heads} teste","${s.millesimi.toFixed(2)} ‰"`);
+                    });
+
+                    csvLines.push(`"Dettaglio Voti Espressi:"`);
+                    csvLines.push(`"Votante / Condòmino","Espressione di Voto","Millesimi","Teste","Tipologia Voto","Data/Ora Voto"`);
+                    votes.forEach(v => {
+                        const voteTimeStr = formatTimestamp(v.recordedAt || v.timestamp);
+                        const voteType = v.isDisjoint ? 'Disgiunto (Delega)' : (v.isManualAdminVote ? 'Manuale Admin' : 'Diretto');
+                        csvLines.push(`"${(v.voterName || '').replace(/"/g, '""')}","${v.choice}","${(v.millesimi || 0).toFixed(2)}","${v.heads || 1}","${voteType}","${voteTimeStr}"`);
+                    });
+                    csvLines.push(``);
+                });
+
+                // --- SEZIONE 4: REGISTRO AUDIT LOG DEGLI EVENTI ---
+                csvLines.push(`"--- REGISTRO AUDIT LOG DEGLI EVENTI ---"`);
+                csvLines.push(`"Data e Ora","Tipo Evento","Descrizione Evento"`);
+                eventLog.forEach(log => {
+                    const logTimeStr = log.dateTimeStr || formatTimestamp(log.timestamp);
+                    csvLines.push(`"${logTimeStr}","${log.type || ''}","${(log.description || '').replace(/"/g, '""')}"`);
                 });
 
                 const csvString = csvLines.join('\n');
@@ -17969,16 +18066,16 @@ ${renderBottomNavigation()}
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `Quorum_Costitutivo_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+                a.download = `Report_Assemblea_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.csv`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                await customAlert("Esito per quorum costitutivo esportato in CSV con successo!");
+                await customAlert("Report completo dell'assemblea esportato in CSV con successo!");
             } catch (err) {
-                console.error("Errore esportazione quorum:", err);
-                await customAlert("Errore durante l'esportazione del quorum costitutivo.");
+                console.error("Errore esportazione report assemblea:", err);
+                await customAlert("Errore durante l'esportazione del report dell'assemblea.");
             }
         };
 
@@ -18298,10 +18395,12 @@ ${renderBottomNavigation()}
                 const assembly = docSnap.data();
                 const eventLog = assembly.eventLog || [];
                 const now = new Date();
+                const dateTimeStr = now.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                 eventLog.push({
                     timestamp: Date.now(),
+                    dateTimeStr: dateTimeStr,
                     timeStr: timeStr,
                     type: eventType,
                     description: description
@@ -18380,49 +18479,158 @@ ${renderBottomNavigation()}
             if (!assemblyId) return;
 
             try {
-                const confirmed = confirm("Confermi l'avvio formale dell'Assemblea Live e la fase di verifica/riordino dei punti all'Ordine del Giorno?");
-                if (!confirmed) return;
-
                 const assemblyRef = doc(db, "assemblies", assemblyId);
-                await updateDoc(assemblyRef, {
-                    status: 'in_corso',
-                    sessionStage: 'reorder_phase',
-                    startedAt: Date.now()
-                });
+                const docSnap = await getDoc(assemblyRef);
+                const assembly = docSnap.exists() ? docSnap.data() : {};
 
-                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Seduta avviata formalmente dall\'amministratore/presidente.');
-                showReorderVotingModal(assemblyId);
+                if (assembly.status === 'in_corso' || assembly.sessionStage === 'active' || assembly.sessionStage === 'reorder_phase') {
+                    return;
+                }
+
+                const modalContent = `
+                    <div style="text-align:center !important; padding: 0.5rem 0;">
+                        <div style="width:64px; height:64px; border-radius:50%; background:rgba(16, 185, 129, 0.15); border:2px solid #10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem auto; color:#10B981;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </div>
+                        <h3 style="margin:0 0 0.5rem 0; font-size:1.25rem; font-weight:800; color:var(--primary-text);">Avvio Formale Assemblea Live</h3>
+                        <p style="font-size:0.9rem; color:var(--secondary-text); line-height:1.5; margin-bottom:1.5rem; text-align:center !important;">
+                            Stai per avviare ufficialmente la seduta dell'Assemblea. Tutti i condòmini collegati riceveranno la notifica dell'apertura dei lavori e potrai procedere con la gestione dei punti dell'Ordine del Giorno.
+                        </p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; width:100%; box-sizing:border-box;">
+                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width:100%; padding:0.75rem 0.5rem; font-weight:700; font-size:0.9rem; justify-content:center;">Annulla</button>
+                            <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; padding:0.75rem 0.5rem; font-weight:800; font-size:0.9rem; background:#10B981; color:white; justify-content:center;">Conferma ed Avvia</button>
+                        </div>
+                    </div>
+                `;
+                showModal('⚡ Avvio Assemblea', modalContent);
             } catch (err) {
-                console.error("Errore avvio assemblea:", err);
+                console.error("Errore apertura modal avvio assemblea:", err);
                 await customAlert("Errore durante l'avvio dell'assemblea.");
             }
         };
 
-        window.showReorderVotingModal = async (assemblyId) => {
-            const modalContent = `
-                <div style="text-align:left !important; padding:0.25rem 0;">
-                    <p style="color:var(--primary-text); font-size:0.9rem; margin-bottom:1rem; line-height:1.5;">
-                        L'assemblea è stata formalmente avviata. Vuoi mettere in votazione la proposta di <strong>riordinare i punti</strong> all'Ordine del Giorno oppure confermare l'ordine attuale?
-                    </p>
-                    <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1.25rem;">
-                        <button type="button" class="btn btn-primary" onclick="confirmOdgOrderInvariable('${assemblyId}')" style="padding:0.7rem 1rem; font-weight:700; font-size:0.88rem;">▶️ Mantieni Ordine Invariato (Procedi)</button>
-                        <button type="button" class="btn btn-secondary" onclick="showInteractiveReorderModal('${assemblyId}')" style="padding:0.7rem 1rem; font-weight:700; font-size:0.88rem;">🔄 Modifica / Riordina Punti OdG</button>
-                    </div>
-                </div>
-            `;
-            showModal('📋 Avvio & Riordino Punti OdG', modalContent);
-        };
-
-        window.confirmOdgOrderInvariable = async (assemblyId) => {
+        window.confirmStartLiveAssemblySession = async (assemblyId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
-                await updateDoc(assemblyRef, { sessionStage: 'active' });
-                await logAssemblyEvent(assemblyId, 'CONFERMA_ODG', 'Ordine del giorno confermato senza modifiche.');
+                await updateDoc(assemblyRef, {
+                    status: 'in_corso',
+                    sessionStage: 'active',
+                    startedAt: Date.now()
+                });
+
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Seduta avviata formalmente dall\'amministratore/presidente.');
+
+                const btnStart = document.getElementById('btn-room-start');
+                if (btnStart) {
+                    btnStart.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                    btnStart.style.color = '#10B981';
+                    btnStart.style.border = '1.5px solid #10B981';
+                    btnStart.style.cursor = 'default';
+                    btnStart.onclick = null;
+                    btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Seduta Avviata`;
+                }
+
                 hideModal();
-                await customAlert("Ordine del Giorno confermato. Le votazioni sui punti sono ora aperte.");
+                await customAlert("Assemblea avviata con successo! Le votazioni sui punti sono ora aperte.");
             } catch (err) {
-                console.error("Errore conferma OdG:", err);
+                console.error("Errore conferma avvio assemblea:", err);
+                await customAlert("Errore durante l'avvio dell'assemblea.");
             }
+        };
+
+        window.toggleEditGroupOptions = (selectEl) => {
+            const card = selectEl.closest('.odg-edit-card');
+            if (!card) return;
+            const wrapper = card.querySelector('.odg-edit-group-wrapper');
+            if (wrapper) wrapper.style.display = selectEl.value === 'gruppo' ? 'flex' : 'none';
+        };
+
+        window.toggleEditCustomOptions = (selectEl) => {
+            const card = selectEl.closest('.odg-edit-card');
+            if (!card) return;
+            const wrapper = card.querySelector('.odg-edit-custom-wrapper');
+            if (wrapper) wrapper.style.display = selectEl.value === 'custom' ? 'block' : 'none';
+        };
+
+        window.removeOdgEditCard = (btn) => {
+            const card = btn.closest('.odg-edit-card');
+            if (card) {
+                card.remove();
+                const container = document.getElementById('reorder-items-container');
+                if (container) {
+                    container.querySelectorAll('.odg-edit-card').forEach((c, idx) => {
+                        c.setAttribute('data-idx', idx);
+                        const badge = c.querySelector('.item-badge');
+                        if (badge) badge.textContent = `Punto ${idx + 1}:`;
+                    });
+                }
+            }
+        };
+
+        window.addOdgEditCard = (groupNamesJsonStr) => {
+            const container = document.getElementById('reorder-items-container');
+            if (!container) return;
+            let groupNames = [];
+            try { groupNames = JSON.parse(groupNamesJsonStr || '[]'); } catch (e) { }
+
+            const idx = container.querySelectorAll('.odg-edit-card').length;
+            const itemId = 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+            const groupCheckboxesHtml = groupNames.map(g => `
+                <label class="flex items-center gap-1.5" style="cursor:pointer; font-size:0.82rem; display:inline-flex; align-items:center;">
+                    <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" style="accent-color:var(--accent-color); width:15px; height:15px;">
+                    <span>${escapeHtml(g)}</span>
+                </label>
+            `).join('');
+
+            const div = document.createElement('div');
+            div.className = 'reorder-item-card odg-edit-card card';
+            div.setAttribute('data-id', itemId);
+            div.setAttribute('data-idx', idx);
+            div.setAttribute('draggable', 'true');
+            div.style.cssText = 'padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;';
+
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
+                    <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                        <span class="drag-handle" style="font-size:1.3rem; color:var(--secondary-text); cursor:grab; flex-shrink:0;">☰</span>
+                        <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:</span>
+                        <input type="text" class="form-input odg-edit-title" value="" required placeholder="Nome del nuovo punto OdG" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
+                    </div>
+                    <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger); font-size:1.4rem; font-weight:800; cursor:pointer; padding:0 0.4rem; margin-left:0.4rem;" title="Rimuovi punto">&times;</button>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; box-sizing:border-box;">
+                    <div>
+                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Ambito Votazione:</label>
+                        <select class="form-select odg-edit-scope" onchange="toggleEditGroupOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
+                            <option value="intero" selected>1. Intero Condominio</option>
+                            <option value="gruppo">2. Singola Scala / Gruppo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Opzioni di Voto:</label>
+                        <select class="form-select odg-edit-options" onchange="toggleEditCustomOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
+                            <option value="standard" selected>Favorevole / Contrario / Astenuto</option>
+                            <option value="approvato">Approvato / Respinto / Astenuto</option>
+                            <option value="sino">Sì / No / Astenuto</option>
+                            <option value="custom">Personalizzate...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="odg-edit-group-wrapper" style="display:none; flex-wrap:wrap; gap:0.6rem; background:rgba(255,255,255,0.03); padding:0.5rem 0.65rem; border-radius:6px; border:1px dashed var(--accent-color);">
+                    <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:700; width:100%;">Seleziona Scale/Gruppi abilitati al voto:</span>
+                    ${groupCheckboxesHtml}
+                </div>
+
+                <div class="odg-edit-custom-wrapper" style="display:none;">
+                    <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Risposte personalizzate (separate da virgola):</label>
+                    <input type="text" class="form-input odg-edit-custom-options" value="" placeholder="Opzione A, Opzione B, Astenuto" style="padding:0.4rem 0.65rem; font-size:0.83rem; width:100%;">
+                </div>
+            `;
+
+            container.appendChild(div);
         };
 
         window.showInteractiveReorderModal = async (assemblyId) => {
@@ -18433,77 +18641,300 @@ ${renderBottomNavigation()}
 
                 const assembly = docSnap.data();
                 let agenda = [...(assembly.agenda || [])];
+                window.originalAgenda = agenda;
 
-                const renderReorderList = () => {
-                    return agenda.map((item, idx) => `
-                        <div class="reorder-item-row" data-idx="${idx}" style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.8rem; background:var(--surface-color-light); border-radius:8px; gap:0.5rem;">
-                            <div style="font-size:0.88rem; font-weight:600; color:var(--text-color);">
-                                <strong style="color:var(--accent-color);">Punto ${idx + 1}:</strong> ${escapeHtml(item.title || '')}
+                let groupNames = [];
+                try {
+                    const groupsSnap = await getDocs(collection(db, "groups"));
+                    groupsSnap.forEach(doc => {
+                        const g = doc.data().name;
+                        if (g && g.toLowerCase() !== 'portineria') {
+                            groupNames.push(g);
+                        }
+                    });
+                } catch (e) { console.error("Errore gruppi:", e); }
+
+                const renderAgendaCards = () => {
+                    return agenda.map((item, idx) => {
+                        const itemId = item.id || ('item_' + Date.now() + '_' + idx);
+                        const scope = item.scope || (item.votingScope === 'gruppo' ? 'gruppo' : 'intero');
+                        const targetGroup = item.targetGroup || '';
+                        const optionsType = item.optionsType || 'standard';
+                        const customOptionsText = (item.voteOptions || []).join(', ');
+
+                        const groupCheckboxesHtml = groupNames.map(g => `
+                            <label class="flex items-center gap-1.5" style="cursor:pointer; font-size:0.82rem; display:inline-flex; align-items:center;">
+                                <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" ${ (targetGroup.includes(g) || (item.targetGroups || []).includes(g)) ? 'checked' : '' } style="accent-color:var(--accent-color); width:15px; height:15px;">
+                                <span>${escapeHtml(g)}</span>
+                            </label>
+                        `).join('');
+
+                        return `
+                            <div class="reorder-item-card odg-edit-card card" data-id="${escapeHtml(itemId)}" data-idx="${idx}" draggable="true" style="padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
+                                    <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                                        <span class="drag-handle" style="font-size:1.3rem; color:var(--secondary-text); cursor:grab; flex-shrink:0;">☰</span>
+                                        <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:</span>
+                                        <input type="text" class="form-input odg-edit-title" value="${escapeHtml(item.title || '')}" required placeholder="Nome del punto OdG" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
+                                    </div>
+                                    <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger); font-size:1.4rem; font-weight:800; cursor:pointer; padding:0 0.4rem; margin-left:0.4rem;" title="Rimuovi punto">&times;</button>
+                                </div>
+
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; box-sizing:border-box;">
+                                    <div>
+                                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Ambito Votazione:</label>
+                                        <select class="form-select odg-edit-scope" onchange="toggleEditGroupOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
+                                            <option value="intero" ${scope === 'intero' ? 'selected' : ''}>1. Intero Condominio</option>
+                                            <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>2. Singola Scala / Gruppo</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Opzioni di Voto:</label>
+                                        <select class="form-select odg-edit-options" onchange="toggleEditCustomOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
+                                            <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
+                                            <option value="approvato" ${optionsType === 'approvato' ? 'selected' : ''}>Approvato / Respinto / Astenuto</option>
+                                            <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
+                                            <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>Personalizzate...</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="odg-edit-group-wrapper" style="display:${scope === 'gruppo' ? 'flex' : 'none'}; flex-wrap:wrap; gap:0.6rem; background:rgba(255,255,255,0.03); padding:0.5rem 0.65rem; border-radius:6px; border:1px dashed var(--accent-color);">
+                                    <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:700; width:100%;">Seleziona Scale/Gruppi abilitati al voto:</span>
+                                    ${groupCheckboxesHtml}
+                                </div>
+
+                                <div class="odg-edit-custom-wrapper" style="display:${optionsType === 'custom' ? 'block' : 'none'};">
+                                    <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Risposte personalizzate (separate da virgola):</label>
+                                    <input type="text" class="form-input odg-edit-custom-options" value="${escapeHtml(customOptionsText)}" placeholder="Opzione A, Opzione B, Astenuto" style="padding:0.4rem 0.65rem; font-size:0.83rem; width:100%;">
+                                </div>
                             </div>
-                            <div style="display:flex; align-items:center; gap:0.25rem; flex-shrink:0;">
-                                <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, -1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
-                                <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, 1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === agenda.length - 1 ? 'disabled' : ''}>⬇️</button>
-                            </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 };
 
                 const modalContent = `
-                    <div style="text-align:left !important;">
-                        <p style="color:var(--secondary-text); font-size:0.85rem; margin-bottom:0.75rem;">Usa le frecce per modificare l'ordine dei punti dell'assemblea:</p>
-                        <div id="reorder-items-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;">
-                            ${renderReorderList()}
+                    <div style="text-align:left !important; display:flex; flex-direction:column; min-height:85vh; justify-content:space-between;">
+                        <div>
+                            <div id="reorder-items-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height:calc(100vh - 180px); overflow-y:auto; padding:0.25rem;">
+                                ${renderAgendaCards()}
+                            </div>
+
+                            <div style="margin-top:0.75rem; width:100%;">
+                                <button type="button" onclick="addOdgEditCard('${escapeHtml(JSON.stringify(groupNames))}')" class="btn" style="width:100%; padding:0.65rem 1rem; font-size:0.88rem; font-weight:700; background:linear-gradient(135deg, var(--accent-color, #10B981), #059669); color:white; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Aggiungi Punto
+                                </button>
+                            </div>
                         </div>
-                        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
-                            <button type="button" class="btn btn-primary" onclick="saveReorderedOdg('${assemblyId}')" style="font-weight:700; font-size:0.85rem;">✅ Salva e Conferma Ordine Definitivo</button>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:1.25rem; width:100%; box-sizing:border-box;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; padding:0.75rem 0.5rem; font-weight:700; font-size:0.9rem; justify-content:center;">Annulla</button>
+                            <button type="button" class="btn btn-primary" onclick="saveReorderedOdg('${assemblyId}')" style="width:100%; padding:0.75rem 0.5rem; font-weight:800; font-size:0.9rem; justify-content:center; background:#10B981; color:white; display:flex; align-items:center; gap:0.4rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                Salva
+                            </button>
                         </div>
                     </div>
                 `;
-                window.currentReorderAgenda = agenda;
-                showModal('🔄 Riordino Punti OdG', modalContent);
+
+                showModal('✏️ Modifica & Riordino OdG', modalContent, true);
+
+                setTimeout(() => {
+                    initOdgDragAndDrop(assemblyId);
+                }, 100);
             } catch (err) {
                 console.error("Errore modal riordino:", err);
             }
         };
 
-        window.moveOdgItem = (assemblyId, index, direction) => {
-            if (!window.currentReorderAgenda) return;
-            const newIdx = index + direction;
-            if (newIdx < 0 || newIdx >= window.currentReorderAgenda.length) return;
-
-            const temp = window.currentReorderAgenda[index];
-            window.currentReorderAgenda[index] = window.currentReorderAgenda[newIdx];
-            window.currentReorderAgenda[newIdx] = temp;
-
+        window.initOdgDragAndDrop = (assemblyId) => {
             const container = document.getElementById('reorder-items-container');
-            if (container) {
-                container.innerHTML = window.currentReorderAgenda.map((item, idx) => `
-                    <div class="reorder-item-row" data-idx="${idx}" style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.8rem; background:var(--surface-color-light); border-radius:8px; gap:0.5rem;">
-                        <div style="font-size:0.88rem; font-weight:600; color:var(--text-color);">
-                            <strong style="color:var(--accent-color);">Punto ${idx + 1}:</strong> ${escapeHtml(item.title || '')}
-                        </div>
-                        <div style="display:flex; align-items:center; gap:0.25rem; flex-shrink:0;">
-                            <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, -1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
-                            <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, 1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === window.currentReorderAgenda.length - 1 ? 'disabled' : ''}>⬇️</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
+            if (!container) return;
+
+            let draggedCard = null;
+
+            const refreshDomList = () => {
+                const cards = container.querySelectorAll('.odg-edit-card');
+                cards.forEach((card, idx) => {
+                    card.setAttribute('data-idx', idx);
+                    const badge = card.querySelector('.item-badge');
+                    if (badge) badge.textContent = `Punto ${idx + 1}:`;
+                });
+            };
+
+            // Mouse Drag Events for Desktop
+            container.addEventListener('dragstart', (e) => {
+                const card = e.target.closest('.odg-edit-card');
+                if (!card) return;
+                draggedCard = card;
+                card.classList.add('dragging');
+                card.style.background = 'var(--surface-color)';
+                card.style.borderColor = 'var(--accent-color)';
+                card.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.4)';
+                card.style.transform = 'scale(1.02)';
+                card.style.opacity = '0.95';
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const overCard = e.target.closest('.odg-edit-card');
+                if (!overCard || !draggedCard || overCard === draggedCard) return;
+
+                const children = Array.from(container.children);
+                const draggedIdx = children.indexOf(draggedCard);
+                const targetIdx = children.indexOf(overCard);
+
+                if (draggedIdx !== -1 && targetIdx !== -1) {
+                    if (draggedIdx < targetIdx) {
+                        container.insertBefore(overCard, draggedCard);
+                    } else {
+                        container.insertBefore(draggedCard, overCard);
+                    }
+                    refreshDomList();
+                }
+            });
+
+            container.addEventListener('dragend', (e) => {
+                const card = e.target.closest('.odg-edit-card');
+                if (card) {
+                    card.classList.remove('dragging');
+                    card.style.background = 'var(--surface-color-light)';
+                    card.style.borderColor = 'transparent';
+                    card.style.boxShadow = 'none';
+                    card.style.transform = 'none';
+                    card.style.opacity = '1';
+                }
+                draggedCard = null;
+                refreshDomList();
+            });
+
+            // Touch Drag Events for Mobile & Touchscreens
+            let touchDraggedCard = null;
+
+            container.addEventListener('touchstart', (e) => {
+                const interactive = e.target.closest('input, select, button, label, option, textarea');
+                if (interactive) return;
+                const card = e.target.closest('.odg-edit-card');
+                if (!card) return;
+                touchDraggedCard = card;
+                card.classList.add('dragging');
+                card.style.background = 'var(--surface-color)';
+                card.style.borderColor = 'var(--accent-color)';
+                card.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.4)';
+                card.style.transform = 'scale(1.02)';
+                card.style.opacity = '0.95';
+                card.style.zIndex = '999';
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!touchDraggedCard) return;
+                const touch = e.touches[0];
+                const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (!targetEl) return;
+                const overCard = targetEl.closest('.odg-edit-card');
+                if (!overCard || overCard === touchDraggedCard) return;
+
+                const children = Array.from(container.children);
+                const draggedIdx = children.indexOf(touchDraggedCard);
+                const targetIdx = children.indexOf(overCard);
+
+                if (draggedIdx !== -1 && targetIdx !== -1) {
+                    if (draggedIdx < targetIdx) {
+                        container.insertBefore(touchDraggedCard, overCard.nextSibling);
+                    } else {
+                        container.insertBefore(touchDraggedCard, overCard);
+                    }
+                    refreshDomList();
+                }
+            }, { passive: false });
+
+            const handleTouchEnd = () => {
+                if (touchDraggedCard) {
+                    touchDraggedCard.classList.remove('dragging');
+                    touchDraggedCard.style.background = 'var(--surface-color-light)';
+                    touchDraggedCard.style.borderColor = 'transparent';
+                    touchDraggedCard.style.boxShadow = 'none';
+                    touchDraggedCard.style.transform = 'none';
+                    touchDraggedCard.style.opacity = '1';
+                    touchDraggedCard.style.zIndex = 'auto';
+                    touchDraggedCard = null;
+                }
+                refreshDomList();
+            };
+
+            container.addEventListener('touchend', handleTouchEnd);
+            container.addEventListener('touchcancel', handleTouchEnd);
         };
 
         window.saveReorderedOdg = async (assemblyId) => {
-            if (!window.currentReorderAgenda) return;
+            const container = document.getElementById('reorder-items-container');
+            if (!container) return;
+
+            const cards = container.querySelectorAll('.odg-edit-card');
+            if (cards.length === 0) {
+                await customAlert("Inserisci almeno un punto all'ordine del giorno.");
+                return;
+            }
+
+            const updatedAgenda = [];
+
+            cards.forEach((card, idx) => {
+                const originalId = card.getAttribute('data-id') || ('item_' + Date.now() + '_' + idx);
+                const titleInput = card.querySelector('.odg-edit-title');
+                const title = titleInput ? titleInput.value.trim() : `Punto ${idx + 1}`;
+                const scopeSelect = card.querySelector('.odg-edit-scope');
+                const scope = scopeSelect ? scopeSelect.value : 'intero';
+
+                let targetGroup = null;
+                let targetGroups = [];
+                if (scope === 'gruppo') {
+                    const checkedGroupCbs = card.querySelectorAll('.odg-edit-group-cb:checked');
+                    targetGroups = Array.from(checkedGroupCbs).map(cb => cb.value);
+                    targetGroup = targetGroups.length > 0 ? targetGroups.join(', ') : null;
+                }
+
+                const optionsSelect = card.querySelector('.odg-edit-options');
+                const optionsType = optionsSelect ? optionsSelect.value : 'standard';
+                let voteOptions = ["Favorevole", "Contrario", "Astenuto"];
+
+                if (optionsType === 'approvato') {
+                    voteOptions = ["Approvato", "Respinto", "Astenuto"];
+                } else if (optionsType === 'sino') {
+                    voteOptions = ["Sì", "No", "Astenuto"];
+                } else if (optionsType === 'custom') {
+                    const customText = card.querySelector('.odg-edit-custom-options')?.value || '';
+                    const customArr = customText.split(',').map(s => s.trim()).filter(Boolean);
+                    if (customArr.length > 0) voteOptions = customArr;
+                }
+
+                const existingItem = (window.originalAgenda || []).find(i => i.id === originalId);
+
+                updatedAgenda.push({
+                    id: originalId,
+                    title: title || `Punto ${idx + 1}`,
+                    scope: scope,
+                    votingScope: scope,
+                    targetGroup: targetGroup,
+                    targetGroups: targetGroups,
+                    optionsType: optionsType,
+                    voteOptions: voteOptions,
+                    votes: existingItem ? (existingItem.votes || []) : []
+                });
+            });
+
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 await updateDoc(assemblyRef, {
-                    agenda: window.currentReorderAgenda,
+                    agenda: updatedAgenda,
                     sessionStage: 'active'
                 });
-                await logAssemblyEvent(assemblyId, 'RIORDINO_ODG', 'Ordine del giorno riordinato e confermato dall\'assemblea.');
+                await logAssemblyEvent(assemblyId, 'MODIFICA_ODG', 'Ordine del giorno aggiornato, punti e voti salvati dall\'amministratore.');
                 hideModal();
-                await customAlert("Ordine del Giorno salvato e confermato con successo.");
+                await customAlert("Ordine del Giorno salvato ed aggiornato con successo.");
             } catch (err) {
-                console.error("Errore salvataggio riordino OdG:", err);
+                console.error("Errore salvataggio OdG:", err);
                 await customAlert("Errore durante il salvataggio del riordino.");
             }
         };
