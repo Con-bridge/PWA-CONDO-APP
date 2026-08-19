@@ -16589,9 +16589,13 @@ ${renderBottomNavigation()}
                     if (assembly.status === 'conclusa') {
                         warningBanner.classList.remove('hidden');
                         warningBanner.innerHTML = `
-                            <div style="background: rgba(46, 204, 113, 0.15); border-left: 4px solid #2ecc71; padding: 0.75rem 1rem; border-radius: 8px;">
-                                <strong style="color: #2ecc71; font-size: 0.9rem; display: block; margin-bottom: 0.2rem;">🔒 ASSEMBLEA CONCLUSA</strong>
-                                <span style="font-size: 0.85rem; color: var(--primary-text);">Stai consultando lo storico verbale, i voti finali e il registro presenze in sola lettura.</span>
+                            <div style="background: rgba(37, 99, 235, 0.12); border-left: 4px solid #2563EB; padding: 0.85rem 1rem; border-radius: 8px; text-align: left;">
+                                <strong style="color: #2563EB; font-size: 0.95rem; display: block; margin-bottom: 0.25rem;">🏁 ASSEMBLEA CONCLUSA</strong>
+                                <span style="font-size: 0.85rem; color: var(--primary-text); display: block; margin-bottom: 0.75rem;">I lavori dell'assemblea sono conclusi. È possibile scaricare il verbale ed il report completo con tutti gli esiti delle votazioni ed il registro log.</span>
+                                <button onclick="exportAssemblyResults('${assemblyId}')" class="btn w-full" style="font-weight: 800; font-size: 0.88rem; padding: 0.65rem 1rem; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    📥 Scarica Report Completo & Verbale (CSV)
+                                </button>
                             </div>
                         `;
                     } else if (assembly.status === 'annullata') {
@@ -16609,12 +16613,16 @@ ${renderBottomNavigation()}
 
                 const adminBar = document.getElementById('room-admin-bar');
                 const adminConcludeBottom = document.getElementById('room-admin-conclude-bottom');
+                const btnReorder = document.getElementById('btn-room-reorder');
                 const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
                 if (adminBar) {
                     adminBar.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
                 }
                 if (adminConcludeBottom) {
                     adminConcludeBottom.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
+                }
+                if (btnReorder) {
+                    btnReorder.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
                 }
 
                 const btnStart = document.getElementById('btn-room-start');
@@ -17945,8 +17953,13 @@ ${renderBottomNavigation()}
                 }
                 const assembly = docSnap.data();
 
-                const usersSnap = await getDocs(query(collection(db, "users")));
-                const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                let allUsers = [];
+                try {
+                    const usersSnap = await getDocs(query(collection(db, "users")));
+                    allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch (e) {
+                    console.warn("Lettura utenti fall-back su attendees:", e);
+                }
 
                 const attendees = assembly.attendees || [];
                 const proxies = assembly.proxies || [];
@@ -17984,32 +17997,47 @@ ${renderBottomNavigation()}
                 csvLines.push(`"Unità Immobiliare","Intestatario / Condòmino","Millesimi","Stato Presenza","Eventuale Delegato / Delegante"`);
 
                 let attendanceRows = [];
-                allUsers.forEach(u => {
-                    if (!['condomino', 'consigliere'].includes(u.tipoUtente)) return;
-                    const attendeeInfo = attendees.find(a => a.uid === u.id);
-                    const proxyHeld = proxies.find(p => p.delegatorId === u.id && p.status !== 'rejected');
+                if (allUsers.length > 0) {
+                    allUsers.forEach(u => {
+                        if (!['condomino', 'consigliere'].includes(u.tipoUtente)) return;
+                        const attendeeInfo = attendees.find(a => a.uid === u.id);
+                        const proxyHeld = proxies.find(p => p.delegatorId === u.id && p.status !== 'rejected');
 
-                    let statusStr = "Assente";
-                    let delegateName = "";
-                    let personName = `${u.cognome || ''} ${u.nome || ''}`.trim();
+                        let statusStr = "Assente";
+                        let delegateName = "";
+                        let personName = `${u.cognome || ''} ${u.nome || ''}`.trim();
 
-                    if (attendeeInfo && attendeeInfo.status !== 'uscito') {
-                        statusStr = "Presente in Aula";
-                    } else if (proxyHeld) {
-                        statusStr = "Rappresentato per Delega";
-                        delegateName = proxyHeld.delegateName || '';
-                    } else if (attendeeInfo && attendeeInfo.status === 'uscito') {
-                        statusStr = "Uscito dall'Aula";
-                    }
+                        if (attendeeInfo && attendeeInfo.status !== 'uscito') {
+                            statusStr = "Presente in Aula";
+                        } else if (proxyHeld) {
+                            statusStr = "Rappresentato per Delega";
+                            delegateName = proxyHeld.delegateName || '';
+                        } else if (attendeeInfo && attendeeInfo.status === 'uscito') {
+                            statusStr = "Uscito dall'Aula";
+                        }
 
-                    attendanceRows.push({
-                        unita: u.unitaImmobiliare || '-',
-                        personName: personName,
-                        millesimi: (u.millesimiTotali || 0).toFixed(2),
-                        status: statusStr,
-                        delegateName: delegateName
+                        attendanceRows.push({
+                            unita: u.unitaImmobiliare || '-',
+                            personName: personName,
+                            millesimi: (u.millesimiTotali || 0).toFixed(2),
+                            status: statusStr,
+                            delegateName: delegateName
+                        });
                     });
-                });
+                } else {
+                    attendees.forEach(a => {
+                        const proxyHeld = proxies.find(p => p.delegatorId === a.uid && p.status !== 'rejected');
+                        let statusStr = a.status === 'uscito' ? "Uscito dall'Aula" : "Presente in Aula";
+                        let delegateName = proxyHeld ? (proxyHeld.delegateName || '') : '';
+                        attendanceRows.push({
+                            unita: a.unitaImmobiliare || '-',
+                            personName: `${a.cognome || ''} ${a.nome || ''}`.trim(),
+                            millesimi: (a.millesimi || 0).toFixed(2),
+                            status: statusStr,
+                            delegateName: delegateName
+                        });
+                    });
+                }
 
                 attendanceRows.sort((a, b) => a.personName.localeCompare(b.personName));
                 attendanceRows.forEach(r => {
