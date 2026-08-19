@@ -145,12 +145,12 @@ window.AssembleeModule = {
                         <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
                         <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size:0.8rem; padding:0.6rem;">Concludi</button>
                     </div>
-                    <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn btn-secondary" style="width:100%; font-size:0.8rem; padding:0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">📥 Esporta Esiti Votazioni (CSV)</button>
+                    <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">📥 Esporta Esiti Votazioni (CSV)</button>
 
                     <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
-                    <div id="room-scanner-container" class="mt-3 hidden" style="text-align:center;">
-                        <div id="reader" style="width: 100%; max-width: 280px; margin: 0 auto; border-radius: 8px; overflow: hidden;"></div>
-                        <div id="scanner-message" class="message-box mt-2"></div>
+                    <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
+                        <div id="reader" style="width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;"></div>
+                        <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
                     </div>
                 </div>
 
@@ -162,11 +162,11 @@ window.AssembleeModule = {
 
                 <!-- BANNER DI STATO LIVE -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
                         <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem;">Assemblea in Corso</h3>
                         <span id="room-status-badge" class="badge" style="background-color: var(--accent-color); color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-3" style="text-align: center; background: var(--surface-color-light); padding: 0.5rem; border-radius: 8px;">
+                    <div class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color-light); padding: 0.75rem 0.5rem; border-radius: 8px; margin-top: 0.85rem;">
                         <div>
                             <span style="font-size: 0.75rem; color: var(--secondary-text);">Presenti:</span>
                             <strong id="room-tot-teste" style="display: block; font-size: 1.1rem; color: var(--accent-color);">0 Teste</strong>
