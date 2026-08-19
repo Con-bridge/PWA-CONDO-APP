@@ -211,7 +211,13 @@ window.AssembleeModule = {
 
                 <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
                 <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                    <h3 class="card-title" style="margin-bottom: 1rem; font-size: 1rem;">Ordine del Giorno & Votazioni</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <h3 class="card-title" style="margin:0; font-size: 1rem;">Ordine del Giorno & Votazioni</h3>
+                        <button type="button" onclick="showInteractiveReorderModal(sessionStorage.getItem('activeLiveAssemblyId'))" title="Modifica / Riordina Punti OdG" style="background: rgba(29, 185, 84, 0.12); border: 1px solid rgba(29, 185, 84, 0.3); color: var(--accent-color); cursor: pointer; padding: 0.25rem 0.55rem; border-radius: 6px; display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <span>Modifica</span>
+                        </button>
+                    </div>
                     <div id="room-odg-poll-list" class="space-y-4">
                         <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
                     </div>
