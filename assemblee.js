@@ -116,9 +116,6 @@ window.AssembleeModule = {
                             <option value="annullata">Annullata</option>
                         </select>
                     </div>
-                    <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
-                        <button onclick="resetAssemblyFilters()" class="btn btn-secondary" style="font-size:0.75rem; padding:0.25rem 0.5rem;">Mostra Tutte</button>
-                    </div>
                 </div>
 
                 <div id="assemblies-list-container" class="list-container">
@@ -143,9 +140,13 @@ window.AssembleeModule = {
                     </div>
                     <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
                         <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
-                        <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; font-size:0.8rem; padding:0.6rem;">Concludi</button>
+                        <button id="btn-room-start" onclick="startLiveAssemblySession()" class="btn" style="background-color: #10B981; color: white; font-weight: 800; font-size:0.8rem; padding:0.6rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
+                        </button>
                     </div>
-                    <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">📥 Esporta Esiti Votazioni (CSV)</button>
+                    <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta esito per quorum costitutivo (CSV)
+                    </button>
 
                     <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
                     <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
@@ -156,7 +157,10 @@ window.AssembleeModule = {
 
                 <!-- BANNER DI ALLARME SCIOGLIMENTO QUORUM (SE SOTTO 333.33 ‰) -->
                 <div id="room-quorum-warning-banner" class="hidden card" style="background:rgba(239,68,68,0.15); border:2px solid var(--danger); padding:1rem; margin-bottom:1rem; text-align:center;">
-                    <h4 style="color:var(--danger); font-weight:800; margin:0 0 0.25rem 0;">⛔ SCIOGLIMENTO ASSEMBLEA - QUORUM COSTITUTIVO DECADUTO</h4>
+                    <h4 style="color:var(--danger); font-weight:800; margin:0 0 0.25rem 0; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                        SCIOGLIMENTO ASSEMBLEA - QUORUM COSTITUTIVO DECADUTO
+                    </h4>
                     <p id="room-quorum-warning-text" style="color:var(--primary-text); font-size:0.85rem; margin:0;">A seguito dell'allontanamento di condòmini, i presenti sono scesi sotto la soglia legale di 1/3 (333.33 ‰). L'assemblea non è più idonea a deliberare e deve essere dichiarata sciolta.</p>
                 </div>
 
@@ -168,12 +172,12 @@ window.AssembleeModule = {
                     </div>
                     <div class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color-light); padding: 0.75rem 0.5rem; border-radius: 8px; margin-top: 0.85rem;">
                         <div>
-                            <span style="font-size: 0.75rem; color: var(--secondary-text);">Presenti:</span>
-                            <strong id="room-tot-teste" style="display: block; font-size: 1.1rem; color: var(--accent-color);">0 Teste</strong>
+                            <span style="font-size: 0.75rem; color: var(--secondary-text);">Condom. presenti:</span>
+                            <strong id="room-tot-teste" style="display: block; font-size: 1rem; color: var(--accent-color);">0 Teste</strong>
                         </div>
                         <div>
-                            <span style="font-size: 0.75rem; color: var(--secondary-text);">Quorum:</span>
-                            <strong id="room-tot-millesimi" style="display: block; font-size: 1.1rem; color: var(--warning);">0.00 ‰</strong>
+                            <span style="font-size: 0.75rem; color: var(--secondary-text);">Millesimi intervenuti:</span>
+                            <strong id="room-tot-millesimi" style="display: block; font-size: 1rem; color: var(--warning);">0.00 ‰</strong>
                         </div>
                     </div>
                 </div>
@@ -214,9 +218,12 @@ window.AssembleeModule = {
                 </div>
 
                 <!-- REGISTRO EVENTI ASSEMBLEA (AUDIT LOG) -->
-                <div class="card" style="padding: 1rem;">
+                <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem; cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3;">📜 Registro Eventi Assemblea (Audit Log)</h3>
+                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3; display:flex; align-items:center; gap:0.4rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                            Registro Eventi Assemblea (Audit Log)
+                        </h3>
                         <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0;">Mostra/Nascondi ▼</span>
                     </div>
                     <div id="room-event-log-collapsible" class="mt-3 hidden space-y-2">
@@ -224,6 +231,15 @@ window.AssembleeModule = {
                             <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento registro eventi...</p>
                         </div>
                     </div>
+                </div>
+
+                <!-- PULSANTE CONCLUDI ASSEMBLEA (POSIZIONATO IN FONDO ALLA SCHERMATA) -->
+                <div id="room-admin-conclude-bottom" class="hidden card" style="padding: 1rem; text-align: center; background: rgba(239,68,68,0.08); border: 1px dashed var(--danger);">
+                    <p style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.75rem;">Al termine di tutte le discussioni e votazioni dell'Ordine del Giorno, concludi ufficialmente la seduta live.</p>
+                    <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 800; font-size:0.9rem; padding:0.75rem 1.5rem; width:100%; max-width:340px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                        Concludi Assemblea
+                    </button>
                 </div>
             </main>
             ${renderBottomNavigation()}
