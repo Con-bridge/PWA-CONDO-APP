@@ -487,6 +487,32 @@
             min-height: 100px;
         }
 
+        /* Contorno in risalto per le celle di input dei punti all'ordine del giorno */
+        .odg-title-input,
+        .odg-edit-title {
+            border: 2px solid var(--accent-color, #10B981) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            color: var(--primary-text) !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .odg-title-input::placeholder,
+        .odg-edit-title::placeholder {
+            color: rgba(255, 255, 255, 0.45) !important;
+            font-weight: 400 !important;
+        }
+
+        .odg-title-input:focus,
+        .odg-edit-title:focus {
+            outline: none !important;
+            border-color: var(--accent-color, #10B981) !important;
+            box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+
         /* Stile per pulsante mostra/nascondi password */
         .password-toggle-container {
             position: relative;
@@ -16227,12 +16253,6 @@ ${renderBottomNavigation()}
                             <div style="background: var(--surface-color-light); padding: 1rem; border-radius: 8px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
                                     <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase;">Ordine del Giorno:</strong>
-                                    ${(isAdmin && ['programmata', 'in_corso'].includes(assembly.status)) ? `
-                                        <button type="button" onclick="showInteractiveReorderModal('${docSnap.id}')" title="Modifica / Riordina Punti OdG" style="background: rgba(29, 185, 84, 0.12); border: 1px solid rgba(29, 185, 84, 0.3); color: var(--accent-color); cursor: pointer; padding: 0.25rem 0.55rem; border-radius: 6px; display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700;">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                            <span>Modifica</span>
-                                        </button>
-                                    ` : ''}
                                 </div>
                                 <ol style="margin-top: 0.25rem; padding-left: 1.5rem; font-size: 0.95rem;">
                                     ${assembly.agenda.map(item => `<li>${escapeHtml(item.title)}</li>`).join('')}
@@ -16504,8 +16524,26 @@ ${renderBottomNavigation()}
             if (!docSnap.exists()) return;
 
             const assembly = docSnap.data();
+            const agenda = assembly.agenda || [];
+            const targetIdx = agenda.findIndex(i => i.id === itemId);
+
+            if (newStatus === 'voting') {
+                const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
+                if (!isOdgApproved) {
+                    await customAlert("Tutti i voti sui punti sono bloccati. È prima necessario eseguire ed approvare l'Ordine del Giorno con i condòmini presenti.");
+                    return;
+                }
+                if (targetIdx > 0) {
+                    const prevItem = agenda[targetIdx - 1];
+                    if (prevItem && (prevItem.status || 'pending') !== 'closed') {
+                        await customAlert(`Impossibile avviare la votazione per il Punto ${targetIdx + 1}. Il Punto ${targetIdx} deve prima essere concluso dall'amministratore.`);
+                        return;
+                    }
+                }
+            }
+
             let itemTitle = "";
-            const updatedAgenda = (assembly.agenda || []).map(item => {
+            const updatedAgenda = agenda.map(item => {
                 if (item.id === itemId) {
                     itemTitle = item.title || "";
                     return { ...item, status: newStatus };
@@ -16692,8 +16730,8 @@ ${renderBottomNavigation()}
                                     <div style="font-size:2.5rem; margin-bottom:0.75rem;">🔄</div>
                                     <h3 style="font-size:1.15rem; font-weight:800; color:var(--warning); margin:0 0 0.5rem 0;">Ordine del Giorno in Modifica</h3>
                                     <p style="font-size:0.88rem; color:var(--secondary-text); line-height:1.5; margin-bottom:1rem;">
-                                        La maggioranza dei presenti ha richiesto modifiche o l'amministratore sta riordinando i punti dell'Ordine del Giorno.<br>
-                                        A breve verrà riproposta la nuova votazione.
+                                        La maggioranza dei presenti ha richiesto modifiche all'Ordine del Giorno.<br>
+                                        L'amministratore sta aggiornando l'ordine dei punti; l'assemblea inizierà direttamente al termine del salvataggio.
                                     </p>
                                     <button type="button" onclick="hideModal()" class="btn btn-secondary" style="margin:0 auto; padding:0.5rem 1.2rem; font-size:0.85rem;">Chiudi Avviso</button>
                                 </div>
@@ -16779,7 +16817,18 @@ ${renderBottomNavigation()}
                 // RENDERING SONDAGGI-STYLE ODG LIST (#room-odg-poll-list) CON DETTAGLIO VOTANTI E DELEGHE
                 const odgPollContainer = document.getElementById('room-odg-poll-list');
                 if (odgPollContainer && assembly.agenda) {
-                    odgPollContainer.innerHTML = assembly.agenda.map((item, idx) => {
+                    const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
+                    const odgLockedBanner = !isOdgApproved ? `
+                        <div style="padding:0.75rem 1rem; background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; margin-bottom:1rem; text-align:left; font-size:0.85rem; color:var(--warning); display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.2rem;">🔒</span>
+                            <div>
+                                <strong>Votazioni sui punti temporaneamente bloccate</strong><br>
+                                <span style="font-size:0.78rem; color:var(--secondary-text);">Per sbloccare le votazioni sui singoli punti occorre prima effettuare l'approvazione dell'Ordine del Giorno con i condòmini presenti.</span>
+                            </div>
+                        </div>
+                    ` : '';
+
+                    odgPollContainer.innerHTML = odgLockedBanner + assembly.agenda.map((item, idx) => {
                         const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
 
                         const tally = {};
@@ -16839,12 +16888,15 @@ ${renderBottomNavigation()}
                             `;
                         }).join('');
 
+                        const itemStatus = item.status || 'pending';
+                        const prevItemClosed = idx === 0 || ((assembly.agenda[idx - 1]?.status || 'pending') === 'closed');
+
                         let itemBadge = '';
-                        if (item.status === 'pending') {
+                        if (itemStatus === 'pending') {
                             itemBadge = `<span class="badge status-aperta">In Attesa</span>`;
-                        } else if (item.status === 'voting') {
+                        } else if (itemStatus === 'voting') {
                             itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:800; animation: pulse 1.5s infinite;">IN VOTAZIONE 🔴</span>`;
-                        } else if (item.status === 'closed') {
+                        } else if (itemStatus === 'closed') {
                             let leadingOpt = voteOptions[0];
                             let maxMil = -1;
                             voteOptions.forEach(opt => {
@@ -16858,24 +16910,39 @@ ${renderBottomNavigation()}
 
                         let adminActionHtml = '';
                         if (isAdmin && !isClosedOrCancelled) {
-                            let btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">⚙️ Ambito</button>`;
+                            let btnScope = '';
+                            if (!isOdgApproved || !prevItemClosed) {
+                                btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="L'ambito potrà essere modificato solo quando il punto precedente sarà concluso dall'amministratore">🔒 Ambito</button>`;
+                            } else {
+                                btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">⚙️ Ambito</button>`;
+                            }
 
                             let btnStatus = '';
-                            if (item.status === 'pending') {
-                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">▶️ Avvia Votazione</button>`;
-                            } else if (item.status === 'voting') {
+                            if (!isOdgApproved) {
+                                btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno da parte dei presenti">🔒 In attesa approvazione OdG</button>`;
+                            } else if (itemStatus === 'pending') {
+                                if (prevItemClosed) {
+                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">▶️ Inizia Voto</button>`;
+                                } else {
+                                    btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto per questo punto potrà essere avviato solo dopo la conclusione del punto precedente">🔒 In attesa punto precedente</button>`;
+                                }
+                            } else if (itemStatus === 'voting') {
                                 btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">⏹️ Chiudi Votazione</button>`;
                             } else {
                                 btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:600; border-radius:6px; white-space:nowrap;">🔄 Riapri Voto</button>`;
                             }
 
                             let btnManualVote = '';
-                            if (item.status === 'voting' || item.status === 'pending') {
-                                btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">✍️ Voto Manuale</button>`;
+                            if (isOdgApproved && (itemStatus === 'voting' || itemStatus === 'pending')) {
+                                if (!prevItemClosed) {
+                                    btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">🔒 Voto Manuale</button>`;
+                                } else {
+                                    btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">✍️ Voto Manuale</button>`;
+                                }
                             }
 
                             let btnSubordinated = '';
-                            if (item.status === 'closed' && itemScope === 'intero') {
+                            if (isOdgApproved && itemStatus === 'closed' && itemScope === 'intero') {
                                 btnSubordinated = `<button onclick="openSubordinatedVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; font-weight:700; font-size:0.75rem; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Avvia votazione subordinata per singola scala">🪜 Subordinata</button>`;
                             }
 
@@ -16905,7 +16972,7 @@ ${renderBottomNavigation()}
                         const isAccreditedCondominoAttendee = activeAttendees.some(a => a.uid === currentUid);
 
                         let voteButtonsHtml = '';
-                        if (item.status === 'voting' && !isClosedOrCancelled) {
+                        if (isOdgApproved && itemStatus === 'voting' && !isClosedOrCancelled) {
                             if (isAdmin && !isAccreditedCondominoAttendee) {
                                 voteButtonsHtml = `
                                     <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
@@ -17032,6 +17099,31 @@ ${renderBottomNavigation()}
                             votersDetailHtml = `<p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--secondary-text);">Nessun voto ancora registrato per questa questione.</p>`;
                         }
 
+                        // ELENCO DI CHI NON HA ANCORA VOTATO QUESTO PUNTO (VISIBILE A TUTTI)
+                        const eligibleAttendees = activeAttendees.filter(a => itemScope !== 'gruppo' || !itemGroup || isScaleInTargetGroup(a.proprieta, itemGroup));
+                        const targetAttendees = eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees;
+                        const pointNonVoters = targetAttendees.filter(a => !votesList.some(v => v.voterId === a.uid || v.userId === a.uid));
+
+                        const nonVotersHtml = `
+                            <div style="margin-top: 0.85rem; padding: 0.65rem 0.75rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--surface-color-light); border-radius: 8px; text-align: left;">
+                                <div style="font-size: 0.76rem; font-weight: 700; color: var(--warning); margin-bottom: 0.35rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>⏳ Non hanno ancora espresso il voto (${pointNonVoters.length}):</span>
+                                    <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 500;">(Chi ha votato "Astenuto" ha espresso il voto)</span>
+                                </div>
+                                ${pointNonVoters.length === 0 ? `
+                                    <p style="font-size: 0.78rem; color: #10B981; font-weight: 700; margin: 0; padding: 0.1rem 0;">✅ Tutti i condòmini aventi diritto hanno espresso il voto per questo punto (inclusi gli astenuti).</p>
+                                ` : `
+                                    <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; max-height: 120px; overflow-y: auto; padding-top: 0.2rem;">
+                                        ${pointNonVoters.map(a => `
+                                            <span class="badge" style="background: rgba(243, 156, 18, 0.12); color: var(--warning); border: 1px solid rgba(243, 156, 18, 0.3); font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 6px;">
+                                                👤 ${escapeHtml(a.nome || '')} ${(a.cognome || '')} (${(a.millesimi || 0).toFixed(2)} ‰)
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        `;
+
                         return `
                             <div class="card" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 1.25rem; margin-bottom: 1rem;">
                                 <div style="display:flex; flex-direction:column; gap:0.4rem; margin-bottom: 0.75rem; width:100%;">
@@ -17051,6 +17143,9 @@ ${renderBottomNavigation()}
                                     <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">📊 Esito & Avanzamento Voti</div>
                                     ${optionsProgressHtml}
                                 </div>
+
+                                <!-- ELENCO NON VOTANTI QUESTO PUNTO (VISIBILE A TUTTI) -->
+                                ${nonVotersHtml}
 
                                 ${votersDetailHtml}
                             </div>
@@ -17843,6 +17938,13 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
 
                 const assembly = docSnap.data();
+                const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
+                const isAttendee = (assembly.attendees || []).some(a => a.uid === currentUser.uid);
+
+                if (isAdmin && !isAttendee) {
+                    await customAlert("In qualità di Amministratore non accreditato come condòmino non puoi esprimere un voto personale. Utilizza il pulsante '✍️ Voto Manuale' per registrare i voti dei presenti.");
+                    return;
+                }
                 const item = (assembly.agenda || []).find(i => i.id === itemId);
                 if (!item) return;
 
@@ -18167,7 +18269,24 @@ ${renderBottomNavigation()}
                 const docSnap = await getDoc(assemblyRef);
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
-                const item = (assembly.agenda || []).find(i => i.id === itemId);
+
+                const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
+                if (!isOdgApproved) {
+                    await customAlert("L'ambito di votazione non può essere modificato finché l'Ordine del Giorno non è stato approvato dai presenti.");
+                    return;
+                }
+
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx > 0) {
+                    const prevItem = agenda[targetIdx - 1];
+                    if (prevItem && (prevItem.status || 'pending') !== 'closed') {
+                        await customAlert(`Impossibile modificare l'ambito per il Punto ${targetIdx + 1}. Il Punto ${targetIdx} deve prima essere concluso dall'amministratore.`);
+                        return;
+                    }
+                }
+
+                const item = agenda[targetIdx];
                 if (!item) return;
 
                 let groupNames = [];
@@ -19569,17 +19688,31 @@ ${renderBottomNavigation()}
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const currentDocSnap = await getDoc(assemblyRef);
-                const currentStatus = currentDocSnap.exists() ? currentDocSnap.data().status : 'programmata';
+                const currentData = currentDocSnap.exists() ? currentDocSnap.data() : {};
 
                 await updateDoc(assemblyRef, {
                     agenda: updatedAgenda,
-                    sessionStage: currentStatus === 'in_corso' ? 'active' : 'reorder_phase',
-                    'odgApproval.status': null,
-                    'odgApproval.votes': []
+                    status: 'in_corso',
+                    sessionStage: 'active',
+                    'odgApproval.status': 'approved',
+                    'odgApproval.completedAt': Date.now(),
+                    startedAt: currentData.startedAt || Date.now()
                 });
-                await logAssemblyEvent(assemblyId, 'MODIFICA_ODG', 'Ordine del giorno aggiornato, punti e voti salvati dall\'amministratore.');
+
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA_POST_RIORDINO', 'Nuovo ordine dei punti salvato a seguito della revisione. Seduta assembleare avviata formalmente senza ulteriore votazione OdG.');
+
+                const btnStart = document.getElementById('btn-room-start');
+                if (btnStart) {
+                    btnStart.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                    btnStart.style.color = '#10B981';
+                    btnStart.style.border = '1.5px solid #10B981';
+                    btnStart.style.cursor = 'default';
+                    btnStart.onclick = null;
+                    btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Seduta Avviata`;
+                }
+
                 hideModal();
-                await customAlert("Ordine del Giorno salvato ed aggiornato con successo.");
+                await customAlert("Nuovo Ordine del Giorno salvato con successo! L'assemblea è stata avviata automaticamente e le votazioni sui punti sono ora aperte.");
             } catch (err) {
                 console.error("Errore salvataggio OdG:", err);
                 await customAlert("Errore durante il salvataggio del riordino.");
@@ -19593,7 +19726,23 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
 
                 const assembly = docSnap.data();
-                const item = (assembly.agenda || []).find(i => i.id === itemId);
+                const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
+                if (!isOdgApproved) {
+                    await customAlert("Il voto manuale non può essere registrato finché l'Ordine del Giorno non è stato approvato dai presenti.");
+                    return;
+                }
+
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx > 0) {
+                    const prevItem = agenda[targetIdx - 1];
+                    if (prevItem && (prevItem.status || 'pending') !== 'closed') {
+                        await customAlert(`Impossibile registrare il voto manuale per il Punto ${targetIdx + 1}. Il Punto ${targetIdx} deve prima essere concluso dall'amministratore.`);
+                        return;
+                    }
+                }
+
+                const item = agenda[targetIdx];
                 if (!item) return;
 
                 const attendees = assembly.attendees || [];
