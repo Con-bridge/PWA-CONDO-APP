@@ -258,13 +258,13 @@
         /* Responsive Design */
         @media (max-width: 768px) {
             #app {
-                padding: 80px 0.5rem 100px 0.5rem;
+                padding: 80px 1rem 100px 1rem;
             }
 
             .page-header {
                 gap: 0.5rem;
                 margin-bottom: 1rem;
-                padding: 0.5rem;
+                padding: 0.75rem 1rem;
             }
 
             .header-buttons {
@@ -294,10 +294,14 @@
         }
 
         @media (max-width: 480px) {
+            #app {
+                padding: 75px 1rem 100px 1rem;
+            }
+
             .page-header {
                 flex-wrap: nowrap;
                 gap: 0.25rem;
-                padding: 0.5rem;
+                padding: 0.75rem 1rem;
             }
 
             .header-buttons {
@@ -2195,6 +2199,10 @@
                     themeIcon.innerHTML = `<path d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z"/>`;
                 }
             }
+            const themeLabel = document.getElementById('three-dots-theme-label');
+            if (themeLabel) {
+                themeLabel.textContent = `Modalità ${themeName === 'dark' ? 'Giorno' : 'Notte'}`;
+            }
         };
 
         const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
@@ -3338,44 +3346,136 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
         }[t] || t);
         const getStatusColor = t => ({ aperta: "status-aperta", "in-corso": "status-in-corso", risolta: "status-in-corso", chiusa: "status-chiusa" }[t] || "status-aperta");
 
-        const renderHeader = (title) => {
-            const userInitial = userProfile?.nome ? userProfile.nome.charAt(0).toUpperCase() : 'U';
-            const userType = userProfile?.tipoUtente || '';
+        window.toggleAppThreeDotsMenu = (e) => {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('app-three-dots-menu');
+            if (menu) menu.classList.toggle('hidden');
+        };
 
-            const themeToggleButtonHtml = `
-                <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-icon" title="Cambia tema" aria-label="Cambia tema" role="button" tabindex="0">
-                    <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z"/>
-                    </svg>
-                </button>
-            `;
+        window.hideAppThreeDotsMenu = () => {
+            const menu = document.getElementById('app-three-dots-menu');
+            if (menu) menu.classList.add('hidden');
+        };
 
-            const buttonsContainer = `
-                <div class="header-buttons" style="display: flex; align-items: center; gap: 0.75rem; margin-left: auto;">
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center; line-height: 1.2;">
-                        <span style="font-size: 0.75rem; color: var(--secondary-text); font-weight: 600;">V. Beta</span>
-                        <a href="#" onclick="event.preventDefault(); showPrivacyPolicy()" style="font-size: 0.75rem; color: var(--secondary-text); text-decoration: underline; white-space: nowrap;">Policy</a>
+        window.showBetaVersionInfo = async () => {
+            const modalContent = `
+                <div style="text-align:left !important; padding:0.25rem 0;">
+                    <div style="display:flex; align-items:center; gap:0.85rem; margin-bottom:1rem; border-bottom:1px solid var(--surface-color-light); padding-bottom:0.75rem;">
+                        <img src="icons/icon-192x192.png" alt="Con-bridge Logo" style="width:48px; height:48px; border-radius:12px; object-fit:cover; flex-shrink:0; box-shadow:0 3px 10px rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.15);">
+                        <div>
+                            <h4 style="margin:0; font-weight:800; font-size:1.15rem; color:var(--accent-color);">Con-bridge</h4>
+                            <span class="badge status-aperta" style="font-size:0.72rem; text-transform:uppercase; margin-top:0.2rem; display:inline-block;">Versione Beta 1.0.0</span>
+                        </div>
                     </div>
-                    ${themeToggleButtonHtml}
+
+                    <p style="font-size:0.85rem; color:var(--secondary-text); line-height:1.45; margin-bottom:0.85rem;">
+                        Stai utilizzando la versione Beta di <strong>Con-bridge</strong>. Di seguito è riportata la guida esplicativa delle sezioni principali della barra di navigazione inferiore:
+                    </p>
+
+                    <div style="display:flex; flex-direction:column; gap:0.6rem; max-height:340px; overflow-y:auto; padding-right:0.25rem;">
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">🏛️ Home</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Panoramica generale del condominio con collegamenti rapidi a tutte le funzionalità principali dell'applicazione.</span>
+                        </div>
+
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">📋 Bacheca</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Spazio riservato alle comunicazioni ufficiali, avvisi e documenti pubblicati dall'Amministratore per tutti i condòmini.</span>
+                        </div>
+
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">🛠️ Segnala</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Modulo per l'invio e il tracciamento di segnalazioni su guasti, anomalie o interventi manutentivi nelle parti comuni del fabbricato.</span>
+                        </div>
+
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">❗ Solleciti</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Sezione per la consultazione e gestione dei solleciti amministrativi, scadenze delle rate e avvisi contabili.</span>
+                        </div>
+
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">📊 Sondaggi</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Strumento per partecipare a consultazioni informali, esprimere pareri ed esaminare i voti di orientamento prima delle decisioni ufficiali.</span>
+                        </div>
+
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">👥 Assemblee</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Piattaforma live per le assemblee condominiali: accreditamento con QR Code, gestione deleghe, votazione millesimale in tempo reale sui punti OdG e verbali.</span>
+                        </div>
+
+                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">👤 Profilo / Info Utili</strong>
+                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Contatti d'emergenza, fornitori del condominio, gestione dei dati personali e impostazioni dell'account.</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+                        <button type="button" class="btn btn-primary" onclick="hideModal()" style="padding:0.55rem 1.2rem; font-weight:700; font-size:0.85rem;">Chiudi</button>
+                    </div>
                 </div>
             `;
+            showModal('Info Versione Beta', modalContent);
+        };
+
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('app-three-dots-menu');
+            const btn = document.getElementById('app-three-dots-btn');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn?.contains(e.target)) {
+                hideAppThreeDotsMenu();
+            }
+        });
+
+        const renderHeader = (title) => {
+            const rawRole = userProfile?.tipoUtente || '';
+            let formattedRole = 'Utente';
+            if (rawRole === 'adm') formattedRole = 'Adm';
+            else if (rawRole === 'amministratore') formattedRole = 'Amministratore';
+            else if (rawRole === 'condomino') formattedRole = 'Condòmino';
+            else if (rawRole === 'custode') formattedRole = 'Custode';
+            else if (rawRole === 'consigliere') formattedRole = 'Consigliere';
+            else if (rawRole === 'fornitore') formattedRole = 'Fornitore';
+            else if (rawRole === 'supervisore') formattedRole = 'Supervisore';
+
+            const subtitleHtml = (title && title !== 'Home' && title !== 'Con-bridge')
+                ? `<span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 500; display: block; line-height: 1.1; text-align: left !important;">${escapeHtml(title)}</span>`
+                : '';
 
             return `
-            <header class="page-header">
-                <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
-                    <button class="btn-icon" onclick="navigateTo('profilo')" style="width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: var(--accent-color); color: var(--bg-color);" title="Apri Profilo e Impostazioni">
-                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 22px; height: 22px;">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
+            <header class="page-header" style="position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background-color: var(--bg-color); border-bottom: 1px solid var(--surface-color-light); z-index: 1000;">
+                <!-- LATO SINISTRO: NOME APP "Con-bridge" -->
+                <div style="display: flex; flex-direction: column; text-align: left !important; cursor: pointer;" onclick="navigateTo('dashboard')">
+                    <h1 class="page-title" style="margin: 0; font-size: 1.35rem; font-weight: 800; color: var(--accent-color); letter-spacing: -0.3px; text-align: left !important;">Con-bridge</h1>
+                    ${subtitleHtml}
+                </div>
+
+                <!-- LATO DESTRO: BADGE RUOLO + 3 PUNTINI -->
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-left: auto;">
+                    <span class="badge" style="background: rgba(29, 185, 84, 0.15); color: var(--accent-color); border: 1px solid rgba(29, 185, 84, 0.3); font-weight: 700; font-size: 0.72rem; padding: 0.25rem 0.55rem; border-radius: 99px; text-transform: uppercase;">
+                        ${escapeHtml(formattedRole)}
+                    </span>
+                    <button id="app-three-dots-btn" onclick="toggleAppThreeDotsMenu(event)" class="btn-icon" style="background: none; border: none; color: var(--primary-text); font-size: 1.4rem; padding: 0.3rem 0.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 36px; height: 36px;" title="Menu Impostazioni" aria-label="Menu Impostazioni">
+                        ⋮
                     </button>
-                    <div style="flex-grow: 1; cursor: pointer;" onclick="navigateTo('profilo')">
-                        <h1 class="page-title">${title}</h1>
-                        <p class="page-subtitle">${userType}</p>
+                </div>
+
+                <!-- MENU POPUP VERTICALE TRE PUNTINI (senza emoji) -->
+                <div id="app-three-dots-menu" class="whatsapp-dropdown-menu hidden" style="position: absolute; top: 52px; right: 12px; z-index: 9999; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.45); padding: 0.35rem 0; min-width: 190px; text-align: left !important;">
+                    <div onclick="toggleTheme(); hideAppThreeDotsMenu();" class="whatsapp-menu-item" style="padding: 0.7rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--primary-text);">
+                        <span id="three-dots-theme-label">Modalità ${currentTheme === 'dark' ? 'Giorno' : 'Notte'}</span>
+                    </div>
+                    <div onclick="showPrivacyPolicy(); hideAppThreeDotsMenu();" class="whatsapp-menu-item" style="padding: 0.7rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--primary-text);">
+                        <span>Policy</span>
+                    </div>
+                    <div onclick="showBetaVersionInfo(); hideAppThreeDotsMenu();" class="whatsapp-menu-item" style="padding: 0.7rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--primary-text);">
+                        <span>Versione (Beta)</span>
+                    </div>
+                    <div style="border-top: 1px solid var(--surface-color-light); margin: 0.25rem 0;"></div>
+                    <div onclick="navigateTo('profilo'); hideAppThreeDotsMenu();" class="whatsapp-menu-item" style="padding: 0.7rem 1rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--primary-text);">
+                        <span>Impostazioni</span>
                     </div>
                 </div>
-                ${buttonsContainer}
             </header>`;
-        }
+        };
 
         const renderLoginPage = () => `
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:1.5rem 1rem;">
@@ -16043,9 +16143,9 @@ ${renderBottomNavigation()}
                         }).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
 
                         actionButtonsHtml = `
-                            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--surface-color-light); display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
-                                <button onclick="openEditAssemblyModal('${docSnap.id}', ${safeAssemblyData})" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Riprogramma</button>
-                                <button onclick="openCancelAssemblyModal('${docSnap.id}')" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; padding: 0.5rem 1rem; font-size: 0.85rem;">Annulla</button>
+                            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--surface-color-light); display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box;">
+                                <button onclick="openEditAssemblyModal('${docSnap.id}', ${safeAssemblyData})" class="btn btn-secondary" style="width: 100%; padding: 0.65rem 0.5rem; font-size: 0.88rem; font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">Riprogramma</button>
+                                <button onclick="openCancelAssemblyModal('${docSnap.id}')" class="btn" style="width: 100%; background-color: var(--danger, #EF4444); color: white; font-weight: 700; padding: 0.65rem 0.5rem; font-size: 0.88rem; text-align: center; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">Annulla</button>
                             </div>
                         `;
                     }
@@ -16454,8 +16554,25 @@ ${renderBottomNavigation()}
 
                 const totTesteEl = document.getElementById('room-tot-teste');
                 const totMillesimiEl = document.getElementById('room-tot-millesimi');
-                if (totTesteEl) totTesteEl.textContent = `${activeAttendees.length} Fisici + ${activeProxies.length} Deleghe (${totalPresences})`;
-                if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
+
+                getDocs(query(collection(db, "users"))).then(usersSnap => {
+                    let totalBuildingUsers = 0;
+                    let totalBuildingMillesimi = 0;
+                    usersSnap.docs.forEach(d => {
+                        const u = d.data();
+                        if (['condomino', 'consigliere'].includes(u.tipoUtente)) {
+                            totalBuildingUsers++;
+                            totalBuildingMillesimi += (u.millesimiTotali || 0);
+                        }
+                    });
+                    if (totalBuildingMillesimi <= 0) totalBuildingMillesimi = 1000.00;
+
+                    if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.) su ${totalBuildingUsers} Tot.`;
+                    if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} su ${totalBuildingMillesimi.toFixed(2)} ‰ Tot.`;
+                }).catch(e => {
+                    if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.)`;
+                    if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
+                });
 
                 // QUORUM INFORMATIONAL ONLY / STATUS BANNER
                 const isClosedOrCancelled = ['conclusa', 'annullata'].includes(assembly.status);
@@ -16483,9 +16600,13 @@ ${renderBottomNavigation()}
                 }
 
                 const adminBar = document.getElementById('room-admin-bar');
+                const adminConcludeBottom = document.getElementById('room-admin-conclude-bottom');
                 const isAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
                 if (adminBar) {
                     adminBar.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
+                }
+                if (adminConcludeBottom) {
+                    adminConcludeBottom.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
                 }
 
                 const qrAccreditation = document.getElementById('room-qr-accreditation');
@@ -16521,12 +16642,14 @@ ${renderBottomNavigation()}
                                 : `<span class="badge" style="background:rgba(29,185,84,0.2); color:#1DB954; font-size:0.75rem;">🟢 Presente</span>`;
 
                             let toggleButtonHtml = '';
+                            let cancelBtnHtml = '';
                             if (isAdmin && !isClosedOrCancelled) {
                                 if (isLeft) {
-                                    toggleButtonHtml = `<button onclick="toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
+                                    toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
                                 } else {
-                                    toggleButtonHtml = `<button onclick="toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger); color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala abbandono/uscita dall'aula">🚪 Uscita</button>`;
+                                    toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger); color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala abbandono/uscita dall'aula">🚪 Uscita</button>`;
                                 }
+                                cancelBtnHtml = `<button onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid var(--danger); font-size:0.7rem; padding:0.2rem 0.4rem;" title="Annulla registrazione presenza">🗑️ Annulla</button>`;
                             }
 
                             return `
@@ -16538,9 +16661,10 @@ ${renderBottomNavigation()}
                                         </div>
                                         ${proxyInfo}
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                                        <strong style="color:var(--warning);">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                                    <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:nowrap;">
+                                        <strong style="color:var(--warning); font-size:0.8rem;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
                                         ${toggleButtonHtml}
+                                        ${cancelBtnHtml}
                                     </div>
                                 </div>
                             `;
@@ -16893,16 +17017,15 @@ ${renderBottomNavigation()}
                 const assembly = docSnap.data();
                 const attendees = assembly.attendees || [];
 
-                const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"));
-                const snapshot = await getDocs(q);
-                const allCondomini = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                const snapshot = await getDocs(query(collection(db, "users")));
+                const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                const availableUsers = allCondomini
-                    .filter(u => !attendees.some(a => a.uid === u.id))
+                const availableUsers = allUsers
+                    .filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) && !attendees.some(a => a.uid === u.id))
                     .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
 
                 if (availableUsers.length === 0) {
-                    await customAlert("Tutti i condomini sono già registrati come presenti o non ci sono condomini.");
+                    await customAlert("Tutti i condomini/consiglieri sono già registrati come presenti o non ne sono stati trovati.");
                     return;
                 }
 
@@ -16911,7 +17034,7 @@ ${renderBottomNavigation()}
                         <div style="display:flex; align-items:center; gap:0.6rem;">
                             <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
                             <div>
-                                <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')}</div>
+                                <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} <span style="font-size:0.75rem; color:var(--accent-color); font-weight:600;">(${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span></div>
                                 <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
                             </div>
                         </div>
@@ -16922,19 +17045,21 @@ ${renderBottomNavigation()}
                 const modalContent = `
                     <form onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-4" style="text-align:left;">
                         <p style="color: var(--secondary-text); font-size: 0.9rem;">
-                            Registra manualmente la presenza di un condomino all'assemblea.
+                            Registra manualmente la presenza di un condomino o consigliere all'assemblea.
                         </p>
                         <div>
-                            <label class="form-label" style="font-weight:700;">🔍 Digita nome o cognome condomino</label>
+                            <label class="form-label" style="font-weight:700;">🔍 Digita nome o cognome condomino/consigliere</label>
                             <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.6rem; font-size:0.9rem; padding:0.45rem 0.7rem;" autofocus>
                             
+                            <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom:0.5rem; font-size:0.82rem; padding:0.4rem 0.6rem;">⚠️ Condomino o consigliere non trovato in anagrafica.</div>
+
                             <div id="container-manual-attendees-list" style="max-height:240px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.4rem;">
                                 ${listCardsHtml}
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
+                            <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
                         </div>
                     </form>
                 `;
@@ -16948,17 +17073,36 @@ ${renderBottomNavigation()}
         window.filterManualAttendeesList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
             const cards = document.querySelectorAll('.manual-attendee-card');
+            const submitBtn = document.getElementById('btn-submit-manual-attendance');
+            const errorMsg = document.getElementById('manual-attendee-error-msg');
+
+            let visibleCount = 0;
             let firstVisibleRadio = null;
+
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
                 const isMatch = text.includes(q);
-                card.style.display = isMatch ? 'flex' : 'none';
-                if (isMatch && !firstVisibleRadio) {
-                    firstVisibleRadio = card.querySelector('.manual-attendee-radio');
+                if (isMatch) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                    if (!firstVisibleRadio) {
+                        firstVisibleRadio = card.querySelector('.manual-attendee-radio');
+                    }
+                } else {
+                    card.style.display = 'none';
                 }
             });
+
             if (firstVisibleRadio) {
                 firstVisibleRadio.checked = true;
+            }
+
+            if (visibleCount === 0) {
+                if (submitBtn) submitBtn.disabled = true;
+                if (errorMsg) errorMsg.classList.remove('hidden');
+            } else {
+                if (submitBtn) submitBtn.disabled = false;
+                if (errorMsg) errorMsg.classList.add('hidden');
             }
         };
 
@@ -17353,9 +17497,12 @@ ${renderBottomNavigation()}
                             <input type="time" id="edit-assembly-time" value="${data.time}" required class="form-input">
                         </div>
                     </div>
-                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; flex-wrap: nowrap; margin-top: 1.5rem;">
-                        <button type="button" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; margin: 0; padding: 0.7rem 1.2rem;" onclick="hideModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary" style="font-weight: 700; margin: 0; padding: 0.7rem 1.2rem;">Salva</button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box; margin-top: 1.5rem;">
+                        <button type="button" class="btn" style="width: 100%; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 0.5rem; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px;" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 0.5rem; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Salva
+                        </button>
                     </div>
                 </form>
             `;
@@ -17769,21 +17916,52 @@ ${renderBottomNavigation()}
                 }
                 const assembly = docSnap.data();
 
+                const usersSnap = await getDocs(query(collection(db, "users")));
+                const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const attendees = assembly.attendees || [];
+                const proxies = assembly.proxies || [];
+
+                let rows = [];
+                allUsers.forEach(u => {
+                    if (!['condomino', 'consigliere'].includes(u.tipoUtente)) return;
+                    
+                    const attendeeInfo = attendees.find(a => a.uid === u.id);
+                    const proxyHeld = proxies.find(p => p.delegatorId === u.id && p.status !== 'rejected');
+                    
+                    let statusStr = "Assente";
+                    let delegateName = "";
+                    let personName = `${u.cognome || ''} ${u.nome || ''}`.trim();
+
+                    if (attendeeInfo && attendeeInfo.status !== 'uscito') {
+                        statusStr = "Presente in Aula";
+                    } else if (proxyHeld) {
+                        statusStr = "Rappresentato per Delega";
+                        delegateName = proxyHeld.delegateName || '';
+                    } else if (attendeeInfo && attendeeInfo.status === 'uscito') {
+                        statusStr = "Uscito dall'Aula";
+                    }
+
+                    rows.push({
+                        personName: personName,
+                        unita: u.unitaImmobiliare || '-',
+                        millesimi: (u.millesimiTotali || 0).toFixed(2),
+                        status: statusStr,
+                        delegateName: delegateName
+                    });
+                });
+
+                rows.sort((a, b) => a.personName.localeCompare(b.personName));
+
                 let csvLines = [];
-                csvLines.push(`"ESITI VOTAZIONI ASSEMBLEA CONDOMINIALE"`);
+                csvLines.push(`"ESITO PER QUORUM COSTITUTIVO ASSEMBLEA CONDOMINIALE"`);
                 csvLines.push(`"Titolo: ${assembly.title || 'Assemblea'}"`);
-                csvLines.push(`"Stato: ${(assembly.status || '').toUpperCase()}"`);
                 csvLines.push(`"Data: ${assembly.scheduledDate ? new Date(assembly.scheduledDate.toDate ? assembly.scheduledDate.toDate() : assembly.scheduledDate).toLocaleString('it-IT') : ''}"`);
                 csvLines.push(``);
+                csvLines.push(`"Unità Immobiliare","Intestatario / Condomino","Millesimi","Stato Presenza","Eventuale Delegato / Delegante"`);
 
-                (assembly.agenda || []).forEach((item, idx) => {
-                    csvLines.push(`"Punto ${idx + 1}: ${item.title || ''}"`);
-                    csvLines.push(`"Ambito: ${item.scope || 'intero'}","Stato: ${item.status || ''}"`);
-                    csvLines.push(`"Votante","Scelta Voto","Millesimi","Teste"`);
-                    (item.votes || []).forEach(v => {
-                        csvLines.push(`"${v.voterName || ''}","${v.choice || ''}","${(v.millesimi || 0).toFixed(2)}","${v.heads || 1}"`);
-                    });
-                    csvLines.push(``);
+                rows.forEach(r => {
+                    csvLines.push(`"${r.unita}","${r.personName}","${r.millesimi}","${r.status}","${r.delegateName}"`);
                 });
 
                 const csvString = csvLines.join('\n');
@@ -17791,16 +17969,16 @@ ${renderBottomNavigation()}
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `Esiti_Votazioni_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+                a.download = `Quorum_Costitutivo_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                await customAlert("Esiti votazione esportati in CSV con successo!");
+                await customAlert("Esito per quorum costitutivo esportato in CSV con successo!");
             } catch (err) {
-                console.error("Errore esportazione esiti:", err);
-                await customAlert("Errore durante l'esportazione degli esiti.");
+                console.error("Errore esportazione quorum:", err);
+                await customAlert("Errore durante l'esportazione del quorum costitutivo.");
             }
         };
 
@@ -18026,7 +18204,44 @@ ${renderBottomNavigation()}
                 showModal('🪜 Votazione Subordinata', modalContent);
             } catch (err) {
                 console.error("Errore apertura modal votazione subordinata:", err);
-                await customAlert("Si è verificato un errore.");
+            }
+        };
+
+        window.getOutlineIcon = (name, size = 16, extraStyle = '') => {
+            const s = `width:${size}px; height:${size}px; vertical-align:middle; display:inline-block; ${extraStyle}`;
+            switch (name) {
+                case 'plus':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+                case 'save':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+                case 'trash':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+                case 'download':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+                case 'play':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+                case 'stop':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`;
+                case 'clipboard':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>`;
+                case 'building':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>`;
+                case 'ladder':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 7h8M8 12h8M8 17h8"></path></svg>`;
+                case 'check':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                case 'cross':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+                case 'circle':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle></svg>`;
+                case 'door':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"></path><path d="M2 20h20"></path><circle cx="14" cy="12" r="1"></circle></svg>`;
+                case 'arrow-up':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+                case 'arrow-down':
+                    return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`;
+                default:
+                    return '';
             }
         };
 
@@ -18131,6 +18346,165 @@ ${renderBottomNavigation()}
             } catch (err) {
                 console.error("Errore modifica stato partecipante:", err);
                 await customAlert("Errore durante l'aggiornamento dello stato del partecipante.");
+            }
+        };
+
+        window.cancelAttendeePresence = async (assemblyId, attendeeUid) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                const targetAttendee = (assembly.attendees || []).find(a => a.uid === attendeeUid);
+                if (!targetAttendee) return;
+
+                const targetName = `${targetAttendee.nome} ${targetAttendee.cognome || ''}`.trim();
+                
+                const confirmed = confirm(`Sei sicuro di voler ANNULLARE ed eliminare la presenza per ${targetName}?`);
+                if (!confirmed) return;
+
+                const updatedAttendees = (assembly.attendees || []).filter(a => a.uid !== attendeeUid);
+                await updateDoc(assemblyRef, { attendees: updatedAttendees });
+
+                await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_PRESENZA', `Presenza annullata per ${targetName}`);
+                await customAlert(`Presenza annullata con successo per ${targetName}.`);
+            } catch (err) {
+                console.error("Errore annullamento presenza:", err);
+                await customAlert("Errore durante l'annullamento della presenza.");
+            }
+        };
+
+        window.startLiveAssemblySession = async () => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) return;
+
+            try {
+                const confirmed = confirm("Confermi l'avvio formale dell'Assemblea Live e la fase di verifica/riordino dei punti all'Ordine del Giorno?");
+                if (!confirmed) return;
+
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                await updateDoc(assemblyRef, {
+                    status: 'in_corso',
+                    sessionStage: 'reorder_phase',
+                    startedAt: Date.now()
+                });
+
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Seduta avviata formalmente dall\'amministratore/presidente.');
+                showReorderVotingModal(assemblyId);
+            } catch (err) {
+                console.error("Errore avvio assemblea:", err);
+                await customAlert("Errore durante l'avvio dell'assemblea.");
+            }
+        };
+
+        window.showReorderVotingModal = async (assemblyId) => {
+            const modalContent = `
+                <div style="text-align:left !important; padding:0.25rem 0;">
+                    <p style="color:var(--primary-text); font-size:0.9rem; margin-bottom:1rem; line-height:1.5;">
+                        L'assemblea è stata formalmente avviata. Vuoi mettere in votazione la proposta di <strong>riordinare i punti</strong> all'Ordine del Giorno oppure confermare l'ordine attuale?
+                    </p>
+                    <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1.25rem;">
+                        <button type="button" class="btn btn-primary" onclick="confirmOdgOrderInvariable('${assemblyId}')" style="padding:0.7rem 1rem; font-weight:700; font-size:0.88rem;">▶️ Mantieni Ordine Invariato (Procedi)</button>
+                        <button type="button" class="btn btn-secondary" onclick="showInteractiveReorderModal('${assemblyId}')" style="padding:0.7rem 1rem; font-weight:700; font-size:0.88rem;">🔄 Modifica / Riordina Punti OdG</button>
+                    </div>
+                </div>
+            `;
+            showModal('📋 Avvio & Riordino Punti OdG', modalContent);
+        };
+
+        window.confirmOdgOrderInvariable = async (assemblyId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                await updateDoc(assemblyRef, { sessionStage: 'active' });
+                await logAssemblyEvent(assemblyId, 'CONFERMA_ODG', 'Ordine del giorno confermato senza modifiche.');
+                hideModal();
+                await customAlert("Ordine del Giorno confermato. Le votazioni sui punti sono ora aperte.");
+            } catch (err) {
+                console.error("Errore conferma OdG:", err);
+            }
+        };
+
+        window.showInteractiveReorderModal = async (assemblyId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                let agenda = [...(assembly.agenda || [])];
+
+                const renderReorderList = () => {
+                    return agenda.map((item, idx) => `
+                        <div class="reorder-item-row" data-idx="${idx}" style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.8rem; background:var(--surface-color-light); border-radius:8px; gap:0.5rem;">
+                            <div style="font-size:0.88rem; font-weight:600; color:var(--text-color);">
+                                <strong style="color:var(--accent-color);">Punto ${idx + 1}:</strong> ${escapeHtml(item.title || '')}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.25rem; flex-shrink:0;">
+                                <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, -1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
+                                <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, 1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === agenda.length - 1 ? 'disabled' : ''}>⬇️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                };
+
+                const modalContent = `
+                    <div style="text-align:left !important;">
+                        <p style="color:var(--secondary-text); font-size:0.85rem; margin-bottom:0.75rem;">Usa le frecce per modificare l'ordine dei punti dell'assemblea:</p>
+                        <div id="reorder-items-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;">
+                            ${renderReorderList()}
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+                            <button type="button" class="btn btn-primary" onclick="saveReorderedOdg('${assemblyId}')" style="font-weight:700; font-size:0.85rem;">✅ Salva e Conferma Ordine Definitivo</button>
+                        </div>
+                    </div>
+                `;
+                window.currentReorderAgenda = agenda;
+                showModal('🔄 Riordino Punti OdG', modalContent);
+            } catch (err) {
+                console.error("Errore modal riordino:", err);
+            }
+        };
+
+        window.moveOdgItem = (assemblyId, index, direction) => {
+            if (!window.currentReorderAgenda) return;
+            const newIdx = index + direction;
+            if (newIdx < 0 || newIdx >= window.currentReorderAgenda.length) return;
+
+            const temp = window.currentReorderAgenda[index];
+            window.currentReorderAgenda[index] = window.currentReorderAgenda[newIdx];
+            window.currentReorderAgenda[newIdx] = temp;
+
+            const container = document.getElementById('reorder-items-container');
+            if (container) {
+                container.innerHTML = window.currentReorderAgenda.map((item, idx) => `
+                    <div class="reorder-item-row" data-idx="${idx}" style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.8rem; background:var(--surface-color-light); border-radius:8px; gap:0.5rem;">
+                        <div style="font-size:0.88rem; font-weight:600; color:var(--text-color);">
+                            <strong style="color:var(--accent-color);">Punto ${idx + 1}:</strong> ${escapeHtml(item.title || '')}
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.25rem; flex-shrink:0;">
+                            <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, -1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === 0 ? 'disabled' : ''}>⬆️</button>
+                            <button type="button" onclick="moveOdgItem('${assemblyId}', ${idx}, 1)" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.8rem;" ${idx === window.currentReorderAgenda.length - 1 ? 'disabled' : ''}>⬇️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        };
+
+        window.saveReorderedOdg = async (assemblyId) => {
+            if (!window.currentReorderAgenda) return;
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                await updateDoc(assemblyRef, {
+                    agenda: window.currentReorderAgenda,
+                    sessionStage: 'active'
+                });
+                await logAssemblyEvent(assemblyId, 'RIORDINO_ODG', 'Ordine del giorno riordinato e confermato dall\'assemblea.');
+                hideModal();
+                await customAlert("Ordine del Giorno salvato e confermato con successo.");
+            } catch (err) {
+                console.error("Errore salvataggio riordino OdG:", err);
+                await customAlert("Errore durante il salvataggio del riordino.");
             }
         };
 
@@ -18376,23 +18750,27 @@ ${renderBottomNavigation()}
                         </div>
                         <hr style="border-color: var(--surface-color-light); margin: 1.25rem 0;">
                         <div>
-                            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-                                <div>
-                                    <label class="form-label" style="margin-bottom:0; font-weight: 700; text-align: left !important;">📋 Ordine del Giorno (OdG)</label>
-                                    <p style="font-size:0.8rem; color:var(--secondary-text); margin:0; text-align: left !important;">Punti di discussione e ambito di votazione</p>
-                                </div>
-                                <button type="button" id="modal-add-agenda-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size:0.85rem;">➕ Aggiungi Punto</button>
+                            <label class="form-label" style="margin-bottom:0.25rem; font-weight: 700; text-align: left !important;">📋 Ordine del Giorno (OdG)</label>
+                            <p style="font-size:0.8rem; color:var(--secondary-text); margin-bottom:0.75rem; text-align: left !important;">Punti di discussione e ambito di votazione</p>
+                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+                            <div style="margin-top: 0.85rem; text-align: center; width: 100%;">
+                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; padding: 0.75rem 1rem; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Aggiungi Punto
+                                </button>
                             </div>
-                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;"></div>
                         </div>
-                        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; flex-wrap: nowrap; margin-top: 1.5rem;">
-                            <button type="button" onclick="hideModal()" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 600; margin: 0; padding: 0.7rem 1.2rem;">Annulla</button>
-                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="font-weight: 700; margin: 0; padding: 0.7rem 1.2rem;">💾 Salva</button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box; margin-top: 1.5rem;">
+                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 0.5rem; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px;">Annulla</button>
+                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 0.5rem; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                Salva
+                            </button>
                         </div>
                     </form>
                 </div>
             `;
-            showModal('➕ Nuova Assemblea Condominiale', modalContent, true);
+            showModal(' Nuova Assemblea Condominiale', modalContent, true);
 
             setTimeout(() => {
                 const agendaList = document.getElementById('modal-agenda-list');
@@ -18400,10 +18778,20 @@ ${renderBottomNavigation()}
                 const form = document.getElementById('modal-create-assembly-form');
                 if (!agendaList || !addBtn || !form) return;
 
+                const updateOdgItemNumbers = () => {
+                    const rows = agendaList.querySelectorAll('.odg-item-row');
+                    rows.forEach((row, index) => {
+                        const numLabel = row.querySelector('.odg-num-label');
+                        if (numLabel) {
+                            numLabel.textContent = `Punto ${index + 1}:`;
+                        }
+                    });
+                };
+
                 const addAgendaItem = (val = "", scope = "intero", targetGroup = "", optionsType = "standard", customOptions = "") => {
                     const div = document.createElement("div");
                     div.className = "odg-item-row card";
-                    div.style.cssText = "padding:0.75rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.6rem; text-align:left; width:100%; box-sizing:border-box; overflow:hidden;";
+                    div.style.cssText = "padding:0.85rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.65rem; text-align:left; width:100%; box-sizing:border-box; overflow:hidden;";
                     
                     const multiScaleCheckboxesHtml = groupNames.map(g => `
                         <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
@@ -18413,20 +18801,23 @@ ${renderBottomNavigation()}
                     `).join('');
 
                     div.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:0.5rem; width:100%; box-sizing:border-box;">
-                            <input type="text" class="form-input odg-title-input" style="flex:1; min-width:0; box-sizing:border-box;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
-                            <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger); border:none; width:32px; height:32px; font-size:1.4rem; cursor:pointer; flex-shrink:0;" title="Rimuovi">&times;</button>
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
+                                <span class="odg-num-label" style="font-weight:700; color:var(--accent-color); font-size:0.85rem; flex-shrink:0;">Punto 1:</span>
+                                <input type="text" class="form-input odg-title-input" style="flex:1; min-width:0; box-sizing:border-box;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
+                            </div>
+                            <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger); border:none; width:24px; height:24px; font-size:1.3rem; font-weight:800; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:flex-end; padding:0; margin-left:0.4rem; margin-right:0.2rem;" title="Rimuovi">&times;</button>
                         </div>
 
                         <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
                             <label style="font-weight:600; color:var(--secondary-text);">Ambito Votazione:</label>
                             <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
-                                <select class="form-select odg-scope-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; flex:1; min-width:200px; max-width:100%; box-sizing:border-box;">
-                                    <option value="intero" ${scope === 'intero' ? 'selected' : ''}>🏢 1. Intero Condominio</option>
-                                    <option value="scale" ${scope === 'scale' ? 'selected' : ''}>🪜 2. Scale / Gruppi (Selezione Multipla)</option>
-                                    <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>🪜 3. Singola Scala / Gruppo</option>
+                                <select class="form-select odg-scope-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
+                                    <option value="intero" ${scope === 'intero' ? 'selected' : ''}>1. Intero Condominio</option>
+                                    <option value="scale" ${scope === 'scale' ? 'selected' : ''}>2. Scale / Gruppi (Selezione Multipla)</option>
+                                    <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>3. Singola Scala / Gruppo</option>
                                 </select>
-                                <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; flex:1; min-width:180px; max-width:100%; box-sizing:border-box;">
+                                <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; width:100%; margin-top:0.4rem; box-sizing:border-box;">
                                     <option value="" disabled ${!targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
                                     ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
                                 </select>
@@ -18437,7 +18828,7 @@ ${renderBottomNavigation()}
                         <div class="odg-scale-multi-wrapper ${scope === 'scale' ? '' : 'hidden'}" style="background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.2rem; width:100%; box-sizing:border-box;">
                             <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; cursor:pointer;">
                                 <input type="checkbox" class="odg-all-scales-cb" onchange="const cbs=this.closest('.odg-scale-multi-wrapper').querySelectorAll('.odg-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px;">
-                                <span>🏢 Tutte le scale</span>
+                                <span>Tutte le scale</span>
                             </label>
                             <div style="display:flex; flex-direction:column; gap:0.35rem;">
                                 ${multiScaleCheckboxesHtml}
@@ -18447,12 +18838,12 @@ ${renderBottomNavigation()}
                         <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                             <label style="font-weight:600; color:var(--secondary-text);">Risposte:</label>
                             <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
-                                <select class="form-select odg-options-type-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; flex:1; min-width:200px; max-width:100%; box-sizing:border-box;">
+                                <select class="form-select odg-options-type-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
                                     <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
                                     <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
-                                    <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>✏️ Opzioni Personalizzate...</option>
+                                    <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>Opzioni Personalizzate...</option>
                                 </select>
-                                <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="flex:1; min-width:180px; font-size:0.85rem; padding:0.4rem 0.6rem; max-width:100%; box-sizing:border-box;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
+                                <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="width:100%; margin-top:0.4rem; font-size:0.85rem; padding:0.4rem 0.6rem; box-sizing:border-box;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
                             </div>
                         </div>
                     `;
@@ -18482,8 +18873,12 @@ ${renderBottomNavigation()}
                         }
                     };
 
-                    div.querySelector(".btn-remove-agenda").onclick = () => agendaList.removeChild(div);
+                    div.querySelector(".btn-remove-agenda").onclick = () => {
+                        agendaList.removeChild(div);
+                        updateOdgItemNumbers();
+                    };
                     agendaList.appendChild(div);
+                    updateOdgItemNumbers();
                 };
 
                 addAgendaItem();
