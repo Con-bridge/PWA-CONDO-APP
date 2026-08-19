@@ -1142,9 +1142,9 @@
             flex-wrap: nowrap !important;
         }
 
-        .flex.justify-end > .btn,
-        .custom-dialog-buttons > .custom-dialog-btn,
-        .custom-dialog-buttons > .btn {
+        .flex.justify-end>.btn,
+        .custom-dialog-buttons>.custom-dialog-btn,
+        .custom-dialog-buttons>.btn {
             flex: 1 1 0% !important;
             margin: 0 !important;
             min-width: 0 !important;
@@ -2040,10 +2040,10 @@
 
             try {
                 const permission = await Notification.requestPermission();
-                
+
                 if (permission === 'granted') {
                     const registration = await navigator.serviceWorker.ready;
-                    
+
                     // INCOLLA QUI LA CHIAVE VAPID PRESA DA FIREBASE CONSOLE (PASSO 1)
                     const VAPID_KEY = "BNq3tozZjXGtyo6BNAq6Kj4N1swwSG7oi2vSdxI3JXyLnhblRbq7icVyMi5D4L4b7JvfHXq3V02giGZnZDsfg-Y";
 
@@ -2054,7 +2054,7 @@
 
                     if (currentToken) {
                         console.log('Token Web Push PWA:', currentToken);
-                        
+
                         // Salviamo il token Web Push nel campo fcmToken dell'utente
                         await updateDoc(doc(db, "users", userId), {
                             fcmToken: currentToken,
@@ -2225,6 +2225,7 @@
         };
 
         const hideModal = () => {
+            window.isOdgApprovalModalOpen = false;
             if (typeof window.stopQuickQRScanner === 'function') {
                 try { window.stopQuickQRScanner(); } catch (e) { }
             }
@@ -6825,9 +6826,9 @@ ${renderBottomNavigation()}
             deleteBtn.textContent = 'Eliminazione in corso...';
 
             try {
-                const collectionName = { 
-                    communications: 'communications', 
-                    reports: 'reports', 
+                const collectionName = {
+                    communications: 'communications',
+                    reports: 'reports',
                     polls: 'polls',
                     assemblies: 'assemblies'
                 }[type];
@@ -16080,12 +16081,6 @@ ${renderBottomNavigation()}
                     const day = String(dateObj.getDate()).padStart(2, '0');
                     const formattedIsoDate = `${year}-${month}-${day}`;
 
-                    // AUTOMATIC LIVE: Se l'assemblea è in stato 'programmata' ed è giunto l'orario, passa in LIVE!
-                    if (assembly.status === 'programmata' && Date.now() >= dateObj.getTime()) {
-                        assembly.status = 'in_corso';
-                        updateDoc(doc(db, "assemblies", docSnap.id), { status: 'in_corso' }).catch(console.error);
-                    }
-
                     let statusBadge = '';
                     if (assembly.status === 'programmata') statusBadge = `<span class="badge status-aperta">Programmata</span>`;
                     if (assembly.status === 'in_corso') statusBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE 🟢</span>`;
@@ -16116,7 +16111,7 @@ ${renderBottomNavigation()}
                         liveRoomBtnHtml = `
                             <div style="margin-top: 1rem;">
                                 <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: ${isAdmin ? '#1DB954' : 'var(--accent-color, #3498db)'}; color: ${isAdmin ? 'black' : 'white'}; font-weight: 800; font-size: 0.9rem; padding: 0.7rem;">
-                                    ${isAdmin ? '▶️ AVVIA / ENTRA NELLA STANZA LIVE' : '🔍 APRI DETTAGLI STANZA'}
+                                    ${isAdmin ? '▶️ ENTRA NELLA STANZA ASSEMBLEA' : '🔍 APRI STANZA ASSEMBLEA'}
                                 </button>
                             </div>
                         `;
@@ -16371,7 +16366,7 @@ ${renderBottomNavigation()}
             if (window.html5QrcodeScanner) {
                 try {
                     if (typeof window.html5QrcodeScanner.stop === 'function') {
-                        window.html5QrcodeScanner.stop().catch(() => {});
+                        window.html5QrcodeScanner.stop().catch(() => { });
                     }
                     try { window.html5QrcodeScanner.clear(); } catch (e) { }
                 } catch (e) { }
@@ -16435,6 +16430,8 @@ ${renderBottomNavigation()}
                         millesimi: totalMillesimiAccreditati,
                         heldProxiesCount: heldProxies.length,
                         status: 'presente',
+                        isManual: false,
+                        registrationType: 'qr',
                         scannedAt: new Date().toISOString()
                     };
 
@@ -16544,12 +16541,6 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
 
-                // Auto transition if time reached
-                const dateObj = assembly.scheduledDate ? assembly.scheduledDate.toDate() : null;
-                if (assembly.status === 'programmata' && dateObj && Date.now() >= dateObj.getTime()) {
-                    updateDoc(assemblyRef, { status: 'in_corso' }).catch(console.error);
-                }
-
                 const titleEl = document.getElementById('room-assembly-title');
                 if (titleEl) titleEl.textContent = assembly.title || 'Assemblea in Corso';
 
@@ -16594,7 +16585,7 @@ ${renderBottomNavigation()}
                                 <span style="font-size: 0.85rem; color: var(--primary-text); display: block; margin-bottom: 0.75rem;">I lavori dell'assemblea sono conclusi. È possibile scaricare il verbale ed il report completo con tutti gli esiti delle votazioni ed il registro log.</span>
                                 <button onclick="exportAssemblyResults('${assemblyId}')" class="btn w-full" style="font-weight: 800; font-size: 0.88rem; padding: 0.65rem 1rem; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                    Scarica Report Completo & Verbale (CSV)
+                                    Esporta esito per quorum costitutivo
                                 </button>
                             </div>
                         `;
@@ -16627,13 +16618,42 @@ ${renderBottomNavigation()}
 
                 const btnStart = document.getElementById('btn-room-start');
                 if (btnStart) {
-                    if (assembly.status === 'in_corso' || assembly.sessionStage === 'active' || assembly.sessionStage === 'reorder_phase') {
+                    if (assembly.status === 'in_corso' || assembly.sessionStage === 'active') {
                         btnStart.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
                         btnStart.style.color = '#10B981';
                         btnStart.style.border = '1.5px solid #10B981';
                         btnStart.style.cursor = 'default';
                         btnStart.onclick = null;
                         btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Seduta Avviata`;
+                    } else if (assembly.odgApproval && assembly.odgApproval.status === 'voting') {
+                        const odgVotes = assembly.odgApproval?.votes || [];
+                        let roomTotMil = 0;
+                        activeAttendees.forEach(a => roomTotMil += (a.millesimi || 0));
+                        if (roomTotMil <= 0) roomTotMil = 1000.00;
+                        const roomPresences = activeAttendees.length + activeProxies.length;
+                        const roomUpVotes = odgVotes.filter(v => v.choice === 'up');
+                        let roomUpMil = 0, roomUpHeads = 0;
+                        roomUpVotes.forEach(v => {
+                            roomUpMil += (v.millesimi || 0);
+                            roomUpHeads += (v.heads || 1);
+                        });
+                        const roomIsMajorityUp = (roomTotMil > 0 && roomUpMil > (roomTotMil / 2)) || (activeAttendees.length > 0 && roomUpHeads > (roomPresences / 2));
+
+                        if (roomIsMajorityUp) {
+                            btnStart.style.backgroundColor = '#10B981';
+                            btnStart.style.color = 'white';
+                            btnStart.style.border = 'none';
+                            btnStart.style.cursor = 'pointer';
+                            btnStart.onclick = () => confirmStartLiveAssemblySession(assemblyId);
+                            btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Avvia Assemblea`;
+                        } else {
+                            btnStart.style.backgroundColor = 'var(--warning, #f39c12)';
+                            btnStart.style.color = 'black';
+                            btnStart.style.border = 'none';
+                            btnStart.style.cursor = 'pointer';
+                            btnStart.onclick = () => renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+                            btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> OdG in corso`;
+                        }
                     } else {
                         btnStart.style.backgroundColor = '#10B981';
                         btnStart.style.color = 'white';
@@ -16647,11 +16667,43 @@ ${renderBottomNavigation()}
                 const qrAccreditation = document.getElementById('room-qr-accreditation');
                 const isAttendee = activeAttendees.some(a => a.uid === currentUser.uid);
                 if (qrAccreditation) {
-                    if (!isAdmin && !isAttendee && assembly.status === 'in_corso') {
+                    if (!isAdmin && !isAttendee && !isClosedOrCancelled) {
                         qrAccreditation.classList.remove('hidden');
                         window.AssembleeModule.initQR(currentUser, "room-qrcode-container", "room-qr-timer");
                     } else {
                         qrAccreditation.classList.add('hidden');
+                    }
+                }
+
+                // GESTIONE REAL-TIME VOTAZIONE APPROVAZIONE ORDINE DEI LAVORI (ODG)
+                if (assembly.odgApproval && assembly.odgApproval.status === 'voting') {
+                    if (isAdmin) {
+                        renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+                    } else if (isAttendee) {
+                        renderOdgApprovalCondominoModal(assembly, assemblyId, currentUser, activeAttendees, activeProxies);
+                    }
+                } else if (assembly.odgApproval && assembly.odgApproval.status === 'rejected') {
+                    if (!isAdmin && isAttendee && window.isOdgApprovalModalOpen) {
+                        const modalTitle = document.getElementById('modal-title');
+                        const modalBody = document.getElementById('modal-body');
+                        if (modalTitle && modalTitle.textContent.includes('Approvazione')) {
+                            modalBody.innerHTML = `
+                                <div style="text-align:center; padding:1.5rem 0.5rem;">
+                                    <div style="font-size:2.5rem; margin-bottom:0.75rem;">🔄</div>
+                                    <h3 style="font-size:1.15rem; font-weight:800; color:var(--warning); margin:0 0 0.5rem 0;">Ordine del Giorno in Modifica</h3>
+                                    <p style="font-size:0.88rem; color:var(--secondary-text); line-height:1.5; margin-bottom:1rem;">
+                                        La maggioranza dei presenti ha richiesto modifiche o l'amministratore sta riordinando i punti dell'Ordine del Giorno.<br>
+                                        A breve verrà riproposta la nuova votazione.
+                                    </p>
+                                    <button type="button" onclick="hideModal()" class="btn btn-secondary" style="margin:0 auto; padding:0.5rem 1.2rem; font-size:0.85rem;">Chiudi Avviso</button>
+                                </div>
+                            `;
+                        }
+                    }
+                } else if (assembly.status === 'in_corso' || assembly.sessionStage === 'active') {
+                    if (window.isOdgApprovalModalOpen) {
+                        window.isOdgApprovalModalOpen = false;
+                        hideModal();
                     }
                 }
 
@@ -16729,7 +16781,7 @@ ${renderBottomNavigation()}
                 if (odgPollContainer && assembly.agenda) {
                     odgPollContainer.innerHTML = assembly.agenda.map((item, idx) => {
                         const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
-                        
+
                         const tally = {};
                         voteOptions.forEach(opt => { tally[opt] = { mil: 0, teste: 0 }; });
                         let totalVotesMil = 0;
@@ -16807,7 +16859,7 @@ ${renderBottomNavigation()}
                         let adminActionHtml = '';
                         if (isAdmin && !isClosedOrCancelled) {
                             let btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">⚙️ Ambito</button>`;
-                            
+
                             let btnStatus = '';
                             if (item.status === 'pending') {
                                 btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">▶️ Avvia Votazione</button>`;
@@ -16914,26 +16966,26 @@ ${renderBottomNavigation()}
                                         ${masterFlagHtml}
                                         <div id="unified-vote-buttons-${item.id}" style="display: flex; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
                                             ${voteOptions.map(opt => {
-                                                let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
-                                                let icon = "🔹";
-                                                if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
-                                                    btnStyle = "background-color: #1DB954; color: black;";
-                                                    icon = "🟢";
-                                                } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
-                                                    btnStyle = "background-color: var(--danger); color: white;";
-                                                    icon = "🔴";
-                                                } else if (opt.toLowerCase().includes('astenuto')) {
-                                                    btnStyle = "background-color: #f1c40f; color: black;";
-                                                    icon = "⚪";
-                                                }
-                                                const isSelected = userVote && userVote.choice === opt;
-                                                const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
-                                                return `
+                                    let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
+                                    let icon = "🔹";
+                                    if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
+                                        btnStyle = "background-color: #1DB954; color: black;";
+                                        icon = "🟢";
+                                    } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
+                                        btnStyle = "background-color: var(--danger); color: white;";
+                                        icon = "🔴";
+                                    } else if (opt.toLowerCase().includes('astenuto')) {
+                                        btnStyle = "background-color: #f1c40f; color: black;";
+                                        icon = "⚪";
+                                    }
+                                    const isSelected = userVote && userVote.choice === opt;
+                                    const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
+                                    return `
                                                     <button onclick="submitLiveVote('${assemblyId}', '${item.id}', '${safeOpt}')" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 40px; flex: 1; min-width: 100px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
                                                         ${icon} ${escapeHtml(opt)}
                                                     </button>
                                                 `;
-                                            }).join('')}
+                                }).join('')}
                                         </div>
                                         ${disjointContainerHtml}
                                     </div>
@@ -17026,7 +17078,7 @@ ${renderBottomNavigation()}
                 if (window.html5QrcodeScanner) {
                     try {
                         if (typeof window.html5QrcodeScanner.stop === 'function') {
-                            window.html5QrcodeScanner.stop().catch(() => {}).finally(() => {
+                            window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
                                 try { window.html5QrcodeScanner.clear(); } catch (e) { }
                                 window.html5QrcodeScanner = null;
                             });
@@ -17189,6 +17241,8 @@ ${renderBottomNavigation()}
                     proprieta: user.proprieta || [],
                     heldProxiesCount: heldProxies.length,
                     status: 'presente',
+                    isManual: true,
+                    registrationType: 'manual',
                     joinedAt: Date.now()
                 };
 
@@ -18132,7 +18186,7 @@ ${renderBottomNavigation()}
                 const isScale = item.scope === 'scale';
                 const isIntero = !isGroup && !isScale;
 
-                const singleGroupOptionsHtml = groupNames.map(g => 
+                const singleGroupOptionsHtml = groupNames.map(g =>
                     `<option value="${escapeHtml(g)}" ${item.targetGroup === g ? 'selected' : ''}>${escapeHtml(g)}</option>`
                 ).join('');
 
@@ -18487,7 +18541,7 @@ ${renderBottomNavigation()}
                 if (!targetAttendee) return;
 
                 const targetName = `${targetAttendee.nome} ${targetAttendee.cognome || ''}`.trim();
-                
+
                 const confirmed = confirm(`Sei sicuro di voler ANNULLARE ed eliminare la presenza per ${targetName}?`);
                 if (!confirmed) return;
 
@@ -18511,29 +18565,192 @@ ${renderBottomNavigation()}
                 const docSnap = await getDoc(assemblyRef);
                 const assembly = docSnap.exists() ? docSnap.data() : {};
 
-                if (assembly.status === 'in_corso' || assembly.sessionStage === 'active' || assembly.sessionStage === 'reorder_phase') {
+                if (assembly.status === 'in_corso' || assembly.sessionStage === 'active') {
                     return;
                 }
 
+                const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                const agenda = assembly.agenda || [];
+
+                if (agenda.length === 0) {
+                    await customAlert("L'Ordine del Giorno non contiene punti da discutere. Aggiungi almeno un punto prima di avviare la seduta.");
+                    return;
+                }
+
+                let warnText = '';
+                if (activeAttendees.length === 0) {
+                    warnText = `<div style="padding:0.6rem 0.8rem; background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; margin-bottom:0.75rem; font-size:0.82rem; color:var(--warning); text-align:left;">
+                        ⚠️ <strong>Attenzione:</strong> Nessun condomino risulta ancora accreditato in aula. Puoi avviare comunque la votazione dell'OdG o attendere l'accredito delle presenze all'ingresso.
+                    </div>`;
+                }
+
+                const pointsListHtml = agenda.map((item, idx) => `
+                    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; margin-bottom:0.35rem; text-align:left;">
+                        <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
+                        <span style="font-weight:600; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
+                    </div>
+                `).join('');
+
                 const modalContent = `
-                    <div style="text-align:center !important; padding: 0.5rem 0;">
-                        <div style="width:64px; height:64px; border-radius:50%; background:rgba(16, 185, 129, 0.15); border:2px solid #10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem auto; color:#10B981;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <div style="text-align:center !important; padding: 0.25rem 0;">
+                        <div style="width:60px; height:60px; border-radius:50%; background:rgba(16, 185, 129, 0.15); border:2px solid #10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem auto; color:#10B981;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                         </div>
-                        <h3 style="margin:0 0 0.5rem 0; font-size:1.25rem; font-weight:800; color:var(--primary-text);">Avvio Formale Assemblea Live</h3>
-                        <p style="font-size:0.9rem; color:var(--secondary-text); line-height:1.5; margin-bottom:1.5rem; text-align:center !important;">
-                            Stai per avviare ufficialmente la seduta dell'Assemblea. Tutti i condòmini collegati riceveranno la notifica dell'apertura dei lavori e potrai procedere con la gestione dei punti dell'Ordine del Giorno.
+                        <h3 style="margin:0 0 0.4rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text); text-align:center !important; width:100%;">Attenzione</h3>
+                        <p style="font-size:0.85rem; color:var(--secondary-text); line-height:1.4; margin-bottom:1rem; text-align:center !important;">
+                            Stai per sottoporre ai condòmini accreditati l'ordine di discussione dei punti all'OdG. Tutti i presenti voteranno in tempo reale con <strong>👍 Pollice in SU</strong> o <strong>👎 Pollice in GIÙ</strong>.
                         </p>
+
+                        ${warnText}
+
+                        <div style="max-height:180px; overflow-y:auto; margin-bottom:1.25rem; border:1px solid var(--surface-color-light); border-radius:8px; padding:0.4rem;">
+                            ${pointsListHtml}
+                        </div>
+
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; width:100%; box-sizing:border-box;">
-                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width:100%; padding:0.75rem 0.5rem; font-weight:700; font-size:0.9rem; justify-content:center;">Annulla</button>
-                            <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; padding:0.75rem 0.5rem; font-weight:800; font-size:0.9rem; background:#10B981; color:white; justify-content:center;">Conferma ed Avvia</button>
+                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width:100%; padding:0.75rem 0.5rem; font-weight:700; font-size:0.88rem; justify-content:center;">Annulla</button>
+                            <button type="button" onclick="startOdgApprovalVote('${assemblyId}')" class="btn" style="width:100%; padding:0.75rem 0.5rem; font-weight:800; font-size:0.88rem; background:#10B981; color:white; justify-content:center; display:flex; align-items:center; gap:0.35rem;">
+                                Avvia
+                            </button>
                         </div>
                     </div>
                 `;
-                showModal('⚡ Avvio Assemblea', modalContent);
+                showModal('Approvazione punti di discussione', modalContent);
             } catch (err) {
                 console.error("Errore apertura modal avvio assemblea:", err);
                 await customAlert("Errore durante l'avvio dell'assemblea.");
+            }
+        };
+
+        window.startOdgApprovalVote = async (assemblyId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                await updateDoc(assemblyRef, {
+                    sessionStage: 'odg_approval',
+                    odgApproval: {
+                        status: 'voting',
+                        startedAt: Date.now(),
+                        votes: []
+                    }
+                });
+                await logAssemblyEvent(assemblyId, 'AVVIO_VOTAZIONE_ODG', 'Avviata votazione tra i presenti per approvazione ordine dei punti all\'OdG.');
+            } catch (err) {
+                console.error("Errore avvio votazione OdG:", err);
+                await customAlert("Errore durante l'avvio della votazione OdG.");
+            }
+        };
+
+        window.submitOdgApprovalVote = async (assemblyId, choice) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                if (!assembly.odgApproval || assembly.odgApproval.status !== 'voting') {
+                    await customAlert("La votazione sull'ordine dei lavori non è attiva.");
+                    return;
+                }
+
+                const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                const attendee = activeAttendees.find(a => a.uid === currentUser.uid);
+                const userMillesimi = attendee ? (attendee.millesimi || 0) : (parseFloat(userProfile?.millesimiTotali) || 0);
+                const userProxiesCount = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected').length;
+                const userHeads = 1 + userProxiesCount;
+                const voterName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim() || 'Condòmino';
+
+                const newVote = {
+                    voterId: currentUser.uid,
+                    voterName: voterName,
+                    choice: choice, // 'up' | 'down'
+                    millesimi: userMillesimi,
+                    heads: userHeads,
+                    proxiesCount: userProxiesCount,
+                    timestamp: Date.now()
+                };
+
+                const existingVotes = (assembly.odgApproval.votes || []).filter(v => v.voterId !== currentUser.uid);
+                existingVotes.push(newVote);
+
+                await updateDoc(assemblyRef, {
+                    'odgApproval.votes': existingVotes
+                });
+
+                await logAssemblyEvent(assemblyId, 'VOTO_ODG', `Espressione di voto OdG registrata per ${voterName}: ${choice === 'up' ? '👍 Favorevole' : '👎 Contrario'} (${userMillesimi.toFixed(2)} ‰)`);
+            } catch (err) {
+                console.error("Errore invio voto OdG:", err);
+                await customAlert("Errore durante l'invio del voto.");
+            }
+        };
+
+        window.submitOdgApprovalVoteForAttendee = async (assemblyId, attendeeUid, choice) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                if (!assembly.odgApproval || assembly.odgApproval.status !== 'voting') {
+                    await customAlert("La votazione sull'ordine dei lavori non è attiva.");
+                    return;
+                }
+
+                const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                const attendee = activeAttendees.find(a => a.uid === attendeeUid);
+                if (!attendee) {
+                    await customAlert("Partecipante non trovato tra i presenti.");
+                    return;
+                }
+
+                const userMillesimi = attendee.millesimi || 0;
+                const userProxiesCount = (assembly.proxies || []).filter(p => p.delegateId === attendeeUid && p.status !== 'rejected').length;
+                const userHeads = 1 + userProxiesCount;
+                const voterName = `${attendee.nome || ''} ${attendee.cognome || ''}`.trim() || 'Condòmino';
+
+                const newVote = {
+                    voterId: attendeeUid,
+                    voterName: voterName,
+                    choice: choice, // 'up' | 'down'
+                    millesimi: userMillesimi,
+                    heads: userHeads,
+                    proxiesCount: userProxiesCount,
+                    recordedByAdmin: true,
+                    timestamp: Date.now()
+                };
+
+                const existingVotes = (assembly.odgApproval.votes || []).filter(v => v.voterId !== attendeeUid);
+                existingVotes.push(newVote);
+
+                await updateDoc(assemblyRef, {
+                    'odgApproval.votes': existingVotes
+                });
+
+                await logAssemblyEvent(assemblyId, 'VOTO_ODG_MANUALE', `Voto OdG registrato manualmente dall'amministratore per ${voterName}: ${choice === 'up' ? '👍 Favorevole' : '👎 Contrario'} (${userMillesimi.toFixed(2)} ‰)`);
+            } catch (err) {
+                console.error("Errore registrazione voto manuale OdG:", err);
+                await customAlert("Errore durante la registrazione del voto.");
+            }
+        };
+
+        window.rejectAndReorderOdg = async (assemblyId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                await updateDoc(assemblyRef, {
+                    sessionStage: 'reorder_phase',
+                    'odgApproval.status': 'rejected',
+                    'odgApproval.completedAt': Date.now()
+                });
+
+                await logAssemblyEvent(assemblyId, 'ODG_RESPINTO', 'Ordine del giorno non approvato o modificato. L\'amministratore procede al riordino dei punti.');
+                hideModal();
+
+                setTimeout(() => {
+                    showInteractiveReorderModal(assemblyId);
+                }, 150);
+            } catch (err) {
+                console.error("Errore modifica OdG:", err);
+                await customAlert("Errore durante l'apertura del riordino OdG.");
             }
         };
 
@@ -18543,10 +18760,12 @@ ${renderBottomNavigation()}
                 await updateDoc(assemblyRef, {
                     status: 'in_corso',
                     sessionStage: 'active',
+                    'odgApproval.status': 'approved',
+                    'odgApproval.completedAt': Date.now(),
                     startedAt: Date.now()
                 });
 
-                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Seduta avviata formalmente dall\'amministratore/presidente.');
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Ordine del giorno approvato dai presenti. Seduta assembleare avviata formalmente dall\'amministratore.');
 
                 const btnStart = document.getElementById('btn-room-start');
                 if (btnStart) {
@@ -18559,10 +18778,400 @@ ${renderBottomNavigation()}
                 }
 
                 hideModal();
-                await customAlert("Assemblea avviata con successo! Le votazioni sui punti sono ora aperte.");
+                await customAlert("Assemblea e Ordine dei Lavori avviati con successo! Le votazioni sui punti sono ora aperte.");
             } catch (err) {
                 console.error("Errore conferma avvio assemblea:", err);
                 await customAlert("Errore durante l'avvio dell'assemblea.");
+            }
+        };
+
+        window.renderOdgApprovalAdminModal = (assembly, assemblyId, activeAttendees, activeProxies) => {
+            window.isOdgApprovalModalOpen = true;
+            const agenda = assembly.agenda || [];
+            const votes = assembly.odgApproval?.votes || [];
+
+            let totMillesimi = 0;
+            activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
+            if (totMillesimi <= 0) totMillesimi = 1000.00;
+
+            const totalPresences = activeAttendees.length + activeProxies.length;
+
+            const upVotes = votes.filter(v => v.choice === 'up');
+            const downVotes = votes.filter(v => v.choice === 'down');
+
+            // Chi ha votato Favorevole (👍)
+            const approvedList = activeAttendees.filter(a => upVotes.some(v => v.voterId === a.uid));
+            // Chi ha Declinato / Non Approvato (👎)
+            const declinedList = activeAttendees.filter(a => downVotes.some(v => v.voterId === a.uid));
+            // Chi non ha ancora votato (⏳ In attesa)
+            const pendingList = activeAttendees.filter(a => !votes.some(v => v.voterId === a.uid));
+
+            let upMil = 0, upHeads = 0;
+            upVotes.forEach(v => {
+                upMil += (v.millesimi || 0);
+                upHeads += (v.heads || 1);
+            });
+
+            let downMil = 0, downHeads = 0;
+            downVotes.forEach(v => {
+                downMil += (v.millesimi || 0);
+                downHeads += (v.heads || 1);
+            });
+
+            const votedMil = upMil + downMil;
+            const votedHeads = upHeads + downHeads;
+            const pendingMil = Math.max(0, totMillesimi - votedMil);
+
+            const upPercent = totMillesimi > 0 ? ((upMil / totMillesimi) * 100).toFixed(1) : '0.0';
+            const downPercent = totMillesimi > 0 ? ((downMil / totMillesimi) * 100).toFixed(1) : '0.0';
+            const votedPercent = totalPresences > 0 ? ((votedHeads / totalPresences) * 100).toFixed(1) : (totMillesimi > 0 ? ((votedMil / totMillesimi) * 100).toFixed(1) : '0.0');
+            const pendingPercent = Math.max(0, (100 - parseFloat(upPercent) - parseFloat(downPercent))).toFixed(1);
+
+            const isMajorityUp = (totMillesimi > 0 && upMil > (totMillesimi / 2)) || (activeAttendees.length > 0 && upHeads > (totalPresences / 2));
+            const isMajorityDown = (totMillesimi > 0 && downMil > (totMillesimi / 2)) || (activeAttendees.length > 0 && downHeads > (totalPresences / 2) && downVotes.length > 0);
+
+            let statusBadge = '';
+            if (isMajorityUp) {
+                statusBadge = `<span class="badge" style="background:#10B981; color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto; animation:pulse 1.5s infinite;">🟢 MAGGIORANZA RAGGIUNTA (ORDINE APPROVATO)</span>`;
+            } else if (isMajorityDown) {
+                statusBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto;">🔴 MAGGIORANZA CONTRARIA (MODIFICA RICHIESTA)</span>`;
+            } else {
+                statusBadge = `<span class="badge" style="background:var(--warning); color:black; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto; animation:pulse 1.5s infinite;">⏳ VOTAZIONE IN CORSO...</span>`;
+            }
+
+            const isManualAttendee = (a) => a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+
+            const pendingManual = pendingList.filter(a => isManualAttendee(a));
+            const pendingQr = pendingList.filter(a => !isManualAttendee(a));
+
+            // RENDERING LISTA NON ANCORA VOTANTI
+            let pendingHtml = '';
+            if (pendingList.length === 0) {
+                pendingHtml = `<p style="font-size:0.82rem; color:#10B981; font-weight:700; margin:0; padding:0.4rem 0.5rem; text-align:center;">✅ Tutti i presenti hanno espresso il voto.</p>`;
+            } else {
+                let manualSectionHtml = '';
+                if (pendingManual.length > 0) {
+                    const manualItems = pendingManual.map(a => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; border:1px solid rgba(16, 185, 129, 0.25); border-left-width:4px; border-radius:6px; padding:0.5rem 0.65rem; margin-bottom:0.35rem; gap:0.5rem;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')}</strong>
+                                    <span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:10px;">🟢 Manuale</span>
+                                </div>
+                                <span style="color:#10B981; font-size:0.78rem; font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Favorevole per ${escapeHtml(a.nome)}">
+                                    👍 <span style="font-size:0.72rem; font-weight:700;">Sì</span>
+                                </button>
+                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Contrario per ${escapeHtml(a.nome)}">
+                                    👎 <span style="font-size:0.72rem; font-weight:700;">No</span>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    manualSectionHtml = `
+                        <div style="margin-bottom:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.35rem;">
+                                <span style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px;">✍️ Registrati Manualmente (${pendingManual.length})</span>
+                            </div>
+                            ${manualItems}
+                        </div>
+                    `;
+                }
+
+                let qrSectionHtml = '';
+                if (pendingQr.length > 0) {
+                    const qrItems = pendingQr.map(a => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3px solid var(--warning); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')}</strong>
+                                    <span class="badge" style="background:rgba(243, 156, 18, 0.15); color:var(--warning); font-weight:700; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:10px;">📱 App/QR</span>
+                                </div>
+                                <span style="color:var(--warning); font-size:0.78rem; font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                                <span class="badge" style="background:rgba(243, 156, 18, 0.12); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.2rem 0.45rem;">⏳ Vota da telefono</span>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    qrSectionHtml = `
+                        <div>
+                            ${pendingManual.length > 0 ? `
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin:0.75rem 0 0.5rem 0;">
+                                    <div style="flex:1; height:1px; background:rgba(255, 255, 255, 0.1);"></div>
+                                    <span style="font-size:0.7rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">📱 Accreditati con QR Code (${pendingQr.length})</span>
+                                    <div style="flex:1; height:1px; background:rgba(255, 255, 255, 0.1);"></div>
+                                </div>
+                            ` : `
+                                <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.35rem;">
+                                    <span style="font-size:0.75rem; font-weight:700; color:var(--secondary-text); text-transform:uppercase; letter-spacing:0.5px;">📱 Accreditati con QR Code (${pendingQr.length})</span>
+                                </div>
+                            `}
+                            ${qrItems}
+                        </div>
+                    `;
+                }
+
+                pendingHtml = manualSectionHtml + qrSectionHtml;
+            }
+
+            // RENDERING DETTAGLIO CHI HA VOTATO (CON OPZIONE CAMBIO VOTO PER AMMINISTRATORE)
+            const declinedHtml = declinedList.map(a => {
+                const v = downVotes.find(x => x.voterId === a.uid);
+                const isManual = isManualAttendee(a);
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(239, 68, 68, 0.08); border-left:3px solid var(--danger); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
+                        <div style="flex:1; min-width:0;">
+                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
+                            <strong style="color:var(--danger); font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                            <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:var(--danger); font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👎 Contrario</span>
+                            ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(16, 185, 129, 0.2); color:#10B981; border:1px solid #10B981; border-radius:5px; cursor:pointer;" title="Cambia voto in Favorevole">Passa a 👍</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const approvedHtml = approvedList.map(a => {
+                const v = upVotes.find(x => x.voterId === a.uid);
+                const isManual = isManualAttendee(a);
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3px solid #10B981; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
+                        <div style="flex:1; min-width:0;">
+                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
+                            <strong style="color:#10B981; font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
+                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10B981; font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👍 Favorevole</span>
+                            ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(239, 68, 68, 0.2); color:var(--danger); border:1px solid var(--danger); border-radius:5px; cursor:pointer;" title="Cambia voto in Contrario">Passa a 👎</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // LISTA PUNTI ODG ORDINATA (SOLO TITOLI PUNTI SENZA OPZIONI)
+            const pointsListHtml = agenda.map((item, idx) => `
+                <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; margin-bottom:0.35rem; text-align:left; border-left:3px solid var(--accent-color);">
+                    <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
+                    <span style="font-weight:600; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
+                </div>
+            `).join('');
+
+            // GESTIONE PULSANTI AZIONE CONDIZIONALI ALLA MAGGIORANZA
+            let actionButtonsHtml = '';
+            if (isMajorityUp) {
+                actionButtonsHtml = `
+                    <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; padding:0.85rem 1rem; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(16, 185, 129, 0.4); display:flex; align-items:center; justify-content:center; gap:0.5rem; cursor:pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        ✅ Avvia Assemblea
+                    </button>
+                `;
+            } else if (isMajorityDown) {
+                actionButtonsHtml = `
+                    <button type="button" onclick="rejectAndReorderOdg('${assemblyId}')" class="btn" style="width:100%; padding:0.85rem 1rem; font-weight:800; font-size:0.92rem; background:linear-gradient(135deg, var(--danger, #EF4444), #DC2626); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(239, 68, 68, 0.4); display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        ✏️ Modifica Ordine e Riproponi
+                    </button>
+                `;
+            } else {
+                actionButtonsHtml = `
+                    <div style="text-align:center; padding:0.75rem; background:rgba(243, 156, 18, 0.1); border:1px solid rgba(243, 156, 18, 0.3); border-radius:10px; color:var(--warning); font-weight:700; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                        ⏳ In attesa del voto della maggioranza...
+                    </div>
+                `;
+            }
+
+            const modalContent = `
+                <div style="text-align:left !important; display:flex; flex-direction:column; gap:1.25rem; min-height:75vh; justify-content:space-between;">
+                    <div>
+                        <!-- BADGE STATO CENTRATO -->
+                        <div style="display:flex; justify-content:center; align-items:center; width:100%; margin:0.25rem 0 0.6rem 0; text-align:center;">
+                            ${statusBadge}
+                        </div>
+
+                        <!-- DICITURA PARTECIPAZIONE AL VOTO -->
+                        <div style="text-align:center; margin-bottom:1rem; padding:0.5rem 0.8rem; background:rgba(255,255,255,0.03); border:1px solid var(--surface-color-light); border-radius:10px;">
+                            <p style="margin:0; font-size:0.85rem; font-weight:700; color:var(--primary-text);">
+                                📊 Il ${votedPercent}% dei presenti ha votato (${votedHeads}/${totalPresences} condòmini • ${(votedMil).toFixed(2)} / ${totMillesimi.toFixed(2)} ‰)
+                            </p>
+                        </div>
+
+                        <!-- 2 CARD POLLICI ORIZZONTALI: SINISTRA POLLICE GIÙ, DESTRA POLLICE SU (VERDE) -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                            <!-- POLLICE IN BASSO A SINISTRA (ROSSO) -->
+                            <div class="card" style="padding:1rem 0.5rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(239, 68, 68, 0.08); border:2px solid var(--danger, #EF4444); border-radius:12px;">
+                                <div style="font-size:2.5rem; line-height:1; margin-bottom:0.35rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center;">👎</div>
+                                <span style="font-size:0.78rem; font-weight:800; color:var(--danger); text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">Contrari</span>
+                                <strong style="font-size:1.55rem; color:var(--danger); display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">${downPercent}%</strong>
+                                <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${downMil.toFixed(2)} ‰ (${downHeads} ${downHeads === 1 ? 'voto' : 'voti'})</span>
+                            </div>
+
+                            <!-- POLLICE IN ALTO A DESTRA (VERDE) -->
+                            <div class="card" style="padding:1rem 0.5rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(16, 185, 129, 0.08); border:2px solid #10B981; border-radius:12px;">
+                                <div style="font-size:2.5rem; line-height:1; margin-bottom:0.35rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center;">👍</div>
+                                <span style="font-size:0.78rem; font-weight:800; color:#10B981; text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">Favorevoli</span>
+                                <strong style="font-size:1.55rem; color:#10B981; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">${upPercent}%</strong>
+                                <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${upMil.toFixed(2)} ‰ (${upHeads} ${upHeads === 1 ? 'voto' : 'voti'})</span>
+                            </div>
+                        </div>
+
+                        <!-- ELENCO DEI NON ANCORA VOTANTI -->
+                        <div class="card" style="padding:0.85rem; margin-bottom:1rem; border:1.5px solid rgba(243, 156, 18, 0.35); background:rgba(243, 156, 18, 0.04); border-radius:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                                <strong style="color:var(--warning); font-size:0.88rem; display:flex; align-items:center; gap:0.35rem;">
+                                    ⏳ Non hanno ancora votato (${pendingList.length})
+                                </strong>
+                                <span style="font-size:0.8rem; font-weight:700; color:var(--warning);">${pendingMil.toFixed(2)} ‰ (${pendingPercent}%)</span>
+                            </div>
+                            <div style="max-height:150px; overflow-y:auto; padding-right:0.2rem;">
+                                ${pendingHtml}
+                            </div>
+                        </div>
+
+                        <!-- DETTAGLIO VOTI ESPRESSI (COLLAPSIBILE) -->
+                        <div style="margin-bottom:0.85rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:0.4rem 0.2rem;" onclick="const el = document.getElementById('odg-voted-details-list'); if(el) el.classList.toggle('hidden');">
+                                <strong style="font-size:0.82rem; color:var(--accent-color);">👥 Dettaglio Voti Espressi (${votes.length}/${activeAttendees.length})</strong>
+                                <span style="font-size:0.75rem; color:var(--secondary-text);">Mostra/Nascondi ▼</span>
+                            </div>
+                            <div id="odg-voted-details-list" class="hidden" style="margin-top:0.4rem; max-height:140px; overflow-y:auto;">
+                                ${declinedList.length > 0 ? `<div style="margin-bottom:0.4rem;"><strong style="font-size:0.75rem; color:var(--danger); display:block; margin-bottom:0.2rem;">👎 Contrari (${declinedList.length}):</strong>${declinedHtml}</div>` : ''}
+                                ${approvedList.length > 0 ? `<div><strong style="font-size:0.75rem; color:#10B981; display:block; margin-bottom:0.2rem;">👍 Favorevoli (${approvedList.length}):</strong>${approvedHtml}</div>` : ''}
+                                ${votes.length === 0 ? `<p style="font-size:0.8rem; color:var(--secondary-text); margin:0;">Nessun voto ancora registrato.</p>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- LISTA PUNTI ODG PROPOSTI (SOLO TITOLI PUNTI SENZA OPZIONI) -->
+                        <div style="margin-bottom:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:0.4rem 0.2rem;" onclick="const el = document.getElementById('odg-admin-points-list'); if(el) el.classList.toggle('hidden');">
+                                <strong style="font-size:0.82rem; color:var(--secondary-text);">📋 Punti OdG Proposti (${agenda.length})</strong>
+                                <span style="font-size:0.75rem; color:var(--secondary-text);">Mostra/Nascondi ▼</span>
+                            </div>
+                            <div id="odg-admin-points-list" class="hidden" style="max-height:120px; overflow-y:auto; padding-right:0.2rem;">
+                                ${pointsListHtml}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PULSANTI AZIONE AMMINISTRATORE -->
+                    <div style="display:flex; flex-direction:column; gap:0.6rem; padding-top:1rem; border-top:1px solid var(--surface-color-light);">
+                        ${actionButtonsHtml}
+                    </div>
+                </div>
+            `;
+
+            const modalContainer = document.getElementById('modal-container');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            if (modalContainer && modalTitle && modalBody) {
+                modalTitle.textContent = '';
+                modalBody.innerHTML = modalContent;
+                modalContainer.classList.add('fullscreen-notification');
+                modalContainer.classList.remove('hidden');
+            }
+        };
+
+        window.renderOdgApprovalCondominoModal = (assembly, assemblyId, currentUser, activeAttendees, activeProxies) => {
+            window.isOdgApprovalModalOpen = true;
+            const agenda = assembly.agenda || [];
+            const votes = assembly.odgApproval?.votes || [];
+
+            const attendee = activeAttendees.find(a => a.uid === currentUser.uid);
+            let userMillesimi = attendee ? (attendee.millesimi || 0) : (parseFloat(userProfile?.millesimiTotali) || 0);
+            const userHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected');
+            const myVote = votes.find(v => v.voterId === currentUser.uid);
+
+            // AI PARTECIPANTI VENGONO PRESENTATI SOLAMENTE I PUNTI (NUMERO E TITOLO) SENZA ALCUNA OPZIONE DI VOTO SINGOLO
+            const pointsListHtml = agenda.map((item, idx) => `
+                <div style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem 0.8rem; background:var(--surface-color-light); border-radius:8px; font-size:0.9rem; margin-bottom:0.45rem; text-align:left; border-left:3px solid var(--accent-color);">
+                    <strong style="color:var(--accent-color); min-width:65px; font-size:0.85rem;">Punto ${idx + 1}:</strong>
+                    <span style="font-weight:700; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
+                </div>
+            `).join('');
+
+            let proxyNoticeHtml = '';
+            if (userHeldProxies.length > 0) {
+                proxyNoticeHtml = `
+                    <div style="background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:1rem; font-size:0.82rem; color:var(--warning); text-align:left;">
+                        📜 <strong>Deleghe incluse (${userHeldProxies.length}):</strong> Il tuo voto esprimerà anche la preferenza per le deleghe ricevute, per un totale di <strong>${userMillesimi.toFixed(2)} ‰</strong>.
+                    </div>
+                `;
+            }
+
+            let voteSectionHtml = '';
+            if (!myVote) {
+                voteSectionHtml = `
+                    <div style="margin-top:1.25rem;">
+                        <p style="font-size:0.88rem; color:var(--primary-text); font-weight:700; margin-bottom:0.75rem; text-align:center;">Esprimi la tua preferenza sull'ordine dei punti:</p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; width:100%; box-sizing:border-box;">
+                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'up')" class="btn" style="padding:1rem 0.5rem; font-size:1.05rem; font-weight:800; background:#10B981; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(16, 185, 129, 0.35); cursor:pointer;">
+                                <span style="font-size:2rem; line-height:1;">👍</span>
+                                <span>APPROVO</span>
+                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(${userMillesimi.toFixed(2)} ‰)</span>
+                            </button>
+
+                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'down')" class="btn" style="padding:1rem 0.5rem; font-size:1.05rem; font-weight:800; background:var(--danger, #EF4444); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(239, 68, 68, 0.35); cursor:pointer;">
+                                <span style="font-size:2rem; line-height:1;">👎</span>
+                                <span>NON APPROVO</span>
+                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(${userMillesimi.toFixed(2)} ‰)</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const isUp = myVote.choice === 'up';
+                voteSectionHtml = `
+                    <div style="margin-top:1.25rem; padding:1rem; background:${isUp ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'}; border:2px solid ${isUp ? '#10B981' : 'var(--danger)'}; border-radius:12px; text-align:center;">
+                        <div style="font-size:2.2rem; line-height:1; margin-bottom:0.4rem;">${isUp ? '👍' : '👎'}</div>
+                        <h4 style="margin:0 0 0.25rem 0; font-size:1.05rem; font-weight:800; color:${isUp ? '#10B981' : 'var(--danger)'};">
+                            Hai votato: ${isUp ? 'APPROVO' : 'NON APPROVO'}
+                        </h4>
+                        <p style="font-size:0.82rem; color:var(--secondary-text); margin:0 0 0.75rem 0;">
+                            Voto registrato con successo (${(myVote.millesimi || userMillesimi).toFixed(2)} ‰).<br>
+                            In attesa che l'amministratore verifichi la maggioranza e dia avvio alla seduta...
+                        </p>
+                        <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', '${isUp ? 'down' : 'up'}')" class="btn btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.8rem; margin:0 auto;">
+                            🔄 Cambia in ${isUp ? '👎 Non Approvo' : '👍 Approvo'}
+                        </button>
+                    </div>
+                `;
+            }
+
+            const modalContent = `
+                <div style="text-align:left !important; padding:0.25rem 0;">
+                    <div style="text-align:center; margin-bottom:1rem;">
+                        <div style="width:54px; height:54px; border-radius:50%; background:rgba(37, 99, 235, 0.15); border:2px solid var(--accent-color); display:flex; align-items:center; justify-content:center; margin:0 auto 0.75rem auto; color:var(--accent-color);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        </div>
+                        <h3 style="margin:0 0 0.35rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text);">Approvazione Ordine dei Lavori</h3>
+                        <p style="margin:0; font-size:0.84rem; color:var(--secondary-text); line-height:1.4;">
+                            L'amministratore propone la discussione dei seguenti punti nell'ordine indicato. Esprimi la tua approvazione con Pollice SU o Pollice GIÙ:
+                        </p>
+                    </div>
+
+                    ${proxyNoticeHtml}
+
+                    <div style="max-height:220px; overflow-y:auto; padding-right:0.2rem; margin-bottom:0.5rem;">
+                        ${pointsListHtml}
+                    </div>
+
+                    ${voteSectionHtml}
+                </div>
+            `;
+
+            const modalContainer = document.getElementById('modal-container');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            if (modalContainer && modalTitle && modalBody) {
+                modalTitle.textContent = '📋 Approvazione Ordine dei Lavori';
+                modalBody.innerHTML = modalContent;
+                modalContainer.classList.remove('fullscreen-notification');
+                modalContainer.classList.remove('hidden');
             }
         };
 
@@ -18697,7 +19306,7 @@ ${renderBottomNavigation()}
 
                         const groupCheckboxesHtml = groupNames.map(g => `
                             <label class="flex items-center gap-1.5" style="cursor:pointer; font-size:0.82rem; display:inline-flex; align-items:center;">
-                                <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" ${ (targetGroup.includes(g) || (item.targetGroups || []).includes(g)) ? 'checked' : '' } style="accent-color:var(--accent-color); width:15px; height:15px;">
+                                <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" ${(targetGroup.includes(g) || (item.targetGroups || []).includes(g)) ? 'checked' : ''} style="accent-color:var(--accent-color); width:15px; height:15px;">
                                 <span>${escapeHtml(g)}</span>
                             </label>
                         `).join('');
@@ -18959,9 +19568,14 @@ ${renderBottomNavigation()}
 
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
+                const currentDocSnap = await getDoc(assemblyRef);
+                const currentStatus = currentDocSnap.exists() ? currentDocSnap.data().status : 'programmata';
+
                 await updateDoc(assemblyRef, {
                     agenda: updatedAgenda,
-                    sessionStage: 'active'
+                    sessionStage: currentStatus === 'in_corso' ? 'active' : 'reorder_phase',
+                    'odgApproval.status': null,
+                    'odgApproval.votes': []
                 });
                 await logAssemblyEvent(assemblyId, 'MODIFICA_ODG', 'Ordine del giorno aggiornato, punti e voti salvati dall\'amministratore.');
                 hideModal();
@@ -19256,7 +19870,7 @@ ${renderBottomNavigation()}
                     const div = document.createElement("div");
                     div.className = "odg-item-row card";
                     div.style.cssText = "padding:0.85rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.65rem; text-align:left; width:100%; box-sizing:border-box; overflow:hidden;";
-                    
+
                     const multiScaleCheckboxesHtml = groupNames.map(g => `
                         <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
                             <input type="checkbox" value="${escapeHtml(g)}" class="odg-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
@@ -19659,8 +20273,7 @@ ${renderBottomNavigation()}
                                 const updatedAttendees = [...currentAttendees, newAttendee];
 
                                 await updateDoc(assemblyRef, {
-                                    attendees: updatedAttendees,
-                                    status: currentAssembly.status === 'programmata' ? 'in_corso' : currentAssembly.status
+                                    attendees: updatedAttendees
                                 });
 
                                 messageBox.className = "message-box success";
@@ -19921,29 +20534,29 @@ ${renderBottomNavigation()}
                                 <strong style="font-size: 0.85rem; color: var(--accent-color); text-transform: uppercase;">📜 Deleghe Ricevute (${receivedProxies.length}):</strong>
                                 <div class="space-y-2" style="margin-top: 0.5rem;">
                                     ${receivedProxies.map(p => {
-                                        const pStatus = p.status || 'accepted';
-                                        let badge = '';
-                                        let actionButtons = '';
+                            const pStatus = p.status || 'accepted';
+                            let badge = '';
+                            let actionButtons = '';
 
-                                        if (pStatus === 'pending') {
-                                            badge = `<span class="badge" style="background-color: var(--warning); color: black;">⏳ In Attesa</span>`;
-                                            actionButtons = `
+                            if (pStatus === 'pending') {
+                                badge = `<span class="badge" style="background-color: var(--warning); color: black;">⏳ In Attesa</span>`;
+                                actionButtons = `
                                                 <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">🟢 Accetta</button>
                                                 <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.75rem; padding: 0.35rem 0.7rem;">🔴 Rifiuta</button>
                                             `;
-                                        } else if (pStatus === 'accepted') {
-                                            badge = `<span class="badge status-aperta">🟢 Accettata (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
-                                            actionButtons = `
+                            } else if (pStatus === 'accepted') {
+                                badge = `<span class="badge status-aperta">🟢 Accettata (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
+                                actionButtons = `
                                                 <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">↩️ Rimanda indietro</button>
                                             `;
-                                        } else if (pStatus === 'rejected') {
-                                            badge = `<span class="badge status-chiusa">🔴 Rifiutata / Rimandata</span>`;
-                                            actionButtons = `
+                            } else if (pStatus === 'rejected') {
+                                badge = `<span class="badge status-chiusa">🔴 Rifiutata / Rimandata</span>`;
+                                actionButtons = `
                                                 <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">🟢 Accetta Ora</button>
                                             `;
-                                        }
+                            }
 
-                                        return `
+                            return `
                                             <div style="background: var(--surface-color-light); padding: 0.75rem; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                                                 <div>
                                                     <strong>${escapeHtml(p.delegatorName)}</strong>
@@ -19955,7 +20568,7 @@ ${renderBottomNavigation()}
                                                 </div>
                                             </div>
                                         `;
-                                    }).join('')}
+                        }).join('')}
                                 </div>
                             </div>
                         `;
@@ -20024,7 +20637,7 @@ ${renderBottomNavigation()}
 
                 await logActivity("proxy_revoked", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId });
                 await customAlert("Delega ritirata con successo! Ora puoi votare autonomamente o conferire una nuova delega.");
-                
+
                 if (currentPage === 'assemblea_deleghe') {
                     loadUserDeleghePage();
                 } else {
@@ -20069,6 +20682,12 @@ ${renderBottomNavigation()}
         window.resetAssemblyFilters = resetAssemblyFilters;
         window.loadUserDeleghePage = loadUserDeleghePage;
         window.revokeProxy = revokeProxy;
+        window.startOdgApprovalVote = startOdgApprovalVote;
+        window.submitOdgApprovalVote = submitOdgApprovalVote;
+        window.submitOdgApprovalVoteForAttendee = submitOdgApprovalVoteForAttendee;
+        window.rejectAndReorderOdg = rejectAndReorderOdg;
+        window.renderOdgApprovalAdminModal = renderOdgApprovalAdminModal;
+        window.renderOdgApprovalCondominoModal = renderOdgApprovalCondominoModal;
 
         // --- FINE FUNZIONI ASSEMBLEE ---
 
