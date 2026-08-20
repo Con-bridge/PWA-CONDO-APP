@@ -16391,6 +16391,14 @@ ${renderBottomNavigation()}
 
         const initScannerForAssembly = (assemblyId) => {
             const messageBox = document.getElementById("scanner-message");
+            const feedbackPopup = document.getElementById("scanner-feedback-popup");
+
+            if (feedbackPopup) {
+                feedbackPopup.innerHTML = '';
+                feedbackPopup.style.display = 'none';
+                feedbackPopup.classList.add('hidden');
+            }
+            if (messageBox) messageBox.style.display = 'none';
 
             if (window.html5QrcodeScanner) {
                 try {
@@ -16406,6 +16414,20 @@ ${renderBottomNavigation()}
             if (!readerEl) return;
 
             let isProcessingScan = false;
+
+            window.dismissScannerFeedback = () => {
+                const fPopup = document.getElementById("scanner-feedback-popup");
+                const mBox = document.getElementById("scanner-message");
+                if (fPopup) {
+                    fPopup.innerHTML = '';
+                    fPopup.style.display = 'none';
+                    fPopup.classList.add('hidden');
+                }
+                if (mBox) mBox.style.display = 'none';
+                setTimeout(() => {
+                    isProcessingScan = false;
+                }, 300);
+            };
 
             const onScanSuccess = async (decodedText) => {
                 if (isProcessingScan) return;
@@ -16429,11 +16451,11 @@ ${renderBottomNavigation()}
                     const attendees = assembly.attendees || [];
 
                     if (attendees.some(a => a.uid === qrUid && a.status !== 'uscito')) {
-                        throw new Error("Condomino già registrato come Presente.");
+                        throw new Error("Condòmino già registrato come Presente.");
                     }
 
                     const userDoc = await getDoc(doc(db, "users", qrUid));
-                    if (!userDoc.exists()) throw new Error("Utente non trovato.");
+                    if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
 
                     const user = userDoc.data();
 
@@ -16468,23 +16490,70 @@ ${renderBottomNavigation()}
                         attendees: arrayUnion(newAttendee)
                     });
 
-                    if (messageBox) {
+                    const userFullName = `${user.nome} ${user.cognome}`.trim();
+                    await logAssemblyEvent(assemblyId, 'PRESENZA_QR', `Presenza convalidata tramite Scanner QR: ${userFullName} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
+
+                    const fPopup = document.getElementById("scanner-feedback-popup");
+                    if (fPopup) {
+                        fPopup.className = '';
+                        fPopup.style.display = 'block';
+                        fPopup.classList.remove('hidden');
+                        fPopup.innerHTML = `
+                            <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
+                                <div style="font-size:2.2rem; margin-bottom:0.25rem;">✅</div>
+                                <div style="font-size:0.8rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Presenza Convalidata</div>
+                                <div style="font-size:1.05rem; font-weight:800; color:var(--primary-text); margin-bottom:0.35rem; line-height:1.35;">
+                                    Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                                </div>
+                                <div style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:1rem;">
+                                    Millesimi: <strong style="color:var(--warning); font-size:0.95rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
+                                    ${proxyNoticeText ? `<br><span style="font-size:0.8rem; color:var(--accent-color); font-weight:600;">${escapeHtml(proxyNoticeText.trim())}</span>` : ''}
+                                </div>
+                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-primary" style="width:100%; height:42px; font-weight:700; font-size:0.9rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                    <span>✕ Chiudi / Prossima Scansione</span>
+                                </button>
+                            </div>
+                        `;
+                    } else if (messageBox) {
                         messageBox.className = 'message-box success';
-                        messageBox.textContent = `✅ Accreditato: ${user.nome} ${user.cognome} (${totalMillesimiAccreditati.toFixed(2)} ‰)${proxyNoticeText}`;
+                        messageBox.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                <div>✅ Il condòmino <strong>${escapeHtml(userFullName)}</strong> è presente (${totalMillesimiAccreditati.toFixed(2)} ‰)</div>
+                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">✕ Chiudi</button>
+                            </div>
+                        `;
                         messageBox.style.display = 'block';
                     }
 
                 } catch (error) {
-                    if (messageBox) {
+                    console.error("Errore validazione QR:", error);
+                    const fPopup = document.getElementById("scanner-feedback-popup");
+                    if (fPopup) {
+                        fPopup.className = '';
+                        fPopup.style.display = 'block';
+                        fPopup.classList.remove('hidden');
+                        fPopup.innerHTML = `
+                            <div style="background:var(--surface-color); border:2px solid var(--danger); border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
+                                <div style="font-size:2.2rem; margin-bottom:0.25rem;">⚠️</div>
+                                <div style="font-size:0.8rem; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Attenzione</div>
+                                <div style="font-size:0.95rem; font-weight:700; color:var(--primary-text); margin-bottom:1rem; line-height:1.35;">
+                                    ${escapeHtml(error.message || 'Errore durante la scansione')}
+                                </div>
+                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:600; font-size:0.85rem; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                    <span>✕ Chiudi e Riprova</span>
+                                </button>
+                            </div>
+                        `;
+                    } else if (messageBox) {
                         messageBox.className = 'message-box error';
-                        messageBox.textContent = `⚠️ Errore: ${error.message}`;
+                        messageBox.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                <div>⚠️ ${escapeHtml(error.message || 'Errore durante la scansione')}</div>
+                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">✕ Chiudi</button>
+                            </div>
+                        `;
                         messageBox.style.display = 'block';
                     }
-                } finally {
-                    setTimeout(() => {
-                        isProcessingScan = false;
-                        if (messageBox) messageBox.style.display = 'none';
-                    }, 3000);
                 }
             };
 
@@ -16601,21 +16670,62 @@ ${renderBottomNavigation()}
                 const totTesteEl = document.getElementById('room-tot-teste');
                 const totMillesimiEl = document.getElementById('room-tot-millesimi');
 
-                getDocs(query(collection(db, "users"))).then(usersSnap => {
+                // Calcolo totale teste e millesimi basato esclusivamente sull'anagrafica ufficiale (importedData)
+                getDocs(query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1))).then(importedSnap => {
                     let totalBuildingUsers = 0;
                     let totalBuildingMillesimi = 0;
-                    usersSnap.docs.forEach(d => {
-                        const u = d.data();
-                        if (['condomino', 'consigliere'].includes(u.tipoUtente)) {
-                            totalBuildingUsers++;
-                            totalBuildingMillesimi += (u.millesimiTotali || 0);
+
+                    if (!importedSnap.empty) {
+                        const tableData = importedSnap.docs[0].data().tableData || [];
+                        if (tableData.length > 0) {
+                            const headers = Object.keys(tableData[0]);
+                            const findH = (keys) => headers.find(h => keys.some(k => h.toLowerCase().includes(k.toLowerCase())));
+                            const nominativoHeader = findH(['nominativo', 'condomino', 'proprietario', 'intestatario', 'nome']);
+                            const millesimiHeader = findH(['millesimi', 'quota', 'valore', 'millesimo']);
+
+                            const distinctCondomini = new Set();
+                            tableData.forEach(row => {
+                                if (nominativoHeader) {
+                                    const nom = (row[nominativoHeader] || '').toString().trim();
+                                    if (nom) distinctCondomini.add(nom.toLowerCase());
+                                }
+                                if (millesimiHeader) {
+                                    const rawMil = (row[millesimiHeader] || '').toString().replace(',', '.').trim();
+                                    const milVal = parseFloat(rawMil) || 0;
+                                    totalBuildingMillesimi += milVal;
+                                }
+                            });
+
+                            totalBuildingUsers = distinctCondomini.size > 0 ? distinctCondomini.size : tableData.length;
                         }
-                    });
+                    }
+
+                    // Fallback nel caso in cui non sia stato ancora importato alcun file millesimi
+                    if (totalBuildingUsers === 0 || totalBuildingMillesimi <= 0) {
+                        return getDocs(query(collection(db, "users"))).then(usersSnap => {
+                            let fallbackUsers = 0;
+                            let fallbackMil = 0;
+                            usersSnap.docs.forEach(d => {
+                                const u = d.data();
+                                if (['condomino', 'consigliere'].includes(u.tipoUtente)) {
+                                    fallbackUsers++;
+                                    fallbackMil += (u.millesimiTotali || 0);
+                                }
+                            });
+                            totalBuildingUsers = totalBuildingUsers || fallbackUsers || 1;
+                            totalBuildingMillesimi = totalBuildingMillesimi > 0 ? totalBuildingMillesimi : (fallbackMil > 0 ? fallbackMil : 1000.00);
+
+                            if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.) su ${totalBuildingUsers} Tot.`;
+                            if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} su ${totalBuildingMillesimi.toFixed(2)} ‰ Tot.`;
+                        });
+                    }
+
                     if (totalBuildingMillesimi <= 0) totalBuildingMillesimi = 1000.00;
 
                     if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.) su ${totalBuildingUsers} Tot.`;
                     if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} su ${totalBuildingMillesimi.toFixed(2)} ‰ Tot.`;
                 }).catch(e => {
+                    console.error("Errore calcolo totali anagrafica ufficiale:", e);
                     if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.)`;
                     if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
                 });
@@ -16777,20 +16887,27 @@ ${renderBottomNavigation()}
 
                             let toggleButtonHtml = '';
                             let cancelBtnHtml = '';
+                            const isSessionActive = assembly.status === 'in_corso' || assembly.sessionStage === 'active';
+
                             if (isAdmin && !isClosedOrCancelled) {
-                                if (isLeft) {
-                                    toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
+                                if (isSessionActive) {
+                                    // Attivo non appena il pulsante "Inizia" si trasforma nello stato "Seduta avviata"
+                                    if (isLeft) {
+                                        toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
+                                    } else {
+                                        toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger); color:white; font-size:0.7rem; padding:0.2rem 0.5rem; font-weight:700;" title="Segnala uscita dall'aula (rimuove presenza e deleghe dal conteggio)">🚪 Uscita</button>`;
+                                    }
                                 } else {
-                                    toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger); color:white; font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala abbandono/uscita dall'aula">🚪 Uscita</button>`;
+                                    // Tasto Annulla abilitato fino al momento esatto in cui viene premuto "Inizia"
+                                    cancelBtnHtml = `<button onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid var(--danger); font-size:0.7rem; padding:0.2rem 0.5rem; font-weight:700;" title="Annulla registrazione presenza">🗑️ Annulla</button>`;
                                 }
-                                cancelBtnHtml = `<button onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid var(--danger); font-size:0.7rem; padding:0.2rem 0.4rem;" title="Annulla registrazione presenza">🗑️ Annulla</button>`;
                             }
 
                             return `
                                 <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color-light); padding:0.6rem 0.8rem; border-radius:8px; font-size:0.85rem; ${isLeft ? 'opacity:0.6;' : ''}">
                                     <div>
                                         <div style="display:flex; align-items:center; gap:0.4rem;">
-                                            <strong>${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')}</strong>
+                                            <strong>${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</strong>
                                             ${statusBadge}
                                         </div>
                                         ${proxyInfo}
@@ -17156,7 +17273,7 @@ ${renderBottomNavigation()}
                                     <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; max-height: 120px; overflow-y: auto; padding-top: 0.2rem;">
                                         ${pointNonVoters.map(a => `
                                             <span class="badge" style="background: rgba(243, 156, 18, 0.12); color: var(--warning); border: 1px solid rgba(243, 156, 18, 0.3); font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 6px;">
-                                                👤 ${escapeHtml(a.nome || '')} ${(a.cognome || '')} (${(a.millesimi || 0).toFixed(2)} ‰)
+                                                👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))} (${(a.millesimi || 0).toFixed(2)} ‰)
                                             </span>
                                         `).join('')}
                                     </div>
@@ -17164,11 +17281,13 @@ ${renderBottomNavigation()}
                             </div>
                         `;
 
+                        const exPointText = (item.originalIndex && item.originalIndex !== (idx + 1)) ? ` <span style="font-size:0.8rem; color:var(--warning); font-weight:700;">(ex punto ${item.originalIndex})</span>` : '';
+
                         return `
                             <div class="card" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 1.25rem; margin-bottom: 1rem;">
                                 <div style="display:flex; flex-direction:column; gap:0.45rem; margin-bottom: 0.75rem; width:100%;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; width:100%;">
-                                        <h4 style="font-size: 1.05rem; font-weight: 700; margin:0; line-height: 1.3; flex:1; min-width:140px;">Punto ${idx + 1}: ${escapeHtml(item.title)}</h4>
+                                        <h4 style="font-size: 1.05rem; font-weight: 700; margin:0; line-height: 1.3; flex:1; min-width:140px;">Punto ${idx + 1}${exPointText}: ${escapeHtml(item.title)}</h4>
                                         <div>
                                             ${itemBadge}
                                         </div>
@@ -18558,6 +18677,16 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.getAttendeeDisplayName = (attendee) => {
+            if (!attendee) return '';
+            let rawNome = (attendee.nome || '').trim();
+            const rawCognome = (attendee.cognome || '').trim();
+            const baseNome = rawNome.replace(/\s*\(\+?\d+\s*deleghe[^\)]*\)/gi, '').trim();
+            if (!rawCognome) return rawNome;
+            if (baseNome.toLowerCase().includes(rawCognome.toLowerCase())) return rawNome;
+            return `${rawNome} ${rawCognome}`.trim();
+        };
+
         window.toggleAttendeeStatus = async (assemblyId, attendeeUid, newStatus) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
@@ -18566,10 +18695,14 @@ ${renderBottomNavigation()}
 
                 const assembly = docSnap.data();
                 let targetName = "";
+                let attendeeMillesimi = 0;
+                let heldProxies = [];
 
                 const updatedAttendees = (assembly.attendees || []).map(a => {
                     if (a.uid === attendeeUid) {
-                        targetName = `${a.nome} ${a.cognome || ''}`.trim();
+                        targetName = getAttendeeDisplayName(a);
+                        attendeeMillesimi = (a.millesimi || 0);
+                        heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
                         return {
                             ...a,
                             status: newStatus,
@@ -18582,9 +18715,10 @@ ${renderBottomNavigation()}
 
                 await updateDoc(assemblyRef, { attendees: updatedAttendees });
 
+                const proxyNotice = heldProxies.length > 0 ? ` (e ${heldProxies.length} deleghe)` : '';
                 const eventDescription = newStatus === 'uscito'
-                    ? `Abbandono/Uscita dall'aula registrata per ${targetName}`
-                    : `Rientro in aula registrato per ${targetName}`;
+                    ? `Uscita dall'aula registrata per ${targetName}${proxyNotice}. Rimossi dal conteggio attivo: 1 presenza${heldProxies.length > 0 ? ` + ${heldProxies.length} deleghe` : ''} e ${attendeeMillesimi.toFixed(2)} ‰.`
+                    : `Rientro in aula registrato per ${targetName}${proxyNotice}. Aggiunti al conteggio attivo: 1 presenza${heldProxies.length > 0 ? ` + ${heldProxies.length} deleghe` : ''} e ${attendeeMillesimi.toFixed(2)} ‰.`;
 
                 await logAssemblyEvent(assemblyId, newStatus === 'uscito' ? 'USCITA' : 'RIENTRO', eventDescription);
                 await customAlert(eventDescription);
@@ -18601,10 +18735,16 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
 
                 const assembly = docSnap.data();
+                const isAssemblyStarted = assembly.status === 'in_corso' || assembly.sessionStage === 'active' || assembly.sessionStage === 'odg_approval' || !!assembly.startedAt;
+                if (isAssemblyStarted) {
+                    await customAlert("Non è possibile annullare la presenza dopo l'avvio della seduta assembleare. Utilizza il pulsante 'Uscita' per segnalare l'allontanamento.");
+                    return;
+                }
+
                 const targetAttendee = (assembly.attendees || []).find(a => a.uid === attendeeUid);
                 if (!targetAttendee) return;
 
-                const targetName = `${targetAttendee.nome} ${targetAttendee.cognome || ''}`.trim();
+                const targetName = getAttendeeDisplayName(targetAttendee);
 
                 const confirmed = confirm(`Sei sicuro di voler ANNULLARE ed eliminare la presenza per ${targetName}?`);
                 if (!confirmed) return;
@@ -18645,12 +18785,12 @@ ${renderBottomNavigation()}
                 let warnText = '';
                 if (activeAttendees.length === 0) {
                     warnText = `<div style="padding:0.6rem 0.8rem; background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; margin-bottom:0.75rem; font-size:0.82rem; color:var(--warning); text-align:left;">
-                        ⚠️ <strong>Attenzione:</strong> Nessun condomino risulta ancora accreditato in aula. Puoi avviare comunque la votazione dell'OdG o attendere l'accredito delle presenze all'ingresso.
+                        ⚠️ <strong>Attenzione:</strong> Nessun condòmino risulta ancora accreditato in aula. Puoi avviare comunque la seduta o procedere con la votazione per il riordino.
                     </div>`;
                 }
 
                 const pointsListHtml = agenda.map((item, idx) => `
-                    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; margin-bottom:0.35rem; text-align:left;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; margin-bottom:0.35rem; text-align:left; border-left:3px solid var(--accent-color);">
                         <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
                         <span style="font-weight:600; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
                     </div>
@@ -18658,31 +18798,73 @@ ${renderBottomNavigation()}
 
                 const modalContent = `
                     <div style="text-align:center !important; padding: 0.25rem 0;">
-                        <div style="width:60px; height:60px; border-radius:50%; background:rgba(16, 185, 129, 0.15); border:2px solid #10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem auto; color:#10B981;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <div style="width:56px; height:56px; border-radius:50%; background:rgba(16, 185, 129, 0.15); border:2px solid #10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 0.75rem auto; color:#10B981;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                         </div>
-                        <h3 style="margin:0 0 0.4rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text); text-align:center !important; width:100%;">Attenzione</h3>
-                        <p style="font-size:0.85rem; color:var(--secondary-text); line-height:1.4; margin-bottom:1rem; text-align:center !important;">
-                            Stai per sottoporre ai condòmini accreditati l'ordine di discussione dei punti all'OdG. Tutti i presenti voteranno in tempo reale con <strong>👍 Pollice in SU</strong> o <strong>👎 Pollice in GIÙ</strong>.
+                        <h3 style="margin:0 0 0.35rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text);">Gestione Ordine del Giorno (ODG)</h3>
+                        <p style="font-size:0.85rem; color:var(--secondary-text); line-height:1.4; margin-bottom:0.85rem;">
+                            Indica se l'ordine dei punti all'ODG rimane <strong>invariato</strong> per procedere direttamente con la discussione, oppure se è richiesta una <strong>votazione per il riordino</strong>:
                         </p>
 
                         ${warnText}
 
-                        <div style="max-height:180px; overflow-y:auto; margin-bottom:1.25rem; border:1px solid var(--surface-color-light); border-radius:8px; padding:0.4rem;">
+                        <div style="max-height:160px; overflow-y:auto; margin-bottom:1.15rem; border:1px solid var(--surface-color-light); border-radius:8px; padding:0.4rem;">
                             ${pointsListHtml}
                         </div>
 
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; width:100%; box-sizing:border-box;">
-                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width:100%; padding:0.75rem 0.5rem; font-weight:700; font-size:0.88rem; justify-content:center;">Annulla</button>
-                            <button type="button" onclick="startOdgApprovalVote('${assemblyId}')" class="btn" style="width:100%; padding:0.75rem 0.5rem; font-weight:800; font-size:0.88rem; background:#10B981; color:white; justify-content:center; display:flex; align-items:center; gap:0.35rem;">
-                                Avvia
+                        <div style="display:flex; flex-direction:column; gap:0.6rem; width:100%;">
+                            <button type="button" onclick="startAssemblyDirectlyInvariato('${assemblyId}')" class="btn" style="width:100%; padding:0.8rem 0.75rem; font-weight:800; font-size:0.9rem; background:#10B981; color:white; border-radius:8px; border:none; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer; box-shadow:0 4px 12px rgba(16, 185, 129, 0.35);">
+                                <span>🟢 Ordine del giorno invariato</span>
+                            </button>
+                            <button type="button" onclick="startOdgApprovalVote('${assemblyId}')" class="btn" style="width:100%; padding:0.8rem 0.75rem; font-weight:700; font-size:0.9rem; background:rgba(243, 156, 18, 0.15); color:var(--warning); border:1.5px solid var(--warning); border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                <span>🔄 Ordine dei punti da variare (Avvia Votazione)</span>
+                            </button>
+                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width:100%; padding:0.5rem; font-weight:600; font-size:0.82rem; margin-top:0.25rem;">
+                                Annulla
                             </button>
                         </div>
                     </div>
                 `;
-                showModal('Approvazione punti di discussione', modalContent);
+                showModal('Gestione Ordine del Giorno', modalContent);
             } catch (err) {
                 console.error("Errore apertura modal avvio assemblea:", err);
+                await customAlert("Errore durante l'avvio dell'assemblea.");
+            }
+        };
+
+        window.startAssemblyDirectlyInvariato = async (assemblyId) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const currentDocSnap = await getDoc(assemblyRef);
+                const currentData = currentDocSnap.exists() ? currentDocSnap.data() : {};
+
+                await updateDoc(assemblyRef, {
+                    status: 'in_corso',
+                    sessionStage: 'active',
+                    odgApproval: {
+                        status: 'approved',
+                        mode: 'invariato',
+                        completedAt: Date.now()
+                    },
+                    startedAt: currentData.startedAt || Date.now()
+                });
+
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Seduta assembleare avviata con Ordine del Giorno invariato dall\'amministratore. Discussione del Punto 1 aperta.');
+
+                const btnStart = document.getElementById('btn-room-start');
+                if (btnStart) {
+                    btnStart.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                    btnStart.style.color = '#10B981';
+                    btnStart.style.border = '1.5px solid #10B981';
+                    btnStart.style.cursor = 'default';
+                    btnStart.onclick = null;
+                    btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Seduta Avviata`;
+                }
+
+                hideModal();
+                await customAlert("Seduta assembleare avviata con Ordine del Giorno invariato! Le votazioni e discussioni sui punti sono aperte.");
+            } catch (err) {
+                console.error("Errore avvio assemblea invariata:", err);
                 await customAlert("Errore durante l'avvio dell'assemblea.");
             }
         };
@@ -18694,11 +18876,12 @@ ${renderBottomNavigation()}
                     sessionStage: 'odg_approval',
                     odgApproval: {
                         status: 'voting',
+                        question: 'Siete favorevoli al riordino dei punti all\'ODG?',
                         startedAt: Date.now(),
                         votes: []
                     }
                 });
-                await logAssemblyEvent(assemblyId, 'AVVIO_VOTAZIONE_ODG', 'Avviata votazione tra i presenti per approvazione ordine dei punti all\'OdG.');
+                await logAssemblyEvent(assemblyId, 'AVVIO_VOTAZIONE_ODG', 'Avviata votazione tra i presenti: "Siete favorevoli al riordino dei punti all\'ODG?"');
             } catch (err) {
                 console.error("Errore avvio votazione OdG:", err);
                 await customAlert("Errore durante l'avvio della votazione OdG.");
@@ -18727,7 +18910,7 @@ ${renderBottomNavigation()}
                 const newVote = {
                     voterId: currentUser.uid,
                     voterName: voterName,
-                    choice: choice, // 'up' | 'down'
+                    choice: choice, // 'up' (favorevole al riordino) | 'down' (contrario / invariato)
                     millesimi: userMillesimi,
                     heads: userHeads,
                     proxiesCount: userProxiesCount,
@@ -18741,7 +18924,7 @@ ${renderBottomNavigation()}
                     'odgApproval.votes': existingVotes
                 });
 
-                await logAssemblyEvent(assemblyId, 'VOTO_ODG', `Espressione di voto OdG registrata per ${voterName}: ${choice === 'up' ? '👍 Favorevole' : '👎 Contrario'} (${userMillesimi.toFixed(2)} ‰)`);
+                await logAssemblyEvent(assemblyId, 'VOTO_ODG', `Espressione di voto OdG registrata per ${voterName}: ${choice === 'up' ? '👍 Favorevole al riordino' : '👎 Contrario al riordino'} (${userMillesimi.toFixed(2)} ‰)`);
             } catch (err) {
                 console.error("Errore invio voto OdG:", err);
                 await customAlert("Errore durante l'invio del voto.");
@@ -18790,7 +18973,7 @@ ${renderBottomNavigation()}
                     'odgApproval.votes': existingVotes
                 });
 
-                await logAssemblyEvent(assemblyId, 'VOTO_ODG_MANUALE', `Voto OdG registrato manualmente dall'amministratore per ${voterName}: ${choice === 'up' ? '👍 Favorevole' : '👎 Contrario'} (${userMillesimi.toFixed(2)} ‰)`);
+                await logAssemblyEvent(assemblyId, 'VOTO_ODG_MANUALE', `Voto OdG registrato manualmente dall'amministratore per ${voterName}: ${choice === 'up' ? '👍 Favorevole al riordino' : '👎 Contrario al riordino'} (${userMillesimi.toFixed(2)} ‰)`);
             } catch (err) {
                 console.error("Errore registrazione voto manuale OdG:", err);
                 await customAlert("Errore durante la registrazione del voto.");
@@ -18806,7 +18989,7 @@ ${renderBottomNavigation()}
                     'odgApproval.completedAt': Date.now()
                 });
 
-                await logAssemblyEvent(assemblyId, 'ODG_RESPINTO', 'Ordine del giorno non approvato o modificato. L\'amministratore procede al riordino dei punti.');
+                await logAssemblyEvent(assemblyId, 'ODG_VARIAZIONE_SCELTA', 'L\'amministratore ha selezionato la variazione dell\'Ordine del Giorno e procede con la schermata di riordino.');
                 hideModal();
 
                 setTimeout(() => {
@@ -18821,15 +19004,18 @@ ${renderBottomNavigation()}
         window.confirmStartLiveAssemblySession = async (assemblyId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
+                const currentDocSnap = await getDoc(assemblyRef);
+                const currentData = currentDocSnap.exists() ? currentDocSnap.data() : {};
+
                 await updateDoc(assemblyRef, {
                     status: 'in_corso',
                     sessionStage: 'active',
                     'odgApproval.status': 'approved',
                     'odgApproval.completedAt': Date.now(),
-                    startedAt: Date.now()
+                    startedAt: currentData.startedAt || Date.now()
                 });
 
-                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Ordine del giorno approvato dai presenti. Seduta assembleare avviata formalmente dall\'amministratore.');
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA', 'Ordine del giorno confermato come invariato. Seduta assembleare avviata formalmente dall\'amministratore.');
 
                 const btnStart = document.getElementById('btn-room-start');
                 if (btnStart) {
@@ -18842,7 +19028,7 @@ ${renderBottomNavigation()}
                 }
 
                 hideModal();
-                await customAlert("Assemblea e punti da discutere avviati! Le votazioni sui punti sono ora aperte.");
+                await customAlert("Assemblea avviata con Ordine del Giorno invariato! Le votazioni sui punti sono ora aperte.");
             } catch (err) {
                 console.error("Errore conferma avvio assemblea:", err);
                 await customAlert("Errore durante l'avvio dell'assemblea.");
@@ -18863,9 +19049,9 @@ ${renderBottomNavigation()}
             const upVotes = votes.filter(v => v.choice === 'up');
             const downVotes = votes.filter(v => v.choice === 'down');
 
-            // Chi ha votato Favorevole (👍)
+            // Chi ha votato Favorevole al riordino (👍)
             const approvedList = activeAttendees.filter(a => upVotes.some(v => v.voterId === a.uid));
-            // Chi ha Declinato / Non Approvato (👎)
+            // Chi ha votato Contrario al riordino (👎)
             const declinedList = activeAttendees.filter(a => downVotes.some(v => v.voterId === a.uid));
             // Chi non ha ancora votato (⏳ In attesa)
             const pendingList = activeAttendees.filter(a => !votes.some(v => v.voterId === a.uid));
@@ -18896,9 +19082,9 @@ ${renderBottomNavigation()}
 
             let statusBadge = '';
             if (isMajorityUp) {
-                statusBadge = `<span class="badge" style="background:#10B981; color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto; animation:pulse 1.5s infinite;">🟢 MAGGIORANZA RAGGIUNTA (ORDINE APPROVATO)</span>`;
+                statusBadge = `<span class="badge" style="background:#10B981; color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto; animation:pulse 1.5s infinite;">🟢 MAGGIORANZA A FAVORE DEL RIORDINO</span>`;
             } else if (isMajorityDown) {
-                statusBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto;">🔴 MAGGIORANZA CONTRARIA (MODIFICA RICHIESTA)</span>`;
+                statusBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto;">🔴 MAGGIORANZA CONTRARIA (MANTENERE INVARIATO)</span>`;
             } else {
                 statusBadge = `<span class="badge" style="background:var(--warning); color:black; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto; animation:pulse 1.5s infinite;">⏳ VOTAZIONE IN CORSO...</span>`;
             }
@@ -18919,16 +19105,16 @@ ${renderBottomNavigation()}
                         <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; border:1px solid rgba(16, 185, 129, 0.25); border-left-width:4px; border-radius:6px; padding:0.5rem 0.65rem; margin-bottom:0.35rem; gap:0.5rem;">
                             <div style="flex:1; min-width:0;">
                                 <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')}</strong>
+                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</strong>
                                     <span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:10px;">🟢 Manuale</span>
                                 </div>
                                 <span style="color:#10B981; font-size:0.78rem; font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
                             </div>
                             <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Favorevole per ${escapeHtml(a.nome)}">
+                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Favorevole al riordino per ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}">
                                     👍 <span style="font-size:0.72rem; font-weight:700;">Sì</span>
                                 </button>
-                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Contrario per ${escapeHtml(a.nome)}">
+                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Contrario al riordino per ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}">
                                     👎 <span style="font-size:0.72rem; font-weight:700;">No</span>
                                 </button>
                             </div>
@@ -18951,7 +19137,7 @@ ${renderBottomNavigation()}
                         <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3px solid var(--warning); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
                             <div style="flex:1; min-width:0;">
                                 <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')}</strong>
+                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</strong>
                                     <span class="badge" style="background:rgba(243, 156, 18, 0.15); color:var(--warning); font-weight:700; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:10px;">📱 App/QR</span>
                                 </div>
                                 <span style="color:var(--warning); font-size:0.78rem; font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
@@ -18990,11 +19176,11 @@ ${renderBottomNavigation()}
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(239, 68, 68, 0.08); border-left:3px solid var(--danger); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
                         <div style="flex:1; min-width:0;">
-                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
+                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
                             <strong style="color:var(--danger); font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
                         </div>
                         <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                            <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:var(--danger); font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👎 Contrario</span>
+                            <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:var(--danger); font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👎 Contrario al riordino</span>
                             ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(16, 185, 129, 0.2); color:#10B981; border:1px solid #10B981; border-radius:5px; cursor:pointer;" title="Cambia voto in Favorevole">Passa a 👍</button>` : ''}
                         </div>
                     </div>
@@ -19007,11 +19193,11 @@ ${renderBottomNavigation()}
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3px solid #10B981; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
                         <div style="flex:1; min-width:0;">
-                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(a.nome)} ${escapeHtml(a.cognome || '')} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
+                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
                             <strong style="color:#10B981; font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
                         </div>
                         <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10B981; font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👍 Favorevole</span>
+                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10B981; font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👍 Favorevole al riordino</span>
                             ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(239, 68, 68, 0.2); color:var(--danger); border:1px solid var(--danger); border-radius:5px; cursor:pointer;" title="Cambia voto in Contrario">Passa a 👎</button>` : ''}
                         </div>
                     </div>
@@ -19026,36 +19212,31 @@ ${renderBottomNavigation()}
                 </div>
             `).join('');
 
-            // GESTIONE PULSANTI AZIONE CONDIZIONALI ALLA MAGGIORANZA
-            let actionButtonsHtml = '';
-            if (isMajorityUp) {
-                actionButtonsHtml = `
-                    <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; padding:0.85rem 1rem; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(16, 185, 129, 0.4); display:flex; align-items:center; justify-content:center; gap:0.5rem; cursor:pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Avvia Assemblea
+            // I DUE PULSANTI DI SCELTA PER L'AMMINISTRATORE: "Ordine dei punti invariato" oppure "Ordine dei punti da variare"
+            const actionButtonsHtml = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; width:100%; box-sizing:border-box;">
+                    <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; padding:0.85rem 0.5rem; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(16, 185, 129, 0.4); display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Ordine dei punti invariato
                     </button>
-                `;
-            } else if (isMajorityDown) {
-                actionButtonsHtml = `
-                    <button type="button" onclick="rejectAndReorderOdg('${assemblyId}')" class="btn" style="width:100%; padding:0.85rem 1rem; font-weight:800; font-size:0.92rem; background:linear-gradient(135deg, var(--danger, #EF4444), #DC2626); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(239, 68, 68, 0.4); display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        Modifica Ordine discussione
+                    <button type="button" onclick="rejectAndReorderOdg('${assemblyId}')" class="btn" style="width:100%; padding:0.85rem 0.5rem; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #F59E0B, #D97706); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(245, 158, 11, 0.4); display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        Ordine dei punti da variare
                     </button>
-                `;
-            } else {
-                actionButtonsHtml = `
-                    <div style="text-align:center; padding:0.75rem; background:rgba(243, 156, 18, 0.1); border:1px solid rgba(243, 156, 18, 0.3); border-radius:10px; color:var(--warning); font-weight:700; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
-                        ⏳ In attesa del voto della maggioranza...
-                    </div>
-                `;
-            }
+                </div>
+            `;
 
             const modalContent = `
                 <div style="text-align:left !important; display:flex; flex-direction:column; gap:1.25rem; min-height:75vh; justify-content:space-between;">
                     <div>
-                        <!-- BADGE STATO CENTRATO -->
-                        <div style="display:flex; justify-content:center; align-items:center; width:100%; margin:0.25rem 0 0.6rem 0; text-align:center;">
-                            ${statusBadge}
+                        <!-- QUESITO E BADGE STATO CENTRATO -->
+                        <div style="text-align:center; margin-bottom:0.5rem;">
+                            <h3 style="margin:0 0 0.4rem 0; font-size:1.08rem; font-weight:800; color:var(--primary-text); line-height:1.35;">
+                                Quesito: "Siete favorevoli al riordino dei punti all'ODG?"
+                            </h3>
+                            <div style="display:flex; justify-content:center; align-items:center; width:100%; margin:0.25rem 0 0.6rem 0; text-align:center;">
+                                ${statusBadge}
+                            </div>
                         </div>
 
                         <!-- DICITURA PARTECIPAZIONE AL VOTO -->
@@ -19065,12 +19246,12 @@ ${renderBottomNavigation()}
                             </p>
                         </div>
 
-                        <!-- 2 CARD POLLICI ORIZZONTALI: SINISTRA POLLICE GIÙ, DESTRA POLLICE SU (VERDE) -->
+                        <!-- 2 CARD POLLICI ORIZZONTALI: SINISTRA POLLICE GIÙ (CONTRARI/INVARIATO), DESTRA POLLICE SU (FAVOREVOLI AL RIORDINO) -->
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
                             <!-- POLLICE IN BASSO A SINISTRA (ROSSO) -->
                             <div class="card" style="padding:1rem 0.5rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(239, 68, 68, 0.08); border:2px solid var(--danger, #EF4444); border-radius:12px;">
                                 <div style="font-size:2.5rem; line-height:1; margin-bottom:0.35rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center;">👎</div>
-                                <span style="font-size:0.78rem; font-weight:800; color:var(--danger); text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">Contrari</span>
+                                <span style="font-size:0.78rem; font-weight:800; color:var(--danger); text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">Contrari al riordino</span>
                                 <strong style="font-size:1.55rem; color:var(--danger); display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">${downPercent}%</strong>
                                 <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${downMil.toFixed(2)} ‰ (${downHeads} ${downHeads === 1 ? 'voto' : 'voti'})</span>
                             </div>
@@ -19078,7 +19259,7 @@ ${renderBottomNavigation()}
                             <!-- POLLICE IN ALTO A DESTRA (VERDE) -->
                             <div class="card" style="padding:1rem 0.5rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(16, 185, 129, 0.08); border:2px solid #10B981; border-radius:12px;">
                                 <div style="font-size:2.5rem; line-height:1; margin-bottom:0.35rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center;">👍</div>
-                                <span style="font-size:0.78rem; font-weight:800; color:#10B981; text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">Favorevoli</span>
+                                <span style="font-size:0.78rem; font-weight:800; color:#10B981; text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">Favorevoli al riordino</span>
                                 <strong style="font-size:1.55rem; color:#10B981; display:block; width:100%; text-align:center !important; margin-bottom:0.2rem;">${upPercent}%</strong>
                                 <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${upMil.toFixed(2)} ‰ (${upHeads} ${upHeads === 1 ? 'voto' : 'voti'})</span>
                             </div>
@@ -19104,8 +19285,8 @@ ${renderBottomNavigation()}
                                 <span style="font-size:0.75rem; color:var(--secondary-text);">Mostra/Nascondi ▼</span>
                             </div>
                             <div id="odg-voted-details-list" class="hidden" style="margin-top:0.4rem; max-height:140px; overflow-y:auto;">
-                                ${declinedList.length > 0 ? `<div style="margin-bottom:0.4rem;"><strong style="font-size:0.75rem; color:var(--danger); display:block; margin-bottom:0.2rem;">👎 Contrari (${declinedList.length}):</strong>${declinedHtml}</div>` : ''}
-                                ${approvedList.length > 0 ? `<div><strong style="font-size:0.75rem; color:#10B981; display:block; margin-bottom:0.2rem;">👍 Favorevoli (${approvedList.length}):</strong>${approvedHtml}</div>` : ''}
+                                ${declinedList.length > 0 ? `<div style="margin-bottom:0.4rem;"><strong style="font-size:0.75rem; color:var(--danger); display:block; margin-bottom:0.2rem;">👎 Contrari al riordino (${declinedList.length}):</strong>${declinedHtml}</div>` : ''}
+                                ${approvedList.length > 0 ? `<div><strong style="font-size:0.75rem; color:#10B981; display:block; margin-bottom:0.2rem;">👍 Favorevoli al riordino (${approvedList.length}):</strong>${approvedHtml}</div>` : ''}
                                 ${votes.length === 0 ? `<p style="font-size:0.8rem; color:var(--secondary-text); margin:0;">Nessun voto ancora registrato.</p>` : ''}
                             </div>
                         </div>
@@ -19113,7 +19294,7 @@ ${renderBottomNavigation()}
                         <!-- LISTA PUNTI ODG PROPOSTI (SOLO TITOLI PUNTI SENZA OPZIONI) -->
                         <div style="margin-bottom:1rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:0.4rem 0.2rem;" onclick="const el = document.getElementById('odg-admin-points-list'); if(el) el.classList.toggle('hidden');">
-                                <strong style="font-size:0.82rem; color:var(--secondary-text);">Punti Proposti (${agenda.length})</strong>
+                                <strong style="font-size:0.82rem; color:var(--secondary-text);">Punti OdG Attuali (${agenda.length})</strong>
                                 <span style="font-size:0.75rem; color:var(--secondary-text);">Mostra/Nascondi ▼</span>
                             </div>
                             <div id="odg-admin-points-list" class="hidden" style="max-height:120px; overflow-y:auto; padding-right:0.2rem;">
@@ -19122,7 +19303,7 @@ ${renderBottomNavigation()}
                         </div>
                     </div>
 
-                    <!-- PULSANTI AZIONE AMMINISTRATORE -->
+                    <!-- SCELTA FINALE AMMINISTRATORE -->
                     <div style="display:flex; flex-direction:column; gap:0.6rem; padding-top:1rem; border-top:1px solid var(--surface-color-light);">
                         ${actionButtonsHtml}
                     </div>
@@ -19171,18 +19352,20 @@ ${renderBottomNavigation()}
             if (!myVote) {
                 voteSectionHtml = `
                     <div style="margin-top:1.25rem;">
-                        <p style="font-size:0.88rem; color:var(--primary-text); font-weight:700; margin-bottom:0.75rem; text-align:center;">Esprimi la tua preferenza sull'ordine dei punti:</p>
+                        <p style="font-size:0.92rem; color:var(--primary-text); font-weight:800; margin-bottom:0.75rem; text-align:center;">
+                            Siete favorevoli al riordino dei punti all'ODG?
+                        </p>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; width:100%; box-sizing:border-box;">
-                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'up')" class="btn" style="padding:1rem 0.5rem; font-size:1.05rem; font-weight:800; background:#10B981; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(16, 185, 129, 0.35); cursor:pointer;">
+                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'up')" class="btn" style="padding:1rem 0.5rem; font-size:1rem; font-weight:800; background:#10B981; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(16, 185, 129, 0.35); cursor:pointer;">
                                 <span style="font-size:2rem; line-height:1;">👍</span>
-                                <span>APPROVO</span>
-                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(${userMillesimi.toFixed(2)} ‰)</span>
+                                <span>FAVOREVOLE</span>
+                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(Sì al riordino)</span>
                             </button>
 
-                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'down')" class="btn" style="padding:1rem 0.5rem; font-size:1.05rem; font-weight:800; background:var(--danger, #EF4444); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(239, 68, 68, 0.35); cursor:pointer;">
+                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'down')" class="btn" style="padding:1rem 0.5rem; font-size:1rem; font-weight:800; background:var(--danger, #EF4444); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(239, 68, 68, 0.35); cursor:pointer;">
                                 <span style="font-size:2rem; line-height:1;">👎</span>
-                                <span>NON APPROVO</span>
-                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(${userMillesimi.toFixed(2)} ‰)</span>
+                                <span>CONTRARIO</span>
+                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(Invariato)</span>
                             </button>
                         </div>
                     </div>
@@ -19193,14 +19376,14 @@ ${renderBottomNavigation()}
                     <div style="margin-top:1.25rem; padding:1rem; background:${isUp ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'}; border:2px solid ${isUp ? '#10B981' : 'var(--danger)'}; border-radius:12px; text-align:center;">
                         <div style="font-size:2.2rem; line-height:1; margin-bottom:0.4rem;">${isUp ? '👍' : '👎'}</div>
                         <h4 style="margin:0 0 0.25rem 0; font-size:1.05rem; font-weight:800; color:${isUp ? '#10B981' : 'var(--danger)'};">
-                            Hai votato: ${isUp ? 'APPROVO' : 'NON APPROVO'}
+                            Hai votato: ${isUp ? 'FAVOREVOLE AL RIORDINO' : 'CONTRARIO AL RIORDINO'}
                         </h4>
                         <p style="font-size:0.82rem; color:var(--secondary-text); margin:0 0 0.75rem 0;">
                             Voto registrato con successo (${(myVote.millesimi || userMillesimi).toFixed(2)} ‰).<br>
-                            In attesa che l'amministratore verifichi la maggioranza e dia avvio alla seduta...
+                            In attesa che l'amministratore verifichi l'esito della votazione...
                         </p>
                         <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', '${isUp ? 'down' : 'up'}')" class="btn btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.8rem; margin:0 auto;">
-                            🔄 Cambia in ${isUp ? '👎 Non Approvo' : '👍 Approvo'}
+                            🔄 Cambia in ${isUp ? '👎 Contrario' : '👍 Favorevole'}
                         </button>
                     </div>
                 `;
@@ -19212,15 +19395,15 @@ ${renderBottomNavigation()}
                         <div style="width:54px; height:54px; border-radius:50%; background:rgba(37, 99, 235, 0.15); border:2px solid var(--accent-color); display:flex; align-items:center; justify-content:center; margin:0 auto 0.75rem auto; color:var(--accent-color);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                         </div>
-                        <h3 style="margin:0 0 0.35rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text);">Approvazione Ordine dei Lavori</h3>
+                        <h3 style="margin:0 0 0.35rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text);">Votazione Ordine del Giorno</h3>
                         <p style="margin:0; font-size:0.84rem; color:var(--secondary-text); line-height:1.4;">
-                            L'amministratore propone la discussione dei seguenti punti nell'ordine indicato. Esprimi la tua approvazione con Pollice SU o Pollice GIÙ:
+                            L'amministratore ha avviato la consultazione preliminare tra i condòmini presenti:
                         </p>
                     </div>
 
                     ${proxyNoticeHtml}
 
-                    <div style="max-height:220px; overflow-y:auto; padding-right:0.2rem; margin-bottom:0.5rem;">
+                    <div style="max-height:200px; overflow-y:auto; padding-right:0.2rem; margin-bottom:0.5rem;">
                         ${pointsListHtml}
                     </div>
 
@@ -19232,7 +19415,7 @@ ${renderBottomNavigation()}
             const modalTitle = document.getElementById('modal-title');
             const modalBody = document.getElementById('modal-body');
             if (modalContainer && modalTitle && modalBody) {
-                modalTitle.textContent = '📋 Approvazione Ordine dei Lavori';
+                modalTitle.textContent = '📋 Votazione Ordine del Giorno';
                 modalBody.innerHTML = modalContent;
                 modalContainer.classList.remove('fullscreen-notification');
                 modalContainer.classList.remove('hidden');
@@ -19288,6 +19471,7 @@ ${renderBottomNavigation()}
             div.className = 'reorder-item-card odg-edit-card card';
             div.setAttribute('data-id', itemId);
             div.setAttribute('data-idx', idx);
+            div.setAttribute('data-original-point', (idx + 1));
             div.setAttribute('draggable', 'true');
             div.style.cssText = 'padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;';
 
@@ -19363,6 +19547,7 @@ ${renderBottomNavigation()}
                 const renderAgendaCards = () => {
                     return agenda.map((item, idx) => {
                         const itemId = item.id || ('item_' + Date.now() + '_' + idx);
+                        const originalPointNum = item.originalIndex || (idx + 1);
                         const scope = item.scope || (item.votingScope === 'gruppo' ? 'gruppo' : 'intero');
                         const targetGroup = item.targetGroup || '';
                         const optionsType = item.optionsType || 'standard';
@@ -19375,12 +19560,14 @@ ${renderBottomNavigation()}
                             </label>
                         `).join('');
 
+                        const exPointHtml = (originalPointNum !== (idx + 1)) ? ` <span class="ex-point-label" style="font-size:0.75rem; color:var(--warning); font-weight:700;">(ex punto ${originalPointNum})</span>` : '<span class="ex-point-label"></span>';
+
                         return `
-                            <div class="reorder-item-card odg-edit-card card" data-id="${escapeHtml(itemId)}" data-idx="${idx}" draggable="true" style="padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;">
+                            <div class="reorder-item-card odg-edit-card card" data-id="${escapeHtml(itemId)}" data-idx="${idx}" data-original-point="${originalPointNum}" draggable="true" style="padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;">
                                 <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
                                     <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
                                         <span class="drag-handle" style="font-size:1.3rem; color:var(--secondary-text); cursor:grab; flex-shrink:0;">☰</span>
-                                        <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:</span>
+                                        <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:${exPointHtml}</span>
                                         <input type="text" class="form-input odg-edit-title" value="${escapeHtml(item.title || '')}" required placeholder="Nome del punto OdG" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
                                     </div>
                                     <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger); font-size:1.4rem; font-weight:800; cursor:pointer; padding:0 0.4rem; margin-left:0.4rem;" title="Rimuovi punto">&times;</button>
@@ -19462,10 +19649,15 @@ ${renderBottomNavigation()}
 
             const refreshDomList = () => {
                 const cards = container.querySelectorAll('.odg-edit-card');
-                cards.forEach((card, idx) => {
-                    card.setAttribute('data-idx', idx);
+                cards.forEach((card, currentIdx) => {
+                    card.setAttribute('data-idx', currentIdx);
                     const badge = card.querySelector('.item-badge');
-                    if (badge) badge.textContent = `Punto ${idx + 1}:`;
+                    const originalPoint = card.getAttribute('data-original-point');
+                    let exPointHtml = '';
+                    if (originalPoint && parseInt(originalPoint, 10) !== (currentIdx + 1)) {
+                        exPointHtml = ` <span class="ex-point-label" style="font-size:0.75rem; color:var(--warning); font-weight:700;">(ex punto ${originalPoint})</span>`;
+                    }
+                    if (badge) badge.innerHTML = `Punto ${currentIdx + 1}:${exPointHtml}`;
                 });
             };
 
@@ -19588,6 +19780,8 @@ ${renderBottomNavigation()}
 
             cards.forEach((card, idx) => {
                 const originalId = card.getAttribute('data-id') || ('item_' + Date.now() + '_' + idx);
+                const originalPointAttr = card.getAttribute('data-original-point');
+                const originalPointNum = originalPointAttr ? parseInt(originalPointAttr, 10) : null;
                 const titleInput = card.querySelector('.odg-edit-title');
                 const title = titleInput ? titleInput.value.trim() : `Punto ${idx + 1}`;
                 const scopeSelect = card.querySelector('.odg-edit-scope');
@@ -19620,6 +19814,7 @@ ${renderBottomNavigation()}
                 updatedAgenda.push({
                     id: originalId,
                     title: title || `Punto ${idx + 1}`,
+                    originalIndex: (originalPointNum && originalPointNum !== (idx + 1)) ? originalPointNum : (originalPointNum || (idx + 1)),
                     scope: scope,
                     votingScope: scope,
                     targetGroup: targetGroup,
@@ -19644,7 +19839,7 @@ ${renderBottomNavigation()}
                     startedAt: currentData.startedAt || Date.now()
                 });
 
-                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA_POST_RIORDINO', 'Nuovo ordine dei punti salvato a seguito della revisione. Seduta assembleare avviata formalmente senza ulteriore votazione OdG.');
+                await logAssemblyEvent(assemblyId, 'AVVIO_ASSEMBLEA_POST_RIORDINO', 'Nuovo ordine dei punti salvato a seguito della revisione. Seduta assembleare avviata formalmente.');
 
                 const btnStart = document.getElementById('btn-room-start');
                 if (btnStart) {
@@ -20310,6 +20505,7 @@ ${renderBottomNavigation()}
                             <div id="quick-qr-reader" style="width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;"></div>
                         </div>
 
+                        <div id="quick-scanner-feedback-popup" class="hidden" style="margin-top:0.75rem; max-width:320px; margin-left:auto; margin-right:auto;"></div>
                         <div id="quick-scanner-message" class="message-box" style="display: none; text-align: left !important; margin: 0;"></div>
 
                         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.25rem;">
@@ -20322,7 +20518,22 @@ ${renderBottomNavigation()}
 
                 setTimeout(() => {
                     const messageBox = document.getElementById("quick-scanner-message");
+                    const feedbackPopup = document.getElementById("quick-scanner-feedback-popup");
                     let isProcessingScan = false;
+
+                    window.dismissQuickScannerFeedback = () => {
+                        const fPopup = document.getElementById("quick-scanner-feedback-popup");
+                        const mBox = document.getElementById("quick-scanner-message");
+                        if (fPopup) {
+                            fPopup.innerHTML = '';
+                            fPopup.style.display = 'none';
+                            fPopup.classList.add('hidden');
+                        }
+                        if (mBox) mBox.style.display = 'none';
+                        setTimeout(() => {
+                            isProcessingScan = false;
+                        }, 300);
+                    };
 
                     window.stopQuickQRScanner = () => {
                         if (window.quickScanner) {
@@ -20359,10 +20570,10 @@ ${renderBottomNavigation()}
                             if (!scannedUid) throw new Error("Codice QR non valido.");
 
                             const userDocSnap = await getDoc(doc(db, "users", scannedUid));
-                            if (!userDocSnap.exists()) throw new Error("Condomino non trovato nel database.");
+                            if (!userDocSnap.exists()) throw new Error("Condòmino non trovato nel database.");
 
                             const scannedUser = userDocSnap.data();
-                            const userFullName = `${scannedUser.nome} ${scannedUser.cognome}`;
+                            const userFullName = `${scannedUser.nome} ${scannedUser.cognome}`.trim();
                             let userMillesimi = parseFloat(scannedUser.millesimiTotali) || 0;
                             if (userMillesimi <= 0 && Array.isArray(scannedUser.proprieta)) {
                                 userMillesimi = scannedUser.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
@@ -20375,40 +20586,94 @@ ${renderBottomNavigation()}
 
                             // Check proxies held by scanned user
                             const heldProxies = currentAssembly.proxies?.filter(p => p.delegateId === scannedUid && p.status !== 'rejected') || [];
+                            let proxyNoticeText = '';
                             if (heldProxies.length > 0) {
                                 heldProxies.forEach(p => {
                                     userMillesimi += (parseFloat(p.delegatorMillesimi) || 0);
                                 });
+                                proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
                             }
 
-                            if (currentAttendees.some(a => a.uid === scannedUid)) {
-                                messageBox.className = "message-box error";
-                                messageBox.textContent = `⚠️ Presenza già registrata per ${userFullName}`;
-                                messageBox.style.display = "block";
-                            } else {
-                                const newAttendee = {
-                                    uid: scannedUid,
-                                    nome: userFullName,
-                                    millesimi: userMillesimi,
-                                    scannedAt: new Date().toISOString()
-                                };
-                                const updatedAttendees = [...currentAttendees, newAttendee];
+                            if (currentAttendees.some(a => a.uid === scannedUid && a.status !== 'uscito')) {
+                                throw new Error(`Presenza già registrata per ${userFullName}`);
+                            }
 
-                                await updateDoc(assemblyRef, {
-                                    attendees: updatedAttendees
-                                });
+                            const newAttendee = {
+                                uid: scannedUid,
+                                nome: `${userFullName}${proxyNoticeText}`,
+                                millesimi: userMillesimi,
+                                heldProxiesCount: heldProxies.length,
+                                status: 'presente',
+                                isManual: false,
+                                registrationType: 'qr',
+                                scannedAt: new Date().toISOString()
+                            };
+                            const updatedAttendees = [...currentAttendees, newAttendee];
 
+                            await updateDoc(assemblyRef, {
+                                attendees: updatedAttendees
+                            });
+
+                            const fPopup = document.getElementById("quick-scanner-feedback-popup");
+                            if (fPopup) {
+                                fPopup.className = '';
+                                fPopup.style.display = 'block';
+                                fPopup.classList.remove('hidden');
+                                fPopup.innerHTML = `
+                                    <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
+                                        <div style="font-size:2.2rem; margin-bottom:0.25rem;">✅</div>
+                                        <div style="font-size:0.8rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Presenza Convalidata</div>
+                                        <div style="font-size:1.05rem; font-weight:800; color:var(--primary-text); margin-bottom:0.35rem; line-height:1.35;">
+                                            Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                                        </div>
+                                        <div style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:1rem;">
+                                            Millesimi: <strong style="color:var(--warning); font-size:0.95rem;">${userMillesimi.toFixed(2)} ‰</strong>
+                                            ${proxyNoticeText ? `<br><span style="font-size:0.8rem; color:var(--accent-color); font-weight:600;">${escapeHtml(proxyNoticeText.trim())}</span>` : ''}
+                                        </div>
+                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-primary" style="width:100%; height:42px; font-weight:700; font-size:0.9rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                            <span>✕ Chiudi / Prossima Scansione</span>
+                                        </button>
+                                    </div>
+                                `;
+                            } else if (messageBox) {
                                 messageBox.className = "message-box success";
-                                messageBox.textContent = `✅ Presenza accreditata: ${userFullName} (${userMillesimi.toFixed(2)} ‰)`;
+                                messageBox.innerHTML = `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                        <div>✅ Il condòmino <strong>${escapeHtml(userFullName)}</strong> è presente (${userMillesimi.toFixed(2)} ‰)</div>
+                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">✕ Chiudi</button>
+                                    </div>
+                                `;
                                 messageBox.style.display = "block";
                             }
 
                         } catch (err) {
-                            messageBox.className = "message-box error";
-                            messageBox.textContent = `Errore scansione: ${err.message}`;
-                            messageBox.style.display = "block";
-                        } finally {
-                            setTimeout(() => { isProcessingScan = false; }, 2000);
+                            const fPopup = document.getElementById("quick-scanner-feedback-popup");
+                            if (fPopup) {
+                                fPopup.className = '';
+                                fPopup.style.display = 'block';
+                                fPopup.classList.remove('hidden');
+                                fPopup.innerHTML = `
+                                    <div style="background:var(--surface-color); border:2px solid var(--danger); border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
+                                        <div style="font-size:2.2rem; margin-bottom:0.25rem;">⚠️</div>
+                                        <div style="font-size:0.8rem; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Attenzione</div>
+                                        <div style="font-size:0.95rem; font-weight:700; color:var(--primary-text); margin-bottom:1rem; line-height:1.35;">
+                                            ${escapeHtml(err.message || 'Errore durante la scansione')}
+                                        </div>
+                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:600; font-size:0.85rem; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                            <span>✕ Chiudi e Riprova</span>
+                                        </button>
+                                    </div>
+                                `;
+                            } else if (messageBox) {
+                                messageBox.className = "message-box error";
+                                messageBox.innerHTML = `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                        <div>⚠️ ${escapeHtml(err.message || 'Errore durante la scansione')}</div>
+                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">✕ Chiudi</button>
+                                    </div>
+                                `;
+                                messageBox.style.display = "block";
+                            }
                         }
                     };
 
