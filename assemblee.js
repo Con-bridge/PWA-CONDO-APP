@@ -126,7 +126,7 @@ window.AssembleeModule = {
         `;
     },
 
-    // LA STANZA LIVE UNIFICATA (Con Controlli Avanzati Admin e Votazioni per Questione Stile Sondaggi)
+    // LA STANZA LIVE UNIFICATA (Con Controlli Avanzati per Admin e Votazioni per Questione Stile Sondaggi)
     renderStanzaLive: function (renderHeader, renderBottomNavigation) {
         return `
             ${renderHeader('Assemblea Live')}
@@ -151,6 +151,7 @@ window.AssembleeModule = {
                     <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
                     <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
                         <div id="reader" style="width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;"></div>
+                        <div id="scanner-feedback-popup" class="hidden" style="margin-top:0.75rem; max-width:320px; margin-left:auto; margin-right:auto;"></div>
                         <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
                     </div>
                 </div>
