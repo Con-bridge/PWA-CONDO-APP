@@ -16854,21 +16854,24 @@ ${renderBottomNavigation()}
 
                         const itemScope = item.scope || 'intero';
                         const itemGroup = item.targetGroup || '';
+                        const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!itemGroup && itemGroup !== 'Intero condominio';
 
                         let scopeBadge = '';
-                        if (itemScope === 'gruppo') {
-                            scopeBadge = `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700;">🪜 ${escapeHtml(itemGroup || 'Singola Scala')}</span>`;
+                        if (isGroupScope) {
+                            scopeBadge = `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left;">🪜 ${escapeHtml(itemGroup)}</span>`;
                         } else {
-                            scopeBadge = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:600;">🏢 Intero Condominio</span>`;
+                            scopeBadge = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:600; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left;">🏢 Intero Condominio</span>`;
                         }
 
                         let baseMillesimi = 1000;
-                        if (itemScope === 'gruppo' && itemGroup) {
+                        if (isGroupScope) {
                             let groupMillesimiPresent = 0;
                             activeAttendees.forEach(a => {
                                 const userPropsInGroup = (a.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, itemGroup));
                                 const groupMil = userPropsInGroup.reduce((s, p) => s + (parseFloat(p.millesimi) || 0), 0);
-                                groupMillesimiPresent += groupMil;
+                                const userHeldProxiesInGroup = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected' && (isScaleInTargetGroup(p.delegatorGroup, itemGroup) || (!p.delegatorGroup && p.delegatorMillesimi)));
+                                const proxyMil = userHeldProxiesInGroup.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                                groupMillesimiPresent += (groupMil + proxyMil);
                             });
                             baseMillesimi = groupMillesimiPresent > 0 ? groupMillesimiPresent : (totalVotesMil || 1000);
                         } else {
@@ -16902,9 +16905,9 @@ ${renderBottomNavigation()}
 
                         let itemBadge = '';
                         if (itemStatus === 'pending') {
-                            itemBadge = `<span class="badge status-aperta">In Attesa</span>`;
+                            itemBadge = `<span class="badge status-aperta" style="font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">In Attesa</span>`;
                         } else if (itemStatus === 'voting') {
-                            itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:800; animation: pulse 1.5s infinite;">IN VOTAZIONE 🔴</span>`;
+                            itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:800; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem; animation: pulse 1.5s infinite;">IN VOTAZIONE 🔴</span>`;
                         } else if (itemStatus === 'closed') {
                             let leadingOpt = voteOptions[0];
                             let maxMil = -1;
@@ -16914,7 +16917,7 @@ ${renderBottomNavigation()}
                                     leadingOpt = opt;
                                 }
                             });
-                            itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700;">ESITO: ${escapeHtml(leadingOpt).toUpperCase()} 🟢</span>`;
+                            itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">ESITO: ${escapeHtml(leadingOpt).toUpperCase()} 🟢</span>`;
                         }
 
                         let adminActionHtml = '';
@@ -16950,12 +16953,7 @@ ${renderBottomNavigation()}
                                 }
                             }
 
-                            let btnSubordinated = '';
-                            if (isOdgApproved && itemStatus === 'closed' && itemScope === 'intero') {
-                                btnSubordinated = `<button onclick="openSubordinatedVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; font-weight:700; font-size:0.75rem; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Avvia votazione subordinata per singola scala">🪜 Subordinata</button>`;
-                            }
-
-                            const secondaryBtnRight = btnManualVote || btnSubordinated || '';
+                            const secondaryBtnRight = btnManualVote || '';
                             const secondaryRowHtml = secondaryBtnRight ? `
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; width: 100%;">
                                     ${btnScope}
@@ -16994,85 +16992,103 @@ ${renderBottomNavigation()}
                                     <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
                                         ℹ️ <strong>Modalità Amministratore:</strong> Non sei accreditato come condòmino in quest'assemblea. Utilizza il pulsante <strong>✍️ Voto Manuale</strong> per registrare i voti dei condòmini presenti.
                                     </div>
-                                `;
-                            } else if (isAttendee || isAdmin) {
-                                let masterFlagHtml = '';
-                                if (userHeldProxies.length > 0) {
-                                    masterFlagHtml = `
-                                        <div style="background:var(--surface-color-light); padding:0.5rem 0.6rem; border-radius:6px; margin-bottom:0.5rem;">
-                                            <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
-                                                <input type="checkbox" id="proxy-master-flag-${item.id}" checked onchange="toggleDisjointVoteUI('${item.id}', this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px;">
-                                                <span>☑️ La mia votazione vale per tutte le altre deleghe (${userHeldProxies.length})</span>
-                                            </label>
-                                        </div>
-                                    `;
+                                `;} else if (isAttendee || isAdmin) {
+                                let userHasGroupRights = true;
+                                let userEffectiveMillesimi = userProfile?.millesimiTotali || 0;
+                                if (isGroupScope) {
+                                    const userGroupProps = (userProfile?.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, itemGroup));
+                                    const userGroupMil = userGroupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                                    const validGroupProxies = userHeldProxies.filter(p => isScaleInTargetGroup(p.delegatorGroup, itemGroup) || (!p.delegatorGroup && p.delegatorMillesimi));
+                                    const proxyGroupMil = validGroupProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                                    userEffectiveMillesimi = userGroupMil + proxyGroupMil;
+                                    userHasGroupRights = (userGroupProps.length > 0 || validGroupProxies.length > 0) && userEffectiveMillesimi > 0;
                                 }
 
-                                const disjointRowsHtml = userHeldProxies.map(p => `
-                                    <div style="padding:0.4rem 0.6rem; background:rgba(255,255,255,0.03); border-radius:6px; margin-bottom:0.4rem;">
-                                        <div style="font-size:0.8rem; font-weight:700; color:var(--warning); margin-bottom:0.25rem;">
-                                            📜 Delega: ${escapeHtml(p.delegatorName)} (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)
+                                if (isGroupScope && !userHasGroupRights) {
+                                    voteButtonsHtml = `
+                                        <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
+                                            🔒 <strong>Votazione Riservata:</strong> Questo punto è riservato ai condòmini aventi proprietà o deleghe in <strong>${escapeHtml(itemGroup)}</strong>. Non risultano unità immobiliari di tua pertinenza per queste scale.
                                         </div>
-                                        <div style="display:flex; gap:0.3rem;">
-                                            ${voteOptions.map(opt => `
-                                                <label style="flex:1; font-size:0.75rem; text-align:center; padding:0.3rem; background:var(--surface-color-light); border-radius:4px; cursor:pointer;">
-                                                    <input type="radio" name="disjoint-choice-proxy-${p.delegatorId}-${item.id}" value="${escapeHtml(opt)}" style="accent-color:var(--accent-color);"> ${escapeHtml(opt)}
+                                    `;
+                                } else {
+                                    let masterFlagHtml = '';
+                                    if (userHeldProxies.length > 0) {
+                                        masterFlagHtml = `
+                                            <div style="background:var(--surface-color-light); padding:0.5rem 0.6rem; border-radius:6px; margin-bottom:0.5rem;">
+                                                <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                                                    <input type="checkbox" id="proxy-master-flag-${item.id}" checked onchange="toggleDisjointVoteUI('${item.id}', this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                                                    <span>☑️ La mia votazione vale per tutte le altre deleghe (${userHeldProxies.length})</span>
                                                 </label>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                `).join('');
+                                            </div>
+                                        `;
+                                    }
 
-                                const disjointContainerHtml = `
-                                    <div id="disjoint-vote-container-${item.id}" class="hidden" style="margin-top:0.5rem; text-align:left; background:var(--surface-color); padding:0.75rem; border-radius:8px; border:1px solid var(--accent-color);">
-                                        <div style="font-size:0.85rem; font-weight:700; color:var(--accent-color); margin-bottom:0.5rem;">⚙️ Votazione Disgiunta per Deleghe</div>
+                                    const disjointRowsHtml = userHeldProxies.map(p => `
                                         <div style="padding:0.4rem 0.6rem; background:rgba(255,255,255,0.03); border-radius:6px; margin-bottom:0.4rem;">
-                                            <div style="font-size:0.8rem; font-weight:700; color:var(--primary-text); margin-bottom:0.25rem;">
-                                                👤 Voto Personale (${escapeHtml(userProfile?.nome || '')} ${escapeHtml(userProfile?.cognome || '')})
+                                            <div style="font-size:0.8rem; font-weight:700; color:var(--warning); margin-bottom:0.25rem;">
+                                                📜 Delega: ${escapeHtml(p.delegatorName)} (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)
                                             </div>
                                             <div style="display:flex; gap:0.3rem;">
                                                 ${voteOptions.map(opt => `
                                                     <label style="flex:1; font-size:0.75rem; text-align:center; padding:0.3rem; background:var(--surface-color-light); border-radius:4px; cursor:pointer;">
-                                                        <input type="radio" name="disjoint-choice-self-${item.id}" value="${escapeHtml(opt)}" style="accent-color:var(--accent-color);"> ${escapeHtml(opt)}
+                                                        <input type="radio" name="disjoint-choice-proxy-${p.delegatorId}-${item.id}" value="${escapeHtml(opt)}" style="accent-color:var(--accent-color);"> ${escapeHtml(opt)}
                                                     </label>
                                                 `).join('')}
                                             </div>
                                         </div>
-                                        ${disjointRowsHtml}
-                                        <button onclick="submitDisjointLiveVote('${assemblyId}', '${item.id}')" class="btn btn-primary" style="width:100%; height:38px; margin-top:0.5rem; font-size:0.85rem; font-weight:700;">Invia Voti Disgiunti</button>
-                                    </div>
-                                `;
+                                    `).join('');
 
-                                voteButtonsHtml = `
-                                    <div style="margin-top:0.75rem;">
-                                        ${userVote ? `<div style="font-size:0.85rem; color:var(--accent-color); margin-bottom:0.4rem;">✓ Hai votato: <strong>${escapeHtml(userVote.choice)}</strong> (${userVote.millesimi.toFixed(2)} ‰)</div>` : ''}
-                                        ${masterFlagHtml}
-                                        <div id="unified-vote-buttons-${item.id}" style="display: flex; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
-                                            ${voteOptions.map(opt => {
-                                    let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
-                                    let icon = "🔹";
-                                    if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
-                                        btnStyle = "background-color: #1DB954; color: black;";
-                                        icon = "🟢";
-                                    } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
-                                        btnStyle = "background-color: var(--danger); color: white;";
-                                        icon = "🔴";
-                                    } else if (opt.toLowerCase().includes('astenuto')) {
-                                        btnStyle = "background-color: #f1c40f; color: black;";
-                                        icon = "⚪";
-                                    }
-                                    const isSelected = userVote && userVote.choice === opt;
-                                    const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
-                                    return `
-                                                    <button onclick="submitLiveVote('${assemblyId}', '${item.id}', '${safeOpt}')" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 40px; flex: 1; min-width: 100px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
-                                                        ${icon} ${escapeHtml(opt)}
-                                                    </button>
-                                                `;
-                                }).join('')}
+                                    const disjointContainerHtml = `
+                                        <div id="disjoint-vote-container-${item.id}" class="hidden" style="margin-top:0.5rem; text-align:left; background:var(--surface-color); padding:0.75rem; border-radius:8px; border:1px solid var(--accent-color);">
+                                            <div style="font-size:0.85rem; font-weight:700; color:var(--accent-color); margin-bottom:0.5rem;">⚙️ Votazione Disgiunta per Deleghe</div>
+                                            <div style="padding:0.4rem 0.6rem; background:rgba(255,255,255,0.03); border-radius:6px; margin-bottom:0.4rem;">
+                                                <div style="font-size:0.8rem; font-weight:700; color:var(--primary-text); margin-bottom:0.25rem;">
+                                                    👤 Voto Personale (${escapeHtml(userProfile?.nome || '')} ${escapeHtml(userProfile?.cognome || '')})
+                                                </div>
+                                                <div style="display:flex; gap:0.3rem;">
+                                                    ${voteOptions.map(opt => `
+                                                        <label style="flex:1; font-size:0.75rem; text-align:center; padding:0.3rem; background:var(--surface-color-light); border-radius:4px; cursor:pointer;">
+                                                            <input type="radio" name="disjoint-choice-self-${item.id}" value="${escapeHtml(opt)}" style="accent-color:var(--accent-color);"> ${escapeHtml(opt)}
+                                                        </label>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                            ${disjointRowsHtml}
+                                            <button onclick="submitDisjointLiveVote('${assemblyId}', '${item.id}')" class="btn btn-primary" style="width:100%; height:38px; margin-top:0.5rem; font-size:0.85rem; font-weight:700;">Invia Voti Disgiunti</button>
                                         </div>
-                                        ${disjointContainerHtml}
-                                    </div>
-                                `;
+                                    `;
+
+                                    voteButtonsHtml = `
+                                        <div style="margin-top:0.75rem;">
+                                            ${userVote ? `<div style="font-size:0.85rem; color:var(--accent-color); margin-bottom:0.4rem;">✓ Hai votato: <strong>${escapeHtml(userVote.choice)}</strong> (${userVote.millesimi.toFixed(2)} ‰)</div>` : ''}
+                                            ${masterFlagHtml}
+                                            <div id="unified-vote-buttons-${item.id}" style="display: flex; gap: 0.4rem; flex-wrap: wrap; width: 100%;">
+                                                ${voteOptions.map(opt => {
+                                        let btnStyle = "background-color: var(--surface-color-light); color: var(--primary-text);";
+                                        let icon = "🔹";
+                                        if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
+                                            btnStyle = "background-color: #1DB954; color: black;";
+                                            icon = "🟢";
+                                        } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
+                                            btnStyle = "background-color: var(--danger); color: white;";
+                                            icon = "🔴";
+                                        } else if (opt.toLowerCase().includes('astenuto')) {
+                                            btnStyle = "background-color: #f1c40f; color: black;";
+                                            icon = "⚪";
+                                        }
+                                        const isSelected = userVote && userVote.choice === opt;
+                                        const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
+                                        return `
+                                                        <button onclick="submitLiveVote('${assemblyId}', '${item.id}', '${safeOpt}')" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 40px; flex: 1; min-width: 100px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
+                                                            ${icon} ${escapeHtml(opt)}
+                                                        </button>
+                                                    `;
+                                    }).join('')}
+                                            </div>
+                                            ${disjointContainerHtml}
+                                        </div>
+                                    `;
+                                }
                             }
                         }
 
@@ -17116,8 +17132,16 @@ ${renderBottomNavigation()}
                         }
 
                         // ELENCO DI CHI NON HA ANCORA VOTATO QUESTO PUNTO (VISIBILE A TUTTI)
-                        const eligibleAttendees = activeAttendees.filter(a => itemScope !== 'gruppo' || !itemGroup || isScaleInTargetGroup(a.proprieta, itemGroup));
-                        const targetAttendees = eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees;
+                        const isAttendeeEligibleForPoint = (a) => {
+                            if (!isGroupScope) return true;
+                            const hasProp = (a.proprieta || []).some(p => isScaleInTargetGroup(p.gruppo, itemGroup));
+                            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                            const hasProxy = heldProxies.some(p => isScaleInTargetGroup(p.delegatorGroup, itemGroup) || (!p.delegatorGroup && p.delegatorMillesimi));
+                            return hasProp || hasProxy;
+                        };
+
+                        const eligibleAttendees = activeAttendees.filter(a => isAttendeeEligibleForPoint(a));
+                        const targetAttendees = isGroupScope ? eligibleAttendees : (eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees);
                         const pointNonVoters = targetAttendees.filter(a => !votesList.some(v => v.voterId === a.uid || v.userId === a.uid));
 
                         const nonVotersHtml = `
@@ -17142,11 +17166,15 @@ ${renderBottomNavigation()}
 
                         return `
                             <div class="card" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 1.25rem; margin-bottom: 1rem;">
-                                <div style="display:flex; flex-direction:column; gap:0.4rem; margin-bottom: 0.75rem; width:100%;">
-                                    <h4 style="font-size: 1.05rem; font-weight: 700; margin:0; line-height: 1.3;">Punto ${idx + 1}: ${escapeHtml(item.title)}</h4>
-                                    <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
+                                <div style="display:flex; flex-direction:column; gap:0.45rem; margin-bottom: 0.75rem; width:100%;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; width:100%;">
+                                        <h4 style="font-size: 1.05rem; font-weight: 700; margin:0; line-height: 1.3; flex:1; min-width:140px;">Punto ${idx + 1}: ${escapeHtml(item.title)}</h4>
+                                        <div>
+                                            ${itemBadge}
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; align-items:center; flex-wrap:wrap; width:100%;">
                                         ${scopeBadge}
-                                        ${itemBadge}
                                     </div>
                                 </div>
 
@@ -17966,15 +17994,16 @@ ${renderBottomNavigation()}
 
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
 
                 let userMillesimi = 0;
                 let userHeads = 1;
 
-                if (itemScope === 'gruppo' && targetGroup) {
+                if (isGroupScope) {
                     const userGroupProps = (userProfile.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
                     userMillesimi = userGroupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
 
-                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected') || [];
                     heldProxies.forEach(p => {
                         if (isScaleInTargetGroup(p.delegatorGroup, targetGroup) || (!p.delegatorGroup && p.delegatorMillesimi)) {
                             userMillesimi += (p.delegatorMillesimi || 0);
@@ -17983,12 +18012,12 @@ ${renderBottomNavigation()}
                     });
 
                     if (userMillesimi <= 0 && userGroupProps.length === 0 && heldProxies.length === 0) {
-                        await customAlert(`Non possiedi unità immobiliari e non hai deleghe nelle scale "${targetGroup}" per partecipare a questa votazione.`);
+                        await customAlert(`Non possiedi unità immobiliari e non hai deleghe nelle scale/gruppi "${targetGroup}" per partecipare a questa votazione.`);
                         return;
                     }
                 } else {
                     userMillesimi = userProfile.millesimiTotali || 0;
-                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid) || [];
+                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected') || [];
                     heldProxies.forEach(p => {
                         userMillesimi += (p.delegatorMillesimi || 0);
                         userHeads += 1;
@@ -18058,24 +18087,34 @@ ${renderBottomNavigation()}
 
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
 
                 let userSelfMillesimi = userProfile?.millesimiTotali || 0;
-                if (itemScope === 'gruppo' && targetGroup) {
+                if (isGroupScope) {
                     const groupProps = (userProfile?.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
                     userSelfMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
                 }
                 const userName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim();
 
-                const newVotes = [{
-                    voterId: currentUser?.uid,
-                    voterName: userName,
-                    choice: selfChoice,
-                    millesimi: userSelfMillesimi,
-                    heads: 1
-                }];
+                const newVotes = [];
+                if (userSelfMillesimi > 0 || !isGroupScope) {
+                    newVotes.push({
+                        voterId: currentUser?.uid,
+                        voterName: userName,
+                        choice: selfChoice,
+                        millesimi: userSelfMillesimi,
+                        heads: 1
+                    });
+                }
 
                 const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser?.uid && p.status !== 'rejected');
                 for (const p of heldProxies) {
+                    let proxyMillesimi = p.delegatorMillesimi || 0;
+                    if (isGroupScope) {
+                        if (!isScaleInTargetGroup(p.delegatorGroup, targetGroup) && p.delegatorGroup) {
+                            continue;
+                        }
+                    }
                     const proxyChoice = document.querySelector(`input[name="disjoint-choice-proxy-${p.delegatorId}-${itemId}"]:checked`)?.value;
                     if (!proxyChoice) {
                         await customAlert(`Seleziona l'espressione di voto per la delega di ${p.delegatorName}.`);
@@ -18085,7 +18124,7 @@ ${renderBottomNavigation()}
                         voterId: p.delegatorId,
                         voterName: `${p.delegatorName} (Delega a ${userName})`,
                         choice: proxyChoice,
-                        millesimi: p.delegatorMillesimi || 0,
+                        millesimi: proxyMillesimi,
                         heads: 1,
                         isProxyVote: true,
                         delegateId: currentUser?.uid
@@ -18455,72 +18494,6 @@ ${renderBottomNavigation()}
             }
         };
 
-        window.openSubordinatedVoteModal = async (assemblyId, itemId) => {
-            try {
-                const assemblyRef = doc(db, "assemblies", assemblyId);
-                const docSnap = await getDoc(assemblyRef);
-                if (!docSnap.exists()) return;
-                const assembly = docSnap.data();
-                const item = (assembly.agenda || []).find(i => i.id === itemId);
-                if (!item) return;
-
-                let groupNames = [];
-                try {
-                    const q = query(collection(db, "partialCondos"), orderBy("name"));
-                    const snapshot = await getDocs(q);
-                    snapshot.forEach(doc => {
-                        const g = doc.data().name;
-                        if (g && g.toLowerCase() !== 'portineria') {
-                            groupNames.push(g);
-                        }
-                    });
-                } catch (e) { console.error(e); }
-
-                const multiScaleCheckboxesHtml = groupNames.map(g => `
-                    <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
-                        <input type="checkbox" name="subordinated-scale-checkbox" value="${escapeHtml(g)}" class="subordinated-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
-                        <span>${escapeHtml(g)}</span>
-                    </label>
-                `).join('');
-
-                const modalContent = `
-                    <form onsubmit="startSubordinatedVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
-                        <div style="background:rgba(243,156,18,0.15); padding:0.75rem; border-radius:8px; color:var(--warning); font-size:0.85rem; line-height:1.4;">
-                            <strong>🪜 Votazione Subordinata (a Cascata)</strong><br>
-                            La proposta generale per l'intero condominio è stata respinta. Puoi ora avviare la votazione subordinata limitata ai soli proprietari delle scale selezionate.
-                        </div>
-                        <p style="font-size:0.9rem; color:var(--secondary-text);">
-                            Punto OdG: <strong>${escapeHtml(item.title)}</strong>
-                        </p>
-                        
-                        <div style="background:var(--surface-color-light); padding:0.75rem; border-radius:8px;">
-                            <label class="form-label" style="font-weight:700; margin-bottom:0.4rem;">Seleziona Scala / Gruppi Interessati</label>
-                            <div style="margin-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
-                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-weight:700; color:var(--accent-color); font-size:0.85rem;">
-                                    <input type="checkbox" id="subordinated-all-scales-cb" onchange="const cbs=document.querySelectorAll('.subordinated-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px;">
-                                    <span>🏢 Tutte le scale</span>
-                                </label>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
-                                ${multiScaleCheckboxesHtml}
-                            </div>
-                        </div>
-
-                        <p style="font-size:0.8rem; color:var(--secondary-text);">
-                            <em>I voti precedenti verranno archiviati e la votazione verrà riaperta ricalcolando il quorum sulle scale selezionate.</em>
-                        </p>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
-                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; background:var(--warning); color:black; font-size:0.85rem; font-weight:700;">Conferma Subordinata</button>
-                        </div>
-                    </form>
-                `;
-                showModal('🪜 Votazione Subordinata', modalContent);
-            } catch (err) {
-                console.error("Errore apertura modal votazione subordinata:", err);
-            }
-        };
-
         window.getOutlineIcon = (name, size = 16, extraStyle = '') => {
             const s = `width:${size}px; height:${size}px; vertical-align:middle; display:inline-block; ${extraStyle}`;
             switch (name) {
@@ -18556,50 +18529,6 @@ ${renderBottomNavigation()}
                     return `<svg style="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`;
                 default:
                     return '';
-            }
-        };
-
-        window.startSubordinatedVote = async (e, assemblyId, itemId) => {
-            e.preventDefault();
-            const isAll = document.getElementById('subordinated-all-scales-cb')?.checked;
-            const checkedCbs = document.querySelectorAll('.subordinated-scale-item-cb:checked');
-            const selectedScales = Array.from(checkedCbs).map(cb => cb.value);
-
-            let targetGroup = 'Tutte le scale';
-            if (!isAll && selectedScales.length > 0) {
-                targetGroup = selectedScales.join(', ');
-            } else if (!isAll && selectedScales.length === 0) {
-                await customAlert("Seleziona almeno una scala per la votazione subordinata.");
-                return;
-            }
-
-            try {
-                const assemblyRef = doc(db, "assemblies", assemblyId);
-                const docSnap = await getDoc(assemblyRef);
-                if (!docSnap.exists()) return;
-                const assembly = docSnap.data();
-
-                const updatedAgenda = (assembly.agenda || []).map(item => {
-                    if (item.id === itemId) {
-                        const previousGeneralVotes = item.votes || [];
-                        return {
-                            ...item,
-                            scope: 'gruppo',
-                            targetGroup: targetGroup,
-                            status: 'voting',
-                            previousGeneralVotes: previousGeneralVotes,
-                            votes: []
-                        };
-                    }
-                    return item;
-                });
-
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
-                hideModal();
-                await customAlert(`Votazione subordinata per ${targetGroup} avviata con successo!`);
-            } catch (err) {
-                console.error("Errore avvio votazione subordinata:", err);
-                await customAlert("Errore durante l'avvio della votazione subordinata.");
             }
         };
 
@@ -19761,21 +19690,46 @@ ${renderBottomNavigation()}
                 const item = agenda[targetIdx];
                 if (!item) return;
 
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
+
+                const isAttendeeEligibleForManualVote = (a) => {
+                    if (!isGroupScope) return true;
+                    const hasProp = (a.proprieta || []).some(p => isScaleInTargetGroup(p.gruppo, targetGroup));
+                    const held = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                    const hasProxy = held.some(p => isScaleInTargetGroup(p.delegatorGroup, targetGroup) || (!p.delegatorGroup && p.delegatorMillesimi));
+                    return hasProp || hasProxy;
+                };
+
+                const getAttendeeGroupMillesimi = (a) => {
+                    if (!isGroupScope) return a.millesimi || 0;
+                    const groupProps = (a.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
+                    let mil = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                    const held = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                    held.forEach(p => {
+                        if (isScaleInTargetGroup(p.delegatorGroup, targetGroup) || (!p.delegatorGroup && p.delegatorMillesimi)) {
+                            mil += (p.delegatorMillesimi || 0);
+                        }
+                    });
+                    return mil;
+                };
+
                 const isManualAttendee = (a) => a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
 
                 const attendees = assembly.attendees || [];
-                const activeManualAttendees = attendees.filter(a => a.status !== 'uscito' && isManualAttendee(a));
+                const activeManualAttendees = attendees.filter(a => a.status !== 'uscito' && isManualAttendee(a) && isAttendeeEligibleForManualVote(a));
                 const votes = item.votes || [];
 
                 const unvotedAttendees = activeManualAttendees.filter(a => !votes.some(v => v.voterId === a.uid));
 
                 if (activeManualAttendees.length === 0) {
-                    await customAlert("Non ci sono condòmini accreditati manualmente (senza QR code) presenti in assemblea.");
+                    await customAlert(isGroupScope ? `Non ci sono condòmini accreditati manualmente aventi diritto di voto per ${targetGroup}.` : "Non ci sono condòmini accreditati manualmente (senza QR code) presenti in assemblea.");
                     return;
                 }
 
                 if (unvotedAttendees.length === 0) {
-                    await customAlert("Tutti i condòmini accreditati manualmente (senza QR code) hanno già espresso il proprio voto per questo punto.");
+                    await customAlert(isGroupScope ? `Tutti i condòmini accreditati manualmente aventi diritto per ${targetGroup} hanno già espresso il proprio voto per questo punto.` : "Tutti i condòmini accreditati manualmente (senza QR code) hanno già espresso il proprio voto per questo punto.");
                     return;
                 }
 
@@ -19796,7 +19750,9 @@ ${renderBottomNavigation()}
                     `;
                 }).join('');
 
-                const votersCheckboxesHtml = unvotedAttendees.map(a => `
+                const votersCheckboxesHtml = unvotedAttendees.map(a => {
+                    const dispMillesimi = getAttendeeGroupMillesimi(a);
+                    return `
                     <label class="manual-voter-item flex items-center justify-between p-2 card" style="cursor:pointer; margin-bottom:0.35rem; text-align:left; background:var(--surface-color-light);" data-search-name="${escapeHtml(((a.cognome || '') + ' ' + (a.nome || '')).toLowerCase())}">
                         <div style="display:flex; align-items:center; gap:0.6rem;">
                             <input type="checkbox" name="manual-voter-checkbox" value="${a.uid}" class="manual-voter-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px;">
@@ -19804,9 +19760,9 @@ ${renderBottomNavigation()}
                                 <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(a.cognome || '')} ${escapeHtml(a.nome || '')} <span style="color:#10B981; font-size:0.75rem;">(🟢 Manuale)</span></div>
                             </div>
                         </div>
-                        <strong style="color:var(--warning); font-size:0.85rem;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                        <strong style="color:var(--warning); font-size:0.85rem;">${dispMillesimi.toFixed(2)} ‰</strong>
                     </label>
-                `).join('');
+                `;}).join('');
 
                 const modalContent = `
                     <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
@@ -19892,6 +19848,7 @@ ${renderBottomNavigation()}
 
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
 
                 const newVotes = [];
                 let totalVoterNames = [];
@@ -19903,11 +19860,11 @@ ${renderBottomNavigation()}
                     let voterMillesimi = 0;
                     let voterHeads = 1;
 
-                    if (itemScope === 'gruppo' && targetGroup) {
+                    if (isGroupScope) {
                         const groupProps = (targetVoter.proprieta || []).filter(p => isScaleInTargetGroup(p.gruppo, targetGroup));
                         voterMillesimi = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
 
-                        const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
+                        const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid && p.status !== 'rejected') || [];
                         heldProxies.forEach(p => {
                             if (isScaleInTargetGroup(p.delegatorGroup, targetGroup) || (!p.delegatorGroup && p.delegatorMillesimi)) {
                                 voterMillesimi += (p.delegatorMillesimi || 0);
@@ -19916,7 +19873,7 @@ ${renderBottomNavigation()}
                         });
                     } else {
                         voterMillesimi = targetVoter.millesimi || 0;
-                        const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid) || [];
+                        const heldProxies = assembly.proxies?.filter(p => p.delegateId === voterUid && p.status !== 'rejected') || [];
                         heldProxies.forEach(p => {
                             voterMillesimi += (p.delegatorMillesimi || 0);
                             voterHeads += 1;
@@ -20828,8 +20785,6 @@ ${renderBottomNavigation()}
         window.toggleOdgVote = toggleOdgVote;
         window.openChangeScopeModal = openChangeScopeModal;
         window.saveScopeChange = saveScopeChange;
-        window.openSubordinatedVoteModal = openSubordinatedVoteModal;
-        window.startSubordinatedVote = startSubordinatedVote;
         window.toggleAttendeeStatus = toggleAttendeeStatus;
         window.openAdminManualVoteModal = openAdminManualVoteModal;
         window.submitAdminManualVote = submitAdminManualVote;
