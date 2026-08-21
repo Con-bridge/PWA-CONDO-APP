@@ -168,7 +168,7 @@ window.AssembleeModule = {
                 <!-- BANNER DI STATO LIVE -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
-                        <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem;">Assemblea in Corso</h3>
+                        <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.05rem; font-weight: 700; color: var(--primary-text);">Quorum Costitutivo</h3>
                         <span id="room-status-badge" class="badge" style="background-color: var(--accent-color); color: black; font-weight: 800; animation: pulse 1.5s infinite;">LIVE</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color-light); padding: 0.75rem 0.5rem; border-radius: 8px; margin-top: 0.85rem;">
@@ -185,9 +185,19 @@ window.AssembleeModule = {
 
                 <!-- Presenti -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; cursor: pointer; margin-bottom: 0.5rem;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3; flex: 1; min-width: 0;">Presenti (<span id="room-tot-teste-badge">0</span>)</h3>
-                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; margin-left: 0.5rem;">Mostra/Nascondi ▼</span>
+                    <div style="cursor: pointer; margin-bottom: 0.5rem;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text);">Elenco Presenti</h3>
+                            <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-top: 0.6rem;">
+                            <div class="badge" style="background: rgba(29, 185, 84, 0.15); color: #1DB954; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(29, 185, 84, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
+                                👤 <span id="room-badge-in-aula">0</span> in aula
+                            </div>
+                            <div class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-color); font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
+                                📜 <span id="room-badge-deleghe">0</span> deleghe
+                            </div>
+                        </div>
                     </div>
                     <div id="room-attendees-collapsible" class="mt-3 hidden space-y-2">
                         <div id="room-attendees-list">
