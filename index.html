@@ -3467,8 +3467,8 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             else if (rawRole === 'supervisore') formattedRole = 'Supervisore';
 
             const subtitleHtml = (title && title !== 'Home' && title !== 'Con-bridge')
-                ? `<span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 500; display: block; line-height: 1.1; text-align: left !important;">${escapeHtml(title)}</span>`
-                : '';
+                ? `<span id="page-header-subtitle" style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 500; display: block; line-height: 1.1; text-align: left !important;">${escapeHtml(title)}</span>`
+                : `<span id="page-header-subtitle" style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 500; display: none; line-height: 1.1; text-align: left !important;"></span>`;
 
             return `
             <header class="page-header" style="position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background-color: var(--bg-color); border-bottom: 1px solid var(--surface-color-light); z-index: 1000;">
@@ -16657,8 +16657,14 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
 
+                const headerSubtitleEl = document.getElementById('page-header-subtitle');
+                if (headerSubtitleEl) {
+                    headerSubtitleEl.style.display = 'block';
+                    headerSubtitleEl.textContent = assembly.title ? `Assemblea: ${assembly.title}` : 'Assemblea Live';
+                }
+
                 const titleEl = document.getElementById('room-assembly-title');
-                if (titleEl) titleEl.textContent = assembly.title || 'Assemblea in Corso';
+                if (titleEl) titleEl.textContent = 'Quorum Costitutivo';
 
                 const attendees = assembly.attendees || [];
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito');
@@ -16866,8 +16872,12 @@ ${renderBottomNavigation()}
 
                 // POPOLAMENTO ELENCO PRESENTI
                 const attendeesListEl = document.getElementById('room-attendees-list');
+                const badgeInAulaEl = document.getElementById('room-badge-in-aula');
+                const badgeDelegheEl = document.getElementById('room-badge-deleghe');
                 const totTesteBadgeEl = document.getElementById('room-tot-teste-badge');
-                if (totTesteBadgeEl) totTesteBadgeEl.textContent = `${activeAttendees.length} in aula + ${activeProxies.length} deleghe`;
+                if (badgeInAulaEl) badgeInAulaEl.textContent = activeAttendees.length;
+                if (badgeDelegheEl) badgeDelegheEl.textContent = activeProxies.length;
+                if (totTesteBadgeEl) totTesteBadgeEl.textContent = `${activeAttendees.length} + ${activeProxies.length}`;
 
                 if (attendeesListEl) {
                     if (attendees.length === 0) {
@@ -16877,13 +16887,19 @@ ${renderBottomNavigation()}
                             const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
                             let proxyInfo = '';
                             if (heldProxies.length > 0) {
-                                proxyInfo = `<div style="font-size:0.75rem; color:var(--accent-color);">📜 Deleghe da: ${heldProxies.map(p => escapeHtml(p.delegatorName)).join(', ')}</div>`;
+                                proxyInfo = `<div style="font-size:0.72rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem;">📜 Deleghe (${heldProxies.length}): ${heldProxies.map(p => escapeHtml(p.delegatorName)).join(', ')}</div>`;
                             }
 
                             const isLeft = a.status === 'uscito';
+                            const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+
                             let statusBadge = isLeft
-                                ? `<span class="badge" style="background:rgba(239,68,68,0.2); color:var(--danger); font-size:0.75rem;">🔴 Uscito</span>`
-                                : `<span class="badge" style="background:rgba(29,185,84,0.2); color:#1DB954; font-size:0.75rem;">🟢 Presente</span>`;
+                                ? `<span class="badge" style="background:rgba(239,68,68,0.18); color:var(--danger, #EF4444); border:1px solid rgba(239,68,68,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">🔴 Uscito</span>`
+                                : `<span class="badge" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid rgba(29,185,84,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">🟢 Presente</span>`;
+
+                            const regTypeBadge = isManual
+                                ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10B981; font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">✍️ Manuale</span>`
+                                : `<span class="badge" style="background:rgba(243,156,18,0.12); color:var(--warning); font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">📱 QR</span>`;
 
                             let toggleButtonHtml = '';
                             let cancelBtnHtml = '';
@@ -16893,30 +16909,45 @@ ${renderBottomNavigation()}
                                 if (isSessionActive) {
                                     // Attivo non appena il pulsante "Inizia" si trasforma nello stato "Seduta avviata"
                                     if (isLeft) {
-                                        toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
+                                        toggleButtonHtml = `<button type="button" onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid #1DB954; font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
                                     } else {
-                                        toggleButtonHtml = `<button onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger); color:white; font-size:0.7rem; padding:0.2rem 0.5rem; font-weight:700;" title="Segnala uscita dall'aula (rimuove presenza e deleghe dal conteggio)">🚪 Uscita</button>`;
+                                        toggleButtonHtml = `<button type="button" onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger, #EF4444); color:white; border:none; font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Segnala uscita dall'aula (rimuove presenza e deleghe dal conteggio)">🚪 Uscita</button>`;
                                     }
                                 } else {
                                     // Tasto Annulla abilitato fino al momento esatto in cui viene premuto "Inizia"
-                                    cancelBtnHtml = `<button onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid var(--danger); font-size:0.7rem; padding:0.2rem 0.5rem; font-weight:700;" title="Annulla registrazione presenza">🗑️ Annulla</button>`;
+                                    cancelBtnHtml = `<button type="button" onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger, #EF4444); border:1px solid var(--danger, #EF4444); font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Annulla registrazione presenza">🗑️ Annulla</button>`;
                                 }
                             }
 
+                            const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || '');
+
                             return `
-                                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color-light); padding:0.6rem 0.8rem; border-radius:8px; font-size:0.85rem; ${isLeft ? 'opacity:0.6;' : ''}">
-                                    <div>
-                                        <div style="display:flex; align-items:center; gap:0.4rem;">
-                                            <strong>${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</strong>
-                                            ${statusBadge}
+                                <div style="background:var(--surface-color-light); padding:0.75rem 0.9rem; border-radius:10px; font-size:0.85rem; margin-bottom:0.45rem; ${isLeft ? 'opacity:0.85; border-left:3.5px solid var(--danger, #EF4444);' : 'border-left:3.5px solid #1DB954;'}">
+                                    <!-- Riga 1: Nome a sinistra e Millesimi a destra -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.45rem;">
+                                        <div style="font-weight:700; font-size:0.95rem; color:var(--primary-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(displayName)}">
+                                            ${escapeHtml(displayName)}
                                         </div>
-                                        ${proxyInfo}
+                                        <div style="flex-shrink:0; text-align:right;">
+                                            <strong style="color:var(--warning); font-size:0.92rem; font-weight:800; white-space:nowrap;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                                        </div>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:nowrap;">
-                                        <strong style="color:var(--warning); font-size:0.8rem;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
-                                        ${toggleButtonHtml}
-                                        ${cancelBtnHtml}
+
+                                    <!-- Riga 2: Badge a sinistra e Pulsante Azione a destra -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                            ${statusBadge}
+                                            ${regTypeBadge}
+                                        </div>
+                                        ${(toggleButtonHtml || cancelBtnHtml) ? `
+                                            <div style="display:flex; align-items:center; flex-shrink:0;">
+                                                ${toggleButtonHtml}
+                                                ${cancelBtnHtml}
+                                            </div>
+                                        ` : ''}
                                     </div>
+
+                                    ${proxyInfo ? `<div style="margin-top:0.35rem;">${proxyInfo}</div>` : ''}
                                 </div>
                             `;
                         }).join('');
@@ -18706,14 +18737,15 @@ ${renderBottomNavigation()}
                         return {
                             ...a,
                             status: newStatus,
-                            leftAt: newStatus === 'uscito' ? Date.now() : null,
-                            reenteredAt: newStatus === 'presente' ? Date.now() : a.reenteredAt
+                            leftAt: newStatus === 'uscito' ? Date.now() : (a.leftAt || null),
+                            reenteredAt: newStatus === 'presente' ? Date.now() : (a.reenteredAt || null)
                         };
                     }
                     return a;
                 });
 
-                await updateDoc(assemblyRef, { attendees: updatedAttendees });
+                const sanitizedAttendees = JSON.parse(JSON.stringify(updatedAttendees));
+                await updateDoc(assemblyRef, { attendees: sanitizedAttendees });
 
                 const proxyNotice = heldProxies.length > 0 ? ` (e ${heldProxies.length} deleghe)` : '';
                 const eventDescription = newStatus === 'uscito'
@@ -18745,17 +18777,92 @@ ${renderBottomNavigation()}
                 if (!targetAttendee) return;
 
                 const targetName = getAttendeeDisplayName(targetAttendee);
+                const isManual = targetAttendee.isManual === true || targetAttendee.manualAttendance === true || targetAttendee.registrationType === 'manual' || (!targetAttendee.scannedAt && !!targetAttendee.joinedAt);
+                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === attendeeUid && p.status !== 'rejected');
 
-                const confirmed = confirm(`Sei sicuro di voler ANNULLARE ed eliminare la presenza per ${targetName}?`);
-                if (!confirmed) return;
+                let proxiesInfoHtml = '';
+                if (heldProxies.length > 0) {
+                    proxiesInfoHtml = `
+                        <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.5rem; margin-top: 0.25rem; font-size: 0.8rem; color: var(--accent-color);">
+                            📜 <strong>${heldProxies.length} ${heldProxies.length === 1 ? 'delega ricevuta' : 'deleghe ricevute'} da:</strong> ${heldProxies.map(p => escapeHtml(p.delegatorName || '')).join(', ')}
+                        </div>
+                    `;
+                }
 
+                const modalContent = `
+                    <div style="text-align: center; padding: 0.25rem 0;">
+                        <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); color: var(--danger, #EF4444); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem auto; font-size: 1.8rem; border: 1.5px solid rgba(239, 68, 68, 0.3);">
+                            ⚠️
+                        </div>
+                        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-text); margin: 0 0 0.35rem 0;">Conferma Annullamento Presenza</h3>
+                        <p style="font-size: 0.85rem; color: var(--secondary-text); margin: 0 0 1.25rem 0;">Sei sicuro di voler annullare ed eliminare l'accredito di questo partecipante?</p>
+
+                        <div style="background: var(--surface-color-light); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius: 10px; padding: 1rem; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.75rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Partecipante</span>
+                                <span class="badge" style="background: ${isManual ? 'rgba(16, 185, 129, 0.15)' : 'rgba(243, 156, 18, 0.15)'}; color: ${isManual ? '#10B981' : 'var(--warning)'}; font-weight: 700; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 6px;">${isManual ? '🟢 Manuale' : '📱 Scanner QR'}</span>
+                            </div>
+                            <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text);">${escapeHtml(targetName)}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.45rem; font-size: 0.85rem;">
+                                <span style="color: var(--secondary-text);">Millesimi:</span>
+                                <strong style="color: var(--warning); font-size: 0.9rem;">${(targetAttendee.millesimi || 0).toFixed(2)} ‰</strong>
+                            </div>
+                            ${proxiesInfoHtml}
+                        </div>
+
+                        <div style="background: rgba(239, 68, 68, 0.08); border-left: 3.5px solid var(--danger, #EF4444); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.8rem; color: var(--primary-text); margin-bottom: 1.25rem; text-align: left; line-height: 1.4;">
+                            ℹ️ Questa operazione rimuoverà completamente la presenza del condòmino dall'elenco degli accreditati prima dell'inizio della seduta.
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; padding: 0.75rem 0.5rem; font-weight: 700; font-size: 0.88rem; justify-content: center;">
+                                ✕ Chiudi
+                            </button>
+                            <button type="button" class="btn" onclick="executeCancelAttendeePresence('${assemblyId}', '${attendeeUid}')" style="width: 100%; padding: 0.75rem 0.5rem; font-weight: 800; font-size: 0.88rem; justify-content: center; background: var(--danger, #EF4444); color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                Elimina Presenza
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                showModal('🗑️ Annulla Presenza', modalContent, false);
+            } catch (err) {
+                console.error("Errore apertura modal annullamento presenza:", err);
+                await customAlert("Errore durante l'apertura del modale di annullamento.");
+            }
+        };
+
+        window.executeCancelAttendeePresence = async (assemblyId, attendeeUid) => {
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+
+                const assembly = docSnap.data();
+                const isAssemblyStarted = assembly.status === 'in_corso' || assembly.sessionStage === 'active' || assembly.sessionStage === 'odg_approval' || !!assembly.startedAt;
+                if (isAssemblyStarted) {
+                    hideModal();
+                    await customAlert("Non è possibile annullare la presenza dopo l'avvio della seduta assembleare. Utilizza il pulsante 'Uscita' per segnalare l'allontanamento.");
+                    return;
+                }
+
+                const targetAttendee = (assembly.attendees || []).find(a => a.uid === attendeeUid);
+                if (!targetAttendee) {
+                    hideModal();
+                    return;
+                }
+
+                const targetName = getAttendeeDisplayName(targetAttendee);
                 const updatedAttendees = (assembly.attendees || []).filter(a => a.uid !== attendeeUid);
                 await updateDoc(assemblyRef, { attendees: updatedAttendees });
 
                 await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_PRESENZA', `Presenza annullata per ${targetName}`);
+                hideModal();
                 await customAlert(`Presenza annullata con successo per ${targetName}.`);
             } catch (err) {
                 console.error("Errore annullamento presenza:", err);
+                hideModal();
                 await customAlert("Errore durante l'annullamento della presenza.");
             }
         };
@@ -22129,79 +22236,3 @@ ${renderBottomNavigation()}
                 await customAlert('Nessuna tabella disponibile per il download.');
             }
         };
-
-        const downloadElencoCondominiPDF = async () => {
-            const table = document.querySelector('#elenco-condomini-container table.data-table');
-            if (table) {
-                // Determina il titolo in base alla modalità attiva
-                const activeChip = document.querySelector('.filter-chips-container .chip.active');
-                const mode = activeChip ? activeChip.textContent : 'Elenco Condomini';
-                generateTablePDF(table, 'elenco-condomini', `Elenco Condomini - ${mode}`);
-            } else {
-                await customAlert('Nessuna tabella disponibile per il download.');
-            }
-        };
-
-        const downloadImportTemplate = (type) => {
-            let filename = "";
-            let data = [];
-
-            if (type === 'anagrafica') {
-                filename = "Template_Import_Anagrafica_Condominio.xlsx";
-                data = [
-                    ["Nominativo", "Interno", "Sub", "Scala", "Piano", "Millesimi", "Telefono", "Email", "Raggruppamento"],
-                    ["Rossi Mario", "UI-101", "1", "A", "1", "125.50", "+393401234567", "mario.rossi@esempio.it", "Scala A"],
-                    ["Bianchi Luigi", "UI-102", "2", "A", "1", "85.20", "+393409876543", "luigi.bianchi@esempio.it", "Scala A"],
-                    ["Verdi Giuseppe", "UI-103", "3", "B", "2", "110.00", "+393331122334", "giuseppe.verdi@esempio.it", "Scala B"]
-                ];
-            } else if (type === 'numeri_utili') {
-                filename = "Template_Import_Numeri_Utili.xlsx";
-                data = [
-                    ["INTERVENTO RICHIESTO", "IMPRESA", "1 NUM. TELEFONICO", "2 NUM. TELEFONICO", "NOTE"],
-                    ["Pronto Intervento Idraulico", "IdroTermica Rossi S.r.l.", "+3902123456", "+39340112233", "Disponibile 24/7 per emergenze"],
-                    ["Elettricista Condominiale", "ElettroImpianti Bianchi", "+3902987654", "+39349887766", "Referente Ing. Bianchi"],
-                    ["Amministrazione Studio", "Studio Amministrativo Verdi", "+3902555666", "+3902555777", "Orario ricevimento: 9:00 - 18:00"]
-                ];
-            } else if (type === 'orari_custode') {
-                filename = "Template_Import_Orari_Custode.xlsx";
-                data = [
-                    ["Nominativo", "Ruolo", "Lun - Ven", "Sabato", "Telefono", "Note"],
-                    ["Mario Rossi", "Custode Principale", "08:00 - 12:00 / 15:00 - 18:00", "08:00 - 12:00", "+393401234567", "Presenza in portineria Scala A"],
-                    ["Luigi Bianchi", "Manutenzione e Giardino", "08:00 - 12:00", "Chiuso", "+393409876543", "Pulizia aree comuni e verde"]
-                ];
-            } else if (type === 'dati_amministratore') {
-                filename = "Template_Import_Dati_Amministratore.xlsx";
-                data = [
-                    ["Ruolo", "Nominativo", "Telefono", "Email", "Giorni Lavorativi", "Orari Ricevimento"],
-                    ["Amministratore Condominiale", "Dott. Mario Bianchi", "+3902112233", "info@studiobianchi.it", "Lunedì - Venerdì", "09:00 - 12:00 / 15:00 - 18:00"],
-                    ["Referente Contabilità Studio", "Giulia Verdi", "+3902112234", "contabilita@studiobianchi.it", "Lunedì - Giovedì", "09:00 - 12:00"]
-                ];
-            }
-
-            try {
-                if (data.length > 0 && typeof XLSX !== 'undefined') {
-                    const ws = XLSX.utils.aoa_to_sheet(data);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, "Template");
-                    XLSX.writeFile(wb, filename);
-                } else if (data.length > 0) {
-                    const csvContent = "\uFEFF" + data.map(e => e.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(",")).join("\n");
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement("a");
-                    const csvFilename = filename.replace('.xlsx', '.csv');
-                    link.href = URL.createObjectURL(blob);
-                    link.setAttribute("download", csvFilename);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                }
-            } catch (err) {
-                console.error("Errore download template:", err);
-            }
-        };
-
-        window.downloadImportTemplate = downloadImportTemplate;
-    </script>
-</body>
-
-</html>
