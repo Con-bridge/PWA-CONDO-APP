@@ -22236,3 +22236,79 @@ ${renderBottomNavigation()}
                 await customAlert('Nessuna tabella disponibile per il download.');
             }
         };
+
+        const downloadElencoCondominiPDF = async () => {
+            const table = document.querySelector('#elenco-condomini-container table.data-table');
+            if (table) {
+                // Determina il titolo in base alla modalità attiva
+                const activeChip = document.querySelector('.filter-chips-container .chip.active');
+                const mode = activeChip ? activeChip.textContent : 'Elenco Condomini';
+                generateTablePDF(table, 'elenco-condomini', `Elenco Condomini - ${mode}`);
+            } else {
+                await customAlert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadImportTemplate = (type) => {
+            let filename = "";
+            let data = [];
+
+            if (type === 'anagrafica') {
+                filename = "Template_Import_Anagrafica_Condominio.xlsx";
+                data = [
+                    ["Nominativo", "Interno", "Sub", "Scala", "Piano", "Millesimi", "Telefono", "Email", "Raggruppamento"],
+                    ["Rossi Mario", "UI-101", "1", "A", "1", "125.50", "+393401234567", "mario.rossi@esempio.it", "Scala A"],
+                    ["Bianchi Luigi", "UI-102", "2", "A", "1", "85.20", "+393409876543", "luigi.bianchi@esempio.it", "Scala A"],
+                    ["Verdi Giuseppe", "UI-103", "3", "B", "2", "110.00", "+393331122334", "giuseppe.verdi@esempio.it", "Scala B"]
+                ];
+            } else if (type === 'numeri_utili') {
+                filename = "Template_Import_Numeri_Utili.xlsx";
+                data = [
+                    ["INTERVENTO RICHIESTO", "IMPRESA", "1 NUM. TELEFONICO", "2 NUM. TELEFONICO", "NOTE"],
+                    ["Pronto Intervento Idraulico", "IdroTermica Rossi S.r.l.", "+3902123456", "+39340112233", "Disponibile 24/7 per emergenze"],
+                    ["Elettricista Condominiale", "ElettroImpianti Bianchi", "+3902987654", "+39349887766", "Referente Ing. Bianchi"],
+                    ["Amministrazione Studio", "Studio Amministrativo Verdi", "+3902555666", "+3902555777", "Orario ricevimento: 9:00 - 18:00"]
+                ];
+            } else if (type === 'orari_custode') {
+                filename = "Template_Import_Orari_Custode.xlsx";
+                data = [
+                    ["Nominativo", "Ruolo", "Lun - Ven", "Sabato", "Telefono", "Note"],
+                    ["Mario Rossi", "Custode Principale", "08:00 - 12:00 / 15:00 - 18:00", "08:00 - 12:00", "+393401234567", "Presenza in portineria Scala A"],
+                    ["Luigi Bianchi", "Manutenzione e Giardino", "08:00 - 12:00", "Chiuso", "+393409876543", "Pulizia aree comuni e verde"]
+                ];
+            } else if (type === 'dati_amministratore') {
+                filename = "Template_Import_Dati_Amministratore.xlsx";
+                data = [
+                    ["Ruolo", "Nominativo", "Telefono", "Email", "Giorni Lavorativi", "Orari Ricevimento"],
+                    ["Amministratore Condominiale", "Dott. Mario Bianchi", "+3902112233", "info@studiobianchi.it", "Lunedì - Venerdì", "09:00 - 12:00 / 15:00 - 18:00"],
+                    ["Referente Contabilità Studio", "Giulia Verdi", "+3902112234", "contabilita@studiobianchi.it", "Lunedì - Giovedì", "09:00 - 12:00"]
+                ];
+            }
+
+            try {
+                if (data.length > 0 && typeof XLSX !== 'undefined') {
+                    const ws = XLSX.utils.aoa_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "Template");
+                    XLSX.writeFile(wb, filename);
+                } else if (data.length > 0) {
+                    const csvContent = "\uFEFF" + data.map(e => e.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(",")).join("\n");
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    const csvFilename = filename.replace('.xlsx', '.csv');
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute("download", csvFilename);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            } catch (err) {
+                console.error("Errore download template:", err);
+            }
+        };
+
+        window.downloadImportTemplate = downloadImportTemplate;
+    </script>
+</body>
+
+</html>
