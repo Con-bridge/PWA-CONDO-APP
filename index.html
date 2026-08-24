@@ -2448,7 +2448,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                         'numeri_utili': { enabled: true, allowedRoles: ['tutti'] },
                         'report': { enabled: true, allowedRoles: ['tutti'] },
                         'archivio': { enabled: true, allowedRoles: ['tutti'] },
-                        'assemblee': { enabled: true, allowedRoles: ['condomino', 'amministratore', 'consigliere', 'supervisore'] }
+                        'assemblee': { enabled: true, allowedRoles: ['condomino', 'amministratore', 'consigliere', 'supervisore', 'adm'] }
                     };
                 }
             } catch (error) {
@@ -16450,7 +16450,8 @@ ${renderBottomNavigation()}
                     const assembly = docSnap.data();
                     const attendees = assembly.attendees || [];
 
-                    if (attendees.some(a => a.uid === qrUid && a.status !== 'uscito')) {
+                    const existingIndex = attendees.findIndex(a => a.uid === qrUid);
+                    if (existingIndex !== -1 && attendees[existingIndex].status !== 'uscito') {
                         throw new Error("Condòmino già registrato come Presente.");
                     }
 
@@ -16465,7 +16466,7 @@ ${renderBottomNavigation()}
                     }
 
                     let totalMillesimiAccreditati = userBaseMillesimi;
-                    const heldProxies = assembly.proxies?.filter(p => p.delegateId === qrUid && p.status !== 'rejected') || [];
+                    const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === qrUid && p.status !== 'rejected');
 
                     let proxyNoticeText = '';
                     if (heldProxies.length > 0) {
@@ -16475,41 +16476,62 @@ ${renderBottomNavigation()}
                         proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
                     }
 
-                    const newAttendee = {
-                        uid: qrUid,
-                        nome: `${user.nome} ${user.cognome}${proxyNoticeText}`,
-                        millesimi: totalMillesimiAccreditati,
-                        heldProxiesCount: heldProxies.length,
-                        status: 'presente',
-                        isManual: false,
-                        registrationType: 'qr',
-                        scannedAt: new Date().toISOString()
-                    };
+                    const userFullName = `${user.nome} ${user.cognome}`.trim();
+                    let updatedAttendees = [...attendees];
+
+                    if (existingIndex !== -1) {
+                        // RIENTRO IN-PLACE: Nessuna riga duplicata né duplicazione millesimi
+                        updatedAttendees[existingIndex] = {
+                            ...updatedAttendees[existingIndex],
+                            status: 'presente',
+                            nome: `${userFullName}${proxyNoticeText}`,
+                            millesimi: totalMillesimiAccreditati,
+                            heldProxiesCount: heldProxies.length,
+                            reenteredAt: Date.now(),
+                            registrationType: updatedAttendees[existingIndex].registrationType || 'qr',
+                            scannedAt: new Date().toISOString()
+                        };
+                    } else {
+                        // PRIMO ACCREDITO
+                        const newAttendee = {
+                            uid: qrUid,
+                            nome: `${userFullName}${proxyNoticeText}`,
+                            cognome: user.cognome || '',
+                            millesimi: totalMillesimiAccreditati,
+                            proprieta: user.proprieta || [],
+                            heldProxiesCount: heldProxies.length,
+                            status: 'presente',
+                            isManual: false,
+                            registrationType: 'qr',
+                            scannedAt: new Date().toISOString(),
+                            joinedAt: Date.now()
+                        };
+                        updatedAttendees.push(newAttendee);
+                    }
 
                     await updateDoc(assemblyRef, {
-                        attendees: arrayUnion(newAttendee)
+                        attendees: JSON.parse(JSON.stringify(updatedAttendees))
                     });
 
-                    const userFullName = `${user.nome} ${user.cognome}`.trim();
-                    await logAssemblyEvent(assemblyId, 'PRESENZA_QR', `Presenza convalidata tramite Scanner QR: ${userFullName} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
+                    await logAssemblyEvent(assemblyId, existingIndex !== -1 ? 'RIENTRO_QR' : 'PRESENZA_QR', `Presenza ${existingIndex !== -1 ? 'riattivata (rientro)' : 'convalidata'} tramite Scanner QR: ${userFullName} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
 
                     const fPopup = document.getElementById("scanner-feedback-popup");
                     if (fPopup) {
                         fPopup.className = '';
-                        fPopup.style.display = 'block';
+                        fPopup.style.display = 'flex';
                         fPopup.classList.remove('hidden');
                         fPopup.innerHTML = `
-                            <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
-                                <div style="font-size:2.2rem; margin-bottom:0.25rem;">✅</div>
-                                <div style="font-size:0.8rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Presenza Convalidata</div>
-                                <div style="font-size:1.05rem; font-weight:800; color:var(--primary-text); margin-bottom:0.35rem; line-height:1.35;">
+                            <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                <div style="font-size:2rem; line-height:1; margin-bottom:0.25rem;">✅</div>
+                                <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza Convalidata</div>
+                                <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
                                     Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
                                 </div>
-                                <div style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:1rem;">
-                                    Millesimi: <strong style="color:var(--warning); font-size:0.95rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
-                                    ${proxyNoticeText ? `<br><span style="font-size:0.8rem; color:var(--accent-color); font-weight:600;">${escapeHtml(proxyNoticeText.trim())}</span>` : ''}
+                                <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
+                                    Millesimi: <strong style="color:var(--warning); font-size:0.92rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
+                                    ${proxyNoticeText ? `<div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
                                 </div>
-                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-primary" style="width:100%; height:42px; font-weight:700; font-size:0.9rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
                                     <span>✕ Chiudi / Prossima Scansione</span>
                                 </button>
                             </div>
@@ -16530,16 +16552,16 @@ ${renderBottomNavigation()}
                     const fPopup = document.getElementById("scanner-feedback-popup");
                     if (fPopup) {
                         fPopup.className = '';
-                        fPopup.style.display = 'block';
+                        fPopup.style.display = 'flex';
                         fPopup.classList.remove('hidden');
                         fPopup.innerHTML = `
-                            <div style="background:var(--surface-color); border:2px solid var(--danger); border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
-                                <div style="font-size:2.2rem; margin-bottom:0.25rem;">⚠️</div>
-                                <div style="font-size:0.8rem; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Attenzione</div>
-                                <div style="font-size:0.95rem; font-weight:700; color:var(--primary-text); margin-bottom:1rem; line-height:1.35;">
+                            <div style="background:var(--surface-color); border:2px solid var(--danger); border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                <div style="font-size:2rem; line-height:1; margin-bottom:0.25rem;">⚠️</div>
+                                <div style="font-size:0.75rem; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Attenzione</div>
+                                <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); margin-bottom:0.85rem; line-height:1.3;">
                                     ${escapeHtml(error.message || 'Errore durante la scansione')}
                                 </div>
-                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:600; font-size:0.85rem; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="width:100%; height:38px; font-weight:600; font-size:0.85rem; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
                                     <span>✕ Chiudi e Riprova</span>
                                 </button>
                             </div>
@@ -16666,7 +16688,13 @@ ${renderBottomNavigation()}
                 const titleEl = document.getElementById('room-assembly-title');
                 if (titleEl) titleEl.textContent = 'Quorum Costitutivo';
 
-                const attendees = assembly.attendees || [];
+                const rawAttendees = assembly.attendees || [];
+                // Deduplicazione di sicurezza per UID (previene conteggi duplicati in caso di record storici multipli)
+                const uniqueAttendeesMap = new Map();
+                rawAttendees.forEach(a => {
+                    if (a && a.uid) uniqueAttendeesMap.set(a.uid, a);
+                });
+                const attendees = Array.from(uniqueAttendeesMap.values());
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito');
                 const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && activeAttendees.some(a => a.uid === p.delegateId));
                 const totalPresences = activeAttendees.length + activeProxies.length;
@@ -17357,13 +17385,26 @@ ${renderBottomNavigation()}
         const toggleRoomScanner = () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             const container = document.getElementById('room-scanner-container');
+            const btnScanner = document.getElementById('btn-toggle-room-scanner');
             if (!container || !assemblyId) return;
 
             if (container.classList.contains('hidden')) {
                 container.classList.remove('hidden');
+                if (btnScanner) {
+                    btnScanner.textContent = '✕ Chiudi Scanner';
+                    btnScanner.style.background = 'rgba(239, 68, 68, 0.2)';
+                    btnScanner.style.borderColor = 'var(--danger, #EF4444)';
+                    btnScanner.style.color = 'var(--danger, #EF4444)';
+                }
                 initScannerForAssembly(assemblyId);
             } else {
                 container.classList.add('hidden');
+                if (btnScanner) {
+                    btnScanner.textContent = 'Scanner QR';
+                    btnScanner.style.background = '';
+                    btnScanner.style.borderColor = '';
+                    btnScanner.style.color = '';
+                }
                 if (window.html5QrcodeScanner) {
                     try {
                         if (typeof window.html5QrcodeScanner.stop === 'function') {
@@ -17397,7 +17438,7 @@ ${renderBottomNavigation()}
                 const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
                 const availableUsers = allUsers
-                    .filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) && !attendees.some(a => a.uid === u.id))
+                    .filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) && !attendees.some(a => a.uid === u.id && a.status !== 'uscito'))
                     .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
 
                 if (availableUsers.length === 0) {
@@ -17405,37 +17446,46 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                const listCardsHtml = availableUsers.map((u, idx) => `
-                    <label class="manual-attendee-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
-                        <div style="display:flex; align-items:center; gap:0.6rem;">
-                            <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
-                            <div>
-                                <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} <span style="font-size:0.75rem; color:var(--accent-color); font-weight:600;">(${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span></div>
-                                <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                const renderCardsHtml = (usersList) => {
+                    if (usersList.length === 0) {
+                        return '<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini e consiglieri risultano accreditati come presenti.</div>';
+                    }
+                    return usersList.map((u, idx) => `
+                        <label class="manual-attendee-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
+                                <div>
+                                    <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} <span style="font-size:0.75rem; color:var(--accent-color); font-weight:600;">(${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span></div>
+                                    <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                                </div>
                             </div>
-                        </div>
-                        <strong style="color:var(--warning); font-size:0.85rem;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
-                    </label>
-                `).join('');
+                            <strong style="color:var(--warning); font-size:0.85rem;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                        </label>
+                    `).join('');
+                };
 
                 const modalContent = `
-                    <form onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-4" style="text-align:left;">
-                        <p style="color: var(--secondary-text); font-size: 0.9rem;">
-                            Registra manualmente la presenza di un condomino o consigliere all'assemblea.
+                    <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-3" style="text-align:left;">
+                        <p style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.35rem;">
+                            Registra manualmente la presenza di un condomino. Puoi effettuare registrazioni sequenziali rapide.
                         </p>
-                        <div>
-                            <label class="form-label" style="font-weight:700;">🔍 Digita nome o cognome condomino/consigliere</label>
-                            <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.6rem; font-size:0.9rem; padding:0.45rem 0.7rem;" autofocus>
-                            
-                            <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom:0.5rem; font-size:0.82rem; padding:0.4rem 0.6rem;">⚠️ Condomino o consigliere non trovato in anagrafica.</div>
 
-                            <div id="container-manual-attendees-list" style="max-height:240px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.4rem;">
-                                ${listCardsHtml}
+                        <!-- FEEDBACK NOTIFICA INLINE (PERSISTENZA FORM SENZA REDIRECT) -->
+                        <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem; margin-bottom:0.4rem;"></div>
+
+                        <div>
+                            <label class="form-label" style="font-weight:700; font-size:0.85rem; margin-bottom:0.25rem;">🔍 Digita nome o cognome condomino/consigliere</label>
+                            <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare cognome o nome..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.88rem; padding:0.45rem 0.7rem;" autofocus autocomplete="off">
+                            
+                            <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom:0.4rem; font-size:0.82rem; padding:0.4rem 0.6rem;">⚠️ Condomino o consigliere non trovato in anagrafica.</div>
+
+                            <div id="container-manual-attendees-list" style="max-height:220px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                                ${renderCardsHtml(availableUsers)}
                             </div>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
-                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:0.85rem; width:100%;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Chiudi</button>
+                            <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
                         </div>
                     </form>
                 `;
@@ -17485,13 +17535,29 @@ ${renderBottomNavigation()}
         window.saveManualAttendance = async (event, assemblyId) => {
             event.preventDefault();
             const selectedRadio = document.querySelector('input[name="manual-attendee-radio"]:checked');
+            const successMsg = document.getElementById('manual-attendee-success-msg');
+            const searchInput = document.getElementById('input-search-manual-attendee');
+            const errorMsg = document.getElementById('manual-attendee-error-msg');
+            const submitBtn = document.getElementById('btn-submit-manual-attendance');
+            const listContainer = document.getElementById('container-manual-attendees-list');
+
             if (!selectedRadio) {
-                await customAlert("Seleziona o digita il nome di un condomino.");
+                if (errorMsg) {
+                    errorMsg.textContent = "Seleziona o digita il nome di un condomino.";
+                    errorMsg.classList.remove('hidden');
+                } else {
+                    await customAlert("Seleziona o digita il nome di un condomino.");
+                }
                 return;
             }
             const userId = selectedRadio.value;
 
             try {
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Salvataggio...';
+                }
+
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const userDoc = await getDoc(doc(db, "users", userId));
                 if (!userDoc.exists()) throw new Error("Utente non trovato.");
@@ -17499,53 +17565,128 @@ ${renderBottomNavigation()}
 
                 const docSnap = await getDoc(assemblyRef);
                 const assembly = docSnap.data();
+                const attendees = assembly.attendees || [];
 
-                const existingAttendee = (assembly.attendees || []).find(a => a.uid === userId);
-                if (existingAttendee) {
-                    if (existingAttendee.status === 'uscito') {
-                        await toggleAttendeeStatus(assemblyId, userId, 'presente');
-                        hideModal();
-                        return;
+                const existingAttendeeIndex = attendees.findIndex(a => a.uid === userId);
+                if (existingAttendeeIndex !== -1 && attendees[existingAttendeeIndex].status !== 'uscito') {
+                    if (errorMsg) {
+                        errorMsg.textContent = `Il condomino ${user.nome} ${user.cognome} è già accreditato come presente in aula.`;
+                        errorMsg.classList.remove('hidden');
                     } else {
                         await customAlert(`Il condomino ${user.nome} ${user.cognome} è già accreditato come presente in aula.`);
-                        return;
                     }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Registra Presenza';
+                    }
+                    return;
                 }
 
-                let totalMillesimiAccreditati = user.millesimiTotali || 0;
-                const heldProxies = assembly.proxies?.filter(p => p.delegateId === userId) || [];
+                let totalMillesimiAccreditati = parseFloat(user.millesimiTotali) || 0;
+                if (totalMillesimiAccreditati <= 0 && Array.isArray(user.proprieta)) {
+                    totalMillesimiAccreditati = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+
+                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === userId && p.status !== 'rejected');
                 let proxyNoticeText = '';
                 if (heldProxies.length > 0) {
                     heldProxies.forEach(p => {
-                        totalMillesimiAccreditati += (p.delegatorMillesimi || 0);
+                        totalMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
                     });
                     proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
                 }
 
-                const newAttendee = {
-                    uid: userId,
-                    nome: `${user.nome} ${user.cognome}${proxyNoticeText}`,
-                    cognome: user.cognome || '',
-                    millesimi: totalMillesimiAccreditati,
-                    proprieta: user.proprieta || [],
-                    heldProxiesCount: heldProxies.length,
-                    status: 'presente',
-                    isManual: true,
-                    registrationType: 'manual',
-                    joinedAt: Date.now()
-                };
+                const userFullName = `${user.nome} ${user.cognome}`.trim();
+                let updatedAttendees = [...attendees];
+
+                if (existingAttendeeIndex !== -1) {
+                    // Rientro in-place senza duplicazione record né millesimi
+                    updatedAttendees[existingAttendeeIndex] = {
+                        ...updatedAttendees[existingAttendeeIndex],
+                        status: 'presente',
+                        nome: `${userFullName}${proxyNoticeText}`,
+                        millesimi: totalMillesimiAccreditati,
+                        heldProxiesCount: heldProxies.length,
+                        reenteredAt: Date.now()
+                    };
+                } else {
+                    const newAttendee = {
+                        uid: userId,
+                        nome: `${userFullName}${proxyNoticeText}`,
+                        cognome: user.cognome || '',
+                        millesimi: totalMillesimiAccreditati,
+                        proprieta: user.proprieta || [],
+                        heldProxiesCount: heldProxies.length,
+                        status: 'presente',
+                        isManual: true,
+                        registrationType: 'manual',
+                        joinedAt: Date.now()
+                    };
+                    updatedAttendees.push(newAttendee);
+                }
 
                 await updateDoc(assemblyRef, {
-                    attendees: arrayUnion(newAttendee)
+                    attendees: JSON.parse(JSON.stringify(updatedAttendees))
                 });
 
-                await logAssemblyEvent(assemblyId, 'INGRESSO', `Accreditata presenza in aula per ${user.nome} ${user.cognome} [${totalMillesimiAccreditati.toFixed(2)} ‰]${proxyNoticeText}`);
+                await logAssemblyEvent(assemblyId, existingAttendeeIndex !== -1 ? 'RIENTRO_MANUALE' : 'INGRESSO', `Accreditata presenza ${existingAttendeeIndex !== -1 ? '(rientro)' : 'in aula'} per ${userFullName} [${totalMillesimiAccreditati.toFixed(2)} ‰]${proxyNoticeText}`);
 
-                hideModal();
-                await customAlert(`Presenza registrata per ${user.nome} ${user.cognome} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
+                // REQ-06: PERSISTENZA SCHERMATA - Mostra feedback inline e aggiorna la lista rimanente
+                if (successMsg) {
+                    successMsg.innerHTML = `✅ Presenza <strong>${existingAttendeeIndex !== -1 ? 'riattivata (rientro)' : 'registrata'}</strong>: <span style="color:#10B981; font-weight:700;">${escapeHtml(userFullName)}</span> (${totalMillesimiAccreditati.toFixed(2)} ‰)`;
+                    successMsg.classList.remove('hidden');
+                }
+                if (errorMsg) errorMsg.classList.add('hidden');
+
+                // Ricarica condomini disponibili aggiornati
+                const usersSnap = await getDocs(query(collection(db, "users")));
+                const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const remainingAvailable = allUsers
+                    .filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) && !updatedAttendees.some(a => a.uid === u.id && a.status !== 'uscito'))
+                    .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+
+                if (listContainer) {
+                    if (remainingAvailable.length === 0) {
+                        listContainer.innerHTML = '<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini e consiglieri risultano accreditati come presenti.</div>';
+                        if (submitBtn) submitBtn.disabled = true;
+                    } else {
+                        listContainer.innerHTML = remainingAvailable.map((u, idx) => `
+                            <label class="manual-attendee-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
+                                <div style="display:flex; align-items:center; gap:0.6rem;">
+                                    <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
+                                    <div>
+                                        <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} <span style="font-size:0.75rem; color:var(--accent-color); font-weight:600;">(${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span></div>
+                                        <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                                    </div>
+                                </div>
+                                <strong style="color:var(--warning); font-size:0.85rem;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                            </label>
+                        `).join('');
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
+                }
+
+                // Reset e focus immediato sul campo di ricerca per l'inserimento successivo
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
+                if (submitBtn) {
+                    submitBtn.textContent = 'Registra Presenza';
+                }
+
             } catch (error) {
                 console.error("Errore salvataggio presenza:", error);
-                await customAlert("Errore durante la registrazione della presenza: " + error.message);
+                if (errorMsg) {
+                    errorMsg.textContent = "Errore durante la registrazione: " + error.message;
+                    errorMsg.classList.remove('hidden');
+                } else {
+                    await customAlert("Errore durante la registrazione della presenza: " + error.message);
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Registra Presenza';
+                }
             }
         };
 
@@ -17554,56 +17695,181 @@ ${renderBottomNavigation()}
             if (!assemblyId) return;
 
             try {
-                const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"));
-                const snapshot = await getDocs(q);
-                const allCondomini = snapshot.docs
-                    .map(d => ({ id: d.id, ...d.data() }))
-                    .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+                // 1. Fetch registered users
+                const usersSnapshot = await getDocs(query(collection(db, "users")));
+                const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                const registeredCondomini = registeredUsers.filter(u => 
+                    ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)
+                );
 
-                const delegatorCardsHtml = allCondomini.map((u, idx) => `
-                    <label class="proxy-delegator-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
+                // 2. Fetch imported general anagrafica (Supervisore > Importa dati millesimi)
+                const importedSnapshot = await getDocs(query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1)));
+                let importedRows = [];
+                if (!importedSnapshot.empty) {
+                    importedRows = importedSnapshot.docs[0].data().tableData || [];
+                }
+
+                // 3. Build unified delegators registry map
+                const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                const delegatorsMap = new Map();
+
+                if (importedRows.length > 0) {
+                    const headers = Object.keys(importedRows[0] || {});
+                    const findH = (keys) => headers.find(h => keys.some(k => h.toLowerCase().includes(k.toLowerCase())));
+                    const nominativoHeader = findH(['nominativo', 'condomino', 'proprietario', 'intestatario', 'nome']);
+                    const unitaHeader = findH(['interno', 'appartamento', 'unita', 'sub', 'immobile']);
+                    const millesimiHeader = findH(['millesimi', 'quota', 'valore', 'millesimo']);
+
+                    importedRows.forEach(row => {
+                        const rawNom = nominativoHeader ? (row[nominativoHeader] || '').toString().trim() : '';
+                        if (!rawNom) return;
+
+                        const normKey = normalize(rawNom);
+                        const rawMil = millesimiHeader ? (row[millesimiHeader] || '').toString().replace(',', '.').trim() : '0';
+                        const milVal = parseFloat(rawMil) || 0;
+                        const unitaVal = unitaHeader ? (row[unitaHeader] || '').toString().trim() : '';
+
+                        if (!delegatorsMap.has(normKey)) {
+                            delegatorsMap.set(normKey, {
+                                id: 'anagrafica_' + normKey.replace(/\s+/g, '_'),
+                                nominativo: rawNom,
+                                nome: rawNom,
+                                cognome: '',
+                                millesimiTotali: 0,
+                                unitaImmobiliare: [],
+                                isRegistered: false,
+                                email: '',
+                                tipoUtente: 'condomino'
+                            });
+                        }
+
+                        const entry = delegatorsMap.get(normKey);
+                        entry.millesimiTotali += milVal;
+                        if (unitaVal && !entry.unitaImmobiliare.includes(unitaVal)) {
+                            entry.unitaImmobiliare.push(unitaVal);
+                        }
+                    });
+                }
+
+                // Match and merge with registered users
+                registeredCondomini.forEach(u => {
+                    const userFullName = `${u.cognome || ''} ${u.nome || ''}`.trim() || u.nome || '';
+                    const userNorm = normalize(userFullName);
+                    const userReverseNorm = normalize(`${u.nome || ''} ${u.cognome || ''}`);
+
+                    let matchedKey = null;
+                    if (delegatorsMap.has(userNorm)) matchedKey = userNorm;
+                    else if (delegatorsMap.has(userReverseNorm)) matchedKey = userReverseNorm;
+                    else {
+                        for (const k of delegatorsMap.keys()) {
+                            if (k.length > 3 && (userNorm.includes(k) || k.includes(userNorm))) {
+                                matchedKey = k;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matchedKey) {
+                        const existing = delegatorsMap.get(matchedKey);
+                        existing.id = u.id;
+                        existing.nome = u.nome || existing.nome;
+                        existing.cognome = u.cognome || existing.cognome;
+                        existing.email = u.email || '';
+                        existing.isRegistered = true;
+                        existing.tipoUtente = u.tipoUtente || 'condomino';
+                        if (u.millesimiTotali && u.millesimiTotali > 0) {
+                            existing.millesimiTotali = u.millesimiTotali;
+                        }
+                        if (u.unitaImmobiliare) {
+                            if (Array.isArray(existing.unitaImmobiliare)) {
+                                if (!existing.unitaImmobiliare.includes(u.unitaImmobiliare)) existing.unitaImmobiliare.push(u.unitaImmobiliare);
+                            } else {
+                                existing.unitaImmobiliare = [u.unitaImmobiliare];
+                            }
+                        }
+                    } else {
+                        delegatorsMap.set(userNorm || u.id, {
+                            id: u.id,
+                            nominativo: userFullName,
+                            nome: u.nome || '',
+                            cognome: u.cognome || '',
+                            millesimiTotali: u.millesimiTotali || 0,
+                            unitaImmobiliare: u.unitaImmobiliare ? [u.unitaImmobiliare] : (u.proprieta ? u.proprieta.map(p => p.interno) : []),
+                            isRegistered: true,
+                            email: u.email || '',
+                            tipoUtente: u.tipoUtente || 'condomino'
+                        });
+                    }
+                });
+
+                const allDelegators = Array.from(delegatorsMap.values()).map(d => ({
+                    ...d,
+                    unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
+                })).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
+
+                if (allDelegators.length === 0) {
+                    await customAlert("Nessun nominativo trovato in anagrafica o tra gli utenti registrati.");
+                    return;
+                }
+
+                // Delegates list: registered condomini/consiglieri (who can vote in assembly)
+                const allDelegates = registeredCondomini.length > 0 ? registeredCondomini : allDelegators;
+
+                const delegatorCardsHtml = allDelegators.map((d, idx) => `
+                    <label class="proxy-delegator-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((d.nominativo || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + d.unitaStr).toLowerCase())}">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <input type="radio" name="proxy-delegator-radio" value="${u.id}" class="proxy-delegator-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 0 ? 'checked' : ''}>
+                            <input type="radio" name="proxy-delegator-radio" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" class="proxy-delegator-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 0 ? 'checked' : ''}>
                             <div>
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')}</div>
-                                <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">
+                                    ${escapeHtml(d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim())}
+                                    ${d.isRegistered 
+                                        ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📱 App</span>` 
+                                        : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📋 Anagrafica</span>`}
+                                </div>
+                                <div style="font-size:0.75rem; color:var(--secondary-text);">
+                                    ${d.email ? escapeHtml(d.email) + ' • ' : ''}${d.unitaStr ? 'Unità: ' + escapeHtml(d.unitaStr) : 'Nessuna unità spec.'}
+                                </div>
                             </div>
                         </div>
-                        <strong style="color:var(--warning); font-size:0.8rem;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                        <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${(d.millesimiTotali || 0).toFixed(2)} ‰</strong>
                     </label>
                 `).join('');
 
-                const delegateCardsHtml = allCondomini.map((u, idx) => `
-                    <label class="proxy-delegate-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <input type="radio" name="proxy-delegate-radio" value="${u.id}" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 1 ? 'checked' : (idx === 0 && allCondomini.length === 1 ? 'checked' : '')}>
-                            <div>
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')}</div>
-                                <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                const delegateCardsHtml = allDelegates.map((u, idx) => {
+                    const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
+                    const uUnitaStr = u.unitaStr || (u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare.join(', ') : u.unitaImmobiliare) : (u.proprieta ? u.proprieta.map(p => p.interno).join(', ') : ''));
+                    return `
+                        <label class="proxy-delegate-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml((uDisplayName + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 1 ? 'checked' : (idx === 0 && allDelegates.length === 1 ? 'checked' : '')}>
+                                <div>
+                                    <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(uDisplayName)}</div>
+                                    <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${uUnitaStr ? '• Unità: ' + escapeHtml(uUnitaStr) : ''}</div>
+                                </div>
                             </div>
-                        </div>
-                        <strong style="color:var(--warning); font-size:0.8rem;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
-                    </label>
-                `).join('');
+                            <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                        </label>
+                    `;
+                }).join('');
 
                 const modalContent = `
                     <form onsubmit="saveManualProxy(event, '${assemblyId}')" class="space-y-4" style="text-align:left;">
                         <p style="color: var(--secondary-text); font-size: 0.85rem;">
-                            Registra una delega cartacea ricevuta da un condomino assente ad un condomino delegato.
+                            Registra una delega cartacea rilasciata da un condomino presente in anagrafica ad un condomino delegato in aula.
                         </p>
                         
                         <div>
-                            <label class="form-label" style="font-weight:700;">1. Selezione Delegante (Chi consegna la delega)</label>
-                            <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Digita nome o cognome delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;">
-                            <div id="container-proxy-delegators-list" style="max-height:150px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                            <label class="form-label" style="font-weight:700;">1. Selezione Delegante (Chi consegna la delega - Anagrafica Generale)</label>
+                            <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante per nome, cognome o interno..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;" autofocus>
+                            <div id="container-proxy-delegators-list" style="max-height:160px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
                                 ${delegatorCardsHtml}
                             </div>
                         </div>
 
                         <div>
                             <label class="form-label" style="font-weight:700; margin-top:0.5rem;">2. Selezione Delegato (Chi vota in aula)</label>
-                            <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Digita nome o cognome delegato..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;">
-                            <div id="container-proxy-delegates-list" style="max-height:150px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                            <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Cerca delegato per nome o cognome..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;">
+                            <div id="container-proxy-delegates-list" style="max-height:160px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
                                 ${delegateCardsHtml}
                             </div>
                         </div>
@@ -17617,7 +17883,7 @@ ${renderBottomNavigation()}
                 showModal('Registra Delega Cartacea', modalContent);
             } catch (error) {
                 console.error("Errore apertura modal delega cartacea:", error);
-                await customAlert("Errore durante il caricamento dei condomini.");
+                await customAlert("Errore durante il caricamento dell'anagrafica condomini: " + error.message);
             }
         };
 
@@ -17627,13 +17893,14 @@ ${renderBottomNavigation()}
             let firstVisibleRadio = null;
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
-                const isMatch = text.includes(q);
+                const isMatch = !q || text.includes(q);
                 card.style.display = isMatch ? 'flex' : 'none';
                 if (isMatch && !firstVisibleRadio) {
                     firstVisibleRadio = card.querySelector('.proxy-delegator-radio');
                 }
             });
-            if (firstVisibleRadio) {
+            const currentChecked = document.querySelector('input[name="proxy-delegator-radio"]:checked');
+            if (firstVisibleRadio && (!currentChecked || currentChecked.closest('.proxy-delegator-card')?.style.display === 'none')) {
                 firstVisibleRadio.checked = true;
             }
         };
@@ -17644,13 +17911,14 @@ ${renderBottomNavigation()}
             let firstVisibleRadio = null;
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
-                const isMatch = text.includes(q);
+                const isMatch = !q || text.includes(q);
                 card.style.display = isMatch ? 'flex' : 'none';
                 if (isMatch && !firstVisibleRadio) {
                     firstVisibleRadio = card.querySelector('.proxy-delegate-radio');
                 }
             });
-            if (firstVisibleRadio) {
+            const currentChecked = document.querySelector('input[name="proxy-delegate-radio"]:checked');
+            if (firstVisibleRadio && (!currentChecked || currentChecked.closest('.proxy-delegate-card')?.style.display === 'none')) {
                 firstVisibleRadio.checked = true;
             }
         };
@@ -17673,42 +17941,67 @@ ${renderBottomNavigation()}
             }
 
             try {
-                const delegatorDoc = await getDoc(doc(db, "users", delegatorId));
-                const delegateDoc = await getDoc(doc(db, "users", delegateId));
-
-                if (!delegatorDoc.exists() || !delegateDoc.exists()) {
-                    throw new Error("Dati utenti non trovati.");
+                let delegatorData = null;
+                const delegatorJsonStr = delegatorRadio.getAttribute('data-delegator-json');
+                if (delegatorJsonStr) {
+                    try { delegatorData = JSON.parse(delegatorJsonStr); } catch (e) {}
                 }
+                if (!delegatorData) {
+                    const delegatorDoc = await getDoc(doc(db, "users", delegatorId));
+                    if (delegatorDoc.exists()) delegatorData = { id: delegatorDoc.id, ...delegatorDoc.data() };
+                }
+                if (!delegatorData) throw new Error("Dati delegante non trovati.");
 
-                const delegator = delegatorDoc.data();
-                const delegate = delegateDoc.data();
+                let delegateData = null;
+                const delegateJsonStr = delegateRadio.getAttribute('data-delegate-json');
+                if (delegateJsonStr) {
+                    try { delegateData = JSON.parse(delegateJsonStr); } catch (e) {}
+                }
+                if (!delegateData) {
+                    const delegateDoc = await getDoc(doc(db, "users", delegateId));
+                    if (delegateDoc.exists()) delegateData = { id: delegateDoc.id, ...delegateDoc.data() };
+                }
+                if (!delegateData) throw new Error("Dati delegato non trovati.");
 
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const assemblySnap = await getDoc(assemblyRef);
                 if (!assemblySnap.exists()) throw new Error("Assemblea non trovata.");
                 const assembly = assemblySnap.data();
 
+                const delegatorFullName = (delegatorData.nominativo || `${delegatorData.cognome || ''} ${delegatorData.nome || ''}`).trim();
+                const delegateFullName = (delegateData.nominativo || `${delegateData.cognome || ''} ${delegateData.nome || ''}`).trim();
+
                 // VERIFICA SE DELEGANTE È GIÀ PRESENTE
-                const isDelegatorPresent = (assembly.attendees || []).some(a => a.uid === delegatorId && a.status !== 'uscito');
+                const isDelegatorPresent = (assembly.attendees || []).some(a => {
+                    if (a.status === 'uscito') return false;
+                    if (a.uid === delegatorId) return true;
+                    if (a.nome && delegatorFullName && a.nome.toLowerCase().includes(delegatorFullName.toLowerCase())) return true;
+                    return false;
+                });
+
                 if (isDelegatorPresent) {
-                    await customAlert(`Impossibile registrare delega: il condomino delegante ${delegator.nome} ${delegator.cognome} è già registrato come presente di persona in aula.`);
+                    await customAlert(`Impossibile registrare delega: il condomino delegante ${delegatorFullName} è già registrato come presente di persona in aula.`);
                     return;
                 }
 
-                const existingProxy = assembly.proxies?.find(p => p.delegatorId === delegatorId);
+                const existingProxy = (assembly.proxies || []).find(p => 
+                    p.status !== 'rejected' && (
+                        p.delegatorId === delegatorId || 
+                        (p.delegatorName && delegatorFullName && p.delegatorName.toLowerCase().trim() === delegatorFullName.toLowerCase().trim())
+                    )
+                );
                 if (existingProxy) {
-                    throw new Error(`Il condomino ${delegator.nome} ${delegator.cognome} ha già conferito una delega a ${existingProxy.delegateName}.`);
+                    throw new Error(`Il condomino ${delegatorFullName} ha già conferito una delega a ${existingProxy.delegateName}.`);
                 }
 
                 // CHECK TETTO LEGALE DELEGHE (ART. 67 DISP. ATT. C.C.)
-                const condominiSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "==", "condomino")));
-                const totalCondoCount = condominiSnapshot.size;
+                const totalCondoCount = document.querySelectorAll('.proxy-delegator-card').length || 1;
 
                 if (totalCondoCount > 20) {
                     const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === delegateId && p.status !== 'rejected');
                     const totalHeads = 1 + heldProxies.length + 1; // delegato + deleghe esistenti + nuova delega
-                    let totalMillesimi = (delegate.millesimiTotali || 0) + (delegator.millesimiTotali || 0);
-                    heldProxies.forEach(p => totalMillesimi += (p.delegatorMillesimi || 0));
+                    let totalMillesimi = (parseFloat(delegateData.millesimiTotali) || 0) + (parseFloat(delegatorData.millesimiTotali) || 0);
+                    heldProxies.forEach(p => totalMillesimi += (parseFloat(p.delegatorMillesimi) || 0));
 
                     const maxHeadsAllowed = Math.floor(totalCondoCount / 5);
                     if (totalHeads > maxHeadsAllowed || totalMillesimi > 200.00) {
@@ -17720,10 +18013,11 @@ ${renderBottomNavigation()}
                 const proxyData = {
                     id: 'proxy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                     delegatorId: delegatorId,
-                    delegatorName: `${delegator.nome} ${delegator.cognome}`,
-                    delegatorMillesimi: delegator.millesimiTotali || 0,
+                    delegatorName: delegatorFullName,
+                    delegatorMillesimi: parseFloat(delegatorData.millesimiTotali) || 0,
+                    delegatorUnita: delegatorData.unitaStr || (Array.isArray(delegatorData.unitaImmobiliare) ? delegatorData.unitaImmobiliare.join(', ') : (delegatorData.unitaImmobiliare || '')),
                     delegateId: delegateId,
-                    delegateName: `${delegate.nome} ${delegate.cognome}`,
+                    delegateName: delegateFullName,
                     isDigital: false,
                     status: 'accepted',
                     createdAt: new Date().toISOString()
@@ -17734,13 +18028,13 @@ ${renderBottomNavigation()}
                 let updatedAttendees = assembly.attendees || [];
                 const delegateAttendeeIndex = updatedAttendees.findIndex(a => a.uid === delegateId);
                 if (delegateAttendeeIndex !== -1) {
-                    const heldProxies = updatedProxies.filter(p => p.delegateId === delegateId);
-                    let totalMillesimi = delegate.millesimiTotali || 0;
-                    heldProxies.forEach(p => { totalMillesimi += (p.delegatorMillesimi || 0); });
+                    const heldProxies = updatedProxies.filter(p => p.delegateId === delegateId && p.status !== 'rejected');
+                    let totalMillesimi = parseFloat(delegateData.millesimiTotali) || 0;
+                    heldProxies.forEach(p => { totalMillesimi += (parseFloat(p.delegatorMillesimi) || 0); });
 
                     updatedAttendees[delegateAttendeeIndex] = {
                         ...updatedAttendees[delegateAttendeeIndex],
-                        nome: `${delegate.nome} ${delegate.cognome} (+${heldProxies.length} deleghe ricevute)`,
+                        nome: `${delegateFullName} (+${heldProxies.length} deleghe ricevute)`,
                         millesimi: totalMillesimi,
                         heldProxiesCount: heldProxies.length
                     };
@@ -17748,15 +18042,20 @@ ${renderBottomNavigation()}
 
                 await updateDoc(assemblyRef, {
                     proxies: updatedProxies,
-                    attendees: updatedAttendees
+                    attendees: JSON.parse(JSON.stringify(updatedAttendees))
                 });
 
-                await logActivity("proxy_manual_assigned", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId, delegatorId, delegateId });
+                await logAssemblyEvent(assemblyId, 'DELEGA_CARTACEA', `Registrata delega cartacea da ${delegatorFullName} (${(delegatorData.millesimiTotali || 0).toFixed(2)} ‰) a ${delegateFullName}`);
+
+                if (typeof logActivity === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+                    await logActivity("proxy_manual_assigned", currentUser.uid, `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim(), { assemblyId, delegatorId, delegateId });
+                }
+
                 hideModal();
-                await customAlert(`Delega cartacea registrata: ${delegator.nome} ${delegator.cognome} -> ${delegate.nome} ${delegate.cognome}`);
+                await customAlert(`Delega cartacea registrata con successo: ${delegatorFullName} -> ${delegateFullName} (${(delegatorData.millesimiTotali || 0).toFixed(2)} ‰)`);
             } catch (error) {
                 console.error("Errore salvataggio delega cartacea:", error);
-                await customAlert("Errore: " + error.message);
+                await customAlert("Errore durante la registrazione della delega: " + error.message);
             }
         };
 
@@ -19087,6 +19386,133 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.filterOdgVotersList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.odg-voter-card');
+            const noMatchMsg = document.getElementById('odg-voters-no-match-msg');
+            const masterCb = document.getElementById('odg-select-all-voters');
+
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const searchText = card.getAttribute('data-search-text') || '';
+                const isMatch = searchText.includes(q);
+                if (isMatch) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                    const cb = card.querySelector('.odg-voter-cb');
+                    if (cb) cb.checked = false;
+                }
+            });
+
+            if (noMatchMsg) {
+                noMatchMsg.classList.toggle('hidden', visibleCount > 0);
+            }
+
+            if (masterCb) {
+                masterCb.checked = false;
+            }
+            window.updateOdgSelectedVotersCount();
+        };
+
+        window.toggleSelectAllOdgVoters = (masterCb) => {
+            const isChecked = masterCb ? masterCb.checked : false;
+            const cards = document.querySelectorAll('.odg-voter-card');
+            cards.forEach(card => {
+                if (card.style.display !== 'none') {
+                    const cb = card.querySelector('.odg-voter-cb');
+                    if (cb) cb.checked = isChecked;
+                }
+            });
+            window.updateOdgSelectedVotersCount();
+        };
+
+        window.updateOdgSelectedVotersCount = () => {
+            const checkedBoxes = document.querySelectorAll('.odg-voter-cb:checked');
+            const count = checkedBoxes.length;
+            const badge = document.getElementById('odg-selected-count-badge');
+            const btnBatchUp = document.getElementById('btn-batch-odg-up');
+            const btnBatchDown = document.getElementById('btn-batch-odg-down');
+            const batchContainer = document.getElementById('odg-batch-actions-container');
+
+            if (badge) {
+                badge.textContent = count > 0 ? `(${count} selezionati)` : '';
+            }
+
+            if (btnBatchUp) {
+                btnBatchUp.innerHTML = `👍 Vota Sì (${count})`;
+                btnBatchUp.disabled = count === 0;
+            }
+            if (btnBatchDown) {
+                btnBatchDown.innerHTML = `👎 Vota No (${count})`;
+                btnBatchDown.disabled = count === 0;
+            }
+            if (batchContainer) {
+                batchContainer.style.opacity = count > 0 ? '1' : '0.6';
+            }
+        };
+
+        window.submitBatchOdgVote = async (assemblyId, choice) => {
+            const checkedBoxes = document.querySelectorAll('.odg-voter-cb:checked');
+            if (checkedBoxes.length === 0) {
+                await customAlert("Seleziona almeno un condòmino per registrare il voto di gruppo.");
+                return;
+            }
+
+            const selectedUids = Array.from(checkedBoxes).map(cb => cb.value);
+
+            try {
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                if (!assembly.odgApproval || assembly.odgApproval.status !== 'voting') {
+                    await customAlert("La votazione sull'ordine dei lavori non è attiva.");
+                    return;
+                }
+
+                const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                let existingVotes = [...(assembly.odgApproval.votes || [])];
+                let votedNames = [];
+
+                selectedUids.forEach(uid => {
+                    const attendee = activeAttendees.find(a => a.uid === uid);
+                    if (!attendee) return;
+
+                    const userMillesimi = attendee.millesimi || 0;
+                    const userProxiesCount = (assembly.proxies || []).filter(p => p.delegateId === uid && p.status !== 'rejected').length;
+                    const userHeads = 1 + userProxiesCount;
+                    const voterName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(attendee) : (`${attendee.nome || ''} ${attendee.cognome || ''}`.trim() || 'Condòmino');
+                    votedNames.push(voterName);
+
+                    existingVotes = existingVotes.filter(v => v.voterId !== uid);
+                    existingVotes.push({
+                        voterId: uid,
+                        voterName: voterName,
+                        choice: choice, // 'up' | 'down'
+                        millesimi: userMillesimi,
+                        heads: userHeads,
+                        proxiesCount: userProxiesCount,
+                        recordedByAdmin: true,
+                        batchVoted: true,
+                        timestamp: Date.now()
+                    });
+                });
+
+                await updateDoc(assemblyRef, {
+                    'odgApproval.votes': existingVotes
+                });
+
+                const choiceLabel = choice === 'up' ? '👍 Favorevole al riordino' : '👎 Contrario al riordino';
+                await logAssemblyEvent(assemblyId, 'VOTO_ODG_MASSIVO', `Registrato voto di gruppo (${choiceLabel}) per ${votedNames.length} condòmini dall'amministratore.`);
+            } catch (err) {
+                console.error("Errore voto massivo OdG:", err);
+                await customAlert("Errore durante la registrazione del voto di gruppo: " + err.message);
+            }
+        };
+
         window.rejectAndReorderOdg = async (assemblyId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
@@ -19147,6 +19573,9 @@ ${renderBottomNavigation()}
             const agenda = assembly.agenda || [];
             const votes = assembly.odgApproval?.votes || [];
 
+            // Salva eventuale query di ricerca e selezione correnti
+            const prevSearchVal = document.getElementById('input-search-odg-voters')?.value || '';
+
             let totMillesimi = 0;
             activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
             if (totMillesimi <= 0) totMillesimi = 1000.00;
@@ -19201,32 +19630,40 @@ ${renderBottomNavigation()}
             const pendingManual = pendingList.filter(a => isManualAttendee(a));
             const pendingQr = pendingList.filter(a => !isManualAttendee(a));
 
-            // RENDERING LISTA NON ANCORA VOTANTI
+            // RENDERING LISTA NON ANCORA VOTANTI (CON SUPPORTO FILTRO E SELEZIONA TUTTI)
             let pendingHtml = '';
             if (pendingList.length === 0) {
                 pendingHtml = `<p style="font-size:0.82rem; color:#10B981; font-weight:700; margin:0; padding:0.4rem 0.5rem; text-align:center;">✅ Tutti i presenti hanno votato.</p>`;
             } else {
                 let manualSectionHtml = '';
                 if (pendingManual.length > 0) {
-                    const manualItems = pendingManual.map(a => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; border:1px solid rgba(16, 185, 129, 0.25); border-left-width:4px; border-radius:6px; padding:0.5rem 0.65rem; margin-bottom:0.35rem; gap:0.5rem;">
-                            <div style="flex:1; min-width:0;">
-                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</strong>
-                                    <span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:10px;">🟢 Manuale</span>
+                    const manualItems = pendingManual.map(a => {
+                        const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                        const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
+                        const searchText = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+                        return `
+                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; border:1px solid rgba(16, 185, 129, 0.25); border-left-width:4px; border-radius:6px; padding:0.5rem 0.65rem; margin-bottom:0.35rem; gap:0.5rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
+                                    <input type="checkbox" class="odg-voter-cb" value="${a.uid}" onchange="updateOdgSelectedVotersCount()" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0;">
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                            <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(displayName)}</strong>
+                                            <span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:10px;">🟢 Manuale</span>
+                                        </div>
+                                        <div style="font-size:0.75rem; color:var(--secondary-text);">${(a.millesimi || 0).toFixed(2)} ‰${unitText}</div>
+                                    </div>
                                 </div>
-                                <span style="color:#10B981; font-size:0.78rem; font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Favorevole per ${escapeHtml(displayName)}">
+                                        👍 <span style="font-size:0.72rem; font-weight:700;">Sì</span>
+                                    </button>
+                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Contrario per ${escapeHtml(displayName)}">
+                                        👎 <span style="font-size:0.72rem; font-weight:700;">No</span>
+                                    </button>
+                                </div>
                             </div>
-                            <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Favorevole al riordino per ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}">
-                                    👍 <span style="font-size:0.72rem; font-weight:700;">Sì</span>
-                                </button>
-                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Contrario al riordino per ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}">
-                                    👎 <span style="font-size:0.72rem; font-weight:700;">No</span>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
 
                     manualSectionHtml = `
                         <div style="margin-bottom:0.5rem;">
@@ -19240,20 +19677,33 @@ ${renderBottomNavigation()}
 
                 let qrSectionHtml = '';
                 if (pendingQr.length > 0) {
-                    const qrItems = pendingQr.map(a => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3px solid var(--warning); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
-                            <div style="flex:1; min-width:0;">
-                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                                    <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</strong>
-                                    <span class="badge" style="background:rgba(243, 156, 18, 0.15); color:var(--warning); font-weight:700; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:10px;">📱 App/QR</span>
+                    const qrItems = pendingQr.map(a => {
+                        const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                        const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
+                        const searchText = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+                        return `
+                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3px solid var(--warning); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
+                                    <input type="checkbox" class="odg-voter-cb" value="${a.uid}" onchange="updateOdgSelectedVotersCount()" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0;">
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                            <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(displayName)}</strong>
+                                            <span class="badge" style="background:rgba(243, 156, 18, 0.15); color:var(--warning); font-weight:700; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:10px;">📱 App/QR</span>
+                                        </div>
+                                        <div style="font-size:0.75rem; color:var(--secondary-text);">${(a.millesimi || 0).toFixed(2)} ‰${unitText}</div>
+                                    </div>
                                 </div>
-                                <span style="color:var(--warning); font-size:0.78rem; font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.55rem; font-size:0.78rem; font-weight:700; background:rgba(16, 185, 129, 0.2); color:#10B981; border:1px solid #10B981; border-radius:6px; cursor:pointer;" title="Registra voto Favorevole per conto di ${escapeHtml(displayName)}">
+                                        👍 Sì
+                                    </button>
+                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.55rem; font-size:0.78rem; font-weight:700; background:rgba(239, 68, 68, 0.2); color:var(--danger); border:1px solid var(--danger); border-radius:6px; cursor:pointer;" title="Registra voto Contrario per conto di ${escapeHtml(displayName)}">
+                                        👎 No
+                                    </button>
+                                </div>
                             </div>
-                            <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                                <span class="badge" style="background:rgba(243, 156, 18, 0.12); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.2rem 0.45rem;">⏳ Vota da telefono</span>
-                            </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
 
                     qrSectionHtml = `
                         <div>
@@ -19273,21 +19723,51 @@ ${renderBottomNavigation()}
                     `;
                 }
 
-                pendingHtml = manualSectionHtml + qrSectionHtml;
+                pendingHtml = `
+                    <!-- BARRA DI RICERCA CONDÒMINI (REQ-07) -->
+                    <div style="margin-bottom:0.5rem;">
+                        <input type="text" id="input-search-odg-voters" placeholder="🔍 Cerca per nome, cognome o unità..." oninput="filterOdgVotersList(this.value)" class="form-input" style="width:100%; font-size:0.85rem; padding:0.4rem 0.65rem; box-sizing:border-box;" autocomplete="off">
+                    </div>
+
+                    <!-- SELECT ALL E AZIONI BATCH (REQ-08) -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; padding:0.25rem 0; flex-wrap:wrap; gap:0.4rem; border-bottom:1px dashed var(--surface-color-light);">
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.82rem; font-weight:700; color:var(--primary-text); margin:0;">
+                            <input type="checkbox" id="odg-select-all-voters" onchange="toggleSelectAllOdgVoters(this)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
+                            <span>Seleziona Tutti</span>
+                            <span id="odg-selected-count-badge" style="font-size:0.75rem; color:var(--accent-color); font-weight:700;"></span>
+                        </label>
+                        <div id="odg-batch-actions-container" style="display:flex; align-items:center; gap:0.3rem;">
+                            <button type="button" id="btn-batch-odg-up" onclick="submitBatchOdgVote('${assemblyId}', 'up')" class="btn" style="padding:0.25rem 0.55rem; font-size:0.75rem; font-weight:700; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.2rem;" disabled>
+                                👍 Vota Sì (0)
+                            </button>
+                            <button type="button" id="btn-batch-odg-down" onclick="submitBatchOdgVote('${assemblyId}', 'down')" class="btn" style="padding:0.25rem 0.55rem; font-size:0.75rem; font-weight:700; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.2rem;" disabled>
+                                👎 Vota No (0)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="odg-voters-no-match-msg" class="message-box error hidden" style="font-size:0.8rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;">⚠️ Nessun condòmino trovato.</div>
+
+                    <div id="odg-voters-list-container" style="display:flex; flex-direction:column;">
+                        ${manualSectionHtml}
+                        ${qrSectionHtml}
+                    </div>
+                `;
             }
 
             // RENDERING DETTAGLIO CHI HA VOTATO (CON OPZIONE CAMBIO VOTO PER AMMINISTRATORE)
             const declinedHtml = declinedList.map(a => {
                 const v = downVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
+                const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(239, 68, 68, 0.08); border-left:3px solid var(--danger); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
                         <div style="flex:1; min-width:0;">
-                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
+                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(displayName)} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
                             <strong style="color:var(--danger); font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
                         </div>
                         <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                            <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:var(--danger); font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👎 Contrario al riordino</span>
+                            <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:var(--danger); font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👎 Contrario</span>
                             ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(16, 185, 129, 0.2); color:#10B981; border:1px solid #10B981; border-radius:5px; cursor:pointer;" title="Cambia voto in Favorevole">Passa a 👍</button>` : ''}
                         </div>
                     </div>
@@ -19297,14 +19777,15 @@ ${renderBottomNavigation()}
             const approvedHtml = approvedList.map(a => {
                 const v = upVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
+                const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3px solid #10B981; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
                         <div style="flex:1; min-width:0;">
-                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
+                            <strong style="color:var(--primary-text); font-size:0.82rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👤 ${escapeHtml(displayName)} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(🟢 Manuale)</span>' : ''}</strong>
                             <strong style="color:#10B981; font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
                         </div>
                         <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10B981; font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👍 Favorevole al riordino</span>
+                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10B981; font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">👍 Favorevole</span>
                             ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(239, 68, 68, 0.2); color:var(--danger); border:1px solid var(--danger); border-radius:5px; cursor:pointer;" title="Cambia voto in Contrario">Passa a 👎</button>` : ''}
                         </div>
                     </div>
@@ -19380,7 +19861,7 @@ ${renderBottomNavigation()}
                                 </strong>
                                 <span style="font-size:0.8rem; font-weight:700; color:var(--warning);">${pendingMil.toFixed(2)} ‰ (${pendingPercent}%)</span>
                             </div>
-                            <div style="max-height:150px; overflow-y:auto; padding-right:0.2rem;">
+                            <div style="max-height:220px; overflow-y:auto; padding-right:0.2rem;">
                                 ${pendingHtml}
                             </div>
                         </div>
@@ -19425,6 +19906,15 @@ ${renderBottomNavigation()}
                 modalBody.innerHTML = modalContent;
                 modalContainer.classList.add('fullscreen-notification');
                 modalContainer.classList.remove('hidden');
+
+                // Ripristina eventuale ricerca precedente
+                if (prevSearchVal) {
+                    const newSearchInput = document.getElementById('input-search-odg-voters');
+                    if (newSearchInput) {
+                        newSearchInput.value = prevSearchVal;
+                        window.filterOdgVotersList(prevSearchVal);
+                    }
+                }
             }
         };
 
@@ -19716,15 +20206,8 @@ ${renderBottomNavigation()}
                 const modalContent = `
                     <div style="text-align:left !important; display:flex; flex-direction:column; min-height:85vh; justify-content:space-between;">
                         <div>
-                            <div id="reorder-items-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height:calc(100vh - 180px); overflow-y:auto; padding:0.25rem;">
+                            <div id="reorder-items-container" style="display:flex; flex-direction:column; gap:0.5rem; max-height:calc(100vh - 160px); overflow-y:auto; padding:0.25rem;">
                                 ${renderAgendaCards()}
-                            </div>
-
-                            <div style="margin-top:0.75rem; width:100%;">
-                                <button type="button" onclick="addOdgEditCard('${escapeHtml(JSON.stringify(groupNames))}')" class="btn" style="width:100%; padding:0.65rem 1rem; font-size:0.88rem; font-weight:700; background:linear-gradient(135deg, var(--accent-color, #10B981), #059669); color:white; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                    Aggiungi Punto
-                                </button>
                             </div>
                         </div>
 
@@ -20054,15 +20537,19 @@ ${renderBottomNavigation()}
 
                 const votersCheckboxesHtml = unvotedAttendees.map(a => {
                     const dispMillesimi = getAttendeeGroupMillesimi(a);
+                    const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                    const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
+                    const searchName = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
                     return `
-                    <label class="manual-voter-item flex items-center justify-between p-2 card" style="cursor:pointer; margin-bottom:0.35rem; text-align:left; background:var(--surface-color-light);" data-search-name="${escapeHtml(((a.cognome || '') + ' ' + (a.nome || '')).toLowerCase())}">
-                        <div style="display:flex; align-items:center; gap:0.6rem;">
-                            <input type="checkbox" name="manual-voter-checkbox" value="${a.uid}" class="manual-voter-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px;">
-                            <div>
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(a.cognome || '')} ${escapeHtml(a.nome || '')} <span style="color:#10B981; font-size:0.75rem;">(🟢 Manuale)</span></div>
+                    <label class="manual-voter-item flex items-center justify-between p-2 card" style="cursor:pointer; margin-bottom:0.35rem; text-align:left; background:var(--surface-color-light);" data-search-name="${escapeHtml(searchName)}">
+                        <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                            <input type="checkbox" name="manual-voter-checkbox" value="${a.uid}" class="manual-voter-checkbox" onchange="updateManualVotersSelectedCount()" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(displayName)} <span style="color:#10B981; font-size:0.75rem;">(🟢 Manuale)</span></div>
+                                <div style="font-size:0.75rem; color:var(--secondary-text);">${dispMillesimi.toFixed(2)} ‰${unitText}</div>
                             </div>
                         </div>
-                        <strong style="color:var(--warning); font-size:0.85rem;">${dispMillesimi.toFixed(2)} ‰</strong>
+                        <strong style="color:var(--warning); font-size:0.85rem; flex-shrink:0;">${dispMillesimi.toFixed(2)} ‰</strong>
                     </label>
                 `;}).join('');
 
@@ -20081,12 +20568,19 @@ ${renderBottomNavigation()}
                         </div>
 
                         <div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
                                 <label class="form-label" style="font-weight:700; margin:0;">2. Condòmini Accreditati Manualmente (${unvotedAttendees.length})</label>
+                                <label style="display:flex; align-items:center; gap:0.35rem; cursor:pointer; font-size:0.82rem; font-weight:700; color:var(--primary-text); margin:0;">
+                                    <input type="checkbox" id="manual-voter-select-all" onchange="toggleSelectAllNonVoters(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
+                                    <span>Seleziona Tutti</span>
+                                    <span id="manual-voter-selected-count-badge" style="font-size:0.75rem; color:var(--accent-color); font-weight:700;"></span>
+                                </label>
                             </div>
                             
-                            <input type="text" placeholder="🔍 Digita nome o cognome condomino..." oninput="filterManualVotersList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.85rem; padding:0.4rem 0.6rem;" autofocus>
+                            <input type="text" id="input-search-manual-voters" placeholder="🔍 Cerca condomino per nome, cognome o unità..." oninput="filterManualVotersList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.85rem; padding:0.4rem 0.6rem;" autofocus autocomplete="off">
                             
+                            <div id="manual-voters-no-match-msg" class="message-box error hidden" style="font-size:0.8rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;">⚠️ Nessun condòmino corrispondente trovato.</div>
+
                             <div id="manual-voters-list-container" style="max-height:200px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
                                 ${votersCheckboxesHtml}
                             </div>
@@ -20094,7 +20588,7 @@ ${renderBottomNavigation()}
 
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Voto/i</button>
+                            <button type="submit" id="btn-submit-manual-vote" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Voto/i</button>
                         </div>
                     </form>
                 `;
@@ -20109,19 +20603,55 @@ ${renderBottomNavigation()}
         window.filterManualVotersList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
             const items = document.querySelectorAll('.manual-voter-item');
+            const noMatchMsg = document.getElementById('manual-voters-no-match-msg');
+            const masterCb = document.getElementById('manual-voter-select-all');
+
+            let visibleCount = 0;
             items.forEach(item => {
                 const name = item.getAttribute('data-search-name') || '';
-                item.style.display = name.includes(q) ? 'flex' : 'none';
+                const isMatch = name.includes(q);
+                if (isMatch) {
+                    item.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                    const cb = item.querySelector('.manual-voter-checkbox');
+                    if (cb) cb.checked = false;
+                }
             });
+
+            if (noMatchMsg) {
+                noMatchMsg.classList.toggle('hidden', visibleCount > 0);
+            }
+            if (masterCb) {
+                masterCb.checked = false;
+            }
+            window.updateManualVotersSelectedCount();
         };
 
         window.toggleSelectAllNonVoters = (isChecked) => {
             const checkboxes = document.querySelectorAll('.manual-voter-checkbox');
             checkboxes.forEach(cb => {
-                if (cb.closest('.manual-voter-item').style.display !== 'none') {
+                const item = cb.closest('.manual-voter-item');
+                if (item && item.style.display !== 'none') {
                     cb.checked = isChecked;
                 }
             });
+            window.updateManualVotersSelectedCount();
+        };
+
+        window.updateManualVotersSelectedCount = () => {
+            const checkedBoxes = document.querySelectorAll('.manual-voter-checkbox:checked');
+            const count = checkedBoxes.length;
+            const badge = document.getElementById('manual-voter-selected-count-badge');
+            const submitBtn = document.getElementById('btn-submit-manual-vote');
+
+            if (badge) {
+                badge.textContent = count > 0 ? `(${count} selezionati)` : '';
+            }
+            if (submitBtn) {
+                submitBtn.textContent = count > 0 ? `Registra Voto/i (${count})` : `Registra Voto/i`;
+            }
         };
 
         window.submitAdminManualVote = async (e, assemblyId, itemId) => {
@@ -20232,47 +20762,48 @@ ${renderBottomNavigation()}
             } catch (e) { console.error("Errore caricamento gruppi parziali per assemblea:", e); }
 
             const modalContent = `
-                <div class="space-y-4" style="text-align: left !important;">
-                    <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem; text-align: left !important; line-height: 1.5; white-space: normal !important;">🏛️ Pianifica una nuova assemblea condominiale impostando titolo, data, ora e punti dell'Ordine del Giorno (OdG).</p>
-                    <div id="modal-assembly-creation-message" class="message-box" style="text-align: left !important;"></div>
-                    <form id="modal-create-assembly-form" class="space-y-4" style="text-align: left !important;">
+                <div style="text-align: left !important;">
+                    <div id="modal-assembly-creation-message" class="message-box" style="text-align: left !important; margin-bottom: 0.5rem;"></div>
+                    <form id="modal-create-assembly-form" style="display: flex; flex-direction: column; gap: 0.65rem; text-align: left !important;">
                         <div>
-                            <label class="form-label" style="text-align: left !important;">Titolo Assemblea</label>
-                            <input type="text" id="modal-assembly-title" required class="form-input" placeholder="Es. Assemblea Ordinaria Bilancio 2025">
+                            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; text-align: left !important;">Titolo Assemblea</label>
+                            <input type="text" id="modal-assembly-title" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem;" placeholder="Es. Assemblea Ordinaria Bilancio 2025">
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="form-label" style="text-align: left !important;">Data</label>
-                                <input type="date" id="modal-assembly-date" required class="form-input">
+                                <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; text-align: left !important;">Data</label>
+                                <input type="date" id="modal-assembly-date" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem;">
                             </div>
                             <div>
-                                <label class="form-label" style="text-align: left !important;">Ora d'inizio</label>
-                                <input type="time" id="modal-assembly-time" required class="form-input">
+                                <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; text-align: left !important;">Ora d'inizio</label>
+                                <input type="time" id="modal-assembly-time" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem;">
                             </div>
                         </div>
-                        <hr style="border-color: var(--surface-color-light); margin: 1.25rem 0;">
+                        <hr style="border-color: var(--surface-color-light); margin: 0.35rem 0;">
                         <div>
-                            <label class="form-label" style="margin-bottom:0.25rem; font-weight: 700; text-align: left !important;">📋 Ordine del Giorno (OdG)</label>
-                            <p style="font-size:0.8rem; color:var(--secondary-text); margin-bottom:0.75rem; text-align: left !important;">Punti di discussione e ambito di votazione</p>
-                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
-                            <div style="margin-top: 0.85rem; text-align: center; width: 100%;">
-                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; padding: 0.75rem 1rem; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <label class="form-label" style="font-size: 0.85rem; font-weight: 700; margin: 0; text-align: left !important;">📋 Ordine del Giorno (OdG)</label>
+                                <span style="font-size: 0.75rem; color: var(--secondary-text);">Punti e ambito di votazione</span>
+                            </div>
+                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 2px;"></div>
+                            <div style="margin-top: 0.5rem; text-align: center; width: 100%;">
+                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; height: 36px; padding: 0 0.8rem; font-size: 0.85rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 8px; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                     Aggiungi Punto
                                 </button>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box; margin-top: 1.5rem;">
-                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 0.5rem; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px;">Annulla</button>
-                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 0.5rem; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; box-sizing: border-box; margin-top: 0.6rem;">
+                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; height: 38px; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.88rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px; border: none; cursor: pointer;">Annulla</button>
+                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px; cursor: pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                                 Salva
                             </button>
                         </div>
                     </form>
                 </div>
             `;
-            showModal(' Nuova Assemblea', modalContent, true);
+            showModal('Pianifica una nuova assemblea', modalContent, false);
 
             setTimeout(() => {
                 const agendaList = document.getElementById('modal-agenda-list');
@@ -20594,6 +21125,7 @@ ${renderBottomNavigation()}
                 });
 
                 const targetAssembly = assemblies[0];
+                const targetAssemblyId = targetAssembly.id;
                 const statusLabel = targetAssembly.status === 'in_corso' ? 'LIVE' : 'Programmata';
 
                 const modalContent = `
@@ -20609,11 +21141,13 @@ ${renderBottomNavigation()}
                         </div>
 
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
-                            <div id="quick-qr-reader" style="width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;"></div>
+                            <div style="position: relative; width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
+                                <div id="quick-qr-reader" style="width: 100%; min-height: 250px;"></div>
+                                <div id="quick-scanner-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box;"></div>
+                            </div>
                         </div>
 
-                        <div id="quick-scanner-feedback-popup" class="hidden" style="margin-top:0.75rem; max-width:320px; margin-left:auto; margin-right:auto;"></div>
-                        <div id="quick-scanner-message" class="message-box" style="display: none; text-align: left !important; margin: 0;"></div>
+                        <div id="quick-scanner-message" class="message-box" style="display: none; text-align: left !important; margin: 0.5rem 0 0 0;"></div>
 
                         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.25rem;">
                             <button type="button" onclick="stopQuickQRScanner(); hideModal();" class="btn btn-secondary" style="margin: 0; min-width: 130px; padding: 0.6rem 1.2rem;">Chiudi Scanner</button>
@@ -20625,7 +21159,6 @@ ${renderBottomNavigation()}
 
                 setTimeout(() => {
                     const messageBox = document.getElementById("quick-scanner-message");
-                    const feedbackPopup = document.getElementById("quick-scanner-feedback-popup");
                     let isProcessingScan = false;
 
                     window.dismissQuickScannerFeedback = () => {
@@ -20665,34 +21198,42 @@ ${renderBottomNavigation()}
                         }
                     };
 
-                    const onScanSuccess = async (decodedText) => {
+                    const onQuickScanSuccess = async (decodedText) => {
                         if (isProcessingScan) return;
                         isProcessingScan = true;
 
                         try {
-                            const rawData = atob(decodedText);
-                            const securityData = JSON.parse(rawData);
-                            const scannedUid = securityData.uid;
+                            const jsonString = atob(decodedText);
+                            const securityData = JSON.parse(jsonString);
+                            const qrUid = securityData.uid;
+                            const qrTimestamp = securityData.ts;
 
-                            if (!scannedUid) throw new Error("Codice QR non valido.");
-
-                            const userDocSnap = await getDoc(doc(db, "users", scannedUid));
-                            if (!userDocSnap.exists()) throw new Error("Condòmino non trovato nel database.");
-
-                            const scannedUser = userDocSnap.data();
-                            const userFullName = `${scannedUser.nome} ${scannedUser.cognome}`.trim();
-                            let userMillesimi = parseFloat(scannedUser.millesimiTotali) || 0;
-                            if (userMillesimi <= 0 && Array.isArray(scannedUser.proprieta)) {
-                                userMillesimi = scannedUser.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                            if ((Date.now() - qrTimestamp) / 1000 > 40) {
+                                throw new Error("QR Code Scaduto. Fai rigenerare il codice.");
                             }
 
-                            const assemblyRef = doc(db, "assemblies", targetAssembly.id);
-                            const currentSnap = await getDoc(assemblyRef);
-                            const currentAssembly = currentSnap.data();
-                            const currentAttendees = currentAssembly.attendees || [];
+                            const assemblyRef = doc(db, "assemblies", targetAssemblyId);
+                            const docSnap = await getDoc(assemblyRef);
+                            if (!docSnap.exists()) throw new Error("Assemblea non trovata.");
 
-                            // Check proxies held by scanned user
-                            const heldProxies = currentAssembly.proxies?.filter(p => p.delegateId === scannedUid && p.status !== 'rejected') || [];
+                            const assembly = docSnap.data();
+                            const currentAttendees = assembly.attendees || [];
+
+                            const existingIndex = currentAttendees.findIndex(a => a.uid === qrUid);
+                            if (existingIndex !== -1 && currentAttendees[existingIndex].status !== 'uscito') {
+                                throw new Error("Condòmino già registrato come Presente.");
+                            }
+
+                            const userDoc = await getDoc(doc(db, "users", qrUid));
+                            if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
+
+                            const user = userDoc.data();
+                            let userMillesimi = parseFloat(user.millesimiTotali) || 0;
+                            if (userMillesimi <= 0 && Array.isArray(user.proprieta)) {
+                                userMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                            }
+
+                            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === qrUid && p.status !== 'rejected');
                             let proxyNoticeText = '';
                             if (heldProxies.length > 0) {
                                 heldProxies.forEach(p => {
@@ -20701,43 +21242,57 @@ ${renderBottomNavigation()}
                                 proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
                             }
 
-                            if (currentAttendees.some(a => a.uid === scannedUid && a.status !== 'uscito')) {
-                                throw new Error(`Presenza già registrata per ${userFullName}`);
+                            const userFullName = `${user.nome} ${user.cognome}`.trim();
+                            let updatedAttendees = [...currentAttendees];
+
+                            if (existingIndex !== -1) {
+                                // Rientro in-place
+                                updatedAttendees[existingIndex] = {
+                                    ...updatedAttendees[existingIndex],
+                                    status: 'presente',
+                                    nome: `${userFullName}${proxyNoticeText}`,
+                                    millesimi: userMillesimi,
+                                    heldProxiesCount: heldProxies.length,
+                                    reenteredAt: Date.now(),
+                                    registrationType: updatedAttendees[existingIndex].registrationType || 'qr',
+                                    scannedAt: new Date().toISOString()
+                                };
+                            } else {
+                                const newAttendee = {
+                                    uid: qrUid,
+                                    nome: `${userFullName}${proxyNoticeText}`,
+                                    millesimi: userMillesimi,
+                                    heldProxiesCount: heldProxies.length,
+                                    status: 'presente',
+                                    isManual: false,
+                                    registrationType: 'qr',
+                                    scannedAt: new Date().toISOString(),
+                                    joinedAt: Date.now()
+                                };
+                                updatedAttendees.push(newAttendee);
                             }
-
-                            const newAttendee = {
-                                uid: scannedUid,
-                                nome: `${userFullName}${proxyNoticeText}`,
-                                millesimi: userMillesimi,
-                                heldProxiesCount: heldProxies.length,
-                                status: 'presente',
-                                isManual: false,
-                                registrationType: 'qr',
-                                scannedAt: new Date().toISOString()
-                            };
-                            const updatedAttendees = [...currentAttendees, newAttendee];
-
+                            
                             await updateDoc(assemblyRef, {
-                                attendees: updatedAttendees
+                                attendees: JSON.parse(JSON.stringify(updatedAttendees))
                             });
 
                             const fPopup = document.getElementById("quick-scanner-feedback-popup");
                             if (fPopup) {
                                 fPopup.className = '';
-                                fPopup.style.display = 'block';
+                                fPopup.style.display = 'flex';
                                 fPopup.classList.remove('hidden');
                                 fPopup.innerHTML = `
-                                    <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
-                                        <div style="font-size:2.2rem; margin-bottom:0.25rem;">✅</div>
-                                        <div style="font-size:0.8rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Presenza Convalidata</div>
-                                        <div style="font-size:1.05rem; font-weight:800; color:var(--primary-text); margin-bottom:0.35rem; line-height:1.35;">
+                                    <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                        <div style="font-size:2rem; line-height:1; margin-bottom:0.25rem;">✅</div>
+                                        <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza Convalidata</div>
+                                        <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
                                             Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
                                         </div>
-                                        <div style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:1rem;">
-                                            Millesimi: <strong style="color:var(--warning); font-size:0.95rem;">${userMillesimi.toFixed(2)} ‰</strong>
-                                            ${proxyNoticeText ? `<br><span style="font-size:0.8rem; color:var(--accent-color); font-weight:600;">${escapeHtml(proxyNoticeText.trim())}</span>` : ''}
+                                        <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
+                                            Millesimi: <strong style="color:var(--warning); font-size:0.92rem;">${userMillesimi.toFixed(2)} ‰</strong>
+                                            ${proxyNoticeText ? `<div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
                                         </div>
-                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-primary" style="width:100%; height:42px; font-weight:700; font-size:0.9rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
                                             <span>✕ Chiudi / Prossima Scansione</span>
                                         </button>
                                     </div>
@@ -20757,16 +21312,16 @@ ${renderBottomNavigation()}
                             const fPopup = document.getElementById("quick-scanner-feedback-popup");
                             if (fPopup) {
                                 fPopup.className = '';
-                                fPopup.style.display = 'block';
+                                fPopup.style.display = 'flex';
                                 fPopup.classList.remove('hidden');
                                 fPopup.innerHTML = `
-                                    <div style="background:var(--surface-color); border:2px solid var(--danger); border-radius:12px; padding:1.25rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); text-align:center;">
-                                        <div style="font-size:2.2rem; margin-bottom:0.25rem;">⚠️</div>
-                                        <div style="font-size:0.8rem; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.4rem;">Attenzione</div>
-                                        <div style="font-size:0.95rem; font-weight:700; color:var(--primary-text); margin-bottom:1rem; line-height:1.35;">
+                                    <div style="background:var(--surface-color); border:2px solid var(--danger); border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                        <div style="font-size:2rem; line-height:1; margin-bottom:0.25rem;">⚠️</div>
+                                        <div style="font-size:0.75rem; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Attenzione</div>
+                                        <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); margin-bottom:0.85rem; line-height:1.3;">
                                             ${escapeHtml(err.message || 'Errore durante la scansione')}
                                         </div>
-                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="width:100%; height:40px; font-weight:600; font-size:0.85rem; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="width:100%; height:38px; font-weight:600; font-size:0.85rem; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
                                             <span>✕ Chiudi e Riprova</span>
                                         </button>
                                     </div>
@@ -21180,6 +21735,13 @@ ${renderBottomNavigation()}
         window.rejectAndReorderOdg = rejectAndReorderOdg;
         window.renderOdgApprovalAdminModal = renderOdgApprovalAdminModal;
         window.renderOdgApprovalCondominoModal = renderOdgApprovalCondominoModal;
+        window.filterOdgVotersList = filterOdgVotersList;
+        window.toggleSelectAllOdgVoters = toggleSelectAllOdgVoters;
+        window.updateOdgSelectedVotersCount = updateOdgSelectedVotersCount;
+        window.submitBatchOdgVote = submitBatchOdgVote;
+        window.filterManualVotersList = filterManualVotersList;
+        window.toggleSelectAllNonVoters = toggleSelectAllNonVoters;
+        window.updateManualVotersSelectedCount = updateManualVotersSelectedCount;
 
         // --- FINE FUNZIONI ASSEMBLEE ---
 
