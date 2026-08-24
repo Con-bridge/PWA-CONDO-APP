@@ -135,7 +135,7 @@ window.AssembleeModule = {
                 <div id="room-admin-bar" class="card hidden" style="margin-bottom: 1rem; padding: 1rem;">
                     <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">Strumenti Amministratore</h4>
                     <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                        <button onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
+                        <button id="btn-toggle-room-scanner" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
                         <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
                     </div>
                     <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
@@ -150,8 +150,27 @@ window.AssembleeModule = {
 
                     <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
                     <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
-                        <div id="reader" style="width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;"></div>
-                        <div id="scanner-feedback-popup" class="hidden" style="margin-top:0.75rem; max-width:320px; margin-left:auto; margin-right:auto;"></div>
+                        <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
+                            <!-- PULSANTE RAPIDO X NELL'ANGOLO IN ALTO A DESTRA -->
+                            <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; font-weight: 700; transition: all 0.2s;">
+                                ✕
+                            </button>
+
+                            <div id="reader" style="width: 100%; min-height: 250px;"></div>
+                            <!-- FEEDBACK POPUP IN OVERLAY SOVRIMPRESSO AL QUADRANTE SCANNER -->
+                            <div id="scanner-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box;"></div>
+                        </div>
+
+                        <!-- MICRO-COPY ED ISTRUZIONI ESPLICITE DI CHIUSURA SOTTO IL FRAME -->
+                        <div style="margin-top: 0.65rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4;">
+                                💡 <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
+                            </p>
+                            <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
+                                <span>✕ Chiudi Fotocamera</span>
+                            </button>
+                        </div>
+
                         <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
                     </div>
                 </div>
