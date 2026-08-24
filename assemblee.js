@@ -8,7 +8,7 @@ window.AssembleeModule = {
                 <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 </div>
-                <p>Nuova Assemblea</p>
+                <p>Pianifica Assemblea</p>
             </div>
             <div onclick="startQuickAdminQRScanner()" class="dashboard-item">
                 <div class="dashboard-card" style="position: relative;">
@@ -89,11 +89,11 @@ window.AssembleeModule = {
     renderCrea: function (renderHeader, renderBottomNavigation) {
         setTimeout(() => showCreateAssemblyModal(), 100);
         return `
-            ${renderHeader('Crea Assemblea')}
+            ${renderHeader('Pianifica Assemblea')}
             <main>
                 <div class="card text-center" style="padding: 2rem;">
-                    <p style="color: var(--secondary-text);">Apertura modale di creazione assemblea in corso...</p>
-                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">Apri Modale Nuova Assemblea</button>
+                    <p style="color: var(--secondary-text);">Apertura pianificazione assemblea in corso...</p>
+                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">Apri Pianifica Assemblea</button>
                 </div>
             </main>
             ${renderBottomNavigation()}
