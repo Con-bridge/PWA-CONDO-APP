@@ -6852,7 +6852,7 @@ ${renderBottomNavigation()}
 
             const deleteBtn = document.getElementById('cleanup-delete-btn');
             deleteBtn.disabled = true;
-            deleteBtn.textContent = 'Eliminazione in corso...';
+            deleteBtn.textContent = 'Eliminazione...';
 
             try {
                 const collectionName = {
@@ -17168,7 +17168,8 @@ ${renderBottomNavigation()}
                                     <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
                                         ℹ️ <strong>Modalità Amministratore:</strong> Non sei accreditato come condòmino in quest'assemblea. Utilizza il pulsante <strong>✍️ Voto Manuale</strong> per registrare i voti dei condòmini presenti.
                                     </div>
-                                `;} else if (isAttendee || isAdmin) {
+                                `;
+                            } else if (isAttendee || isAdmin) {
                                 let userHasGroupRights = true;
                                 let userEffectiveMillesimi = userProfile?.millesimiTotali || 0;
                                 if (isGroupScope) {
@@ -17284,10 +17285,12 @@ ${renderBottomNavigation()}
                                     proxyDetailText = `<div style="font-size:0.75rem; color:var(--secondary-text); margin-top:0.15rem;">(Inclusa delega di: ${voterHeldProxies.map(p => `${escapeHtml(p.delegatorName)} [${(p.delegatorMillesimi || 0).toFixed(2)} ‰]`).join(', ')})</div>`;
                                 }
 
+                                const formattedVoterName = (typeof window.formatVoterDisplayName === 'function') ? window.formatVoterDisplayName(v.voterName) : v.voterName;
+
                                 return `
                                     <div style="padding:0.4rem 0.6rem; background:var(--surface-color-light); border-radius:6px; font-size:0.8rem; margin-bottom:0.3rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span><strong>${escapeHtml(v.voterName)}</strong> ${choiceBadge}</span>
+                                            <span><strong>${escapeHtml(formattedVoterName)}</strong> ${choiceBadge}</span>
                                             <strong style="color:var(--warning);">${(v.millesimi || 0).toFixed(2)} ‰</strong>
                                         </div>
                                         ${proxyDetailText}
@@ -17698,7 +17701,7 @@ ${renderBottomNavigation()}
                 // 1. Fetch registered users
                 const usersSnapshot = await getDocs(query(collection(db, "users")));
                 const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                const registeredCondomini = registeredUsers.filter(u => 
+                const registeredCondomini = registeredUsers.filter(u =>
                     ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)
                 );
 
@@ -17822,9 +17825,9 @@ ${renderBottomNavigation()}
                             <div>
                                 <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">
                                     ${escapeHtml(d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim())}
-                                    ${d.isRegistered 
-                                        ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📱 App</span>` 
-                                        : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📋 Anagrafica</span>`}
+                                    ${d.isRegistered
+                        ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📱 App</span>`
+                        : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📋 Anagrafica</span>`}
                                 </div>
                                 <div style="font-size:0.75rem; color:var(--secondary-text);">
                                     ${d.email ? escapeHtml(d.email) + ' • ' : ''}${d.unitaStr ? 'Unità: ' + escapeHtml(d.unitaStr) : 'Nessuna unità spec.'}
@@ -17944,7 +17947,7 @@ ${renderBottomNavigation()}
                 let delegatorData = null;
                 const delegatorJsonStr = delegatorRadio.getAttribute('data-delegator-json');
                 if (delegatorJsonStr) {
-                    try { delegatorData = JSON.parse(delegatorJsonStr); } catch (e) {}
+                    try { delegatorData = JSON.parse(delegatorJsonStr); } catch (e) { }
                 }
                 if (!delegatorData) {
                     const delegatorDoc = await getDoc(doc(db, "users", delegatorId));
@@ -17955,7 +17958,7 @@ ${renderBottomNavigation()}
                 let delegateData = null;
                 const delegateJsonStr = delegateRadio.getAttribute('data-delegate-json');
                 if (delegateJsonStr) {
-                    try { delegateData = JSON.parse(delegateJsonStr); } catch (e) {}
+                    try { delegateData = JSON.parse(delegateJsonStr); } catch (e) { }
                 }
                 if (!delegateData) {
                     const delegateDoc = await getDoc(doc(db, "users", delegateId));
@@ -17984,9 +17987,9 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                const existingProxy = (assembly.proxies || []).find(p => 
+                const existingProxy = (assembly.proxies || []).find(p =>
                     p.status !== 'rejected' && (
-                        p.delegatorId === delegatorId || 
+                        p.delegatorId === delegatorId ||
                         (p.delegatorName && delegatorFullName && p.delegatorName.toLowerCase().trim() === delegatorFullName.toLowerCase().trim())
                     )
                 );
@@ -18238,7 +18241,7 @@ ${renderBottomNavigation()}
             const btn = document.getElementById('btn-confirm-delete-single');
             if (btn) {
                 btn.disabled = true;
-                btn.textContent = "Eliminazione in corso...";
+                btn.textContent = "Eliminazione...";
             }
 
             try {
@@ -19007,14 +19010,38 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.formatVoterDisplayName = (nameStr) => {
+            if (!nameStr) return '';
+            let str = nameStr.trim();
+            const suffixMatch = str.match(/\s*(\([^)]+\))$/);
+            const suffix = suffixMatch ? suffixMatch[1] : '';
+            let mainName = suffixMatch ? str.substring(0, str.length - suffix.length).trim() : str;
+
+            const words = mainName.split(/\s+/);
+            const dedupedWords = [];
+            for (let i = 0; i < words.length; i++) {
+                if (i === 0 || words[i].toLowerCase() !== words[i - 1].toLowerCase()) {
+                    dedupedWords.push(words[i]);
+                }
+            }
+            mainName = dedupedWords.join(' ');
+            return suffix ? `${mainName} ${suffix}` : mainName;
+        };
+
         window.getAttendeeDisplayName = (attendee) => {
             if (!attendee) return '';
             let rawNome = (attendee.nome || '').trim();
             const rawCognome = (attendee.cognome || '').trim();
             const baseNome = rawNome.replace(/\s*\(\+?\d+\s*deleghe[^\)]*\)/gi, '').trim();
-            if (!rawCognome) return rawNome;
-            if (baseNome.toLowerCase().includes(rawCognome.toLowerCase())) return rawNome;
-            return `${rawNome} ${rawCognome}`.trim();
+            let result = '';
+            if (!rawCognome) {
+                result = rawNome;
+            } else if (baseNome.toLowerCase().includes(rawCognome.toLowerCase())) {
+                result = rawNome;
+            } else {
+                result = `${rawNome} ${rawCognome}`.trim();
+            }
+            return window.formatVoterDisplayName(result);
         };
 
         window.toggleAttendeeStatus = async (assemblyId, attendeeUid, newStatus) => {
@@ -20506,70 +20533,104 @@ ${renderBottomNavigation()}
                 const activeManualAttendees = attendees.filter(a => a.status !== 'uscito' && isManualAttendee(a) && isAttendeeEligibleForManualVote(a));
                 const votes = item.votes || [];
 
-                const unvotedAttendees = activeManualAttendees.filter(a => !votes.some(v => v.voterId === a.uid));
-
                 if (activeManualAttendees.length === 0) {
                     await customAlert(isGroupScope ? `Non ci sono condòmini accreditati manualmente aventi diritto di voto per ${targetGroup}.` : "Non ci sono condòmini accreditati manualmente (senza QR code) presenti in assemblea.");
-                    return;
-                }
-
-                if (unvotedAttendees.length === 0) {
-                    await customAlert(isGroupScope ? `Tutti i condòmini accreditati manualmente aventi diritto per ${targetGroup} hanno già espresso il proprio voto per questo punto.` : "Tutti i condòmini accreditati manualmente (senza QR code) hanno già espresso il proprio voto per questo punto.");
                     return;
                 }
 
                 const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
                 const voteChoicesHtml = voteOptions.map((opt, idx) => {
                     let color = 'var(--secondary-text)';
-                    let bg = 'var(--surface-color-light)';
+                    let bg = 'rgba(255, 255, 255, 0.04)';
+                    let border = '1px solid var(--surface-color-light)';
                     let icon = '🔹';
-                    if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) { color = '#1DB954'; bg = 'rgba(29,185,84,0.1)'; icon = '🟢'; }
-                    else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) { color = 'var(--danger)'; bg = 'rgba(239,68,68,0.1)'; icon = '🔴'; }
-                    else if (opt.toLowerCase().includes('astenuto')) { color = '#f1c40f'; bg = 'rgba(241,196,15,0.1)'; icon = '⚪'; }
+                    const lowerOpt = opt.toLowerCase();
+                    if (lowerOpt.includes('favorevole') || lowerOpt.includes('sì') || lowerOpt.includes('approvato')) {
+                        color = '#10B981';
+                        bg = 'rgba(16, 185, 129, 0.1)';
+                        border = '1.5px solid rgba(16, 185, 129, 0.35)';
+                        icon = '🟢';
+                    } else if (lowerOpt.includes('contrario') || lowerOpt.includes('no') || lowerOpt.includes('respinto')) {
+                        color = 'var(--danger, #EF4444)';
+                        bg = 'rgba(239, 68, 68, 0.1)';
+                        border = '1.5px solid rgba(239, 68, 68, 0.35)';
+                        icon = '🔴';
+                    } else if (lowerOpt.includes('astenuto')) {
+                        color = 'var(--warning, #F59E0B)';
+                        bg = 'rgba(245, 158, 11, 0.1)';
+                        border = '1.5px solid rgba(245, 158, 11, 0.35)';
+                        icon = '⚪';
+                    }
 
                     return `
-                        <label class="flex items-center gap-1 p-2 card" style="cursor:pointer; text-align:center; justify-content:center; background:${bg}; margin:0;">
-                            <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'checked' : ''} style="accent-color:${color};">
-                            <span style="font-weight:700; color:${color}; font-size:0.85rem;">${icon} ${escapeHtml(opt)}</span>
+                        <label class="flex items-center justify-between p-2.5 card" style="cursor:pointer; background:${bg}; border:${border}; border-radius:8px; margin:0; width:100%; box-sizing:border-box; transition:all 0.15s ease;">
+                            <div style="display:flex; align-items:center; gap:0.65rem;">
+                                <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'checked' : ''} style="accent-color:${color}; width:18px; height:18px; cursor:pointer;">
+                                <span style="font-weight:800; color:${color}; font-size:0.88rem;">${icon} ${escapeHtml(opt)}</span>
+                            </div>
                         </label>
                     `;
                 }).join('');
 
-                const votersCheckboxesHtml = unvotedAttendees.map(a => {
+                const votersCheckboxesHtml = activeManualAttendees.map(a => {
                     const dispMillesimi = getAttendeeGroupMillesimi(a);
                     const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                    const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(displayName) : displayName;
                     const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
-                    const searchName = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+                    const searchName = ((cleanName || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+
+                    const existingVote = votes.find(v => v.voterId === a.uid);
+                    let currentVoteBadge = '';
+                    if (existingVote) {
+                        const vChoice = existingVote.choice || '';
+                        const vLower = vChoice.toLowerCase();
+                        if (vLower.includes('favorevole') || vLower.includes('sì')) {
+                            currentVoteBadge = `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10B981; font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">Attuale: 🟢 ${escapeHtml(vChoice)}</span>`;
+                        } else if (vLower.includes('contrario') || vLower.includes('no')) {
+                            currentVoteBadge = `<span class="badge" style="background:rgba(239,68,68,0.15); color:var(--danger); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(239,68,68,0.3);">Attuale: 🔴 ${escapeHtml(vChoice)}</span>`;
+                        } else if (vLower.includes('astenuto')) {
+                            currentVoteBadge = `<span class="badge" style="background:rgba(245,158,11,0.15); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(245,158,11,0.3);">Attuale: ⚪ ${escapeHtml(vChoice)}</span>`;
+                        } else {
+                            currentVoteBadge = `<span class="badge" style="background:rgba(255,255,255,0.08); color:var(--secondary-text); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px;">Attuale: ${escapeHtml(vChoice)}</span>`;
+                        }
+                    } else {
+                        currentVoteBadge = `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(243,156,18,0.3);">⏳ Senza voto</span>`;
+                    }
+
                     return `
                     <label class="manual-voter-item flex items-center justify-between p-2 card" style="cursor:pointer; margin-bottom:0.35rem; text-align:left; background:var(--surface-color-light);" data-search-name="${escapeHtml(searchName)}">
                         <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
                             <input type="checkbox" name="manual-voter-checkbox" value="${a.uid}" class="manual-voter-checkbox" onchange="updateManualVotersSelectedCount()" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0;">
                             <div style="flex:1; min-width:0;">
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(displayName)} <span style="color:#10B981; font-size:0.75rem;">(🟢 Manuale)</span></div>
-                                <div style="font-size:0.75rem; color:var(--secondary-text);">${dispMillesimi.toFixed(2)} ‰${unitText}</div>
+                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(cleanName)} <span style="color:#10B981; font-size:0.75rem;">(🟢 Manuale)</span></div>
+                                <div style="font-size:0.75rem; color:var(--secondary-text); display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-top:0.1rem;">
+                                    <span>${dispMillesimi.toFixed(2)} ‰${unitText}</span>
+                                    ${currentVoteBadge}
+                                </div>
                             </div>
                         </div>
                         <strong style="color:var(--warning); font-size:0.85rem; flex-shrink:0;">${dispMillesimi.toFixed(2)} ‰</strong>
                     </label>
-                `;}).join('');
+                `;
+                }).join('');
 
                 const modalContent = `
                     <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
                         <p style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:0.5rem;">
                             Punto OdG: <strong>${escapeHtml(item.title)}</strong><br>
-                            <span style="font-size:0.8rem; color:#10B981; font-weight:600;">ℹ️ Inserimento riservato ai soli condòmini accreditati manualmente dall'amministratore (senza QR code).</span>
+                            <span style="font-size:0.8rem; color:#10B981; font-weight:600;">ℹ️ Seleziona i condòmini senza smartphone per registrare o modificare il loro voto.</span>
                         </p>
                         
                         <div>
-                            <label class="form-label" style="font-weight:700;">1. Espressione di Voto</label>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
+                            <label class="form-label" style="font-weight:700; margin-bottom:0.35rem; display:block;">1. Seleziona Espressione di Voto</label>
+                            <div style="display:flex; flex-direction:column; gap:0.45rem; width:100%; margin-top:0.25rem;">
                                 ${voteChoicesHtml}
                             </div>
                         </div>
 
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
-                                <label class="form-label" style="font-weight:700; margin:0;">2. Condòmini Accreditati Manualmente (${unvotedAttendees.length})</label>
+                                <label class="form-label" style="font-weight:700; margin:0;">2. Condòmini Accreditati (${activeManualAttendees.length})</label>
                                 <label style="display:flex; align-items:center; gap:0.35rem; cursor:pointer; font-size:0.82rem; font-weight:700; color:var(--primary-text); margin:0;">
                                     <input type="checkbox" id="manual-voter-select-all" onchange="toggleSelectAllNonVoters(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
                                     <span>Seleziona Tutti</span>
@@ -20588,11 +20649,11 @@ ${renderBottomNavigation()}
 
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" id="btn-submit-manual-vote" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Voto/i</button>
+                            <button type="submit" id="btn-submit-manual-vote" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Salva</button>
                         </div>
                     </form>
                 `;
-                showModal('Inserisci Voto Manuale', modalContent);
+                showModal('Voti manuali', modalContent);
 
             } catch (err) {
                 console.error("Errore apertura modal voto manuale admin:", err);
@@ -20650,7 +20711,7 @@ ${renderBottomNavigation()}
                 badge.textContent = count > 0 ? `(${count} selezionati)` : '';
             }
             if (submitBtn) {
-                submitBtn.textContent = count > 0 ? `Registra Voto/i (${count})` : `Registra Voto/i`;
+                submitBtn.textContent = count > 0 ? `Salva (${count})` : `Salva`;
             }
         };
 
@@ -20712,11 +20773,14 @@ ${renderBottomNavigation()}
                         });
                     }
 
-                    totalVoterNames.push(`${targetVoter.nome} ${targetVoter.cognome || ''}`.trim());
+                    const rawTargetName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(targetVoter) : (`${targetVoter.nome || ''} ${targetVoter.cognome || ''}`.trim() || 'Condòmino');
+                    const cleanTargetName = window.formatVoterDisplayName ? window.formatVoterDisplayName(rawTargetName) : rawTargetName;
+
+                    totalVoterNames.push(cleanTargetName);
 
                     newVotes.push({
                         voterId: voterUid,
-                        voterName: `${targetVoter.nome} ${targetVoter.cognome || ''} (Admin)`,
+                        voterName: `${cleanTargetName} (Admin)`,
                         choice: choice,
                         millesimi: voterMillesimi,
                         heads: voterHeads,
@@ -20735,10 +20799,10 @@ ${renderBottomNavigation()}
 
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
 
-                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato voto manuale per ${selectedUids.length} condòmini: ${choice}`);
+                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato/modificato voto manuale per ${selectedUids.length} condòmini: ${choice}`);
 
                 hideModal();
-                await customAlert(`Voto (${choice}) registrato con successo per ${selectedUids.length} condòmini!`);
+                await customAlert(`Voto (${choice}) registrato/aggiornato con successo per ${selectedUids.length} condòmini!`);
 
             } catch (err) {
                 console.error("Errore invio voto manuale admin:", err);
@@ -21067,7 +21131,7 @@ ${renderBottomNavigation()}
                     }
 
                     btn.disabled = true;
-                    btn.textContent = "Eliminazione in corso...";
+                    btn.textContent = "Eliminazione...";
 
                     try {
                         const snapshot = await getDocs(collection(db, "assemblies"));
@@ -21271,7 +21335,7 @@ ${renderBottomNavigation()}
                                 };
                                 updatedAttendees.push(newAttendee);
                             }
-                            
+
                             await updateDoc(assemblyRef, {
                                 attendees: JSON.parse(JSON.stringify(updatedAttendees))
                             });
@@ -21742,6 +21806,7 @@ ${renderBottomNavigation()}
         window.filterManualVotersList = filterManualVotersList;
         window.toggleSelectAllNonVoters = toggleSelectAllNonVoters;
         window.updateManualVotersSelectedCount = updateManualVotersSelectedCount;
+        window.formatVoterDisplayName = formatVoterDisplayName;
 
         // --- FINE FUNZIONI ASSEMBLEE ---
 
