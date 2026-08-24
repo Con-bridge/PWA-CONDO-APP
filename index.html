@@ -3314,6 +3314,23 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             }
             // --- FINE NUOVA LOGICA ---
 
+            // Se un modale era aperto, chiudilo pulendo lo stato senza generare back indesiderati
+            if (modalContainer && !modalContainer.classList.contains('hidden')) {
+                modalContainer.classList.add('hidden');
+                modalContainer.classList.remove('fullscreen-notification');
+                if (isModalHistoryPushed) {
+                    isModalHistoryPushed = false;
+                    history.replaceState({ page: e }, '', `#${e}`);
+                    if (userType === "custode" && ["sondaggi", "sondaggi_crea", "sondaggi_elenco", "sondaggi_attivi", "sondaggi_conclusi"].includes(e)) {
+                        navigateTo("segnalazioni");
+                    } else {
+                        currentPage = e;
+                        renderCurrentPage();
+                    }
+                    return;
+                }
+            }
+
             history.pushState({ page: e }, '', `#${e}`);
 
             if (userType === "custode" && ["sondaggi", "sondaggi_crea", "sondaggi_elenco", "sondaggi_attivi", "sondaggi_conclusi"].includes(e)) {
@@ -22100,7 +22117,7 @@ ${renderBottomNavigation()}
 </p>
                         <div class="flex gap-4" style="justify-content: center;">
                         <button onclick="hideModal()" class="btn btn-secondary">Annulla</button>
-                        <button onclick="navigateTo('gestioneGruppi'); hideModal();" class="btn btn-primary">Procedi</button>
+                        <button onclick="hideModal(true); navigateTo('gestioneGruppi');" class="btn btn-primary">Procedi</button>
                     </div>
                 </div>
             `;
