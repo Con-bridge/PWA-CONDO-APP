@@ -491,9 +491,9 @@
         .odg-title-input,
         .odg-edit-title {
             border: 2px solid var(--accent-color, #10B981) !important;
-            background: rgba(255, 255, 255, 0.05) !important;
+            background: var(--surface-color-light) !important;
             border-radius: 8px !important;
-            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
             color: var(--primary-text) !important;
             font-weight: 600 !important;
             transition: all 0.2s ease !important;
@@ -501,16 +501,31 @@
 
         .odg-title-input::placeholder,
         .odg-edit-title::placeholder {
-            color: rgba(255, 255, 255, 0.45) !important;
+            color: var(--secondary-text) !important;
+            opacity: 0.9 !important;
             font-weight: 400 !important;
+        }
+
+        :root[data-theme="light"] .odg-title-input::placeholder,
+        :root[data-theme="light"] .odg-edit-title::placeholder,
+        :root[data-theme="light"] .form-input::placeholder,
+        :root[data-theme="light"] input::placeholder {
+            color: #475569 !important;
+            opacity: 1 !important;
+        }
+
+        :root[data-theme="dark"] .odg-title-input::placeholder,
+        :root[data-theme="dark"] .odg-edit-title::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+            opacity: 1 !important;
         }
 
         .odg-title-input:focus,
         .odg-edit-title:focus {
             outline: none !important;
             border-color: var(--accent-color, #10B981) !important;
-            box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
-            background: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+            background: var(--surface-color-light) !important;
         }
 
         /* Stile per pulsante mostra/nascondi password */
@@ -2273,6 +2288,8 @@
         const modalBody = document.getElementById('modal-body');
         const modalCloseBtn = document.getElementById('modal-close-btn');
 
+        let isModalHistoryPushed = false;
+
         const showModal = (title, contentHtml, isFullscreen = false) => {
             modalTitle.textContent = title;
             modalBody.innerHTML = contentHtml;
@@ -2282,9 +2299,15 @@
                 modalContainer.classList.remove('fullscreen-notification');
             }
             modalContainer.classList.remove('hidden');
+
+            // Supporto al tasto "Indietro" del telefono / browser
+            if (!isModalHistoryPushed) {
+                history.pushState({ modalOpen: true }, '', window.location.hash || '#');
+                isModalHistoryPushed = true;
+            }
         };
 
-        const hideModal = () => {
+        const hideModal = (fromPopState = false) => {
             window.isOdgApprovalModalOpen = false;
             if (typeof window.stopQuickQRScanner === 'function') {
                 try { window.stopQuickQRScanner(); } catch (e) { }
@@ -2299,6 +2322,17 @@
             // --- MODIFICA FINE ---
             modalContainer.classList.add('hidden');
             modalContainer.classList.remove('fullscreen-notification');
+
+            if (currentPage === 'assemblea_crea') {
+                navigateTo('assemblee_menu');
+            }
+
+            if (isModalHistoryPushed && !fromPopState) {
+                isModalHistoryPushed = false;
+                history.back();
+            } else {
+                isModalHistoryPushed = false;
+            }
         };
 
         const showBetaTestAgreement = () => {
@@ -22122,6 +22156,12 @@ ${renderBottomNavigation()}
         initializeTheme();
 
         window.addEventListener('popstate', (event) => {
+            // Se un modale è aperto, la pressione di "Torna indietro" chiude semplicemente il modale
+            if (modalContainer && !modalContainer.classList.contains('hidden')) {
+                hideModal(true);
+                return;
+            }
+
             if (event.state && event.state.page) {
                 const newPage = event.state.page;
                 // Evita di renderizzare la login page se l'utente è ancora loggato
