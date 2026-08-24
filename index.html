@@ -1275,25 +1275,59 @@
             border-bottom: none;
         }
 
-        /* Stili per il modal a schermo intero delle segnalazioni restituite */
+        /* Stili per il modal a schermo intero */
         .modal-overlay.fullscreen-notification {
             padding: 0;
             align-items: stretch;
+            background: var(--bg-color, #121212);
+            z-index: 2100;
         }
 
         .modal-overlay.fullscreen-notification .modal-content {
-            max-width: 100%;
-            max-height: 100vh;
-            height: 100vh;
-            border-radius: 0;
+            max-width: 100% !important;
+            width: 100% !important;
+            max-height: 100vh !important;
+            height: 100vh !important;
+            border-radius: 0 !important;
             display: flex;
             flex-direction: column;
-            padding: 2rem;
+            padding: 1.25rem 1rem 2rem 1rem !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
+            background: var(--bg-color, #121212);
+        }
+
+        .modal-overlay.fullscreen-notification .modal-header {
+            flex-shrink: 0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--surface-color-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-overlay.fullscreen-notification .modal-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            text-align: center;
+            flex: 1;
+            padding: 0 0.5rem;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .modal-overlay.fullscreen-notification .modal-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: visible !important;
         }
 
         @media (max-width: 768px) {
             .modal-overlay.fullscreen-notification .modal-content {
-                padding: 1.5rem;
+                padding: 1rem 0.75rem 2rem 0.75rem !important;
             }
         }
 
@@ -20188,13 +20222,15 @@ ${renderBottomNavigation()}
 
                         return `
                             <div class="reorder-item-card odg-edit-card card" data-id="${escapeHtml(itemId)}" data-idx="${idx}" data-original-point="${originalPointNum}" draggable="true" style="padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;">
-                                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
-                                    <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                                        <span class="drag-handle" style="font-size:1.3rem; color:var(--secondary-text); cursor:grab; flex-shrink:0;">☰</span>
-                                        <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:${exPointHtml}</span>
-                                        <input type="text" class="form-input odg-edit-title" value="${escapeHtml(item.title || '')}" required placeholder="Nome del punto OdG" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
+                                <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                                            <span class="drag-handle" style="font-size:1.3rem; color:var(--secondary-text); cursor:grab; flex-shrink:0;">☰</span>
+                                            <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:${exPointHtml}</span>
+                                        </div>
+                                        <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger); font-size:1.4rem; font-weight:800; cursor:pointer; padding:0 0.4rem; line-height:1;" title="Rimuovi punto">&times;</button>
                                     </div>
-                                    <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger); font-size:1.4rem; font-weight:800; cursor:pointer; padding:0 0.4rem; margin-left:0.4rem;" title="Rimuovi punto">&times;</button>
+                                    <input type="text" class="form-input odg-edit-title" value="${escapeHtml(item.title || '')}" required placeholder="Nome del punto OdG" style="width:100%; box-sizing:border-box; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
                                 </div>
 
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; box-sizing:border-box;">
@@ -20826,48 +20862,50 @@ ${renderBottomNavigation()}
             } catch (e) { console.error("Errore caricamento gruppi parziali per assemblea:", e); }
 
             const modalContent = `
-                <div style="text-align: left !important;">
-                    <div id="modal-assembly-creation-message" class="message-box" style="text-align: left !important; margin-bottom: 0.5rem;"></div>
-                    <form id="modal-create-assembly-form" style="display: flex; flex-direction: column; gap: 0.65rem; text-align: left !important;">
-                        <div>
-                            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; text-align: left !important;">Titolo Assemblea</label>
-                            <input type="text" id="modal-assembly-title" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem;" placeholder="Es. Assemblea Ordinaria Bilancio 2025">
+                <div style="text-align: left !important; display: flex; flex-direction: column; min-height: 100%; justify-content: space-between;">
+                    <div id="modal-assembly-creation-message" class="message-box hidden" style="text-align: left !important; margin-bottom: 0.75rem;"></div>
+                    <form id="modal-create-assembly-form" style="display: flex; flex-direction: column; gap: 0.85rem; text-align: left !important; flex: 1;">
+                        <div class="card" style="padding: 1rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 10px;">
+                            <label class="form-label" style="font-size: 0.88rem; font-weight: 700; margin-bottom: 0.35rem; display: block;">Titolo Assemblea</label>
+                            <input type="text" id="modal-assembly-title" required class="form-input" style="padding: 0.55rem 0.75rem; font-size: 0.92rem; width: 100%; box-sizing: border-box;" placeholder="Es. Assemblea Ordinaria Bilancio 2025">
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
+
+                        <div class="card grid grid-cols-2 gap-3" style="padding: 1rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 10px;">
                             <div>
-                                <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; text-align: left !important;">Data</label>
-                                <input type="date" id="modal-assembly-date" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem;">
+                                <label class="form-label" style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem; display: block;">Data</label>
+                                <input type="date" id="modal-assembly-date" required class="form-input" style="padding: 0.5rem 0.65rem; font-size: 0.88rem; width: 100%; box-sizing: border-box;">
                             </div>
                             <div>
-                                <label class="form-label" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; text-align: left !important;">Ora d'inizio</label>
-                                <input type="time" id="modal-assembly-time" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem;">
+                                <label class="form-label" style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem; display: block;">Ora d'inizio</label>
+                                <input type="time" id="modal-assembly-time" required class="form-input" style="padding: 0.5rem 0.65rem; font-size: 0.88rem; width: 100%; box-sizing: border-box;">
                             </div>
                         </div>
-                        <hr style="border-color: var(--surface-color-light); margin: 0.35rem 0;">
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                                <label class="form-label" style="font-size: 0.85rem; font-weight: 700; margin: 0; text-align: left !important;">📋 Ordine del Giorno (OdG)</label>
+
+                        <div class="card" style="padding: 1rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.3rem;">
+                                <label class="form-label" style="font-size: 0.9rem; font-weight: 800; margin: 0; color: var(--text-color);">📋 Ordine del Giorno (OdG)</label>
                                 <span style="font-size: 0.75rem; color: var(--secondary-text);">Punti e ambito di votazione</span>
                             </div>
-                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 2px;"></div>
-                            <div style="margin-top: 0.5rem; text-align: center; width: 100%;">
-                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; height: 36px; padding: 0 0.8rem; font-size: 0.85rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 8px; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.65rem; width: 100%;"></div>
+                            <div style="margin-top: 0.75rem; text-align: center; width: 100%;">
+                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; height: 42px; padding: 0 1rem; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 8px; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                     Aggiungi Punto
                                 </button>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; box-sizing: border-box; margin-top: 0.6rem;">
-                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; height: 38px; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.88rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px; border: none; cursor: pointer;">Annulla</button>
-                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px; cursor: pointer;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box; margin-top: 1rem; padding-bottom: 1.5rem;">
+                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; height: 44px; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.92rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px; border: none; cursor: pointer;">Annulla</button>
+                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; height: 44px; font-weight: 800; font-size: 0.92rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px; cursor: pointer; background: #10B981; color: white;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                                 Salva
                             </button>
                         </div>
                     </form>
                 </div>
             `;
-            showModal('Pianifica una nuova assemblea', modalContent, false);
+            showModal('Pianifica Assemblea', modalContent, true);
 
             setTimeout(() => {
                 const agendaList = document.getElementById('modal-agenda-list');
@@ -20898,12 +20936,12 @@ ${renderBottomNavigation()}
                     `).join('');
 
                     div.innerHTML = `
-                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
-                            <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
-                                <span class="odg-num-label" style="font-weight:700; color:var(--accent-color); font-size:0.85rem; flex-shrink:0;">Punto 1:</span>
-                                <input type="text" class="form-input odg-title-input" style="flex:1; min-width:0; box-sizing:border-box;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
+                        <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                                <label class="odg-num-label" style="font-weight:700; color:var(--accent-color, #10B981); font-size:0.88rem; margin:0;">Punto 1:</label>
+                                <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger, #EF4444); border:none; width:24px; height:24px; font-size:1.35rem; font-weight:800; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;" title="Rimuovi">&times;</button>
                             </div>
-                            <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger); border:none; width:24px; height:24px; font-size:1.3rem; font-weight:800; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:flex-end; padding:0; margin-left:0.4rem; margin-right:0.2rem;" title="Rimuovi">&times;</button>
+                            <input type="text" class="form-input odg-title-input" style="width:100%; box-sizing:border-box; padding:0.45rem 0.65rem; font-size:0.88rem;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
                         </div>
 
                         <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
@@ -21069,22 +21107,34 @@ ${renderBottomNavigation()}
                         };
 
                         await addDoc(collection(db, "assemblies"), assemblyData);
-                        messageBox.className = 'message-box success';
-                        messageBox.textContent = 'Assemblea programmata con successo!';
-                        messageBox.style.display = 'block';
 
-                        setTimeout(() => {
-                            hideModal();
-                            navigateTo('assemblea_lista');
-                        }, 1200);
+                        // Reset del form e stato per consentire nuove pianificazioni rimanendo nella schermata
+                        form.reset();
+                        agendaList.innerHTML = '';
+                        addAgendaItem();
+
+                        btnSave.disabled = false;
+                        btnSave.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Salva
+                        `;
+
+                        messageBox.className = 'message-box hidden';
+                        messageBox.style.display = 'none';
+
+                        const modalContentEl = document.querySelector('.modal-overlay.fullscreen-notification .modal-content');
+                        if (modalContentEl) modalContentEl.scrollTop = 0;
+
+                        await customAlert("Assemblea pianificata con successo!");
 
                     } catch (error) {
                         console.error("Errore salvataggio assemblea:", error);
-                        messageBox.className = 'message-box error';
-                        messageBox.textContent = 'Errore durante la creazione dell\'assemblea. Riprova.';
-                        messageBox.style.display = 'block';
                         btnSave.disabled = false;
-                        btnSave.textContent = "💾 Salva";
+                        btnSave.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Salva
+                        `;
+                        await customAlert("Errore durante la creazione dell'assemblea. Riprova: " + (error?.message || error));
                     }
                 });
             }, 100);
