@@ -197,7 +197,7 @@ window.AssembleeModule = {
                     <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
                     <div id="room-general-quorum-section" style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid var(--surface-color-light); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
                         <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
-                            🏢 <span>Quorum Generale (Intero Condominio)</span>
+                            🏢 <span>Quorum Intero Condominio</span>
                         </div>
                         <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px;">
                             <div>
