@@ -1319,9 +1319,8 @@
             border: none !important;
             display: flex;
             flex-direction: column;
-            padding: 0 0 1.5rem 0 !important;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch;
+            padding: 0 !important;
+            overflow: hidden !important;
             box-sizing: border-box;
             background: var(--bg-color, #121212);
         }
@@ -1364,21 +1363,22 @@
         }
 
         .modal-overlay.fullscreen-notification .modal-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 1rem;
-            overflow-y: visible !important;
+            flex: 1 1 0% !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 0.75rem 0.85rem !important;
+            overflow: hidden !important;
             box-sizing: border-box;
         }
 
         @media (max-width: 768px) {
             .modal-overlay.fullscreen-notification .modal-content {
-                padding: 0 0 1.5rem 0 !important;
+                padding: 0 !important;
             }
 
             .modal-overlay.fullscreen-notification .modal-body {
-                padding: 0.85rem 0.75rem;
+                padding: 0.65rem 0.65rem !important;
             }
         }
 
@@ -18149,20 +18149,20 @@ ${renderBottomNavigation()}
                     if (usersList.length === 0) {
                         return `<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini ${partialSubtitleText ? 'del gruppo ' : ''}risultano accreditati come presenti.</div>`;
                     }
-                    return usersList.map((u, idx) => {
+                    return usersList.map((u) => {
                         const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
                         return `
                         <label class="manual-attendee-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + (u.unitaStr || '')).toLowerCase())}">
                             <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                                <input type="radio" name="manual-attendee-radio" value="${u.id}" data-attendee-json="${escapeHtml(JSON.stringify(u))}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 0 ? 'checked' : ''}>
+                                <input type="checkbox" name="manual-attendee-checkbox" value="${u.id}" data-attendee-json="${escapeHtml(JSON.stringify(u))}" class="manual-attendee-checkbox" onchange="updateManualAttendeesSelectedCount()" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0;">
                                 <div style="flex:1; min-width:0; overflow:hidden;">
                                     <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                         ${escapeHtml(uDisplayName)}
                                     </div>
                                     <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
                                         ${u.isRegistered
-                                ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App (${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span>`
-                                : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                                            ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App (${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span>`
+                                            : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
                                     </div>
                                     ${u.unitaStr ? `
                                     <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
@@ -18178,35 +18178,34 @@ ${renderBottomNavigation()}
                 };
 
                 const modalContent = `
-                    <div style="position: relative; text-align: left; width: 100%; display: flex; flex-direction: column; flex: 1; min-height: calc(100vh - 120px);">
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                         <!-- OVERLAY POPUP DI FEEDBACK -->
                         <div id="manual-attendance-feedback-popup" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 2500; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); padding: 1rem; box-sizing: border-box;"></div>
 
-                        <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1; text-align: left; gap: 0.5rem;">
-                            <div style="background: var(--surface-color); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--surface-color-light);">
-                                <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0; line-height: 1.3;">
-                                    Accredita presenza da anagrafica generale${partialSubtitleText ? ` (${escapeHtml(partialSubtitleText)})` : ''}.
-                                </p>
-                            </div>
-
+                        <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left; min-height: 0; height: 100%; overflow: hidden; gap: 0.35rem;">
                             <!-- FEEDBACK NOTIFICA INLINE -->
-                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem;"></div>
+                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.4rem 0.65rem; margin-bottom: 0.15rem; flex-shrink: 0;"></div>
 
-                            <div style="display: flex; flex-direction: column; flex: 1;">
-                                <label class="form-label" style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Condòmino da accreditare</span>
-                                    <span id="manual-attendees-count-badge" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 600;">${availableUsers.length} disponibili</span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; gap: 0.4rem; flex-wrap: wrap; flex-shrink: 0;">
+                                <span id="manual-attendees-count-badge" style="font-size: 0.82rem; color: var(--accent-color); font-weight: 700;">
+                                    ${availableUsers.length} disponibili${partialSubtitleText ? ` • <span style="color:var(--warning); font-size:0.75rem;">${escapeHtml(partialSubtitleText)}</span>` : ''}
+                                </span>
+                                <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--primary-text); margin: 0; background: var(--surface-color-light); padding: 0.22rem 0.55rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;">
+                                    <input type="checkbox" id="manual-attendee-select-all" onchange="toggleSelectAllManualAttendees(this.checked)" style="accent-color: var(--accent-color); width: 16px; height: 16px; cursor: pointer;">
+                                    <span>Seleziona Tutti</span>
+                                    <span id="manual-attendees-selected-count-badge" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 700;"></span>
                                 </label>
-                                <input type="text" id="input-search-manual-attendee" placeholder="🔍 Cerca per cognome, nome, int..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom: 0.45rem; font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autofocus autocomplete="off">
-                                
-                                <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom: 0.4rem; font-size: 0.82rem; padding: 0.4rem 0.6rem;">⚠️ Condomino non trovato in anagrafica.</div>
-
-                                <div id="container-manual-attendees-list" style="flex: 1; min-height: 280px; max-height: calc(100vh - 270px); overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                                    ${renderCardsHtml(availableUsers)}
-                                </div>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light); width: 100%;">
+                            <input type="text" id="input-search-manual-attendee" placeholder="🔍 Cerca per cognome, nome, int..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom: 0.25rem; font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px; flex-shrink: 0;" autofocus autocomplete="off">
+                            
+                            <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom: 0.25rem; font-size: 0.82rem; padding: 0.35rem 0.6rem; flex-shrink: 0;">⚠️ Condòmino non trovato in anagrafica.</div>
+
+                            <div id="container-manual-attendees-list" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem; -webkit-overflow-scrolling: touch;">
+                                ${renderCardsHtml(availableUsers)}
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
                                 <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
                                     <span>Indietro</span>
                                 </button>
@@ -18238,123 +18237,184 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.toggleSelectAllManualAttendees = (isChecked) => {
+            const checkboxes = document.querySelectorAll('.manual-attendee-checkbox');
+            checkboxes.forEach(cb => {
+                const card = cb.closest('.manual-attendee-card');
+                if (card && card.style.display !== 'none') {
+                    cb.checked = isChecked;
+                }
+            });
+            window.updateManualAttendeesSelectedCount();
+        };
+
+        window.updateManualAttendeesSelectedCount = () => {
+            const checkedBoxes = document.querySelectorAll('.manual-attendee-checkbox:checked');
+            const count = checkedBoxes.length;
+            const badge = document.getElementById('manual-attendees-selected-count-badge');
+            const submitBtn = document.getElementById('btn-submit-manual-attendance');
+            if (badge) {
+                badge.textContent = count > 0 ? `(${count})` : '';
+            }
+            if (submitBtn) {
+                submitBtn.textContent = count > 1 ? `Salva Presenze (${count})` : (count === 1 ? `Salva Presenza (1)` : `Salva Presenza`);
+            }
+        };
+
         window.filterManualAttendeesList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
             const cards = document.querySelectorAll('.manual-attendee-card');
-            const submitBtn = document.getElementById('btn-submit-manual-attendance');
             const errorMsg = document.getElementById('manual-attendee-error-msg');
+            const masterCb = document.getElementById('manual-attendee-select-all');
 
             let visibleCount = 0;
-            let firstVisibleRadio = null;
-
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
                 const isMatch = !q || text.includes(q);
                 if (isMatch) {
                     card.style.display = 'flex';
                     visibleCount++;
-                    if (!firstVisibleRadio) {
-                        firstVisibleRadio = card.querySelector('.manual-attendee-radio');
-                    }
                 } else {
                     card.style.display = 'none';
+                    const cb = card.querySelector('.manual-attendee-checkbox');
+                    if (cb) cb.checked = false;
                 }
             });
 
-            if (firstVisibleRadio) {
-                firstVisibleRadio.checked = true;
-            }
-
-            if (visibleCount === 0) {
-                if (submitBtn) submitBtn.disabled = true;
-                if (errorMsg) errorMsg.classList.remove('hidden');
-            } else {
-                if (submitBtn) submitBtn.disabled = false;
-                if (errorMsg) errorMsg.classList.add('hidden');
-            }
+            if (masterCb) masterCb.checked = false;
+            if (errorMsg) errorMsg.classList.toggle('hidden', visibleCount > 0);
+            window.updateManualAttendeesSelectedCount();
         };
 
         window.saveManualAttendance = async (event, assemblyId) => {
             event.preventDefault();
-            const selectedRadio = document.querySelector('input[name="manual-attendee-radio"]:checked');
+            const selectedCheckboxes = document.querySelectorAll('.manual-attendee-checkbox:checked');
             const successMsg = document.getElementById('manual-attendee-success-msg');
             const searchInput = document.getElementById('input-search-manual-attendee');
             const errorMsg = document.getElementById('manual-attendee-error-msg');
             const submitBtn = document.getElementById('btn-submit-manual-attendance');
             const listContainer = document.getElementById('container-manual-attendees-list');
+            const masterCb = document.getElementById('manual-attendee-select-all');
+            const countBadge = document.getElementById('manual-attendees-count-badge');
+            const selectedBadge = document.getElementById('manual-attendees-selected-count-badge');
 
-            if (!selectedRadio) {
+            if (selectedCheckboxes.length === 0) {
                 if (errorMsg) {
-                    errorMsg.textContent = "Seleziona o digita il nome di un condomino.";
+                    errorMsg.textContent = "Seleziona almeno un condòmino da accreditare.";
                     errorMsg.classList.remove('hidden');
                 } else {
-                    await customAlert("Seleziona o digita il nome di un condomino.");
+                    await customAlert("Seleziona almeno un condòmino da accreditare.");
                 }
                 return;
             }
-            const userId = selectedRadio.value;
 
             try {
                 if (submitBtn) {
                     submitBtn.disabled = true;
-                    submitBtn.textContent = 'Salvataggio...';
+                    submitBtn.textContent = 'Salvataggio presenze...';
                 }
-
-                let attendeeData = null;
-                const attendeeJsonStr = selectedRadio.getAttribute('data-attendee-json');
-                if (attendeeJsonStr) {
-                    try { attendeeData = JSON.parse(attendeeJsonStr); } catch (e) { }
-                }
-                if (!attendeeData) {
-                    const userDoc = await getDoc(doc(db, "users", userId));
-                    if (userDoc.exists()) {
-                        attendeeData = { id: userDoc.id, ...userDoc.data(), isRegistered: true };
-                    }
-                }
-                if (!attendeeData) throw new Error("Dati condomino non trovati.");
 
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) throw new Error("Assemblea non trovata.");
                 const assembly = docSnap.data();
                 const attendees = assembly.attendees || [];
+                let updatedAttendees = [...attendees];
 
-                const userFullName = (attendeeData.nominativo || `${attendeeData.cognome || ''} ${attendeeData.nome || ''}`).trim();
+                let newlyAccreditedList = [];
+                let totalBatchMillesimi = 0;
 
-                const existingAttendeeIndex = attendees.findIndex(a => {
-                    if (a.status === 'uscito') return false;
-                    if (a.uid === attendeeData.id) return true;
-                    if (attendeeData.registeredUid && a.uid === attendeeData.registeredUid) return true;
-                    if (a.nome && userFullName && a.nome.toLowerCase().trim() === userFullName.toLowerCase().trim()) return true;
-                    return false;
-                });
-
-                if (existingAttendeeIndex !== -1 && attendees[existingAttendeeIndex].status !== 'uscito') {
-                    const fPopup = document.getElementById("manual-attendance-feedback-popup");
-                    if (fPopup) {
-                        fPopup.className = '';
-                        fPopup.style.display = 'flex';
-                        fPopup.classList.remove('hidden');
-                        fPopup.innerHTML = `
-                            <div style="background: rgba(28, 24, 18, 0.96); border: 1.5px solid rgba(243, 156, 18, 0.45); border-radius: 14px; padding: 1.3rem 1.1rem; box-shadow: 0 16px 36px rgba(0,0,0,0.65), 0 0 24px rgba(243,156,18,0.18); text-align: center; width: 100%; max-width: 295px; box-sizing: border-box; backdrop-filter: blur(8px);">
-                                <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(243, 156, 18, 0.15); border: 2px solid var(--warning); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.65rem; color: var(--warning); font-size: 1.4rem; font-weight: 800;">⚠️</div>
-                                <div style="font-size: 0.72rem; font-weight: 800; color: var(--warning); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.25rem;">Già Presente</div>
-                                <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.35rem; line-height: 1.3;">
-                                    ${escapeHtml(userFullName)}
-                                </div>
-                                <div style="font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 0.95rem;">
-                                    Il condòmino risulta già accreditato in aula.
-                                </div>
-                                <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-secondary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                                    <span>Continua ➔</span>
-                                </button>
-                            </div>
-                        `;
-                    } else if (errorMsg) {
-                        errorMsg.textContent = `Il condomino ${userFullName} è già accreditato come presente in aula.`;
-                        errorMsg.classList.remove('hidden');
-                    } else {
-                        await customAlert(`Il condomino ${userFullName} è già accreditato come presente in aula.`);
+                for (const cb of selectedCheckboxes) {
+                    let attendeeData = null;
+                    const attendeeJsonStr = cb.getAttribute('data-attendee-json');
+                    if (attendeeJsonStr) {
+                        try { attendeeData = JSON.parse(attendeeJsonStr); } catch (e) { }
                     }
+                    if (!attendeeData) {
+                        const userDoc = await getDoc(doc(db, "users", cb.value));
+                        if (userDoc.exists()) {
+                            attendeeData = { id: userDoc.id, ...userDoc.data(), isRegistered: true };
+                        }
+                    }
+                    if (!attendeeData) continue;
+
+                    const userFullName = (attendeeData.nominativo || `${attendeeData.cognome || ''} ${attendeeData.nome || ''}`).trim();
+
+                    const existingAttendeeIndex = updatedAttendees.findIndex(a => {
+                        if (a.status === 'uscito') return false;
+                        if (a.uid === attendeeData.id) return true;
+                        if (attendeeData.registeredUid && a.uid === attendeeData.registeredUid) return true;
+                        if (a.nome && userFullName && a.nome.toLowerCase().trim() === userFullName.toLowerCase().trim()) return true;
+                        return false;
+                    });
+
+                    // Se è già presente attivo, non duplicare
+                    if (existingAttendeeIndex !== -1 && updatedAttendees[existingAttendeeIndex].status !== 'uscito') {
+                        continue;
+                    }
+
+                    let totalMillesimiAccreditati = parseFloat(attendeeData.millesimiTotali) || 0;
+                    if (totalMillesimiAccreditati <= 0 && Array.isArray(attendeeData.proprieta)) {
+                        totalMillesimiAccreditati = attendeeData.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                    }
+
+                    const heldProxies = (assembly.proxies || []).filter(p =>
+                        p.status !== 'rejected' && (
+                            p.delegateId === attendeeData.id ||
+                            (attendeeData.registeredUid && p.delegateId === attendeeData.registeredUid) ||
+                            (p.delegateName && userFullName && p.delegateName.toLowerCase().trim() === userFullName.toLowerCase().trim())
+                        )
+                    );
+
+                    let proxyNoticeText = '';
+                    if (heldProxies.length > 0) {
+                        heldProxies.forEach(p => {
+                            totalMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
+                        });
+                        proxyNoticeText = ` (+${heldProxies.length} del.)`;
+                    }
+
+                    if (existingAttendeeIndex !== -1) {
+                        // Rientro in-place
+                        updatedAttendees[existingAttendeeIndex] = {
+                            ...updatedAttendees[existingAttendeeIndex],
+                            status: 'presente',
+                            nome: `${userFullName}${proxyNoticeText}`,
+                            millesimi: totalMillesimiAccreditati,
+                            heldProxiesCount: heldProxies.length,
+                            reenteredAt: Date.now()
+                        };
+                    } else {
+                        const newAttendee = {
+                            uid: attendeeData.id,
+                            nome: `${userFullName}${proxyNoticeText}`,
+                            cognome: attendeeData.cognome || '',
+                            millesimi: totalMillesimiAccreditati,
+                            proprieta: attendeeData.proprieta || (attendeeData.unitaImmobiliare ? (Array.isArray(attendeeData.unitaImmobiliare) ? attendeeData.unitaImmobiliare.map(u => ({ interno: u, millesimi: totalMillesimiAccreditati, gruppo: attendeeData.gruppo || '' })) : [{ interno: attendeeData.unitaImmobiliare, millesimi: totalMillesimiAccreditati, gruppo: attendeeData.gruppo || '' }]) : []),
+                            unitaImmobiliare: attendeeData.unitaImmobiliare || [],
+                            heldProxiesCount: heldProxies.length,
+                            status: 'presente',
+                            isManual: true,
+                            isAnagraficaOnly: !attendeeData.isRegistered,
+                            registrationType: 'manual',
+                            joinedAt: Date.now()
+                        };
+                        updatedAttendees.push(newAttendee);
+                    }
+
+                    totalBatchMillesimi += totalMillesimiAccreditati;
+                    newlyAccreditedList.push({
+                        name: userFullName,
+                        millesimi: totalMillesimiAccreditati,
+                        unita: attendeeData.unitaStr || (Array.isArray(attendeeData.unitaImmobiliare) ? attendeeData.unitaImmobiliare.join(', ') : (attendeeData.unitaImmobiliare || '')),
+                        proxyText: proxyNoticeText
+                    });
+
+                    await logAssemblyEvent(assemblyId, existingAttendeeIndex !== -1 ? 'RIENTRO_MANUALE' : 'INGRESSO', `Accreditata presenza ${existingAttendeeIndex !== -1 ? '(rientro)' : 'in aula'} per ${userFullName} [${totalMillesimiAccreditati.toFixed(2)} ‰]${proxyNoticeText}`);
+                }
+
+                if (newlyAccreditedList.length === 0) {
+                    await customAlert("Tutti i condòmini selezionati risultano già accreditati.");
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Salva Presenza';
@@ -18362,81 +18422,43 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                let totalMillesimiAccreditati = parseFloat(attendeeData.millesimiTotali) || 0;
-                if (totalMillesimiAccreditati <= 0 && Array.isArray(attendeeData.proprieta)) {
-                    totalMillesimiAccreditati = attendeeData.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
-                }
-
-                const heldProxies = (assembly.proxies || []).filter(p =>
-                    p.status !== 'rejected' && (
-                        p.delegateId === attendeeData.id ||
-                        (attendeeData.registeredUid && p.delegateId === attendeeData.registeredUid) ||
-                        (p.delegateName && userFullName && p.delegateName.toLowerCase().trim() === userFullName.toLowerCase().trim())
-                    )
-                );
-
-                let proxyNoticeText = '';
-                if (heldProxies.length > 0) {
-                    heldProxies.forEach(p => {
-                        totalMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
-                    });
-                    proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
-                }
-
-                let updatedAttendees = [...attendees];
-
-                if (existingAttendeeIndex !== -1) {
-                    // Rientro in-place senza duplicazione record né millesimi
-                    updatedAttendees[existingAttendeeIndex] = {
-                        ...updatedAttendees[existingAttendeeIndex],
-                        status: 'presente',
-                        nome: `${userFullName}${proxyNoticeText}`,
-                        millesimi: totalMillesimiAccreditati,
-                        heldProxiesCount: heldProxies.length,
-                        reenteredAt: Date.now()
-                    };
-                } else {
-                    const newAttendee = {
-                        uid: attendeeData.id,
-                        nome: `${userFullName}${proxyNoticeText}`,
-                        cognome: attendeeData.cognome || '',
-                        millesimi: totalMillesimiAccreditati,
-                        proprieta: attendeeData.proprieta || (attendeeData.unitaImmobiliare ? attendeeData.unitaImmobiliare.map(u => ({ interno: u, millesimi: totalMillesimiAccreditati, gruppo: attendeeData.gruppo || '' })) : []),
-                        unitaImmobiliare: attendeeData.unitaImmobiliare || [],
-                        heldProxiesCount: heldProxies.length,
-                        status: 'presente',
-                        isManual: true,
-                        isAnagraficaOnly: !attendeeData.isRegistered,
-                        registrationType: 'manual',
-                        joinedAt: Date.now()
-                    };
-                    updatedAttendees.push(newAttendee);
-                }
-
                 await updateDoc(assemblyRef, {
                     attendees: JSON.parse(JSON.stringify(updatedAttendees))
                 });
 
-                await logAssemblyEvent(assemblyId, existingAttendeeIndex !== -1 ? 'RIENTRO_MANUALE' : 'INGRESSO', `Accreditata presenza ${existingAttendeeIndex !== -1 ? '(rientro)' : 'in aula'} per ${userFullName} [${totalMillesimiAccreditati.toFixed(2)} ‰]${proxyNoticeText}`);
-
-                // MESSAGGIO IN SOVRAPPOSIZIONE (COME QR CODE)
+                // POPUP DI DETTAGLIO CONVALIDA (Singola o Multipla)
                 const fPopup = document.getElementById("manual-attendance-feedback-popup");
                 if (fPopup) {
                     fPopup.className = '';
                     fPopup.style.display = 'flex';
                     fPopup.classList.remove('hidden');
+
+                    const isSingle = newlyAccreditedList.length === 1;
+                    const itemsDetailHtml = newlyAccreditedList.map(item => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0.5rem; background:rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem; text-align:left; gap:0.5rem;">
+                            <div style="flex:1; min-width:0; overflow:hidden;">
+                                <div style="font-weight:700; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${escapeHtml(item.name)} ${item.proxyText ? `<span style="color:var(--accent-color); font-size:0.72rem;">${escapeHtml(item.proxyText)}</span>` : ''}
+                                </div>
+                                ${item.unita ? `<div style="font-size:0.7rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Unità: ${escapeHtml(item.unita)}</div>` : ''}
+                            </div>
+                            <strong style="color:var(--warning); font-size:0.82rem; white-space:nowrap; flex-shrink:0;">${item.millesimi.toFixed(2)} ‰</strong>
+                        </div>
+                    `).join('');
+
                     fPopup.innerHTML = `
-                        <div style="background: rgba(18, 26, 23, 0.96); border: 1.5px solid rgba(16, 185, 129, 0.45); border-radius: 14px; padding: 1.3rem 1.1rem; box-shadow: 0 16px 36px rgba(0,0,0,0.65), 0 0 24px rgba(16,185,129,0.18); text-align: center; width: 100%; max-width: 295px; box-sizing: border-box; backdrop-filter: blur(8px);">
-                            <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.65rem; color: #10B981; font-size: 1.4rem; font-weight: 800;">✓</div>
-                            <div style="font-size: 0.72rem; font-weight: 800; color: #10B981; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.25rem;">Presenza Convalidata</div>
-                            <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.35rem; line-height: 1.3;">
-                                ${escapeHtml(userFullName)}
+                        <div style="background: rgba(18, 26, 23, 0.97); border: 1.5px solid rgba(16, 185, 129, 0.45); border-radius: 14px; padding: 1.25rem 1.1rem; box-shadow: 0 16px 36px rgba(0,0,0,0.7), 0 0 24px rgba(16,185,129,0.2); text-align: center; width: 100%; max-width: 320px; box-sizing: border-box; backdrop-filter: blur(8px); max-height: 85vh; display: flex; flex-direction: column;">
+                            <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: #10B981; font-size: 1.35rem; font-weight: 800; flex-shrink: 0;">✓</div>
+                            <div style="font-size: 0.72rem; font-weight: 800; color: #10B981; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.2rem; flex-shrink: 0;">
+                                ${isSingle ? 'Presenza Convalidata' : `${newlyAccreditedList.length} Presenze Convalidate`}
                             </div>
-                            <div style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.95rem;">
-                                Millesimi in aula: <strong style="color: var(--warning); font-size: 0.95rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
-                                ${proxyNoticeText ? `<div style="font-size: 0.78rem; color: var(--accent-color); font-weight: 600; margin-top: 0.2rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
+                            <div style="font-size: 0.88rem; color: var(--secondary-text); margin-bottom: 0.65rem; flex-shrink: 0;">
+                                Totale Millesimi accreditati: <strong style="color: var(--warning); font-size: 0.95rem;">${totalBatchMillesimi.toFixed(2)} ‰</strong>
                             </div>
-                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; background: #10B981; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem; overflow-y: auto; max-height: 220px; margin-bottom: 0.85rem; padding-right: 0.2rem; flex: 1;">
+                                ${itemsDetailHtml}
+                            </div>
+                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; background: #10B981; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); flex-shrink: 0;">
                                 <span>Continua ➔</span>
                             </button>
                         </div>
@@ -18444,7 +18466,7 @@ ${renderBottomNavigation()}
                 }
 
                 if (successMsg) {
-                    successMsg.innerHTML = `✅ Presenza <strong>${existingAttendeeIndex !== -1 ? 'riattivata' : 'registrata'}</strong>: <span style="color:#10B981; font-weight:700;">${escapeHtml(userFullName)}</span> (${totalMillesimiAccreditati.toFixed(2)} ‰)`;
+                    successMsg.innerHTML = `✅ Accreditate <strong>${newlyAccreditedList.length}</strong> presenze con successo (${totalBatchMillesimi.toFixed(2)} ‰ totali)`;
                     successMsg.classList.remove('hidden');
                 }
                 if (errorMsg) errorMsg.classList.add('hidden');
@@ -18486,26 +18508,39 @@ ${renderBottomNavigation()}
                     }
                 }
 
+                if (countBadge) {
+                    countBadge.textContent = `${remainingAvailable.length} disponibili`;
+                }
+                if (selectedBadge) {
+                    selectedBadge.textContent = '';
+                }
+                if (masterCb) {
+                    masterCb.checked = false;
+                }
+
                 if (listContainer) {
                     if (remainingAvailable.length === 0) {
                         listContainer.innerHTML = `<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini ${isOnlyPartialAssembly ? 'del gruppo ' : ''}risultano accreditati come presenti.</div>`;
                         if (submitBtn) submitBtn.disabled = true;
                     } else {
-                        listContainer.innerHTML = remainingAvailable.map((u, idx) => {
+                        listContainer.innerHTML = remainingAvailable.map((u) => {
                             const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
                             return `
                             <label class="manual-attendee-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + (u.unitaStr || '')).toLowerCase())}">
                                 <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                                    <input type="radio" name="manual-attendee-radio" value="${u.id}" data-attendee-json="${escapeHtml(JSON.stringify(u))}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 0 ? 'checked' : ''}>
+                                    <input type="checkbox" name="manual-attendee-checkbox" value="${u.id}" data-attendee-json="${escapeHtml(JSON.stringify(u))}" class="manual-attendee-checkbox" onchange="updateManualAttendeesSelectedCount()" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0;">
                                     <div style="flex:1; min-width:0; overflow:hidden;">
+                                        <!-- Riga 1: Nome -->
                                         <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                             ${escapeHtml(uDisplayName)}
                                         </div>
+                                        <!-- Riga 2: Tipologia -->
                                         <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
                                             ${u.isRegistered
-                                    ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App (${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span>`
-                                    : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                                                ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App (${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span>`
+                                                : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
                                         </div>
+                                        <!-- Riga 3: Unità sotto tipologia -->
                                         ${u.unitaStr ? `
                                         <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
                                             Unità: ${escapeHtml(u.unitaStr)}
@@ -18521,7 +18556,7 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                // Reset e focus immediato sul campo di ricerca per l'inserimento successivo
+                // Reset e focus sul campo di ricerca
                 if (searchInput) {
                     searchInput.value = '';
                 }
@@ -18737,53 +18772,55 @@ ${renderBottomNavigation()}
                 }).join('');
 
                 const modalContent = `
-                    <div style="position: relative; text-align: left; width: 100%; display: flex; flex-direction: column; flex: 1; min-height: calc(100vh - 120px);">
-                        <form onsubmit="saveManualProxy(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1; text-align: left; gap: 0.6rem;">
-                            <div style="background: var(--surface-color); padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--surface-color-light);">
-                                <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0; line-height: 1.3;">
-                                    Assegna delega a un delegato in aula.
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                        <form onsubmit="saveManualProxy(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left; min-height: 0; height: 100%; overflow: hidden; gap: 0.4rem;">
+                            <div style="background: var(--surface-color); padding: 0.45rem 0.65rem; border-radius: 8px; border: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                                <p style="color: var(--secondary-text); font-size: 0.78rem; margin: 0; line-height: 1.25;">
+                                    Assegna delega cartacea a un delegato in aula.
                                 </p>
                             </div>
                             
-                            <!-- SEZIONE 1: DELEGANTE -->
-                            <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color);">
-                                <div onclick="toggleProxySection('delegator')" style="padding: 0.65rem 0.85rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
-                                        <svg id="proxy-delegator-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.45rem; -webkit-overflow-scrolling: touch;">
+                                <!-- SEZIONE 1: DELEGANTE -->
+                                <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color); flex-shrink: 0;">
+                                    <div onclick="toggleProxySection('delegator')" style="padding: 0.6rem 0.75rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
+                                            <svg id="proxy-delegator-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div id="selected-delegator-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                                            ${firstDelegatorName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegatorName)}</span> <strong style="color:var(--warning); font-size:0.78rem; white-space:nowrap;">${firstDelegatorMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegante selezionato</span>'}
+                                        </div>
                                     </div>
-                                    <div id="selected-delegator-badge" style="margin-top: 0.4rem; font-size: 0.82rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.6rem; display: flex; align-items: center; justify-content: space-between;">
-                                        ${firstDelegatorName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegatorName)}</span> <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${firstDelegatorMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegante selezionato</span>'}
+                                    <div id="proxy-delegator-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                        <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autofocus autocomplete="off">
+                                        <div id="container-proxy-delegators-list" style="max-height: 180px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                            ${delegatorCardsHtml}
+                                        </div>
                                     </div>
                                 </div>
-                                <div id="proxy-delegator-body" style="padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                                    <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autofocus autocomplete="off">
-                                    <div id="container-proxy-delegators-list" style="max-height: 220px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                                        ${delegatorCardsHtml}
+
+                                <!-- SEZIONE 2: DELEGATO -->
+                                <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color); flex-shrink: 0;">
+                                    <div onclick="toggleProxySection('delegate')" style="padding: 0.6rem 0.75rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">2. Delegato in aula</span>
+                                            <svg id="proxy-delegate-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div id="selected-delegate-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                                            ${firstDelegateName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegateName)}</span> <strong style="color:var(--warning); font-size:0.78rem; white-space:nowrap;">${firstDelegateMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegato selezionato</span>'}
+                                        </div>
+                                    </div>
+                                    <div id="proxy-delegate-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                        <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Cerca delegato in aula..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autocomplete="off">
+                                        <div id="container-proxy-delegates-list" style="max-height: 180px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                            ${delegateCardsHtml}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- SEZIONE 2: DELEGATO -->
-                            <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color);">
-                                <div onclick="toggleProxySection('delegate')" style="padding: 0.65rem 0.85rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-color);">2. Delegato in aula</span>
-                                        <svg id="proxy-delegate-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                    </div>
-                                    <div id="selected-delegate-badge" style="margin-top: 0.4rem; font-size: 0.82rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.6rem; display: flex; align-items: center; justify-content: space-between;">
-                                        ${firstDelegateName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegateName)}</span> <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${firstDelegateMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegato selezionato</span>'}
-                                    </div>
-                                </div>
-                                <div id="proxy-delegate-body" style="padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                                    <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Cerca delegato in aula..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autocomplete="off">
-                                    <div id="container-proxy-delegates-list" style="max-height: 220px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                                        ${delegateCardsHtml}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light); width: 100%;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
                                 <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
                                     <span>Annulla</span>
                                 </button>
@@ -19734,66 +19771,94 @@ ${renderBottomNavigation()}
                 const multiScaleCheckboxesHtml = groupNames.map(g => {
                     const isChecked = item.targetGroup === 'Tutte le scale' || (item.targetGroup || '').split(', ').includes(g);
                     return `
-                        <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
-                            <input type="checkbox" name="modal-scale-checkbox" value="${escapeHtml(g)}" ${isChecked ? 'checked' : ''} class="modal-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
-                            <span>${escapeHtml(g)}</span>
+                        <label class="card" style="cursor:pointer; display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; padding:0.5rem 0.7rem; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important;">
+                            <input type="checkbox" name="modal-scale-checkbox" value="${escapeHtml(g)}" ${isChecked ? 'checked' : ''} class="modal-scale-item-cb" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0;">
+                            <span style="font-weight:600; color:var(--text-color);">${escapeHtml(g)}</span>
                         </label>
                     `;
                 }).join('');
 
                 const modalContent = `
-                    <form onsubmit="saveScopeChange(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
-                        <p style="font-size:0.9rem; color:var(--secondary-text);">
-                            Modifica l'ambito di votazione per il punto: <strong>${escapeHtml(item.title)}</strong>
-                        </p>
-                        <div>
-                            <label class="form-label" style="font-weight:700;">Ambito di Votazione</label>
-                            <div class="space-y-2" style="margin-top:0.5rem;">
-                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
-                                    <input type="radio" name="modal-scope-type" value="intero" ${isIntero ? 'checked' : ''} onchange="toggleScopeInputsModal('intero')" style="accent-color:var(--accent-color); width:18px; height:18px;">
-                                    <span>🏢 1. Intero condominio (Tutti i condòmini)</span>
-                                </label>
-                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
-                                    <input type="radio" name="modal-scope-type" value="scale" ${isScale ? 'checked' : ''} onchange="toggleScopeInputsModal('scale')" style="accent-color:var(--accent-color); width:18px; height:18px;">
-                                    <span>🪜 2. Scale / Gruppi (Selezione Multipla)</span>
-                                </label>
-                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex;">
-                                    <input type="radio" name="modal-scope-type" value="gruppo" ${isGroup ? 'checked' : ''} onchange="toggleScopeInputsModal('gruppo')" style="accent-color:var(--accent-color); width:18px; height:18px;">
-                                    <span>🪜 3. Singola Scala/Gruppo</span>
-                                </label>
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                        <form onsubmit="saveScopeChange(event, '${assemblyId}', '${itemId}')" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                            <div style="background: var(--surface-color); padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                                <div style="font-size: 0.85rem; color: var(--primary-text); font-weight: 700; margin-bottom: 0.1rem;">
+                                    Punto OdG: <strong style="color: var(--accent-color);">${escapeHtml(item.title)}</strong>
+                                </div>
+                                <p style="color: var(--secondary-text); font-size: 0.78rem; margin: 0; line-height: 1.25;">
+                                    Modifica l'ambito di partecipazione e quorum per questa delibera.
+                                </p>
                             </div>
-                        </div>
 
-                        <!-- CONTENITORE SELEZIONE MULTIPLA SCALE -->
-                        <div id="modal-scope-scale-wrapper" class="${!isScale ? 'hidden' : ''}" style="background:var(--surface-color-light); padding:0.75rem; border-radius:8px; margin-top:0.5rem;">
-                            <label class="form-label" style="font-weight:700; margin-bottom:0.4rem;">Seleziona una o più scale</label>
-                            <div style="margin-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
-                                <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-weight:700; color:var(--accent-color); font-size:0.85rem;">
-                                    <input type="checkbox" id="modal-all-scales-cb" ${item.targetGroup === 'Tutte le scale' ? 'checked' : ''} onchange="toggleAllScaleCheckboxes(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px;">
-                                    <span>🏢 Tutte le scale</span>
-                                </label>
+                            <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.45rem; -webkit-overflow-scrolling: touch;">
+                                <div class="card" style="margin: 0; padding: 0.65rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); display: flex; flex-direction: column; gap: 0.4rem; flex-shrink: 0;">
+                                    <label class="form-label" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.15rem; color: var(--text-color);">
+                                        Seleziona Ambito di Votazione
+                                    </label>
+                                    <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                        <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
+                                            <input type="radio" name="modal-scope-type" value="intero" ${isIntero ? 'checked' : ''} onchange="toggleScopeInputsModal('intero')" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;">
+                                            <div style="flex:1; min-width:0;">
+                                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">🏢 Intero Condominio</div>
+                                                <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Tutti i condòmini partecipano alla votazione.</div>
+                                            </div>
+                                        </label>
+
+                                        <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
+                                            <input type="radio" name="modal-scope-type" value="scale" ${isScale ? 'checked' : ''} onchange="toggleScopeInputsModal('scale')" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;">
+                                            <div style="flex:1; min-width:0;">
+                                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">🪜 Scale / Gruppi (Selezione Multipla)</div>
+                                                <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Scegli una o più scale/gruppi autorizzati a votare.</div>
+                                            </div>
+                                        </label>
+
+                                        <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
+                                            <input type="radio" name="modal-scope-type" value="gruppo" ${isGroup ? 'checked' : ''} onchange="toggleScopeInputsModal('gruppo')" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;">
+                                            <div style="flex:1; min-width:0;">
+                                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">🪜 Singola Scala / Gruppo</div>
+                                                <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Limita la votazione a un'unica scala specifica.</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- CONTENITORE SELEZIONE MULTIPLA SCALE -->
+                                <div id="modal-scope-scale-wrapper" class="${!isScale ? 'hidden' : ''}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); padding:0.65rem; border-radius:8px; display:flex; flex-direction:column; gap:0.35rem;">
+                                    <label class="form-label" style="font-weight:700; font-size:0.82rem; margin-bottom:0.15rem; color:var(--text-color);">Seleziona le scale autorizzate</label>
+                                    <div style="margin-bottom:0.3rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.35rem;">
+                                        <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-weight:700; color:var(--accent-color); font-size:0.82rem;">
+                                            <input type="checkbox" id="modal-all-scales-cb" ${item.targetGroup === 'Tutte le scale' ? 'checked' : ''} onchange="toggleAllScaleCheckboxes(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
+                                            <span>🏢 Tutte le scale</span>
+                                        </label>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; gap:0.3rem; max-height:180px; overflow-y:auto; padding-right:0.2rem;">
+                                        ${multiScaleCheckboxesHtml}
+                                    </div>
+                                </div>
+
+                                <!-- CONTENITORE SELEZIONE SINGOLA SCALA -->
+                                <div id="modal-scope-group-wrapper" class="${!isGroup ? 'hidden' : ''}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); padding:0.65rem; border-radius:8px;">
+                                    <label class="form-label" style="font-weight:700; font-size:0.82rem; margin-bottom:0.3rem; display:block; color:var(--text-color);">Seleziona Singola Scala / Gruppo</label>
+                                    <select id="modal-scope-target-group" class="form-select" style="font-size:0.85rem; padding:0.45rem 0.65rem; border-radius:8px; width:100%;">
+                                        <option value="" disabled ${!item.targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
+                                        ${singleGroupOptionsHtml}
+                                    </select>
+                                </div>
                             </div>
-                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
-                                ${multiScaleCheckboxesHtml}
+
+                            <!-- BARRA AZIONI BOTTOM -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
+                                <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                                    <span>Indietro</span>
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
+                                    <span>Conferma Ambito</span>
+                                </button>
                             </div>
-                        </div>
-
-                        <!-- CONTENITORE SELEZIONE SINGOLA SCALA -->
-                        <div id="modal-scope-group-wrapper" class="${!isGroup ? 'hidden' : ''}" style="margin-top:0.5rem;">
-                            <label class="form-label" style="font-weight:700;">Seleziona Singola Scala / Gruppo</label>
-                            <select id="modal-scope-target-group" class="form-select">
-                                <option value="" disabled ${!item.targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
-                                ${singleGroupOptionsHtml}
-                            </select>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
-                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Conferma</button>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 `;
-                showModal('⚙️ Cambia Ambito Votazione', modalContent);
+                showModal('Cambia Ambito Votazione', modalContent, true);
             } catch (err) {
                 console.error("Errore apertura modal cambio ambito:", err);
                 await customAlert("Si è verificato un errore.");
@@ -21470,32 +21535,32 @@ ${renderBottomNavigation()}
                 const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
                 const voteChoicesHtml = voteOptions.map((opt, idx) => {
                     let color = 'var(--secondary-text)';
-                    let bg = 'rgba(255, 255, 255, 0.04)';
-                    let border = '1px solid var(--surface-color-light)';
+                    let bg = 'var(--surface-color-light)';
+                    let border = '1px solid rgba(255, 255, 255, 0.08)';
                     let icon = '🔹';
                     const lowerOpt = opt.toLowerCase();
                     if (lowerOpt.includes('favorevole') || lowerOpt.includes('sì') || lowerOpt.includes('approvato')) {
                         color = '#10B981';
-                        bg = 'rgba(16, 185, 129, 0.1)';
+                        bg = 'rgba(16, 185, 129, 0.12)';
                         border = '1.5px solid rgba(16, 185, 129, 0.35)';
                         icon = '🟢';
                     } else if (lowerOpt.includes('contrario') || lowerOpt.includes('no') || lowerOpt.includes('respinto')) {
                         color = 'var(--danger, #EF4444)';
-                        bg = 'rgba(239, 68, 68, 0.1)';
+                        bg = 'rgba(239, 68, 68, 0.12)';
                         border = '1.5px solid rgba(239, 68, 68, 0.35)';
                         icon = '🔴';
                     } else if (lowerOpt.includes('astenuto')) {
                         color = 'var(--warning, #F59E0B)';
-                        bg = 'rgba(245, 158, 11, 0.1)';
+                        bg = 'rgba(245, 158, 11, 0.12)';
                         border = '1.5px solid rgba(245, 158, 11, 0.35)';
                         icon = '⚪';
                     }
 
                     return `
-                        <label class="flex items-center justify-between p-2.5 card" style="cursor:pointer; background:${bg}; border:${border}; border-radius:8px; margin:0; width:100%; box-sizing:border-box; transition:all 0.15s ease;">
+                        <label class="manual-vote-option-card" style="cursor:pointer; background:${bg}; border:${border}; border-radius:10px; margin:0 !important; width:100%; box-sizing:border-box; padding:0.6rem 0.8rem; display:flex; align-items:center; justify-content:space-between; transition:all 0.15s ease;">
                             <div style="display:flex; align-items:center; gap:0.65rem;">
-                                <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'checked' : ''} style="accent-color:${color}; width:18px; height:18px; cursor:pointer;">
-                                <span style="font-weight:800; color:${color}; font-size:0.88rem;">${icon} ${escapeHtml(opt)}</span>
+                                <input type="radio" name="manual-vote-choice" value="${escapeHtml(opt)}" ${idx === 0 ? 'checked' : ''} style="accent-color:${color}; width:18px; height:18px; cursor:pointer; flex-shrink:0;">
+                                <span style="font-weight:800; color:${color}; font-size:0.92rem;">${icon} ${escapeHtml(opt)}</span>
                             </div>
                         </label>
                     `;
@@ -21505,8 +21570,8 @@ ${renderBottomNavigation()}
                     const dispMillesimi = getAttendeeGroupMillesimi(a);
                     const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
                     const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(displayName) : displayName;
-                    const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
-                    const searchName = ((cleanName || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+                    const unitaStr = a.unitaImmobiliare ? (Array.isArray(a.unitaImmobiliare) ? a.unitaImmobiliare.join(', ') : a.unitaImmobiliare) : '';
+                    const searchName = ((cleanName || '') + ' ' + (unitaStr || '') + ' ' + (a.email || '')).toLowerCase();
 
                     const existingVote = votes.find(v => v.voterId === a.uid);
                     let currentVoteBadge = '';
@@ -21514,76 +21579,103 @@ ${renderBottomNavigation()}
                         const vChoice = existingVote.choice || '';
                         const vLower = vChoice.toLowerCase();
                         if (vLower.includes('favorevole') || vLower.includes('sì')) {
-                            currentVoteBadge = `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10B981; font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">Attuale: 🟢 ${escapeHtml(vChoice)}</span>`;
+                            currentVoteBadge = `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(16,185,129,0.3); white-space:nowrap;">🟢 ${escapeHtml(vChoice)}</span>`;
                         } else if (vLower.includes('contrario') || vLower.includes('no')) {
-                            currentVoteBadge = `<span class="badge" style="background:rgba(239,68,68,0.15); color:var(--danger); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(239,68,68,0.3);">Attuale: 🔴 ${escapeHtml(vChoice)}</span>`;
+                            currentVoteBadge = `<span style="font-size:0.68rem; color:var(--danger); background:rgba(239,68,68,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(239,68,68,0.3); white-space:nowrap;">🔴 ${escapeHtml(vChoice)}</span>`;
                         } else if (vLower.includes('astenuto')) {
-                            currentVoteBadge = `<span class="badge" style="background:rgba(245,158,11,0.15); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(245,158,11,0.3);">Attuale: ⚪ ${escapeHtml(vChoice)}</span>`;
+                            currentVoteBadge = `<span style="font-size:0.68rem; color:var(--warning); background:rgba(245,158,11,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(245,158,11,0.3); white-space:nowrap;">⚪ ${escapeHtml(vChoice)}</span>`;
                         } else {
-                            currentVoteBadge = `<span class="badge" style="background:rgba(255,255,255,0.08); color:var(--secondary-text); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px;">Attuale: ${escapeHtml(vChoice)}</span>`;
+                            currentVoteBadge = `<span style="font-size:0.68rem; color:var(--secondary-text); background:rgba(255,255,255,0.08); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; white-space:nowrap;">${escapeHtml(vChoice)}</span>`;
                         }
                     } else {
-                        currentVoteBadge = `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid rgba(243,156,18,0.3);">⏳ Senza voto</span>`;
+                        currentVoteBadge = `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(243,156,18,0.3); white-space:nowrap;">⏳ Senza voto</span>`;
                     }
 
                     return `
-                    <label class="manual-voter-item flex items-center justify-between p-2 card" style="cursor:pointer; margin-bottom:0.35rem; text-align:left; background:var(--surface-color-light);" data-search-name="${escapeHtml(searchName)}">
+                    <label class="manual-voter-item" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-name="${escapeHtml(searchName)}">
                         <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
                             <input type="checkbox" name="manual-voter-checkbox" value="${a.uid}" class="manual-voter-checkbox" onchange="updateManualVotersSelectedCount()" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0;">
-                            <div style="flex:1; min-width:0;">
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(cleanName)} <span style="color:#10B981; font-size:0.75rem;">(🟢 Manuale)</span></div>
-                                <div style="font-size:0.75rem; color:var(--secondary-text); display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-top:0.1rem;">
-                                    <span>${dispMillesimi.toFixed(2)} ‰${isGroupScope ? ` (${escapeHtml(targetGroup)})` : ''}${unitText}</span>
+                            <div style="flex:1; min-width:0; overflow:hidden;">
+                                <!-- Riga 1: Nome -->
+                                <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${escapeHtml(cleanName)}
+                                </div>
+                                <!-- Riga 2: Tipologia & Stato Voto -->
+                                <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.15rem; flex-wrap:wrap;">
+                                    <span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">🟢 Manuale</span>
                                     ${currentVoteBadge}
                                 </div>
+                                <!-- Riga 3: Unità sotto la tipologia -->
+                                ${unitaStr ? `
+                                <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
+                                    Unità: ${escapeHtml(unitaStr)}${isGroupScope ? ` (${escapeHtml(targetGroup)})` : ''}
+                                </div>` : ''}
                             </div>
                         </div>
-                        <strong style="color:var(--warning); font-size:0.85rem; flex-shrink:0;">${dispMillesimi.toFixed(2)} ‰</strong>
+                        <div style="text-align:right; flex-shrink:0; min-width:65px; margin-left:0.5rem;">
+                            <strong style="color:var(--warning); font-size:0.85rem; white-space:nowrap;">${dispMillesimi.toFixed(2)} ‰</strong>
+                        </div>
                     </label>
                 `;
                 }).join('');
 
                 const modalContent = `
-                    <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" class="space-y-4" style="text-align:left;">
-                        <p style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:0.5rem;">
-                            Punto OdG: <strong>${escapeHtml(item.title)}</strong><br>
-                            ${isGroupScope ? `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; display:inline-block; margin-top:0.2rem;">🪜 Ambito: Condominio Parziale (${escapeHtml(targetGroup)})</span><br>` : ''}
-                            <span style="font-size:0.8rem; color:#10B981; font-weight:600;">ℹ️ Seleziona i condòmini senza smartphone aventi diritto per registrare o modificare il loro voto.</span>
-                        </p>
-                        
-                        <div>
-                            <label class="form-label" style="font-weight:700; margin-bottom:0.35rem; display:block;">1. Seleziona Espressione di Voto</label>
-                            <div style="display:flex; flex-direction:column; gap:0.45rem; width:100%; margin-top:0.25rem;">
-                                ${voteChoicesHtml}
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                        <form onsubmit="submitAdminManualVote(event, '${assemblyId}', '${itemId}')" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left; min-height: 0; height: 100%; overflow: hidden; gap: 0.4rem;">
+                            <div style="background: var(--surface-color); padding: 0.45rem 0.65rem; border-radius: 8px; border: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                                    <span style="font-size: 0.82rem; color: var(--primary-text); font-weight: 700;">
+                                        Punto OdG: <strong style="color: var(--accent-color);">${escapeHtml(item.title)}</strong>
+                                    </span>
+                                    ${isGroupScope ? `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.15rem 0.45rem; border-radius:4px; border:1px solid rgba(243,156,18,0.3);">🪜 ${escapeHtml(targetGroup)}</span>` : ''}
+                                </div>
                             </div>
-                        </div>
-
-                        <div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
-                                <label class="form-label" style="font-weight:700; margin:0;">2. Condòmini Aventi Diritto (${activeManualAttendees.length})</label>
-                                <label style="display:flex; align-items:center; gap:0.35rem; cursor:pointer; font-size:0.82rem; font-weight:700; color:var(--primary-text); margin:0;">
-                                    <input type="checkbox" id="manual-voter-select-all" onchange="toggleSelectAllNonVoters(this.checked)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
-                                    <span>Seleziona Tutti</span>
-                                    <span id="manual-voter-selected-count-badge" style="font-size:0.75rem; color:var(--accent-color); font-weight:700;"></span>
+                            
+                            <!-- SEZIONE 1: ESPRESSIONE DI VOTO -->
+                            <div class="card" style="margin: 0; padding: 0.55rem 0.65rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                                <label class="form-label" style="font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; display: block; color: var(--text-color);">
+                                    1. Seleziona Espressione di Voto
                                 </label>
+                                <div style="display: flex; flex-direction: column; gap: 0.3rem; width: 100%;">
+                                    ${voteChoicesHtml}
+                                </div>
                             </div>
-                            
-                            <input type="text" id="input-search-manual-voters" placeholder="🔍 Cerca condomino per nome, cognome o unità..." oninput="filterManualVotersList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.85rem; padding:0.4rem 0.6rem;" autofocus autocomplete="off">
-                            
-                            <div id="manual-voters-no-match-msg" class="message-box error hidden" style="font-size:0.8rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;">⚠️ Nessun condòmino corrispondente trovato.</div>
 
-                            <div id="manual-voters-list-container" style="max-height:200px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
-                                ${votersCheckboxesHtml}
+                            <!-- SEZIONE 2: CONDOMINI AVENTI DIRITTO -->
+                            <div style="display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; flex-wrap: wrap; gap: 0.35rem; flex-shrink: 0;">
+                                    <label class="form-label" style="font-weight: 700; font-size: 0.82rem; margin: 0; color: var(--text-color);">
+                                        2. Condòmini Aventi Diritto <span id="manual-voters-total-count-badge" style="color: var(--accent-color); font-size: 0.75rem; font-weight: 600;">(${activeManualAttendees.length} presenti)</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.78rem; font-weight: 700; color: var(--primary-text); margin: 0; background: var(--surface-color-light); padding: 0.18rem 0.45rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;">
+                                        <input type="checkbox" id="manual-voter-select-all" onchange="toggleSelectAllNonVoters(this.checked)" style="accent-color: var(--accent-color); width: 15px; height: 15px; cursor: pointer;">
+                                        <span>Seleziona Tutti</span>
+                                        <span id="manual-voter-selected-count-badge" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 700;"></span>
+                                    </label>
+                                </div>
+                                
+                                <input type="text" id="input-search-manual-voters" placeholder="🔍 Cerca condomino per nome, cognome o unità..." oninput="filterManualVotersList(this.value)" class="form-input" style="margin-bottom: 0.25rem; font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px; flex-shrink: 0;" autofocus autocomplete="off">
+                                
+                                <div id="manual-voters-no-match-msg" class="message-box error hidden" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; margin-bottom: 0.25rem; flex-shrink: 0;">⚠️ Nessun condòmino corrispondente trovato.</div>
+
+                                <div id="manual-voters-list-container" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
+                                    ${votersCheckboxesHtml}
+                                </div>
                             </div>
-                        </div>
 
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
-                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" id="btn-submit-manual-vote" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Salva</button>
-                        </div>
-                    </form>
+                            <!-- BARRA AZIONI BOTTOM -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
+                                <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                                    <span>Indietro</span>
+                                </button>
+                                <button type="submit" id="btn-submit-manual-vote" class="btn btn-primary" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
+                                    <span>Salva Voti</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 `;
-                showModal('Voti manuali', modalContent);
+                showModal('Voti manuali', modalContent, true);
 
             } catch (err) {
                 console.error("Errore apertura modal voto manuale admin:", err);
@@ -21638,10 +21730,10 @@ ${renderBottomNavigation()}
             const submitBtn = document.getElementById('btn-submit-manual-vote');
 
             if (badge) {
-                badge.textContent = count > 0 ? `(${count} selezionati)` : '';
+                badge.textContent = count > 0 ? `(${count})` : '';
             }
             if (submitBtn) {
-                submitBtn.textContent = count > 0 ? `Salva (${count})` : `Salva`;
+                submitBtn.textContent = count > 0 ? `Salva Voti (${count})` : `Salva Voti`;
             }
         };
 
