@@ -1084,7 +1084,7 @@
 
         .modal-close-btn {
             position: absolute;
-            right: 0;
+            right: 0.65rem;
             top: 50%;
             transform: translateY(-50%);
             background: none;
@@ -1092,6 +1092,10 @@
             color: var(--secondary-text);
             font-size: 1.5rem;
             cursor: pointer;
+            padding: 0.25rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* Stili per modali personalizzati (alert, confirm, prompt) */
@@ -1291,11 +1295,19 @@
         }
 
         /* Stili per il modal a schermo intero */
+        /* Stili per il modal a schermo intero */
         .modal-overlay.fullscreen-notification {
             padding: 0;
             align-items: stretch;
             background: var(--bg-color, #121212);
             z-index: 2100;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
         }
 
         .modal-overlay.fullscreen-notification .modal-content {
@@ -1304,9 +1316,10 @@
             max-height: 100vh !important;
             height: 100vh !important;
             border-radius: 0 !important;
+            border: none !important;
             display: flex;
             flex-direction: column;
-            padding: 1.25rem 1rem 2rem 1rem !important;
+            padding: 0 0 1.5rem 0 !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
             box-sizing: border-box;
@@ -1315,34 +1328,57 @@
 
         .modal-overlay.fullscreen-notification .modal-header {
             flex-shrink: 0;
-            padding-bottom: 0.75rem;
-            margin-bottom: 0.75rem;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0;
             border-bottom: 1px solid var(--surface-color-light);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: var(--surface-color, #1e1e1e);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .modal-overlay.fullscreen-notification .modal-title {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             font-weight: 800;
-            text-align: center;
+            text-align: left;
             flex: 1;
-            padding: 0 0.5rem;
+            padding: 0;
             white-space: normal;
             word-break: break-word;
+            margin: 0;
+        }
+
+        .modal-overlay.fullscreen-notification .modal-close-btn {
+            position: static;
+            transform: none;
+            margin-right: 0.75rem;
+            font-size: 1.55rem;
+            color: var(--secondary-text);
+            padding: 0.25rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal-overlay.fullscreen-notification .modal-body {
             flex: 1;
             display: flex;
             flex-direction: column;
+            padding: 1rem;
             overflow-y: visible !important;
+            box-sizing: border-box;
         }
 
         @media (max-width: 768px) {
             .modal-overlay.fullscreen-notification .modal-content {
-                padding: 1rem 0.75rem 2rem 0.75rem !important;
+                padding: 0 0 1.5rem 0 !important;
+            }
+
+            .modal-overlay.fullscreen-notification .modal-body {
+                padding: 0.85rem 0.75rem;
             }
         }
 
@@ -2300,7 +2336,7 @@
             }
             modalContainer.classList.remove('hidden');
 
-            // Supporto al tasto "Indietro" del telefono / browser
+            // Supporto al tasto "Indietro" di sistema (telefono Android / browser)
             if (!isModalHistoryPushed) {
                 history.pushState({ modalOpen: true }, '', window.location.hash || '#');
                 isModalHistoryPushed = true;
@@ -16855,7 +16891,7 @@ ${renderBottomNavigation()}
                     if (isOnlyPartial && relevantGroups.length > 0) {
                         subtitleEl.textContent = `Validità seduta • Condominio Parziale (${relevantGroups.join(', ')})`;
                     } else {
-                        subtitleEl.textContent = 'Verifica presenze e validità della seduta assembleare';
+                        subtitleEl.textContent = 'Verifica presenze e validità assemblea';
                     }
                 }
 
@@ -17093,7 +17129,7 @@ ${renderBottomNavigation()}
                                             <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
                                                 <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Teste presenti</span>
                                                 <strong style="display: block; font-size: 0.98rem; color: var(--accent-color); font-weight: 800; margin: 0.1rem 0;">
-                                                    ${presentHeadsCount} su ${totalGroupHeads} Teste
+                                                    ${presentHeadsCount} su ${totalGroupHeads} Teste totali
                                                 </strong>
                                                 <span style="font-size: 0.68rem; color: var(--secondary-text);">min. ${requiredHeads} teste (1/3)</span>
                                             </div>
@@ -17874,6 +17910,182 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.getUnifiedCondominiumRegistry = async () => {
+            // 1. Fetch registered users from Firestore
+            const usersSnapshot = await getDocs(query(collection(db, "users")));
+            const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            const registeredCondomini = registeredUsers.filter(u =>
+                ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)
+            );
+
+            // 2. Fetch imported general anagrafica (Supervisore > Importa dati millesimi)
+            let importedRows = [];
+            try {
+                const importedSnapshot = await getDocs(collection(db, "importedData"));
+                if (!importedSnapshot.empty) {
+                    const sortedDocs = importedSnapshot.docs.map(d => d.data()).sort((a, b) => {
+                        const tA = a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : (a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0);
+                        const tB = b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : (b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0);
+                        if (tB !== tA) return tB - tA;
+                        return (b.tableData?.length || 0) - (a.tableData?.length || 0);
+                    });
+                    importedRows = sortedDocs[0]?.tableData || [];
+                }
+            } catch (errImp) {
+                console.warn("Recupero importedData fallback:", errImp);
+            }
+
+            // 3. Build unified registry map
+            const normalize = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+            const registryMap = new Map();
+
+            if (importedRows && importedRows.length > 0) {
+                const headers = Object.keys(importedRows[0] || {});
+                const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
+
+                const findH = (keys) => {
+                    let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
+                    if (found) return found;
+                    found = headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase())));
+                    return found || null;
+                };
+
+                const fullNominativoHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+                const cognomeHeader = findH(['cognome']);
+                const nomeHeader = findH(['nome']);
+                const unitaHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
+                const millesimiHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+                const groupHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
+
+                importedRows.forEach((row) => {
+                    let rawNom = '';
+                    if (fullNominativoHeader && row[fullNominativoHeader] !== undefined && row[fullNominativoHeader] !== null) {
+                        rawNom = row[fullNominativoHeader].toString().trim();
+                    } else if (cognomeHeader || nomeHeader) {
+                        const c = cognomeHeader ? (row[cognomeHeader] || '').toString().trim() : '';
+                        const n = nomeHeader ? (row[nomeHeader] || '').toString().trim() : '';
+                        rawNom = `${c} ${n}`.trim();
+                    } else if (headers.length > 0) {
+                        rawNom = (row[headers[0]] || '').toString().trim();
+                    }
+
+                    if (!rawNom) return;
+
+                    const normKey = normalize(rawNom);
+                    if (!normKey) return;
+
+                    let rawMil = '0';
+                    if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
+                        rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                    }
+                    const milVal = parseFloat(rawMil) || 0;
+                    const unitaVal = unitaHeader && row[unitaHeader] !== undefined && row[unitaHeader] !== null ? row[unitaHeader].toString().trim() : '';
+                    const rowGroup = groupHeader && row[groupHeader] ? row[groupHeader].toString().trim() : '';
+
+                    if (!registryMap.has(normKey)) {
+                        registryMap.set(normKey, {
+                            id: 'anagrafica_' + encodeURIComponent(normKey).replace(/%/g, '_'),
+                            nominativo: rawNom,
+                            nome: rawNom,
+                            cognome: '',
+                            millesimiTotali: 0,
+                            unitaImmobiliare: [],
+                            proprieta: [],
+                            gruppo: rowGroup,
+                            isRegistered: false,
+                            email: '',
+                            tipoUtente: 'condomino'
+                        });
+                    }
+
+                    const entry = registryMap.get(normKey);
+                    entry.millesimiTotali += milVal;
+                    if (unitaVal && !entry.unitaImmobiliare.includes(unitaVal)) {
+                        entry.unitaImmobiliare.push(unitaVal);
+                        entry.proprieta.push({
+                            interno: unitaVal,
+                            millesimi: milVal,
+                            gruppo: rowGroup
+                        });
+                    }
+                    if (rowGroup && !entry.gruppo) {
+                        entry.gruppo = rowGroup;
+                    }
+                });
+            }
+
+            // Match and merge with registered users
+            registeredCondomini.forEach(u => {
+                const userFullName = `${u.cognome || ''} ${u.nome || ''}`.trim() || u.nome || '';
+                const userNorm = normalize(userFullName);
+                const userReverseNorm = normalize(`${u.nome || ''} ${u.cognome || ''}`);
+
+                let matchedKey = null;
+                if (registryMap.has(userNorm)) matchedKey = userNorm;
+                else if (registryMap.has(userReverseNorm)) matchedKey = userReverseNorm;
+                else {
+                    for (const k of registryMap.keys()) {
+                        if (k.length > 3 && (userNorm.includes(k) || k.includes(userNorm))) {
+                            matchedKey = k;
+                            break;
+                        }
+                    }
+                }
+
+                if (matchedKey) {
+                    const existing = registryMap.get(matchedKey);
+                    existing.registeredUid = u.id;
+                    existing.id = u.id;
+                    existing.nome = u.nome || existing.nome;
+                    existing.cognome = u.cognome || existing.cognome;
+                    existing.email = u.email || '';
+                    existing.isRegistered = true;
+                    existing.tipoUtente = u.tipoUtente || 'condomino';
+                    if (u.millesimiTotali && u.millesimiTotali > 0) {
+                        existing.millesimiTotali = u.millesimiTotali;
+                    }
+                    if (u.unitaImmobiliare) {
+                        const uUnitaList = Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare];
+                        uUnitaList.forEach(un => {
+                            if (un && !existing.unitaImmobiliare.includes(un)) existing.unitaImmobiliare.push(un);
+                        });
+                    }
+                    if (u.proprieta && Array.isArray(u.proprieta)) {
+                        existing.proprieta = u.proprieta;
+                        u.proprieta.forEach(p => {
+                            if (p.interno && !existing.unitaImmobiliare.includes(p.interno)) existing.unitaImmobiliare.push(p.interno);
+                            if (p.gruppo && !existing.gruppo) existing.gruppo = p.gruppo;
+                        });
+                    }
+                } else {
+                    registryMap.set(userNorm || u.id, {
+                        id: u.id,
+                        nominativo: userFullName,
+                        nome: u.nome || '',
+                        cognome: u.cognome || '',
+                        millesimiTotali: u.millesimiTotali || 0,
+                        unitaImmobiliare: u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare]) : (u.proprieta ? u.proprieta.map(p => p.interno) : []),
+                        proprieta: u.proprieta || [],
+                        gruppo: (u.proprieta && u.proprieta[0]?.gruppo) ? u.proprieta[0].gruppo : '',
+                        isRegistered: true,
+                        email: u.email || '',
+                        tipoUtente: u.tipoUtente || 'condomino'
+                    });
+                }
+            });
+
+            const unifiedList = Array.from(registryMap.values()).map(d => ({
+                ...d,
+                unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
+            })).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
+
+            return {
+                allCondomini: unifiedList,
+                registeredCondomini: registeredCondomini,
+                registeredUsers: registeredUsers
+            };
+        };
+
         window.openManualAttendanceModal = async () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             if (!assemblyId) return;
@@ -17885,11 +18097,19 @@ ${renderBottomNavigation()}
                 const assembly = docSnap.data();
                 const attendees = assembly.attendees || [];
 
-                const snapshot = await getDocs(query(collection(db, "users")));
-                const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                const { allCondomini, registeredUsers } = await window.getUnifiedCondominiumRegistry();
 
-                let availableUsers = allUsers
-                    .filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) && !attendees.some(a => a.uid === u.id && a.status !== 'uscito'));
+                let availableUsers = allCondomini.filter(u => {
+                    const isPresent = attendees.some(a => {
+                        if (a.status === 'uscito') return false;
+                        if (a.uid === u.id) return true;
+                        if (u.registeredUid && a.uid === u.registeredUid) return true;
+                        const uNom = (u.nominativo || `${u.cognome || ''} ${u.nome || ''}`).toLowerCase().trim();
+                        if (a.nome && uNom && a.nome.toLowerCase().trim() === uNom) return true;
+                        return false;
+                    });
+                    return !isPresent;
+                });
 
                 // Se l'assemblea è esclusivamente a Condominio Parziale, proponi solo i condomini del gruppo interessato
                 const agendaList = assembly.agenda || [];
@@ -17906,8 +18126,12 @@ ${renderBottomNavigation()}
                     });
                     if (relevantGroupsSet.size > 0) {
                         const partialFiltered = availableUsers.filter(u => {
-                            const props = u.proprieta || [];
-                            return props.some(p => p.gruppo && relevantGroupsSet.has(p.gruppo.trim().toLowerCase()));
+                            const matchedUser = registeredUsers.find(ru => ru.id === u.id || ru.id === u.registeredUid);
+                            const props = (u.proprieta && u.proprieta.length > 0) ? u.proprieta : (matchedUser?.proprieta || []);
+                            const matchProp = props.some(p => p.gruppo && relevantGroupsSet.has(p.gruppo.trim().toLowerCase()));
+                            if (matchProp) return true;
+                            if (u.gruppo && relevantGroupsSet.has(u.gruppo.trim().toLowerCase())) return true;
+                            return false;
                         });
                         if (partialFiltered.length > 0) {
                             availableUsers = partialFiltered;
@@ -17916,65 +18140,87 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                availableUsers.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
-
                 if (availableUsers.length === 0) {
-                    await customAlert(`Tutti i condomini/consiglieri ${partialSubtitleText ? 'del gruppo ' : ''}sono già registrati come presenti o non ne sono stati trovati.`);
+                    await customAlert(`Tutti i condomini/consiglieri ${partialSubtitleText ? 'del gruppo ' : ''}sono già registrati come presenti o non ne sono stati trovati in anagrafica.`);
                     return;
                 }
 
                 const renderCardsHtml = (usersList) => {
                     if (usersList.length === 0) {
-                        return `<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini e consiglieri ${partialSubtitleText ? 'del gruppo ' : ''}risultano accreditati come presenti.</div>`;
+                        return `<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini ${partialSubtitleText ? 'del gruppo ' : ''}risultano accreditati come presenti.</div>`;
                     }
-                    return usersList.map((u, idx) => `
-                        <label class="manual-attendee-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
-                            <div style="display:flex; align-items:center; gap:0.6rem;">
-                                <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
-                                <div>
-                                    <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} <span style="font-size:0.75rem; color:var(--accent-color); font-weight:600;">(${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span></div>
-                                    <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                    return usersList.map((u, idx) => {
+                        const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
+                        return `
+                        <label class="manual-attendee-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + (u.unitaStr || '')).toLowerCase())}">
+                            <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                                <input type="radio" name="manual-attendee-radio" value="${u.id}" data-attendee-json="${escapeHtml(JSON.stringify(u))}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 0 ? 'checked' : ''}>
+                                <div style="flex:1; min-width:0; overflow:hidden;">
+                                    <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                        ${escapeHtml(uDisplayName)}
+                                    </div>
+                                    <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
+                                        ${u.isRegistered
+                                ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App (${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span>`
+                                : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                                    </div>
+                                    ${u.unitaStr ? `
+                                    <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
+                                        Unità: ${escapeHtml(u.unitaStr)}
+                                    </div>` : ''}
                                 </div>
                             </div>
-                            <strong style="color:var(--warning); font-size:0.85rem;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                            <div style="text-align:right; flex-shrink:0; min-width:65px; margin-left:0.5rem;">
+                                <strong style="color:var(--warning); font-size:0.85rem; white-space:nowrap;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                            </div>
                         </label>
-                    `).join('');
+                    `}).join('');
                 };
 
                 const modalContent = `
-                    <div style="position: relative; text-align: left; width: 100%; min-height: 380px;">
-                        <!-- OVERLAY POPUP DI FEEDBACK (SIMILE AL QR SCANNER) -->
-                        <div id="manual-attendance-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box; border-radius: 10px;"></div>
+                    <div style="position: relative; text-align: left; width: 100%; display: flex; flex-direction: column; flex: 1; min-height: calc(100vh - 120px);">
+                        <!-- OVERLAY POPUP DI FEEDBACK -->
+                        <div id="manual-attendance-feedback-popup" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 2500; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); padding: 1rem; box-sizing: border-box;"></div>
 
-                        <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-3" style="text-align:left;">
-                            <p style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.35rem;">
-                                Registra manualmente la presenza di un condomino${partialSubtitleText ? ` per ${escapeHtml(partialSubtitleText)}` : ''}. Puoi effettuare registrazioni sequenziali rapide.
-                            </p>
+                        <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1; text-align: left; gap: 0.5rem;">
+                            <div style="background: var(--surface-color); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--surface-color-light);">
+                                <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0; line-height: 1.3;">
+                                    Accredita presenza da anagrafica generale${partialSubtitleText ? ` (${escapeHtml(partialSubtitleText)})` : ''}.
+                                </p>
+                            </div>
 
-                            <!-- FEEDBACK NOTIFICA INLINE (PERSISTENZA FORM SENZA REDIRECT) -->
-                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem; margin-bottom:0.4rem;"></div>
+                            <!-- FEEDBACK NOTIFICA INLINE -->
+                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem;"></div>
 
-                            <div>
-                                <label class="form-label" style="font-weight:700; font-size:0.85rem; margin-bottom:0.25rem;">🔍 Digita nome o cognome condomino/consigliere</label>
-                                <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare cognome o nome..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.88rem; padding:0.45rem 0.7rem;" autofocus autocomplete="off">
+                            <div style="display: flex; flex-direction: column; flex: 1;">
+                                <label class="form-label" style="font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Condòmino da accreditare</span>
+                                    <span id="manual-attendees-count-badge" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 600;">${availableUsers.length} disponibili</span>
+                                </label>
+                                <input type="text" id="input-search-manual-attendee" placeholder="🔍 Cerca per cognome, nome, int..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom: 0.45rem; font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autofocus autocomplete="off">
                                 
-                                <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom:0.4rem; font-size:0.82rem; padding:0.4rem 0.6rem;">⚠️ Condomino o consigliere non trovato in anagrafica.</div>
+                                <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom: 0.4rem; font-size: 0.82rem; padding: 0.4rem 0.6rem;">⚠️ Condomino non trovato in anagrafica.</div>
 
-                                <div id="container-manual-attendees-list" style="max-height:220px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                                <div id="container-manual-attendees-list" style="flex: 1; min-height: 280px; max-height: calc(100vh - 270px); overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
                                     ${renderCardsHtml(availableUsers)}
                                 </div>
                             </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:0.85rem; width:100%;">
-                                <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Chiudi</button>
-                                <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light); width: 100%;">
+                                <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                                    <span>Indietro</span>
+                                </button>
+                                <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
+                                    <span>Salva Presenza</span>
+                                </button>
                             </div>
                         </form>
                     </div>
                 `;
-                showModal('Registra Presenza Manuale', modalContent);
+                showModal('Registra Presenza Manuale', modalContent, true);
             } catch (error) {
                 console.error("Errore apertura modal presenza:", error);
-                await customAlert("Errore durante il caricamento dei condomini.");
+                await customAlert("Errore durante il caricamento dell'anagrafica condomini.");
             }
         };
 
@@ -18003,7 +18249,7 @@ ${renderBottomNavigation()}
 
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
-                const isMatch = text.includes(q);
+                const isMatch = !q || text.includes(q);
                 if (isMatch) {
                     card.style.display = 'flex';
                     visibleCount++;
@@ -18054,16 +18300,34 @@ ${renderBottomNavigation()}
                     submitBtn.textContent = 'Salvataggio...';
                 }
 
-                const assemblyRef = doc(db, "assemblies", assemblyId);
-                const userDoc = await getDoc(doc(db, "users", userId));
-                if (!userDoc.exists()) throw new Error("Utente non trovato.");
-                const user = userDoc.data();
+                let attendeeData = null;
+                const attendeeJsonStr = selectedRadio.getAttribute('data-attendee-json');
+                if (attendeeJsonStr) {
+                    try { attendeeData = JSON.parse(attendeeJsonStr); } catch (e) { }
+                }
+                if (!attendeeData) {
+                    const userDoc = await getDoc(doc(db, "users", userId));
+                    if (userDoc.exists()) {
+                        attendeeData = { id: userDoc.id, ...userDoc.data(), isRegistered: true };
+                    }
+                }
+                if (!attendeeData) throw new Error("Dati condomino non trovati.");
 
+                const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
                 const assembly = docSnap.data();
                 const attendees = assembly.attendees || [];
 
-                const existingAttendeeIndex = attendees.findIndex(a => a.uid === userId);
+                const userFullName = (attendeeData.nominativo || `${attendeeData.cognome || ''} ${attendeeData.nome || ''}`).trim();
+
+                const existingAttendeeIndex = attendees.findIndex(a => {
+                    if (a.status === 'uscito') return false;
+                    if (a.uid === attendeeData.id) return true;
+                    if (attendeeData.registeredUid && a.uid === attendeeData.registeredUid) return true;
+                    if (a.nome && userFullName && a.nome.toLowerCase().trim() === userFullName.toLowerCase().trim()) return true;
+                    return false;
+                });
+
                 if (existingAttendeeIndex !== -1 && attendees[existingAttendeeIndex].status !== 'uscito') {
                     const fPopup = document.getElementById("manual-attendance-feedback-popup");
                     if (fPopup) {
@@ -18071,36 +18335,46 @@ ${renderBottomNavigation()}
                         fPopup.style.display = 'flex';
                         fPopup.classList.remove('hidden');
                         fPopup.innerHTML = `
-                            <div style="background:var(--surface-color); border:2px solid var(--warning); border-radius:12px; padding:1.2rem 1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:290px; box-sizing:border-box;">
-                                <div style="font-size:2.2rem; line-height:1; margin-bottom:0.35rem;">⚠️</div>
-                                <div style="font-size:0.75rem; font-weight:800; color:var(--warning); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.35rem;">Già Presente</div>
-                                <div style="font-size:0.95rem; font-weight:700; color:var(--primary-text); margin-bottom:0.85rem; line-height:1.3;">
-                                    Il condòmino <strong>${escapeHtml(user.nome)} ${escapeHtml(user.cognome)}</strong> risulta già accreditato come presente in aula.
+                            <div style="background: rgba(28, 24, 18, 0.96); border: 1.5px solid rgba(243, 156, 18, 0.45); border-radius: 14px; padding: 1.3rem 1.1rem; box-shadow: 0 16px 36px rgba(0,0,0,0.65), 0 0 24px rgba(243,156,18,0.18); text-align: center; width: 100%; max-width: 295px; box-sizing: border-box; backdrop-filter: blur(8px);">
+                                <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(243, 156, 18, 0.15); border: 2px solid var(--warning); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.65rem; color: var(--warning); font-size: 1.4rem; font-weight: 800;">⚠️</div>
+                                <div style="font-size: 0.72rem; font-weight: 800; color: var(--warning); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.25rem;">Già Presente</div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.35rem; line-height: 1.3;">
+                                    ${escapeHtml(userFullName)}
                                 </div>
-                                <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-secondary" style="width:100%; height:38px; font-weight:600; font-size:0.85rem; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                                    <span>✕ Chiudi</span>
+                                <div style="font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 0.95rem;">
+                                    Il condòmino risulta già accreditato in aula.
+                                </div>
+                                <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-secondary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                    <span>Continua ➔</span>
                                 </button>
                             </div>
                         `;
                     } else if (errorMsg) {
-                        errorMsg.textContent = `Il condomino ${user.nome} ${user.cognome} è già accreditato come presente in aula.`;
+                        errorMsg.textContent = `Il condomino ${userFullName} è già accreditato come presente in aula.`;
                         errorMsg.classList.remove('hidden');
                     } else {
-                        await customAlert(`Il condomino ${user.nome} ${user.cognome} è già accreditato come presente in aula.`);
+                        await customAlert(`Il condomino ${userFullName} è già accreditato come presente in aula.`);
                     }
                     if (submitBtn) {
                         submitBtn.disabled = false;
-                        submitBtn.textContent = 'Registra Presenza';
+                        submitBtn.textContent = 'Salva Presenza';
                     }
                     return;
                 }
 
-                let totalMillesimiAccreditati = parseFloat(user.millesimiTotali) || 0;
-                if (totalMillesimiAccreditati <= 0 && Array.isArray(user.proprieta)) {
-                    totalMillesimiAccreditati = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                let totalMillesimiAccreditati = parseFloat(attendeeData.millesimiTotali) || 0;
+                if (totalMillesimiAccreditati <= 0 && Array.isArray(attendeeData.proprieta)) {
+                    totalMillesimiAccreditati = attendeeData.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
                 }
 
-                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === userId && p.status !== 'rejected');
+                const heldProxies = (assembly.proxies || []).filter(p =>
+                    p.status !== 'rejected' && (
+                        p.delegateId === attendeeData.id ||
+                        (attendeeData.registeredUid && p.delegateId === attendeeData.registeredUid) ||
+                        (p.delegateName && userFullName && p.delegateName.toLowerCase().trim() === userFullName.toLowerCase().trim())
+                    )
+                );
+
                 let proxyNoticeText = '';
                 if (heldProxies.length > 0) {
                     heldProxies.forEach(p => {
@@ -18109,7 +18383,6 @@ ${renderBottomNavigation()}
                     proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
                 }
 
-                const userFullName = `${user.nome} ${user.cognome}`.trim();
                 let updatedAttendees = [...attendees];
 
                 if (existingAttendeeIndex !== -1) {
@@ -18124,14 +18397,16 @@ ${renderBottomNavigation()}
                     };
                 } else {
                     const newAttendee = {
-                        uid: userId,
+                        uid: attendeeData.id,
                         nome: `${userFullName}${proxyNoticeText}`,
-                        cognome: user.cognome || '',
+                        cognome: attendeeData.cognome || '',
                         millesimi: totalMillesimiAccreditati,
-                        proprieta: user.proprieta || [],
+                        proprieta: attendeeData.proprieta || (attendeeData.unitaImmobiliare ? attendeeData.unitaImmobiliare.map(u => ({ interno: u, millesimi: totalMillesimiAccreditati, gruppo: attendeeData.gruppo || '' })) : []),
+                        unitaImmobiliare: attendeeData.unitaImmobiliare || [],
                         heldProxiesCount: heldProxies.length,
                         status: 'presente',
                         isManual: true,
+                        isAnagraficaOnly: !attendeeData.isRegistered,
                         registrationType: 'manual',
                         joinedAt: Date.now()
                     };
@@ -18151,35 +18426,45 @@ ${renderBottomNavigation()}
                     fPopup.style.display = 'flex';
                     fPopup.classList.remove('hidden');
                     fPopup.innerHTML = `
-                        <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.2rem 1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:290px; box-sizing:border-box;">
-                            <div style="font-size:2.2rem; line-height:1; margin-bottom:0.35rem;">✅</div>
-                            <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.35rem;">Presenza Convalidata</div>
-                            <div style="font-size:1.05rem; font-weight:800; color:var(--primary-text); margin-bottom:0.35rem; line-height:1.3;">
-                                Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è accreditato
+                        <div style="background: rgba(18, 26, 23, 0.96); border: 1.5px solid rgba(16, 185, 129, 0.45); border-radius: 14px; padding: 1.3rem 1.1rem; box-shadow: 0 16px 36px rgba(0,0,0,0.65), 0 0 24px rgba(16,185,129,0.18); text-align: center; width: 100%; max-width: 295px; box-sizing: border-box; backdrop-filter: blur(8px);">
+                            <div style="width: 46px; height: 46px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.65rem; color: #10B981; font-size: 1.4rem; font-weight: 800;">✓</div>
+                            <div style="font-size: 0.72rem; font-weight: 800; color: #10B981; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.25rem;">Presenza Convalidata</div>
+                            <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.35rem; line-height: 1.3;">
+                                ${escapeHtml(userFullName)}
                             </div>
-                            <div style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:0.9rem;">
-                                Millesimi in aula: <strong style="color:var(--warning); font-size:0.95rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
-                                ${proxyNoticeText ? `<div style="font-size:0.78rem; color:var(--accent-color); font-weight:600; margin-top:0.25rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
+                            <div style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.95rem;">
+                                Millesimi in aula: <strong style="color: var(--warning); font-size: 0.95rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
+                                ${proxyNoticeText ? `<div style="font-size: 0.78rem; color: var(--accent-color); font-weight: 600; margin-top: 0.2rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
                             </div>
-                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.88rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
-                                <span>✕ Chiudi / Prossima Registrazione</span>
+                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; background: #10B981; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+                                <span>Continua ➔</span>
                             </button>
                         </div>
                     `;
                 }
 
                 if (successMsg) {
-                    successMsg.innerHTML = `✅ Presenza <strong>${existingAttendeeIndex !== -1 ? 'riattivata (rientro)' : 'registrata'}</strong>: <span style="color:#10B981; font-weight:700;">${escapeHtml(userFullName)}</span> (${totalMillesimiAccreditati.toFixed(2)} ‰)`;
+                    successMsg.innerHTML = `✅ Presenza <strong>${existingAttendeeIndex !== -1 ? 'riattivata' : 'registrata'}</strong>: <span style="color:#10B981; font-weight:700;">${escapeHtml(userFullName)}</span> (${totalMillesimiAccreditati.toFixed(2)} ‰)`;
                     successMsg.classList.remove('hidden');
                 }
                 if (errorMsg) errorMsg.classList.add('hidden');
 
-                // Ricarica condomini disponibili aggiornati
-                const usersSnap = await getDocs(query(collection(db, "users")));
-                const allUsersUpdated = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                let remainingAvailable = allUsersUpdated
-                    .filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) && !updatedAttendees.some(a => a.uid === u.id && a.status !== 'uscito'));
+                // Ricarica condomini disponibili aggiornati da tutta l'anagrafica
+                const { allCondomini: allUpdatedCondomini, registeredUsers: updatedRegUsers } = await window.getUnifiedCondominiumRegistry();
+                let remainingAvailable = allUpdatedCondomini.filter(u => {
+                    const isPresent = updatedAttendees.some(a => {
+                        if (a.status === 'uscito') return false;
+                        if (a.uid === u.id) return true;
+                        if (u.registeredUid && a.uid === u.registeredUid) return true;
+                        const uNom = (u.nominativo || `${u.cognome || ''} ${u.nome || ''}`).toLowerCase().trim();
+                        if (a.nome && uNom && a.nome.toLowerCase().trim() === uNom) return true;
+                        return false;
+                    });
+                    return !isPresent;
+                });
 
+                const agendaList = assembly.agenda || [];
+                const isOnlyPartialAssembly = agendaList.length > 0 && agendaList.every(item => ['scale', 'gruppo'].includes(item.scope));
                 if (isOnlyPartialAssembly) {
                     const relevantGroupsSet = new Set();
                     agendaList.forEach(item => {
@@ -18191,31 +18476,47 @@ ${renderBottomNavigation()}
                     });
                     if (relevantGroupsSet.size > 0) {
                         remainingAvailable = remainingAvailable.filter(u => {
-                            const props = u.proprieta || [];
-                            return props.some(p => p.gruppo && relevantGroupsSet.has(p.gruppo.trim().toLowerCase()));
+                            const matchedUser = updatedRegUsers.find(ru => ru.id === u.id || ru.id === u.registeredUid);
+                            const props = (u.proprieta && u.proprieta.length > 0) ? u.proprieta : (matchedUser?.proprieta || []);
+                            const matchProp = props.some(p => p.gruppo && relevantGroupsSet.has(p.gruppo.trim().toLowerCase()));
+                            if (matchProp) return true;
+                            if (u.gruppo && relevantGroupsSet.has(u.gruppo.trim().toLowerCase())) return true;
+                            return false;
                         });
                     }
                 }
 
-                remainingAvailable.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
-
                 if (listContainer) {
                     if (remainingAvailable.length === 0) {
-                        listContainer.innerHTML = `<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini e consiglieri ${isOnlyPartialAssembly ? 'del gruppo ' : ''}risultano accreditati come presenti.</div>`;
+                        listContainer.innerHTML = `<div style="color:var(--secondary-text); font-size:0.85rem; padding:0.75rem; text-align:center;">Tutti i condòmini ${isOnlyPartialAssembly ? 'del gruppo ' : ''}risultano accreditati come presenti.</div>`;
                         if (submitBtn) submitBtn.disabled = true;
                     } else {
-                        listContainer.innerHTML = remainingAvailable.map((u, idx) => `
-                            <label class="manual-attendee-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.unitaImmobiliare || '')).toLowerCase())}">
-                                <div style="display:flex; align-items:center; gap:0.6rem;">
-                                    <input type="radio" name="manual-attendee-radio" value="${u.id}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px;" ${idx === 0 ? 'checked' : ''}>
-                                    <div>
-                                        <div style="font-weight:700; font-size:0.9rem; color:var(--text-color);">${escapeHtml(u.cognome || '')} ${escapeHtml(u.nome || '')} <span style="font-size:0.75rem; color:var(--accent-color); font-weight:600;">(${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span></div>
-                                        <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${u.unitaImmobiliare ? '• Unità: ' + escapeHtml(u.unitaImmobiliare) : ''}</div>
+                        listContainer.innerHTML = remainingAvailable.map((u, idx) => {
+                            const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
+                            return `
+                            <label class="manual-attendee-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + (u.unitaStr || '')).toLowerCase())}">
+                                <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                                    <input type="radio" name="manual-attendee-radio" value="${u.id}" data-attendee-json="${escapeHtml(JSON.stringify(u))}" class="manual-attendee-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 0 ? 'checked' : ''}>
+                                    <div style="flex:1; min-width:0; overflow:hidden;">
+                                        <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                            ${escapeHtml(uDisplayName)}
+                                        </div>
+                                        <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
+                                            ${u.isRegistered
+                                    ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App (${u.tipoUtente === 'consigliere' ? 'Consigliere' : 'Condòmino'})</span>`
+                                    : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                                        </div>
+                                        ${u.unitaStr ? `
+                                        <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
+                                            Unità: ${escapeHtml(u.unitaStr)}
+                                        </div>` : ''}
                                     </div>
                                 </div>
-                                <strong style="color:var(--warning); font-size:0.85rem;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                                <div style="text-align:right; flex-shrink:0; min-width:65px; margin-left:0.5rem;">
+                                    <strong style="color:var(--warning); font-size:0.85rem; white-space:nowrap;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                                </div>
                             </label>
-                        `).join('');
+                        `}).join('');
                         if (submitBtn) submitBtn.disabled = false;
                     }
                 }
@@ -18226,7 +18527,7 @@ ${renderBottomNavigation()}
                 }
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Registra Presenza';
+                    submitBtn.textContent = 'Salva Presenza';
                 }
 
             } catch (error) {
@@ -18239,8 +18540,85 @@ ${renderBottomNavigation()}
                 }
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Registra Presenza';
+                    submitBtn.textContent = 'Salva Presenza';
                 }
+            }
+        };
+
+        window.toggleProxySection = (sectionName) => {
+            const delegatorBody = document.getElementById('proxy-delegator-body');
+            const delegateBody = document.getElementById('proxy-delegate-body');
+            const delegatorChevron = document.getElementById('proxy-delegator-chevron');
+            const delegateChevron = document.getElementById('proxy-delegate-chevron');
+
+            if (sectionName === 'delegator') {
+                if (!delegatorBody) return;
+                const isHidden = delegatorBody.classList.contains('hidden');
+                if (isHidden) {
+                    delegatorBody.classList.remove('hidden');
+                    if (delegatorChevron) delegatorChevron.style.transform = 'rotate(180deg)';
+                } else {
+                    delegatorBody.classList.add('hidden');
+                    if (delegatorChevron) delegatorChevron.style.transform = 'rotate(0deg)';
+                }
+            } else if (sectionName === 'delegate') {
+                if (!delegateBody) return;
+                const isHidden = delegateBody.classList.contains('hidden');
+                if (isHidden) {
+                    delegateBody.classList.remove('hidden');
+                    if (delegateChevron) delegateChevron.style.transform = 'rotate(180deg)';
+                } else {
+                    delegateBody.classList.add('hidden');
+                    if (delegateChevron) delegateChevron.style.transform = 'rotate(0deg)';
+                }
+            }
+        };
+
+        window.onProxyDelegatorSelected = (radioElem) => {
+            const rawJson = radioElem.getAttribute('data-delegator-json');
+            let nameStr = '';
+            let millStr = '';
+            if (rawJson) {
+                try {
+                    const d = JSON.parse(rawJson);
+                    nameStr = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
+                    millStr = (parseFloat(d.millesimiTotali) || 0).toFixed(2) + ' ‰';
+                } catch (e) { }
+            }
+            const badge = document.getElementById('selected-delegator-badge');
+            if (badge && nameStr) {
+                badge.innerHTML = `
+                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(nameStr)}</span>
+                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${millStr}</strong>
+                `;
+            }
+
+            // Apri automaticamente la sezione 2 (Delegato) se chiusa
+            const delegateBody = document.getElementById('proxy-delegate-body');
+            const delegateChevron = document.getElementById('proxy-delegate-chevron');
+            if (delegateBody && delegateBody.classList.contains('hidden')) {
+                delegateBody.classList.remove('hidden');
+                if (delegateChevron) delegateChevron.style.transform = 'rotate(180deg)';
+            }
+        };
+
+        window.onProxyDelegateSelected = (radioElem) => {
+            const rawJson = radioElem.getAttribute('data-delegate-json');
+            let nameStr = '';
+            let millStr = '';
+            if (rawJson) {
+                try {
+                    const d = JSON.parse(rawJson);
+                    nameStr = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
+                    millStr = (parseFloat(d.millesimiTotali) || 0).toFixed(2) + ' ‰';
+                } catch (e) { }
+            }
+            const badge = document.getElementById('selected-delegate-badge');
+            if (badge && nameStr) {
+                badge.innerHTML = `
+                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(nameStr)}</span>
+                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${millStr}</strong>
+                `;
             }
         };
 
@@ -18249,157 +18627,9 @@ ${renderBottomNavigation()}
             if (!assemblyId) return;
 
             try {
-                // 1. Fetch registered users
-                const usersSnapshot = await getDocs(collection(db, "users"));
-                const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                const registeredCondomini = registeredUsers.filter(u =>
-                    ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)
-                );
+                const { allCondomini, registeredCondomini, registeredUsers } = await window.getUnifiedCondominiumRegistry();
 
-                // 2. Fetch imported general anagrafica (Supervisore > Importa dati millesimi)
-                let importedRows = [];
-                try {
-                    const importedSnapshot = await getDocs(collection(db, "importedData"));
-                    if (!importedSnapshot.empty) {
-                        const sortedDocs = importedSnapshot.docs.map(d => d.data()).sort((a, b) => {
-                            const tA = a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : (a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0);
-                            const tB = b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : (b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0);
-                            if (tB !== tA) return tB - tA;
-                            return (b.tableData?.length || 0) - (a.tableData?.length || 0);
-                        });
-                        importedRows = sortedDocs[0]?.tableData || [];
-                    }
-                } catch (errImp) {
-                    console.warn("Recupero importedData fallback:", errImp);
-                }
-
-                // 3. Build unified delegators registry map
-                const normalize = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                const delegatorsMap = new Map();
-
-                if (importedRows && importedRows.length > 0) {
-                    const headers = Object.keys(importedRows[0] || {});
-                    const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
-
-                    const findH = (keys) => {
-                        let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
-                        if (found) return found;
-                        found = headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase())));
-                        return found || null;
-                    };
-
-                    const fullNominativoHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
-                    const cognomeHeader = findH(['cognome']);
-                    const nomeHeader = findH(['nome']);
-                    const unitaHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano', 'scala']);
-                    const millesimiHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
-
-                    importedRows.forEach((row, rowIdx) => {
-                        let rawNom = '';
-                        if (fullNominativoHeader && row[fullNominativoHeader] !== undefined && row[fullNominativoHeader] !== null) {
-                            rawNom = row[fullNominativoHeader].toString().trim();
-                        } else if (cognomeHeader || nomeHeader) {
-                            const c = cognomeHeader ? (row[cognomeHeader] || '').toString().trim() : '';
-                            const n = nomeHeader ? (row[nomeHeader] || '').toString().trim() : '';
-                            rawNom = `${c} ${n}`.trim();
-                        } else if (headers.length > 0) {
-                            rawNom = (row[headers[0]] || '').toString().trim();
-                        }
-
-                        if (!rawNom) return;
-
-                        const normKey = normalize(rawNom);
-                        if (!normKey) return;
-
-                        let rawMil = '0';
-                        if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
-                            rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
-                        }
-                        const milVal = parseFloat(rawMil) || 0;
-                        const unitaVal = unitaHeader && row[unitaHeader] !== undefined && row[unitaHeader] !== null ? row[unitaHeader].toString().trim() : '';
-
-                        if (!delegatorsMap.has(normKey)) {
-                            delegatorsMap.set(normKey, {
-                                id: 'anagrafica_' + encodeURIComponent(normKey).replace(/%/g, '_'),
-                                nominativo: rawNom,
-                                nome: rawNom,
-                                cognome: '',
-                                millesimiTotali: 0,
-                                unitaImmobiliare: [],
-                                isRegistered: false,
-                                email: '',
-                                tipoUtente: 'condomino'
-                            });
-                        }
-
-                        const entry = delegatorsMap.get(normKey);
-                        entry.millesimiTotali += milVal;
-                        if (unitaVal && !entry.unitaImmobiliare.includes(unitaVal)) {
-                            entry.unitaImmobiliare.push(unitaVal);
-                        }
-                    });
-                }
-
-                // Match and merge with registered users
-                registeredCondomini.forEach(u => {
-                    const userFullName = `${u.cognome || ''} ${u.nome || ''}`.trim() || u.nome || '';
-                    const userNorm = normalize(userFullName);
-                    const userReverseNorm = normalize(`${u.nome || ''} ${u.cognome || ''}`);
-
-                    let matchedKey = null;
-                    if (delegatorsMap.has(userNorm)) matchedKey = userNorm;
-                    else if (delegatorsMap.has(userReverseNorm)) matchedKey = userReverseNorm;
-                    else {
-                        for (const k of delegatorsMap.keys()) {
-                            if (k.length > 3 && (userNorm.includes(k) || k.includes(userNorm))) {
-                                matchedKey = k;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (matchedKey) {
-                        const existing = delegatorsMap.get(matchedKey);
-                        existing.registeredUid = u.id;
-                        existing.id = u.id;
-                        existing.nome = u.nome || existing.nome;
-                        existing.cognome = u.cognome || existing.cognome;
-                        existing.email = u.email || '';
-                        existing.isRegistered = true;
-                        existing.tipoUtente = u.tipoUtente || 'condomino';
-                        if (u.millesimiTotali && u.millesimiTotali > 0) {
-                            existing.millesimiTotali = u.millesimiTotali;
-                        }
-                        if (u.unitaImmobiliare) {
-                            const uUnitaList = Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare];
-                            uUnitaList.forEach(un => {
-                                if (un && !existing.unitaImmobiliare.includes(un)) existing.unitaImmobiliare.push(un);
-                            });
-                        }
-                        if (u.proprieta && Array.isArray(u.proprieta)) {
-                            u.proprieta.forEach(p => {
-                                if (p.interno && !existing.unitaImmobiliare.includes(p.interno)) existing.unitaImmobiliare.push(p.interno);
-                            });
-                        }
-                    } else {
-                        delegatorsMap.set(userNorm || u.id, {
-                            id: u.id,
-                            nominativo: userFullName,
-                            nome: u.nome || '',
-                            cognome: u.cognome || '',
-                            millesimiTotali: u.millesimiTotali || 0,
-                            unitaImmobiliare: u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare]) : (u.proprieta ? u.proprieta.map(p => p.interno) : []),
-                            isRegistered: true,
-                            email: u.email || '',
-                            tipoUtente: u.tipoUtente || 'condomino'
-                        });
-                    }
-                });
-
-                let allDelegators = Array.from(delegatorsMap.values()).map(d => ({
-                    ...d,
-                    unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
-                })).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
+                let allDelegators = [...allCondomini];
 
                 // Se l'assemblea è esclusivamente a Condominio Parziale, proponi solo i condomini del gruppo interessato
                 try {
@@ -18418,15 +18648,12 @@ ${renderBottomNavigation()}
                         });
                         if (relevantGroupsSet.size > 0) {
                             const filteredDelegators = allDelegators.filter(d => {
-                                const matchedUser = registeredUsers.find(u => u.id === d.id);
-                                const props = matchedUser?.proprieta || [];
+                                const matchedUser = registeredUsers.find(u => u.id === d.id || u.id === d.registeredUid);
+                                const props = (d.proprieta && d.proprieta.length > 0) ? d.proprieta : (matchedUser?.proprieta || []);
                                 const matchProp = props.some(p => p.gruppo && relevantGroupsSet.has(p.gruppo.trim().toLowerCase()));
                                 if (matchProp) return true;
-                                const unitaArr = Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare : [d.unitaImmobiliare];
-                                return unitaArr.some(un => {
-                                    const uMatch = registeredUsers.find(u => (u.proprieta || []).some(p => p.interno && p.interno.toString().trim() === (un || '').toString().trim()));
-                                    return (uMatch?.proprieta || []).some(p => p.gruppo && relevantGroupsSet.has(p.gruppo.trim().toLowerCase()));
-                                });
+                                if (d.gruppo && relevantGroupsSet.has(d.gruppo.trim().toLowerCase())) return true;
+                                return false;
                             });
                             if (filteredDelegators.length > 0) {
                                 allDelegators = filteredDelegators;
@@ -18445,72 +18672,129 @@ ${renderBottomNavigation()}
                 // Delegates list: registered condomini/consiglieri (who can vote in assembly)
                 const allDelegates = registeredCondomini.length > 0 ? registeredCondomini : allDelegators;
 
-                const delegatorCardsHtml = allDelegators.map((d, idx) => `
-                    <label class="proxy-delegator-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml(((d.nominativo || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + d.unitaStr).toLowerCase())}">
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <input type="radio" name="proxy-delegator-radio" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" class="proxy-delegator-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 0 ? 'checked' : ''}>
-                            <div>
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">
-                                    ${escapeHtml(d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim())}
+                const firstDelegator = allDelegators[0] || null;
+                const firstDelegatorName = firstDelegator ? (firstDelegator.nominativo || `${firstDelegator.cognome || ''} ${firstDelegator.nome || ''}`.trim()) : '';
+                const firstDelegatorMill = firstDelegator ? (parseFloat(firstDelegator.millesimiTotali) || 0).toFixed(2) + ' ‰' : '';
+
+                const firstDelegate = allDelegates.length > 1 ? allDelegates[1] : (allDelegates[0] || null);
+                const firstDelegateName = firstDelegate ? (firstDelegate.nominativo || `${firstDelegate.cognome || ''} ${firstDelegate.nome || ''}`.trim()) : '';
+                const firstDelegateMill = firstDelegate ? (parseFloat(firstDelegate.millesimiTotali) || 0).toFixed(2) + ' ‰' : '';
+
+                const delegatorCardsHtml = allDelegators.map((d, idx) => {
+                    const dDisplayName = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
+                    return `
+                    <label class="proxy-delegator-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((dDisplayName || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + d.unitaStr).toLowerCase())}">
+                        <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                            <input type="radio" name="proxy-delegator-radio" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" onchange="onProxyDelegatorSelected(this)" class="proxy-delegator-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 0 ? 'checked' : ''}>
+                            <div style="flex:1; min-width:0; overflow:hidden;">
+                                <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${escapeHtml(dDisplayName)}
+                                </div>
+                                <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
                                     ${d.isRegistered
-                        ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📱 App</span>`
-                        : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.12); padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.25rem; font-weight:600;">📋 Anagrafica</span>`}
+                            ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App</span>`
+                            : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
                                 </div>
-                                <div style="font-size:0.75rem; color:var(--secondary-text);">
-                                    ${d.email ? escapeHtml(d.email) + ' • ' : ''}${d.unitaStr ? 'Unità: ' + escapeHtml(d.unitaStr) : 'Nessuna unità spec.'}
-                                </div>
+                                ${d.unitaStr ? `
+                                <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
+                                    Unità: ${escapeHtml(d.unitaStr)}
+                                </div>` : ''}
                             </div>
                         </div>
-                        <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${(d.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                        <div style="text-align:right; flex-shrink:0; min-width:65px; margin-left:0.5rem;">
+                            <strong style="color:var(--warning); font-size:0.85rem; white-space:nowrap;">${(parseFloat(d.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                        </div>
                     </label>
-                `).join('');
+                `}).join('');
 
                 const delegateCardsHtml = allDelegates.map((u, idx) => {
                     const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
                     const uUnitaStr = u.unitaStr || (u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare.join(', ') : u.unitaImmobiliare) : (u.proprieta ? u.proprieta.map(p => p.interno).join(', ') : ''));
                     return `
-                        <label class="proxy-delegate-card flex items-center justify-between p-2 card" style="cursor:pointer; background:var(--surface-color-light); margin:0; text-align:left;" data-search-text="${escapeHtml((uDisplayName + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
-                            <div style="display:flex; align-items:center; gap:0.5rem;">
-                                <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:16px; height:16px;" ${idx === 1 ? 'checked' : (idx === 0 && allDelegates.length === 1 ? 'checked' : '')}>
-                                <div>
-                                    <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${escapeHtml(uDisplayName)}</div>
-                                    <div style="font-size:0.75rem; color:var(--secondary-text);">${escapeHtml(u.email || '')} ${uUnitaStr ? '• Unità: ' + escapeHtml(uUnitaStr) : ''}</div>
+                        <label class="proxy-delegate-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml((uDisplayName + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
+                            <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
+                                <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" onchange="onProxyDelegateSelected(this)" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 1 ? 'checked' : (idx === 0 && allDelegates.length === 1 ? 'checked' : '')}>
+                                <div style="flex:1; min-width:0; overflow:hidden;">
+                                    <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                        ${escapeHtml(uDisplayName)}
+                                    </div>
+                                    <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
+                                        ${u.isRegistered !== false
+                            ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App</span>`
+                            : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                                    </div>
+                                    ${uUnitaStr ? `
+                                    <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
+                                        Unità: ${escapeHtml(uUnitaStr)}
+                                    </div>` : ''}
                                 </div>
                             </div>
-                            <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${(u.millesimiTotali || 0).toFixed(2)} ‰</strong>
+                            <div style="text-align:right; flex-shrink:0; min-width:65px; margin-left:0.5rem;">
+                                <strong style="color:var(--warning); font-size:0.85rem; white-space:nowrap;">${(parseFloat(u.millesimiTotali) || 0).toFixed(2)} ‰</strong>
+                            </div>
                         </label>
                     `;
                 }).join('');
 
                 const modalContent = `
-                    <form onsubmit="saveManualProxy(event, '${assemblyId}')" class="space-y-4" style="text-align:left;">
-                        <p style="color: var(--secondary-text); font-size: 0.85rem;">
-                            Registra una delega cartacea rilasciata da un condomino presente in anagrafica ad un condomino delegato in aula.
-                        </p>
-                        
-                        <div>
-                            <label class="form-label" style="font-weight:700;">1. Selezione Delegante (Chi consegna la delega - Anagrafica Generale)</label>
-                            <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante per nome, cognome o interno..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;" autofocus>
-                            <div id="container-proxy-delegators-list" style="max-height:160px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
-                                ${delegatorCardsHtml}
+                    <div style="position: relative; text-align: left; width: 100%; display: flex; flex-direction: column; flex: 1; min-height: calc(100vh - 120px);">
+                        <form onsubmit="saveManualProxy(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1; text-align: left; gap: 0.6rem;">
+                            <div style="background: var(--surface-color); padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--surface-color-light);">
+                                <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0; line-height: 1.3;">
+                                    Assegna delega a un delegato in aula.
+                                </p>
                             </div>
-                        </div>
-
-                        <div>
-                            <label class="form-label" style="font-weight:700; margin-top:0.5rem;">2. Selezione Delegato (Chi vota in aula)</label>
-                            <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Cerca delegato per nome o cognome..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="margin-bottom:0.4rem; font-size:0.85rem; padding:0.35rem 0.6rem;">
-                            <div id="container-proxy-delegates-list" style="max-height:160px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
-                                ${delegateCardsHtml}
+                            
+                            <!-- SEZIONE 1: DELEGANTE -->
+                            <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color);">
+                                <div onclick="toggleProxySection('delegator')" style="padding: 0.65rem 0.85rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
+                                        <svg id="proxy-delegator-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                    <div id="selected-delegator-badge" style="margin-top: 0.4rem; font-size: 0.82rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.6rem; display: flex; align-items: center; justify-content: space-between;">
+                                        ${firstDelegatorName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegatorName)}</span> <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${firstDelegatorMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegante selezionato</span>'}
+                                    </div>
+                                </div>
+                                <div id="proxy-delegator-body" style="padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                    <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autofocus autocomplete="off">
+                                    <div id="container-proxy-delegators-list" style="max-height: 220px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                        ${delegatorCardsHtml}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:1rem; width:100%;">
-                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Annulla</button>
-                            <button type="submit" class="btn btn-primary" style="width:100%; height:40px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Delega</button>
-                        </div>
-                    </form>
+                            <!-- SEZIONE 2: DELEGATO -->
+                            <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color);">
+                                <div onclick="toggleProxySection('delegate')" style="padding: 0.65rem 0.85rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-color);">2. Delegato in aula</span>
+                                        <svg id="proxy-delegate-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                    <div id="selected-delegate-badge" style="margin-top: 0.4rem; font-size: 0.82rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.6rem; display: flex; align-items: center; justify-content: space-between;">
+                                        ${firstDelegateName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegateName)}</span> <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${firstDelegateMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegato selezionato</span>'}
+                                    </div>
+                                </div>
+                                <div id="proxy-delegate-body" style="padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                    <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Cerca delegato in aula..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autocomplete="off">
+                                    <div id="container-proxy-delegates-list" style="max-height: 220px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                        ${delegateCardsHtml}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light); width: 100%;">
+                                <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                                    <span>Annulla</span>
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
+                                    <span>Registra Delega</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 `;
-                showModal('Registra Delega Cartacea', modalContent);
+                showModal('Registra Delega Cartacea', modalContent, true);
             } catch (error) {
                 console.error("Errore apertura modal delega cartacea:", error);
                 await customAlert("Errore durante il caricamento dell'anagrafica condomini: " + error.message);
