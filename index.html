@@ -18020,15 +18020,41 @@ ${renderBottomNavigation()}
                 const userFullName = `${u.cognome || ''} ${u.nome || ''}`.trim() || u.nome || '';
                 const userNorm = normalize(userFullName);
                 const userReverseNorm = normalize(`${u.nome || ''} ${u.cognome || ''}`);
+                const uEmail = (u.email || '').toLowerCase().trim();
+                const uNom = (u.nominativo || '').trim();
+                const uNomNorm = normalize(uNom);
 
                 let matchedKey = null;
-                if (registryMap.has(userNorm)) matchedKey = userNorm;
-                else if (registryMap.has(userReverseNorm)) matchedKey = userReverseNorm;
+                if (userNorm && registryMap.has(userNorm)) matchedKey = userNorm;
+                else if (userReverseNorm && registryMap.has(userReverseNorm)) matchedKey = userReverseNorm;
+                else if (uNomNorm && registryMap.has(uNomNorm)) matchedKey = uNomNorm;
                 else {
-                    for (const k of registryMap.keys()) {
-                        if (k.length > 3 && (userNorm.includes(k) || k.includes(userNorm))) {
+                    for (const [k, entry] of registryMap.entries()) {
+                        const entryNom = normalize(entry.nominativo || entry.nome || '');
+                        const uNomWords = userNorm.split(' ').filter(w => w.length > 2);
+                        const allWordsInEntry = uNomWords.length > 0 && uNomWords.every(w => entryNom.includes(w));
+                        const entryWords = entryNom.split(' ').filter(w => w.length > 2);
+                        const allEntryWordsInUser = entryWords.length > 0 && entryWords.every(w => userNorm.includes(w) || userReverseNorm.includes(w));
+
+                        if (allWordsInEntry || allEntryWordsInUser || (k.length > 3 && (userNorm.includes(k) || k.includes(userNorm)))) {
                             matchedKey = k;
                             break;
+                        }
+
+                        if (uEmail && entry.email && entry.email.toLowerCase().trim() === uEmail) {
+                            matchedKey = k;
+                            break;
+                        }
+
+                        const uSurname = normalize(u.cognome || '');
+                        if (uSurname && uSurname.length > 2 && entryNom.includes(uSurname)) {
+                            const uUnits = Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : (u.proprieta ? u.proprieta.map(p => p.interno) : [u.unitaImmobiliare].filter(Boolean));
+                            const entryUnits = Array.isArray(entry.unitaImmobiliare) ? entry.unitaImmobiliare : (entry.proprieta ? entry.proprieta.map(p => p.interno) : []);
+                            const shareUnit = uUnits.some(un => un && entryUnits.includes(un));
+                            if (shareUnit) {
+                                matchedKey = k;
+                                break;
+                            }
                         }
                     }
                 }
@@ -18039,7 +18065,7 @@ ${renderBottomNavigation()}
                     existing.id = u.id;
                     existing.nome = u.nome || existing.nome;
                     existing.cognome = u.cognome || existing.cognome;
-                    existing.email = u.email || '';
+                    existing.email = u.email || existing.email || '';
                     existing.isRegistered = true;
                     existing.tipoUtente = u.tipoUtente || 'condomino';
                     if (u.millesimiTotali && u.millesimiTotali > 0) {
@@ -18061,6 +18087,7 @@ ${renderBottomNavigation()}
                 } else {
                     registryMap.set(userNorm || u.id, {
                         id: u.id,
+                        registeredUid: u.id,
                         nominativo: userFullName,
                         nome: u.nome || '',
                         cognome: u.cognome || '',
@@ -18075,7 +18102,75 @@ ${renderBottomNavigation()}
                 }
             });
 
-            const unifiedList = Array.from(registryMap.values()).map(d => ({
+            // 4. Deduplicazione: Se un utente è registrato all'App (isRegistered === true), elimina qualsiasi voce Anagrafica duplicata
+            const appEntries = [];
+            const anagraficaEntries = [];
+
+            registryMap.forEach((entry) => {
+                if (entry.isRegistered) {
+                    appEntries.push(entry);
+                } else {
+                    anagraficaEntries.push(entry);
+                }
+            });
+
+            const filteredAnagrafica = anagraficaEntries.filter(anag => {
+                const anagNom = normalize(anag.nominativo || anag.nome || '');
+                const anagWords = anagNom.split(' ').filter(w => w.length > 2);
+                const anagUnits = Array.isArray(anag.unitaImmobiliare) ? anag.unitaImmobiliare : [];
+
+                const matchingApp = appEntries.find(app => {
+                    if (anag.registeredUid && anag.registeredUid === app.id) return true;
+                    if (anag.id && anag.id === app.id) return true;
+
+                    const appNom = normalize(app.nominativo || `${app.cognome || ''} ${app.nome || ''}`);
+                    const appRevNom = normalize(`${app.nome || ''} ${app.cognome || ''}`);
+                    const appSurname = normalize(app.cognome || '');
+                    const appName = normalize(app.nome || '');
+                    const appUnits = Array.isArray(app.unitaImmobiliare) ? app.unitaImmobiliare : [];
+
+                    if (appNom && anagNom === appNom) return true;
+                    if (appRevNom && anagNom === appRevNom) return true;
+
+                    const appWords = appNom.split(' ').filter(w => w.length > 2);
+                    const appWordsInAnag = appWords.length > 0 && appWords.every(w => anagNom.includes(w));
+                    const anagWordsInApp = anagWords.length > 0 && anagWords.every(w => appNom.includes(w) || appRevNom.includes(w));
+                    if (appWordsInAnag || anagWordsInApp) return true;
+
+                    if (appSurname && appSurname.length > 2 && anagNom.includes(appSurname)) {
+                        if (appName && appName.length > 2 && anagNom.includes(appName)) return true;
+                        const shareUnit = appUnits.length > 0 && anagUnits.some(u => u && appUnits.includes(u));
+                        if (shareUnit) return true;
+                    }
+
+                    return false;
+                });
+
+                if (matchingApp) {
+                    if ((!matchingApp.millesimiTotali || matchingApp.millesimiTotali <= 0) && anag.millesimiTotali > 0) {
+                        matchingApp.millesimiTotali = anag.millesimiTotali;
+                    }
+                    if (anag.unitaImmobiliare && anag.unitaImmobiliare.length > 0) {
+                        if (!matchingApp.unitaImmobiliare) matchingApp.unitaImmobiliare = [];
+                        anag.unitaImmobiliare.forEach(u => {
+                            if (u && !matchingApp.unitaImmobiliare.includes(u)) matchingApp.unitaImmobiliare.push(u);
+                        });
+                    }
+                    if (anag.proprieta && anag.proprieta.length > 0) {
+                        if (!matchingApp.proprieta || matchingApp.proprieta.length === 0) {
+                            matchingApp.proprieta = anag.proprieta;
+                        }
+                    }
+                    if (!matchingApp.gruppo && anag.gruppo) {
+                        matchingApp.gruppo = anag.gruppo;
+                    }
+                    return false; // Rimuove duplicato Anagrafica
+                }
+                return true;
+            });
+
+            const allEntries = [...appEntries, ...filteredAnagrafica];
+            const unifiedList = allEntries.map(d => ({
                 ...d,
                 unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
             })).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
@@ -18187,15 +18282,10 @@ ${renderBottomNavigation()}
                             <!-- FEEDBACK NOTIFICA INLINE -->
                             <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.4rem 0.65rem; margin-bottom: 0.15rem; flex-shrink: 0;"></div>
 
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; gap: 0.4rem; flex-wrap: wrap; flex-shrink: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; gap: 0.4rem; flex-shrink: 0;">
                                 <span id="manual-attendees-count-badge" style="font-size: 0.82rem; color: var(--accent-color); font-weight: 700;">
                                     ${availableUsers.length} disponibili${partialSubtitleText ? ` • <span style="color:var(--warning); font-size:0.75rem;">${escapeHtml(partialSubtitleText)}</span>` : ''}
                                 </span>
-                                <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--primary-text); margin: 0; background: var(--surface-color-light); padding: 0.22rem 0.55rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;">
-                                    <input type="checkbox" id="manual-attendee-select-all" onchange="toggleSelectAllManualAttendees(this.checked)" style="accent-color: var(--accent-color); width: 16px; height: 16px; cursor: pointer;">
-                                    <span>Seleziona Tutti</span>
-                                    <span id="manual-attendees-selected-count-badge" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 700;"></span>
-                                </label>
                             </div>
 
                             <input type="text" id="input-search-manual-attendee" placeholder="🔍 Cerca per cognome, nome, int..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom: 0.25rem; font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px; flex-shrink: 0;" autofocus autocomplete="off">
