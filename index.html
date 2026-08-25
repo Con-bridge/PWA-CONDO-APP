@@ -17553,34 +17553,53 @@ ${renderBottomNavigation()}
                 };
 
                 const modalContent = `
-                    <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-3" style="text-align:left;">
-                        <p style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.35rem;">
-                            Registra manualmente la presenza di un condomino. Puoi effettuare registrazioni sequenziali rapide.
-                        </p>
+                    <div style="position: relative; text-align: left; width: 100%; min-height: 380px;">
+                        <!-- OVERLAY POPUP DI FEEDBACK (SIMILE AL QR SCANNER) -->
+                        <div id="manual-attendance-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box; border-radius: 10px;"></div>
 
-                        <!-- FEEDBACK NOTIFICA INLINE (PERSISTENZA FORM SENZA REDIRECT) -->
-                        <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem; margin-bottom:0.4rem;"></div>
+                        <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" class="space-y-3" style="text-align:left;">
+                            <p style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.35rem;">
+                                Registra manualmente la presenza di un condomino. Puoi effettuare registrazioni sequenziali rapide.
+                            </p>
 
-                        <div>
-                            <label class="form-label" style="font-weight:700; font-size:0.85rem; margin-bottom:0.25rem;">🔍 Digita nome o cognome condomino/consigliere</label>
-                            <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare cognome o nome..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.88rem; padding:0.45rem 0.7rem;" autofocus autocomplete="off">
-                            
-                            <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom:0.4rem; font-size:0.82rem; padding:0.4rem 0.6rem;">⚠️ Condomino o consigliere non trovato in anagrafica.</div>
+                            <!-- FEEDBACK NOTIFICA INLINE (PERSISTENZA FORM SENZA REDIRECT) -->
+                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem; margin-bottom:0.4rem;"></div>
 
-                            <div id="container-manual-attendees-list" style="max-height:220px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
-                                ${renderCardsHtml(availableUsers)}
+                            <div>
+                                <label class="form-label" style="font-weight:700; font-size:0.85rem; margin-bottom:0.25rem;">🔍 Digita nome o cognome condomino/consigliere</label>
+                                <input type="text" id="input-search-manual-attendee" placeholder="🔍 Inizia a digitare cognome o nome..." oninput="filterManualAttendeesList(this.value)" class="form-input" style="margin-bottom:0.5rem; font-size:0.88rem; padding:0.45rem 0.7rem;" autofocus autocomplete="off">
+                                
+                                <div id="manual-attendee-error-msg" class="message-box error hidden" style="margin-bottom:0.4rem; font-size:0.82rem; padding:0.4rem 0.6rem;">⚠️ Condomino o consigliere non trovato in anagrafica.</div>
+
+                                <div id="container-manual-attendees-list" style="max-height:220px; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem;">
+                                    ${renderCardsHtml(availableUsers)}
+                                </div>
                             </div>
-                        </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:0.85rem; width:100%;">
-                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Chiudi</button>
-                            <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
-                        </div>
-                    </form>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:0.85rem; width:100%;">
+                                <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:600;">Chiudi</button>
+                                <button type="submit" id="btn-submit-manual-attendance" class="btn btn-primary" style="width:100%; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700;">Registra Presenza</button>
+                            </div>
+                        </form>
+                    </div>
                 `;
                 showModal('Registra Presenza Manuale', modalContent);
             } catch (error) {
                 console.error("Errore apertura modal presenza:", error);
                 await customAlert("Errore durante il caricamento dei condomini.");
+            }
+        };
+
+        window.dismissManualAttendanceFeedback = () => {
+            const fPopup = document.getElementById("manual-attendance-feedback-popup");
+            if (fPopup) {
+                fPopup.innerHTML = '';
+                fPopup.style.display = 'none';
+                fPopup.classList.add('hidden');
+            }
+            const searchInput = document.getElementById('input-search-manual-attendee');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
             }
         };
 
@@ -17657,7 +17676,24 @@ ${renderBottomNavigation()}
 
                 const existingAttendeeIndex = attendees.findIndex(a => a.uid === userId);
                 if (existingAttendeeIndex !== -1 && attendees[existingAttendeeIndex].status !== 'uscito') {
-                    if (errorMsg) {
+                    const fPopup = document.getElementById("manual-attendance-feedback-popup");
+                    if (fPopup) {
+                        fPopup.className = '';
+                        fPopup.style.display = 'flex';
+                        fPopup.classList.remove('hidden');
+                        fPopup.innerHTML = `
+                            <div style="background:var(--surface-color); border:2px solid var(--warning); border-radius:12px; padding:1.2rem 1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:290px; box-sizing:border-box;">
+                                <div style="font-size:2.2rem; line-height:1; margin-bottom:0.35rem;">⚠️</div>
+                                <div style="font-size:0.75rem; font-weight:800; color:var(--warning); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.35rem;">Già Presente</div>
+                                <div style="font-size:0.95rem; font-weight:700; color:var(--primary-text); margin-bottom:0.85rem; line-height:1.3;">
+                                    Il condòmino <strong>${escapeHtml(user.nome)} ${escapeHtml(user.cognome)}</strong> risulta già accreditato come presente in aula.
+                                </div>
+                                <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-secondary" style="width:100%; height:38px; font-weight:600; font-size:0.85rem; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                    <span>✕ Chiudi</span>
+                                </button>
+                            </div>
+                        `;
+                    } else if (errorMsg) {
                         errorMsg.textContent = `Il condomino ${user.nome} ${user.cognome} è già accreditato come presente in aula.`;
                         errorMsg.classList.remove('hidden');
                     } else {
@@ -17719,7 +17755,30 @@ ${renderBottomNavigation()}
 
                 await logAssemblyEvent(assemblyId, existingAttendeeIndex !== -1 ? 'RIENTRO_MANUALE' : 'INGRESSO', `Accreditata presenza ${existingAttendeeIndex !== -1 ? '(rientro)' : 'in aula'} per ${userFullName} [${totalMillesimiAccreditati.toFixed(2)} ‰]${proxyNoticeText}`);
 
-                // REQ-06: PERSISTENZA SCHERMATA - Mostra feedback inline e aggiorna la lista rimanente
+                // MESSAGGIO IN SOVRAPPOSIZIONE (COME QR CODE)
+                const fPopup = document.getElementById("manual-attendance-feedback-popup");
+                if (fPopup) {
+                    fPopup.className = '';
+                    fPopup.style.display = 'flex';
+                    fPopup.classList.remove('hidden');
+                    fPopup.innerHTML = `
+                        <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.2rem 1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:290px; box-sizing:border-box;">
+                            <div style="font-size:2.2rem; line-height:1; margin-bottom:0.35rem;">✅</div>
+                            <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.35rem;">Presenza Convalidata</div>
+                            <div style="font-size:1.05rem; font-weight:800; color:var(--primary-text); margin-bottom:0.35rem; line-height:1.3;">
+                                Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è accreditato
+                            </div>
+                            <div style="font-size:0.85rem; color:var(--secondary-text); margin-bottom:0.9rem;">
+                                Millesimi in aula: <strong style="color:var(--warning); font-size:0.95rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
+                                ${proxyNoticeText ? `<div style="font-size:0.78rem; color:var(--accent-color); font-weight:600; margin-top:0.25rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
+                            </div>
+                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.88rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                <span>✕ Chiudi / Prossima Registrazione</span>
+                            </button>
+                        </div>
+                    `;
+                }
+
                 if (successMsg) {
                     successMsg.innerHTML = `✅ Presenza <strong>${existingAttendeeIndex !== -1 ? 'riattivata (rientro)' : 'registrata'}</strong>: <span style="color:#10B981; font-weight:700;">${escapeHtml(userFullName)}</span> (${totalMillesimiAccreditati.toFixed(2)} ‰)`;
                     successMsg.classList.remove('hidden');
@@ -17757,9 +17816,9 @@ ${renderBottomNavigation()}
                 // Reset e focus immediato sul campo di ricerca per l'inserimento successivo
                 if (searchInput) {
                     searchInput.value = '';
-                    searchInput.focus();
                 }
                 if (submitBtn) {
+                    submitBtn.disabled = false;
                     submitBtn.textContent = 'Registra Presenza';
                 }
 
@@ -17784,42 +17843,77 @@ ${renderBottomNavigation()}
 
             try {
                 // 1. Fetch registered users
-                const usersSnapshot = await getDocs(query(collection(db, "users")));
+                const usersSnapshot = await getDocs(collection(db, "users"));
                 const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 const registeredCondomini = registeredUsers.filter(u =>
                     ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)
                 );
 
                 // 2. Fetch imported general anagrafica (Supervisore > Importa dati millesimi)
-                const importedSnapshot = await getDocs(query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1)));
                 let importedRows = [];
-                if (!importedSnapshot.empty) {
-                    importedRows = importedSnapshot.docs[0].data().tableData || [];
+                try {
+                    const importedSnapshot = await getDocs(collection(db, "importedData"));
+                    if (!importedSnapshot.empty) {
+                        const sortedDocs = importedSnapshot.docs.map(d => d.data()).sort((a, b) => {
+                            const tA = a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : (a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0);
+                            const tB = b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : (b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0);
+                            if (tB !== tA) return tB - tA;
+                            return (b.tableData?.length || 0) - (a.tableData?.length || 0);
+                        });
+                        importedRows = sortedDocs[0]?.tableData || [];
+                    }
+                } catch (errImp) {
+                    console.warn("Recupero importedData fallback:", errImp);
                 }
 
                 // 3. Build unified delegators registry map
-                const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                const normalize = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
                 const delegatorsMap = new Map();
 
-                if (importedRows.length > 0) {
+                if (importedRows && importedRows.length > 0) {
                     const headers = Object.keys(importedRows[0] || {});
-                    const findH = (keys) => headers.find(h => keys.some(k => h.toLowerCase().includes(k.toLowerCase())));
-                    const nominativoHeader = findH(['nominativo', 'condomino', 'proprietario', 'intestatario', 'nome']);
-                    const unitaHeader = findH(['interno', 'appartamento', 'unita', 'sub', 'immobile']);
-                    const millesimiHeader = findH(['millesimi', 'quota', 'valore', 'millesimo']);
+                    const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
 
-                    importedRows.forEach(row => {
-                        const rawNom = nominativoHeader ? (row[nominativoHeader] || '').toString().trim() : '';
+                    const findH = (keys) => {
+                        let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
+                        if (found) return found;
+                        found = headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase())));
+                        return found || null;
+                    };
+
+                    const fullNominativoHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+                    const cognomeHeader = findH(['cognome']);
+                    const nomeHeader = findH(['nome']);
+                    const unitaHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano', 'scala']);
+                    const millesimiHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+
+                    importedRows.forEach((row, rowIdx) => {
+                        let rawNom = '';
+                        if (fullNominativoHeader && row[fullNominativoHeader] !== undefined && row[fullNominativoHeader] !== null) {
+                            rawNom = row[fullNominativoHeader].toString().trim();
+                        } else if (cognomeHeader || nomeHeader) {
+                            const c = cognomeHeader ? (row[cognomeHeader] || '').toString().trim() : '';
+                            const n = nomeHeader ? (row[nomeHeader] || '').toString().trim() : '';
+                            rawNom = `${c} ${n}`.trim();
+                        } else if (headers.length > 0) {
+                            rawNom = (row[headers[0]] || '').toString().trim();
+                        }
+
                         if (!rawNom) return;
 
                         const normKey = normalize(rawNom);
-                        const rawMil = millesimiHeader ? (row[millesimiHeader] || '').toString().replace(',', '.').trim() : '0';
+                        if (!normKey) return;
+
+                        let rawMil = '0';
+                        if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
+                            rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                        }
                         const milVal = parseFloat(rawMil) || 0;
-                        const unitaVal = unitaHeader ? (row[unitaHeader] || '').toString().trim() : '';
+                        const unitaVal = unitaHeader && row[unitaHeader] !== undefined && row[unitaHeader] !== null ? row[unitaHeader].toString().trim() : '';
 
                         if (!delegatorsMap.has(normKey)) {
                             delegatorsMap.set(normKey, {
-                                id: 'anagrafica_' + normKey.replace(/\s+/g, '_'),
+                                id: 'anagrafica_' + encodeURIComponent(normKey).replace(/%/g, '_'),
                                 nominativo: rawNom,
                                 nome: rawNom,
                                 cognome: '',
@@ -17859,6 +17953,7 @@ ${renderBottomNavigation()}
 
                     if (matchedKey) {
                         const existing = delegatorsMap.get(matchedKey);
+                        existing.registeredUid = u.id;
                         existing.id = u.id;
                         existing.nome = u.nome || existing.nome;
                         existing.cognome = u.cognome || existing.cognome;
@@ -17869,11 +17964,15 @@ ${renderBottomNavigation()}
                             existing.millesimiTotali = u.millesimiTotali;
                         }
                         if (u.unitaImmobiliare) {
-                            if (Array.isArray(existing.unitaImmobiliare)) {
-                                if (!existing.unitaImmobiliare.includes(u.unitaImmobiliare)) existing.unitaImmobiliare.push(u.unitaImmobiliare);
-                            } else {
-                                existing.unitaImmobiliare = [u.unitaImmobiliare];
-                            }
+                            const uUnitaList = Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare];
+                            uUnitaList.forEach(un => {
+                                if (un && !existing.unitaImmobiliare.includes(un)) existing.unitaImmobiliare.push(un);
+                            });
+                        }
+                        if (u.proprieta && Array.isArray(u.proprieta)) {
+                            u.proprieta.forEach(p => {
+                                if (p.interno && !existing.unitaImmobiliare.includes(p.interno)) existing.unitaImmobiliare.push(p.interno);
+                            });
                         }
                     } else {
                         delegatorsMap.set(userNorm || u.id, {
@@ -17882,7 +17981,7 @@ ${renderBottomNavigation()}
                             nome: u.nome || '',
                             cognome: u.cognome || '',
                             millesimiTotali: u.millesimiTotali || 0,
-                            unitaImmobiliare: u.unitaImmobiliare ? [u.unitaImmobiliare] : (u.proprieta ? u.proprieta.map(p => p.interno) : []),
+                            unitaImmobiliare: u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare]) : (u.proprieta ? u.proprieta.map(p => p.interno) : []),
                             isRegistered: true,
                             email: u.email || '',
                             tipoUtente: u.tipoUtente || 'condomino'
@@ -17978,37 +18077,21 @@ ${renderBottomNavigation()}
         window.filterProxyDelegatorsList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
             const cards = document.querySelectorAll('.proxy-delegator-card');
-            let firstVisibleRadio = null;
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
                 const isMatch = !q || text.includes(q);
                 card.style.display = isMatch ? 'flex' : 'none';
-                if (isMatch && !firstVisibleRadio) {
-                    firstVisibleRadio = card.querySelector('.proxy-delegator-radio');
-                }
             });
-            const currentChecked = document.querySelector('input[name="proxy-delegator-radio"]:checked');
-            if (firstVisibleRadio && (!currentChecked || currentChecked.closest('.proxy-delegator-card')?.style.display === 'none')) {
-                firstVisibleRadio.checked = true;
-            }
         };
 
         window.filterProxyDelegatesList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
             const cards = document.querySelectorAll('.proxy-delegate-card');
-            let firstVisibleRadio = null;
             cards.forEach(card => {
                 const text = card.getAttribute('data-search-text') || '';
                 const isMatch = !q || text.includes(q);
                 card.style.display = isMatch ? 'flex' : 'none';
-                if (isMatch && !firstVisibleRadio) {
-                    firstVisibleRadio = card.querySelector('.proxy-delegate-radio');
-                }
             });
-            const currentChecked = document.querySelector('input[name="proxy-delegate-radio"]:checked');
-            if (firstVisibleRadio && (!currentChecked || currentChecked.closest('.proxy-delegate-card')?.style.display === 'none')) {
-                firstVisibleRadio.checked = true;
-            }
         };
 
         window.saveManualProxy = async (event, assemblyId) => {
@@ -20914,42 +20997,41 @@ ${renderBottomNavigation()}
 
             const modalContent = `
                 <div style="text-align: left !important; display: flex; flex-direction: column; min-height: 100%; justify-content: space-between;">
-                    <div id="modal-assembly-creation-message" class="message-box hidden" style="text-align: left !important; margin-bottom: 0.75rem;"></div>
-                    <form id="modal-create-assembly-form" style="display: flex; flex-direction: column; gap: 0.85rem; text-align: left !important; flex: 1;">
-                        <div class="card" style="padding: 1rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 10px;">
-                            <label class="form-label" style="font-size: 0.88rem; font-weight: 700; margin-bottom: 0.35rem; display: block;">Titolo Assemblea</label>
-                            <input type="text" id="modal-assembly-title" required class="form-input" style="padding: 0.55rem 0.75rem; font-size: 0.92rem; width: 100%; box-sizing: border-box;" placeholder="Es. Assemblea Ordinaria Bilancio 2025">
+                    <div id="modal-assembly-creation-message" class="message-box hidden" style="text-align: left !important; margin-bottom: 0.5rem;"></div>
+                    <form id="modal-create-assembly-form" style="display: flex; flex-direction: column; gap: 0.5rem; text-align: left !important; flex: 1;">
+                        <div class="card" style="padding: 0.6rem 0.8rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 8px;">
+                            <label class="form-label" style="font-size: 0.82rem; font-weight: 700; margin-bottom: 0.25rem; display: block;">Titolo Assemblea</label>
+                            <input type="text" id="modal-assembly-title" required class="form-input" style="padding: 0.45rem 0.65rem; font-size: 0.88rem; width: 100%; box-sizing: border-box;" placeholder="Es. Assemblea Ordinaria Bilancio 2025">
                         </div>
 
-                        <div class="card grid grid-cols-2 gap-3" style="padding: 1rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 10px;">
+                        <div class="card grid grid-cols-2 gap-2" style="padding: 0.6rem 0.8rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 8px;">
                             <div>
-                                <label class="form-label" style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem; display: block;">Data</label>
-                                <input type="date" id="modal-assembly-date" required class="form-input" style="padding: 0.5rem 0.65rem; font-size: 0.88rem; width: 100%; box-sizing: border-box;">
+                                <label class="form-label" style="font-size: 0.82rem; font-weight: 700; margin-bottom: 0.25rem; display: block;">Data</label>
+                                <input type="date" id="modal-assembly-date" required class="form-input" style="padding: 0.4rem 0.55rem; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
                             </div>
                             <div>
-                                <label class="form-label" style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem; display: block;">Ora d'inizio</label>
-                                <input type="time" id="modal-assembly-time" required class="form-input" style="padding: 0.5rem 0.65rem; font-size: 0.88rem; width: 100%; box-sizing: border-box;">
+                                <label class="form-label" style="font-size: 0.82rem; font-weight: 700; margin-bottom: 0.25rem; display: block;">Ora d'inizio</label>
+                                <input type="time" id="modal-assembly-time" required class="form-input" style="padding: 0.4rem 0.55rem; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
                             </div>
                         </div>
 
-                        <div class="card" style="padding: 1rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 10px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.3rem;">
-                                <label class="form-label" style="font-size: 0.9rem; font-weight: 800; margin: 0; color: var(--text-color);">📋 Ordine del Giorno (OdG)</label>
-                                <span style="font-size: 0.75rem; color: var(--secondary-text);">Punti e ambito di votazione</span>
+                        <div class="card" style="padding: 0.65rem 0.8rem; background: var(--surface-color); border: 1px solid var(--surface-color-light); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                <label class="form-label" style="font-size: 0.86rem; font-weight: 800; margin: 0; color: var(--text-color);">📋 Ordine del Giorno (OdG)</label>
                             </div>
-                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.65rem; width: 100%;"></div>
-                            <div style="margin-top: 0.75rem; text-align: center; width: 100%;">
-                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; height: 42px; padding: 0 1rem; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 8px; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <div id="modal-agenda-list" style="display: flex; flex-direction: column; gap: 0.45rem; width: 100%;"></div>
+                            <div style="margin-top: 0.45rem; text-align: center; width: 100%;">
+                                <button type="button" id="modal-add-agenda-btn" class="btn" style="width: 100%; height: 36px; padding: 0 0.8rem; font-size: 0.85rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-color, #10B981), #059669); color: white; border: none; border-radius: 7px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                     Aggiungi Punto
                                 </button>
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box; margin-top: 1rem; padding-bottom: 1.5rem;">
-                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; height: 44px; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.92rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 8px; border: none; cursor: pointer;">Annulla</button>
-                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; height: 44px; font-weight: 800; font-size: 0.92rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; border-radius: 8px; cursor: pointer; background: #10B981; color: white;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: 0.45rem; padding-bottom: 0.5rem;">
+                            <button type="button" onclick="hideModal()" class="btn" style="width: 100%; height: 38px; background-color: var(--danger, #EF4444); color: white; font-weight: 700; font-size: 0.88rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 7px; border: none; cursor: pointer;">Annulla</button>
+                            <button type="submit" id="modal-btn-save-assembly" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 800; font-size: 0.88rem; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.35rem; text-align: center; border-radius: 7px; cursor: pointer; background: #10B981; color: white;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                                 Salva
                             </button>
                         </div>
@@ -20977,33 +21059,33 @@ ${renderBottomNavigation()}
                 const addAgendaItem = (val = "", scope = "intero", targetGroup = "", optionsType = "standard", customOptions = "") => {
                     const div = document.createElement("div");
                     div.className = "odg-item-row card";
-                    div.style.cssText = "padding:0.85rem; background:var(--surface-color-light); border-radius:8px; display:flex; flex-direction:column; gap:0.65rem; text-align:left; width:100%; box-sizing:border-box; overflow:hidden;";
+                    div.style.cssText = "padding:0.55rem 0.7rem; background:var(--surface-color-light); border-radius:7px; display:flex; flex-direction:column; gap:0.4rem; text-align:left; width:100%; box-sizing:border-box; overflow:hidden;";
 
                     const multiScaleCheckboxesHtml = groupNames.map(g => `
-                        <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.85rem;">
-                            <input type="checkbox" value="${escapeHtml(g)}" class="odg-scale-item-cb" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                        <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.82rem;">
+                            <input type="checkbox" value="${escapeHtml(g)}" class="odg-scale-item-cb" style="accent-color:var(--accent-color); width:15px; height:15px;">
                             <span>${escapeHtml(g)}</span>
                         </label>
                     `).join('');
 
                     div.innerHTML = `
-                        <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                        <div style="display:flex; flex-direction:column; gap:0.25rem; width:100%; box-sizing:border-box;">
                             <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                                <label class="odg-num-label" style="font-weight:700; color:var(--accent-color, #10B981); font-size:0.88rem; margin:0;">Punto 1:</label>
-                                <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger, #EF4444); border:none; width:24px; height:24px; font-size:1.35rem; font-weight:800; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;" title="Rimuovi">&times;</button>
+                                <label class="odg-num-label" style="font-weight:700; color:var(--accent-color, #10B981); font-size:0.85rem; margin:0;">Punto 1:</label>
+                                <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger, #EF4444); border:none; width:22px; height:22px; font-size:1.25rem; font-weight:800; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;" title="Rimuovi">&times;</button>
                             </div>
-                            <input type="text" class="form-input odg-title-input" style="width:100%; box-sizing:border-box; padding:0.45rem 0.65rem; font-size:0.88rem;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
+                            <input type="text" class="form-input odg-title-input" style="width:100%; box-sizing:border-box; padding:0.35rem 0.55rem; font-size:0.85rem;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
                         </div>
 
-                        <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
-                            <label style="font-weight:600; color:var(--secondary-text);">Ambito Votazione:</label>
-                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
-                                <select class="form-select odg-scope-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
+                        <div style="display:flex; flex-direction:column; gap:0.25rem; font-size:0.82rem; width:100%; box-sizing:border-box;">
+                            <label style="font-weight:600; color:var(--secondary-text); font-size:0.8rem;">Ambito Votazione:</label>
+                            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
+                                <select class="form-select odg-scope-select" style="padding:0.32rem 1.6rem 0.32rem 0.5rem; font-size:0.82rem; width:100%; box-sizing:border-box;">
                                     <option value="intero" ${scope === 'intero' ? 'selected' : ''}>1. Intero Condominio</option>
                                     <option value="scale" ${scope === 'scale' ? 'selected' : ''}>2. Scale / Gruppi (Selezione Multipla)</option>
                                     <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>3. Singola Scala / Gruppo</option>
                                 </select>
-                                <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; width:100%; margin-top:0.4rem; box-sizing:border-box;">
+                                <select class="form-select odg-group-select ${scope === 'gruppo' ? '' : 'hidden'}" style="padding:0.32rem 1.6rem 0.32rem 0.5rem; font-size:0.82rem; width:100%; margin-top:0.3rem; box-sizing:border-box;">
                                     <option value="" disabled ${!targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
                                     ${partialGroupsOptions.replace(`value="${targetGroup}"`, `value="${targetGroup}" selected`)}
                                 </select>
@@ -21011,25 +21093,25 @@ ${renderBottomNavigation()}
                         </div>
 
                         <!-- CONTENITORE CHECKBOX SELEZIONE MULTIPLA SCALE -->
-                        <div class="odg-scale-multi-wrapper ${scope === 'scale' ? '' : 'hidden'}" style="background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.2rem; width:100%; box-sizing:border-box;">
-                            <label style="font-weight:700; font-size:0.85rem; color:var(--accent-color); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem; cursor:pointer;">
-                                <input type="checkbox" class="odg-all-scales-cb" onchange="const cbs=this.closest('.odg-scale-multi-wrapper').querySelectorAll('.odg-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px;">
+                        <div class="odg-scale-multi-wrapper ${scope === 'scale' ? '' : 'hidden'}" style="background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.5rem; border-radius:6px; margin-top:0.2rem; width:100%; box-sizing:border-box;">
+                            <label style="font-weight:700; font-size:0.82rem; color:var(--accent-color); display:flex; align-items:center; gap:0.35rem; margin-bottom:0.3rem; cursor:pointer;">
+                                <input type="checkbox" class="odg-all-scales-cb" onchange="const cbs=this.closest('.odg-scale-multi-wrapper').querySelectorAll('.odg-scale-item-cb'); cbs.forEach(cb=>cb.checked=this.checked);" style="accent-color:var(--accent-color); width:15px; height:15px;">
                                 <span>Tutte le scale</span>
                             </label>
-                            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                            <div style="display:flex; flex-direction:column; gap:0.25rem;">
                                 ${multiScaleCheckboxesHtml}
                             </div>
                         </div>
 
-                        <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:0.85rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
-                            <label style="font-weight:600; color:var(--secondary-text);">Risposte:</label>
-                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
-                                <select class="form-select odg-options-type-select" style="padding:0.4rem 1.8rem 0.4rem 0.6rem; font-size:0.85rem; width:100%; box-sizing:border-box;">
+                        <div style="display:flex; flex-direction:column; gap:0.25rem; font-size:0.82rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                            <label style="font-weight:600; color:var(--secondary-text); font-size:0.8rem;">Risposte:</label>
+                            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; width:100%; box-sizing:border-box;">
+                                <select class="form-select odg-options-type-select" style="padding:0.32rem 1.6rem 0.32rem 0.5rem; font-size:0.82rem; width:100%; box-sizing:border-box;">
                                     <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
                                     <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
                                     <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>Opzioni Personalizzate...</option>
                                 </select>
-                                <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="width:100%; margin-top:0.4rem; font-size:0.85rem; padding:0.4rem 0.6rem; box-sizing:border-box;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
+                                <input type="text" class="form-input odg-custom-options-input ${optionsType === 'custom' ? '' : 'hidden'}" style="width:100%; margin-top:0.3rem; font-size:0.82rem; padding:0.32rem 0.5rem; box-sizing:border-box;" placeholder="Opzioni separate da virgola (es. Ditta A, Ditta B, Ditta C)" value="${escapeHtml(customOptions)}">
                             </div>
                         </div>
                     `;
