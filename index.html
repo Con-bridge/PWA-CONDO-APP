@@ -2424,7 +2424,7 @@
         };
 
         const showBetaTestAgreement = () => {
-            const agreementTitle = 'Accordo per la Sperimentazione Privata (Beta Test)';
+            const agreementTitle = 'Beta Test';
             const agreementHtml = `
                 <p style="font-size: 0.9rem; text-align: center; color: var(--secondary-text); margin-top: -1rem; margin-bottom: 1.5rem;">Benvenuto/a nel programma di test privato di "Con-bridge"! Prima di iniziare, ti chiediamo di leggere e accettare i seguenti punti che regolano questa fase di prova.</p>
 
@@ -3638,7 +3638,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             else if (rawRole === 'fornitore') formattedRole = 'Fornitore';
             else if (rawRole === 'supervisore') formattedRole = 'Supervisore';
 
-            const subtitleHtml = (title && title !== 'Home' && title !== 'Con-bridge')
+            const subtitleHtml = (title && title !== 'Con-bridge')
                 ? `<span id="page-header-subtitle" style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 500; display: block; line-height: 1.1; text-align: left !important;">${escapeHtml(title)}</span>`
                 : `<span id="page-header-subtitle" style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 500; display: none; line-height: 1.1; text-align: left !important;"></span>`;
 
@@ -5685,7 +5685,7 @@ ${renderBottomNavigation()}
                 <div class="card">
                     <h3 class="card-title">Dati Attuali</h3>
                     <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
-                        Visualizza, modifica o elimina le voci esistenti.
+                        Visualizza, modifica o elimina le voci.
                     </p>
                     <button class="pdf-download-btn" id="orari-custode-manual-pdf-btn" onclick="downloadOrariCustodeManualPDF()" style="display: none;">
                         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -7869,7 +7869,7 @@ ${renderBottomNavigation()}
                 const properties = localGroupedProperties[name];
                 propertyItemsContainer.innerHTML = '';
                 propertySelectionWrapper.classList.add('hidden');
-                summaryEl.innerHTML = 'Seleziona un nominativo per continuare...';
+                summaryEl.innerHTML = 'Seleziona un nominativo...';
 
                 if (!properties) return;
 
@@ -10354,21 +10354,11 @@ ${renderBottomNavigation()}
                     const rule = { id: docSnap.id, ...docSnap.data() };
                     window._groupRulesCache = window._groupRulesCache || {};
                     window._groupRulesCache[rule.id] = rule;
-                    const params = rule.params;
-                    let description = 'Regola non configurata.';
-                    if (rule.type === 'row_range_classification') {
-                        description = `Se righe da <strong>${params.startRow}</strong> a <strong>${params.endRow}</strong>, assegna a gruppo <strong>${params.classification}</strong>.`;
-                    } else if (rule.type === 'text_contains_classification') {
-                        description = `Se colonna <strong>${params.targetColumn}</strong> contiene "<strong>${params.searchText}</strong>", assegna a gruppo <strong>${params.classification}</strong>.`;
-                    }
                     return `
-                    <div class="list-item" style="background-color: var(--surface-color); align-items: flex-start;">
-                        <div class="list-item-content" style="padding-top: 0.5rem;">
-                            <div class="title" style="font-weight: 600;">${escapeHtml(rule.name)}</div>
-                            <div class="subtitle" style="margin-top: 0.5rem;">${description}</div>
-                        </div>
-                        <div class="flex flex-col items-end gap-2" style="padding-top: 0.5rem;">
-                             <label class="flex items-center gap-2 cursor-pointer" style="font-size: 0.9rem;">
+                    <div class="list-item" style="background-color: var(--surface-color); flex-direction: column; align-items: stretch; gap: 0.75rem; padding: 0.85rem; cursor: default;">
+                        <div class="flex justify-between items-center" style="width: 100%; gap: 1rem;">
+                            <div class="title" style="font-weight: 600; font-size: 1rem; color: var(--primary-text); line-height: 1.3;">${escapeHtml(rule.name)}</div>
+                            <label class="flex items-center gap-2 cursor-pointer" style="font-size: 0.9rem; flex-shrink: 0;">
                                 <span>${rule.isActive ? 'Attiva' : 'Disattiva'}</span>
                                 <div style="position: relative; width: 40px; height: 22px;">
                                     <input type="checkbox" onchange="toggleRuleStatus('${rule.id}', ${rule.isActive})" ${rule.isActive ? 'checked' : ''} class="hidden">
@@ -10376,14 +10366,16 @@ ${renderBottomNavigation()}
                                     <div style="position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; transform: ${rule.isActive ? 'translateX(18px)' : 'translateX(0)'};"></div>
                                 </div>
                             </label>
-                            <div class="flex gap-2 mt-2">
-                                <button onclick="openRuleEditor(window._groupRulesCache['${rule.id}'])" class="btn-icon" title="Modifica Regola">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                </button>
-                                <button onclick="deleteGroupRule('${rule.id}')" class="btn-icon" style="background:var(--danger); color:white;" title="Elimina Regola">
-                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                </button>
-                            </div>
+                        </div>
+                        <div class="flex gap-2" style="width: 100%; margin-top: 0.25rem;">
+                            <button onclick="openRuleEditor(window._groupRulesCache['${rule.id}'])" class="btn btn-secondary" style="flex: 1; padding: 0.55rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 500;" title="Modifica Regola">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                <span>Modifica</span>
+                            </button>
+                            <button onclick="deleteGroupRule('${rule.id}')" class="btn" style="flex: 1; padding: 0.55rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); background: var(--danger); color: white; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 500;" title="Elimina Regola">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                <span>Elimina</span>
+                            </button>
                         </div>
                     </div>
                     `;
@@ -17440,7 +17432,7 @@ ${renderBottomNavigation()}
                                 <span style="font-size:1.35rem; line-height:1; flex-shrink:0; margin-top:0.1rem;">🔒</span>
                                 <div style="flex:1; min-width:0;">
                                     <strong style="color:#FEF3C7; font-size:0.95rem; display:block; margin-bottom:0.15rem;">Votazioni bloccate</strong>
-                                    <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.4; display:block;">Per sbloccare le votazioni dei punti di discussione bisogna approvarne l'ordine.</span>
+                                    <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.4; display:block;">Per sbloccare i punti di discussione bisogna approvarne l'ordine.</span>
                                 </div>
                             </div>
                             <div style="width:100%; margin-top:0.25rem;">
