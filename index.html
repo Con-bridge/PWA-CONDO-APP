@@ -2566,7 +2566,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     <li style="margin-bottom: 1rem;">
                         <strong>Diritto alla Portabilità dei Dati (Art. 20):</strong> Hai il diritto di ricevere una copia dei tuoi dati personali in un formato strutturato e di uso comune (JSON).
                         <br>
-                        <em>Come esercitarlo nell'app:</em> Nella pagina <strong>"Profilo"</strong>, puoi utilizzare la funzione <strong>"Scarica i Miei Dati"</strong> per ottenere immediatamente un file JSON con tutte le tue informazioni.
+                        <em>Come esercitarlo nell'app:</em> Nella pagina <strong>"Profilo"</strong>, puoi utilizzare la funzione <strong>"Scarica Dati"</strong> per ottenere immediatamente un file JSON con tutte le tue informazioni.
                     </li>
                     <li style="margin-bottom: 1rem;">
                         <strong>Diritto di Opposizione (Art. 21):</strong> Hai il diritto di opporti al trattamento dei tuoi dati quando questo si basa sul nostro legittimo interesse.
@@ -2583,6 +2583,9 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
 
                 <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">10. Modifiche a questa Informativa</h4>
                 <p>Ci riserviamo il diritto di aggiornare questa informativa sulla privacy in qualsiasi momento. Qualsiasi modifica sostanziale verrà comunicata agli utenti tramite notifica all'interno dell'applicazione o via email, garantendo che tu sia sempre a conoscenza di quali dati raccogliamo e di come li utilizziamo. Ti invitiamo a consultare periodicamente questa pagina per rimanere aggiornato.</p>
+                <div style="margin-top:1.5rem;">
+                    <button type="button" class="btn btn-primary w-full" onclick="hideModal()" style="width:100%; justify-content:center; padding:0.8rem 1.5rem; font-weight:700; font-size:1rem; border-radius:var(--radius-md);">Chiudi</button>
+                </div>
             `;
             showModal(policyTitle, policyHtml);
         };
@@ -3562,57 +3565,57 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
         window.showBetaVersionInfo = async () => {
             const modalContent = `
                 <div style="text-align:left !important; padding:0.25rem 0;">
-                    <div style="display:flex; align-items:center; gap:0.85rem; margin-bottom:1rem; border-bottom:1px solid var(--surface-color-light); padding-bottom:0.75rem;">
-                        <img src="icons/icon-192x192.png" alt="Con-bridge Logo" style="width:48px; height:48px; border-radius:12px; object-fit:cover; flex-shrink:0; box-shadow:0 3px 10px rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.15);">
-                        <div>
-                            <h4 style="margin:0; font-weight:800; font-size:1.15rem; color:var(--accent-color);">Con-bridge</h4>
-                            <span class="badge status-aperta" style="font-size:0.72rem; text-transform:uppercase; margin-top:0.2rem; display:inline-block;">Versione Beta 1.0.0</span>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; margin-bottom:0.9rem; border-bottom:1px solid var(--surface-color-light); padding-bottom:1.15rem;">
+                        <img src="icons/icon-192x192.png" alt="Con-bridge Logo" style="width:42px; height:42px; border-radius:10px; object-fit:cover; flex-shrink:0; box-shadow:0 3px 10px rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.15);">
+                        <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                            <h4 style="margin:0; font-weight:800; font-size:1.1rem; color:var(--accent-color);">Con-bridge</h4>
+                            <span class="badge status-aperta" style="font-size:0.7rem; text-transform:uppercase; margin-top:0.15rem; display:inline-block;">Versione Beta 1.0.0</span>
                         </div>
                     </div>
 
-                    <p style="font-size:0.85rem; color:var(--secondary-text); line-height:1.45; margin-bottom:0.85rem;">
-                        Stai utilizzando la v. Beta di <strong>Con-bridge</strong>. Di seguito è riportata la guida esplicativa delle sezioni principali della barra di navigazione inferiore:
+                    <p style="font-size:0.82rem; color:var(--secondary-text); line-height:1.4; margin-bottom:0.65rem;">
+                        Stai utilizzando la v. Beta di <strong>Con-bridge</strong>. Di seguito è riportata la guida esplicativa delle sezioni principali dell'applicazione:
                     </p>
 
-                    <div style="display:flex; flex-direction:column; gap:0.6rem; max-height:340px; overflow-y:auto; padding-right:0.25rem;">
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">🏛️ Home</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Panoramica generale del condominio con collegamenti rapidi a tutte le funzionalità principali dell'applicazione.</span>
+                    <div style="display:flex; flex-direction:column; gap:0.45rem; max-height:210px; overflow-y:auto; padding-right:0.25rem; -webkit-overflow-scrolling:touch;">
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">🏛️ Home</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Panoramica generale del condominio con collegamenti rapidi a tutte le funzionalità principali dell'applicazione.</span>
                         </div>
 
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">📋 Bacheca</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Spazio riservato alle comunicazioni ufficiali, avvisi e documenti pubblicati dall'Amministratore per tutti i condòmini.</span>
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">📋 Bacheca</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Spazio riservato alle comunicazioni ufficiali, avvisi e documenti pubblicati dall'Amministratore per tutti i condòmini.</span>
                         </div>
 
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">🛠️ Segnala</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Modulo per l'invio e il tracciamento di segnalazioni su guasti, anomalie o interventi manutentivi nelle parti comuni del fabbricato.</span>
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">🛠️ Segnala</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Modulo per l'invio e il tracciamento di segnalazioni su guasti, anomalie o interventi manutentivi nelle parti comuni del fabbricato.</span>
                         </div>
 
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">❗ Solleciti</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Sezione per la consultazione e gestione dei solleciti amministrativi, scadenze delle rate e avvisi contabili.</span>
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">❗ Solleciti</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Sezione per la consultazione e gestione dei solleciti amministrativi, scadenze delle rate e avvisi contabili.</span>
                         </div>
 
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">📊 Sondaggi</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Strumento per partecipare a consultazioni informali, esprimere pareri ed esaminare i voti di orientamento prima delle decisioni ufficiali.</span>
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">📊 Sondaggi</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Strumento per partecipare a consultazioni informali, esprimere pareri ed esaminare i voti di orientamento prima delle decisioni ufficiali.</span>
                         </div>
 
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">👥 Assemblee</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Piattaforma live per le assemblee condominiali: accreditamento con QR Code, gestione deleghe, votazione millesimale in tempo reale sui punti OdG e verbali.</span>
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">👥 Assemblee</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Piattaforma live per le assemblee condominiali: accreditamento con QR Code, gestione deleghe, votazione millesimale in tempo reale sui punti OdG e verbali.</span>
                         </div>
 
-                        <div style="background:var(--surface-color-light); padding:0.65rem 0.75rem; border-radius:8px; border-left:3px solid var(--accent-color);">
-                            <strong style="color:var(--primary-text); font-size:0.85rem; display:block; margin-bottom:0.2rem;">👤 Profilo / Info Utili</strong>
-                            <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.35; display:block;">Contatti d'emergenza, fornitori del condominio, gestione dei dati personali e impostazioni dell'account.</span>
+                        <div style="background:var(--surface-color-light); padding:0.5rem 0.65rem; border-radius:7px; border-left:3px solid var(--accent-color);">
+                            <strong style="color:var(--primary-text); font-size:0.83rem; display:block; margin-bottom:0.15rem;">👤 Profilo / Info Utili</strong>
+                            <span style="font-size:0.78rem; color:var(--secondary-text); line-height:1.3; display:block;">Contatti d'emergenza, fornitori del condominio, gestione dei dati personali e impostazioni dell'account.</span>
                         </div>
                     </div>
 
-                    <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
-                        <button type="button" class="btn btn-primary" onclick="hideModal()" style="padding:0.55rem 1.2rem; font-weight:700; font-size:0.85rem;">Chiudi</button>
+                    <div style="position:sticky; bottom:0; background:var(--surface-color); padding-top:0.75rem; margin-top:0.5rem; z-index:2;">
+                        <button type="button" class="btn btn-primary w-full" onclick="hideModal()" style="width:100%; justify-content:center; padding:0.7rem 1.5rem; font-weight:700; font-size:0.95rem; border-radius:var(--radius-md);">Chiudi</button>
                     </div>
                 </div>
             `;
@@ -4704,7 +4707,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="report-location-manual" class="form-label">Ubicazione (*Facoltativo*)</label>
+                                <label for="report-location-manual" class="form-label">Ubicazione (Opzionale)</label>
                                 <input type="text" id="report-location-manual" class="form-input" placeholder="Es. Interno 15, Piano 3">
                             </div>
                             
@@ -4983,7 +4986,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                         <svg style="width: 20px; height: 20px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
-                        Scarica i Miei Dati (JSON)
+                        Scarica Dati (JSON)
                     </button>
                     <button onclick="confirmDeleteAccount()" class="btn" style="background-color: var(--danger); color: white; width: 100%;">
                         <svg style="width: 20px; height: 20px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
@@ -5132,13 +5135,9 @@ ${renderBottomNavigation()}
             }
 
             const importSectionHtml = `
-                <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: var(--surface-color-light); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                    <span style="font-size: 0.85rem; color: var(--secondary-text);">📄 Modello file Excel:</span>
-                    <button type="button" onclick="downloadImportTemplate('numeri_utili')" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">📥 Scarica Template (.xlsx)</button>
-                </div>
-                <div class="flex gap-4 mt-3">
-                    <button id="trigger-phone-import-btn" class="btn btn-primary flex-grow">Importa Nuovo File</button>
-                    <button onclick="navigateTo('importazione')" class="btn btn-secondary">Gestione Avanzata</button>
+                <div class="flex gap-4" style="margin-top: 0.5rem; flex-wrap: wrap;">
+                    <button id="trigger-phone-import-btn" class="btn btn-primary" style="flex: 1; min-width: 160px;">Importa Nuovo File</button>
+                    <button onclick="navigateTo('importazione')" class="btn btn-secondary" style="flex: 1; min-width: 160px;">Gestione Avanzata</button>
                 </div>
                 <input type="file" id="info-utili-phone-import-input" class="hidden" accept=".xlsx, .xls">
                 <div id="info-utili-import-message" class="message-box mt-4"></div>
@@ -5149,15 +5148,34 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card">
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.5rem;">
-                        Elenco dei contatti importati tramite file Excel. Il file più recente sostituisce i precedenti.
+                        Elenco dei contatti importati da Excel. Il file più recente sostituisce i precedenti.
                     </p>
-                    <button class="pdf-download-btn" id="imported-numbers-pdf-btn" onclick="downloadImportedNumbersPDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    <div style="display: flex; gap: 0.75rem; align-items: stretch; margin-bottom: 1.25rem;">
+                        <button class="pdf-download-btn" id="imported-numbers-pdf-btn" onclick="downloadImportedNumbersPDF()" style="display: none; margin-bottom: 0; flex: 1; justify-content: center; white-space: nowrap;">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                            </svg>
+                            Scarica PDF
+                        </button>
+                        <button type="button" onclick="downloadImportTemplate('numeri_utili')" class="btn btn-secondary" style="margin-bottom: 0; padding: 0.5rem 1rem; font-size: 0.9rem; font-weight: 600; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; white-space: nowrap;">
+                            📥 Template
+                        </button>
+                    </div>
+                    <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                            <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
                         </svg>
-                        Scarica PDF
-                    </button>
-                    <div id="imported-numbers-table-container" class="data-table-container">
+                        <span>Scorri verso destra per visualizzare tutti i dati e le icone di modifica ed eliminazione singole.</span>
+                    </div>
+                    <div id="bulk-actions-imported" style="display: none; width: 100%; margin-bottom: 1.25rem;">
+                        <button onclick="deleteSelectedContactsImported()" class="btn w-full" style="width: 100%; justify-content: center; background:var(--danger); color:white; padding: 0.65rem 1.2rem; font-size: 0.9rem; font-weight: 600; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px;">
+                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                            </svg>
+                            Elimina Selezionati
+                        </button>
+                    </div>
+                    <div id="imported-numbers-table-container" class="data-table-container" style="margin-bottom: 2rem;">
                         <p style="color:var(--secondary-text);">Caricamento contatti importati...</p>
                     </div>
                     ${importSectionHtml}
@@ -5203,14 +5221,20 @@ ${renderBottomNavigation()}
             ${renderHeader('Contatti Manuali')}
             <main>
                 <div class="card">
-                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.5rem;">Aggiungi o visualizza i contatti di emergenza inseriti manualmente. La modifica è riservata ai ruoli autorizzati.</p>
+                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.5rem;">Aggiungi o visualizza i contatti di emergenza inseriti manualmente.</p>
                     ${addFormHtml}
-                    <button class="pdf-download-btn" id="useful-numbers-pdf-btn" onclick="downloadUsefulNumbersPDF()">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <button class="pdf-download-btn w-full btn btn-primary" id="useful-numbers-pdf-btn" onclick="downloadUsefulNumbersPDF()" style="width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
                     </button>
+                    <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                            <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
+                        </svg>
+                        <span>Scorri verso destra per visualizzare tutti i dati e le icone di modifica ed eliminazione singole.</span>
+                    </div>
                     <div class="data-table-container">
                         <table class="data-table" id="useful-numbers-table">
                             <tbody id="useful-numbers-table-body">
@@ -5286,12 +5310,18 @@ ${renderBottomNavigation()}
                         </div>
                         <div class="card">
                              <h3 class="card-title">Risultati</h3>
-                            <button class="pdf-download-btn" id="custodian-results-pdf-btn" onclick="downloadCustodianResultsPDF()" style="display: none;">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
+                            <button class="pdf-download-btn w-full btn btn-primary" id="custodian-results-pdf-btn" onclick="downloadCustodianResultsPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                                     <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                                 </svg>
                                 Scarica PDF
                             </button>
+                            <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                                    <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
+                                </svg>
+                                <span>Scorri verso destra per visualizzare tutti i dati della tabella.</span>
+                            </div>
                             <div id="custodian-user-list-container" class="data-table-container">
                                 <p style="color:var(--secondary-text);">Applica i filtri per visualizzare i risultati...</p>
                             </div>
@@ -5309,12 +5339,18 @@ ${renderBottomNavigation()}
                             <div id="report-mode-complessiva" class="chip" onclick="loadElencoCondomini('complessiva')">Riepilogo Complessivo</div>
                             <div id="report-mode-anagrafica" class="chip" onclick="loadElencoCondomini('anagrafica')">Riepilogo Anagrafica</div>
                         </div>
-                        <button class="pdf-download-btn" id="elenco-condomini-pdf-btn" onclick="downloadElencoCondominiPDF()" style="display: none;">
-                            <svg viewBox="0 0 24 24" fill="currentColor">
+                        <button class="pdf-download-btn w-full btn btn-primary" id="elenco-condomini-pdf-btn" onclick="downloadElencoCondominiPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                                 <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                             </svg>
                             Scarica PDF
                         </button>
+                        <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                                <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
+                            </svg>
+                            <span>Scorri verso destra per visualizzare tutti i dati della tabella.</span>
+                        </div>
                         <div id="elenco-condomini-container">
                             <div class="card"><p>Caricamento elenco in corso...</p></div>
                         </div>
@@ -5454,7 +5490,7 @@ ${renderBottomNavigation()}
                 // Mostra il pulsante PDF se ci sono tabelle
                 const pdfBtn = document.getElementById('elenco-condomini-pdf-btn');
                 if (pdfBtn && html.includes('data-table')) {
-                    pdfBtn.style.display = 'inline-flex';
+                    pdfBtn.style.display = 'flex';
                 }
             } catch (error) {
                 console.error("Errore nel caricamento dell'elenco condomini:", error);
@@ -5562,6 +5598,8 @@ ${renderBottomNavigation()}
 
                     tableHtml += `</tbody></table>`;
                     container.innerHTML = tableHtml;
+                    const pdfBtn = document.getElementById('custodian-results-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = filteredData.length > 0 ? 'flex' : 'none';
                 };
 
                 // Aggiungi event listener al form (usa 'change' per i select)
@@ -5591,7 +5629,7 @@ ${renderBottomNavigation()}
                             <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato con le colonne corrette.</p>
                         </div>
                         <button type="button" onclick="downloadImportTemplate('anagrafica')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            📥 Scarica Template (.xlsx)
+                            📥 Template
                         </button>
                     </div>
                     <div class="form-group">
@@ -5687,8 +5725,8 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
                         Visualizza, modifica o elimina le voci.
                     </p>
-                    <button class="pdf-download-btn" id="orari-custode-manual-pdf-btn" onclick="downloadOrariCustodeManualPDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <button class="pdf-download-btn w-full btn btn-primary" id="orari-custode-manual-pdf-btn" onclick="downloadOrariCustodeManualPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
@@ -5715,7 +5753,7 @@ ${renderBottomNavigation()}
                             <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato per la gestione orari.</p>
                         </div>
                         <button type="button" onclick="downloadImportTemplate('orari_custode')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            📥 Scarica Template (.xlsx)
+                            📥 Template
                         </button>
                     </div>
                     <div class="form-group">
@@ -5759,8 +5797,8 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
                         Elenco completo di tutti i dati relativi agli orari del custode. Le modifiche possono essere effettuate nella sezione "Gestione Manuale".
                     </p>
-                    <button class="pdf-download-btn" id="orari-custode-view-pdf-btn" onclick="downloadOrariCustodeViewPDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <button class="pdf-download-btn w-full btn btn-primary" id="orari-custode-view-pdf-btn" onclick="downloadOrariCustodeViewPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
@@ -5840,8 +5878,8 @@ ${renderBottomNavigation()}
         </div>
         <div class="card">
             <h3 class="card-title">Dati Attuali</h3>
-            <button class="pdf-download-btn" id="admin-data-pdf-btn" onclick="downloadAdminDataPDF()" style="display: none;">
-                <svg viewBox="0 0 24 24" fill="currentColor">
+            <button class="pdf-download-btn w-full btn btn-primary" id="admin-data-pdf-btn" onclick="downloadAdminDataPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                     <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                 </svg>
                 Scarica PDF
@@ -5868,7 +5906,7 @@ ${renderBottomNavigation()}
                             <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato con i dati dello studio.</p>
                         </div>
                         <button type="button" onclick="downloadImportTemplate('dati_amministratore')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            📥 Scarica Template (.xlsx)
+                            📥 Template
                         </button>
                     </div>
                     <div class="form-group">
@@ -5911,15 +5949,21 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card">
                     <h3 class="card-title">Recapiti Amministrazione</h3>
-                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
+                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.25rem;">
                         Informazioni di contatto per l'amministrazione del condominio.
                     </p>
-                    <button class="pdf-download-btn" id="admin-summary-pdf-btn" onclick="downloadAdminSummaryPDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <button class="pdf-download-btn w-full btn btn-primary" id="admin-summary-pdf-btn" onclick="downloadAdminSummaryPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
                     </button>
+                    <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                            <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
+                        </svg>
+                        <span>Scorri verso destra per visualizzare tutti i dati e le icone di modifica ed eliminazione singole.</span>
+                    </div>
                     <div id="admin-data-summary-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento dati...</p>
                     </div>
@@ -9351,10 +9395,10 @@ ${renderBottomNavigation()}
                     // Mostra il pulsante PDF appropriato
                     if (containerId === 'excel-table-container-orari-custode-manual') {
                         const pdfBtn = document.getElementById('orari-custode-manual-pdf-btn');
-                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                        if (pdfBtn) pdfBtn.style.display = 'flex';
                     } else if (containerId === 'excel-table-container-orari-custode-view') {
                         const pdfBtn = document.getElementById('orari-custode-view-pdf-btn');
-                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                        if (pdfBtn) pdfBtn.style.display = 'flex';
                     }
                 } else {
                     tableContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>';
@@ -9511,10 +9555,10 @@ ${renderBottomNavigation()}
                     // Mostra il pulsante PDF appropriato
                     if (containerId === 'table-container-admin-data') {
                         const pdfBtn = document.getElementById('admin-data-pdf-btn');
-                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                        if (pdfBtn) pdfBtn.style.display = 'flex';
                     } else if (containerId === 'admin-data-summary-container') {
                         const pdfBtn = document.getElementById('admin-summary-pdf-btn');
-                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                        if (pdfBtn) pdfBtn.style.display = 'flex';
                     }
                 } else {
                     tableContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun dato amministratore importato.</p>';
@@ -10909,13 +10953,19 @@ ${renderBottomNavigation()}
             ${renderHeader('Rubrica Completa')}
             <main>
                 <div class="card">
-                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
+                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.25rem;">
                         ${descriptionText}
                     </p>
+                    <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                            <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
+                        </svg>
+                        <span>Scorri verso destra per visualizzare tutti i dati e le icone di modifica ed eliminazione singole.</span>
+                    </div>
 
                     <h3 class="section-title" style="font-size: 1.1rem;">Contatti importati</h3>
-                    <button class="pdf-download-btn" id="rubrica-imported-pdf-btn" onclick="downloadRubricaImportedPDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <button class="pdf-download-btn w-full btn btn-primary" id="rubrica-imported-pdf-btn" onclick="downloadRubricaImportedPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
@@ -10924,9 +10974,9 @@ ${renderBottomNavigation()}
                         <p style="color:var(--secondary-text);">Caricamento contatti importati...</p>
                     </div>
 
-                    <h3 class="section-title" style="font-size: 1.1rem;">Contatti da Inserimento Manuale</h3>
-                    <button class="pdf-download-btn" id="rubrica-manual-pdf-btn" onclick="downloadRubricaManualPDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <h3 class="section-title" style="font-size: 1.1rem;">Contatti Manuali</h3>
+                    <button class="pdf-download-btn w-full btn btn-primary" id="rubrica-manual-pdf-btn" onclick="downloadRubricaManualPDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
@@ -11003,7 +11053,7 @@ ${renderBottomNavigation()}
 
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('rubrica-imported-pdf-btn');
-                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    if (pdfBtn) pdfBtn.style.display = 'flex';
 
                     // Aggiungi pulsante per eliminazione multipla se l'utente può gestire
                     if (canManage) {
@@ -11022,7 +11072,7 @@ ${renderBottomNavigation()}
                 const qManual = query(collection(db, "usefulNumbers"), orderBy("createdAt", "desc"));
                 onSnapshot(qManual, (snapshot) => {
                     if (snapshot.empty) {
-                        manualContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun contatto inserito manualmente.</p>`;
+                        manualContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun contatto manuale.</p>`;
                         return;
                     }
 
@@ -11089,7 +11139,7 @@ ${renderBottomNavigation()}
 
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('rubrica-manual-pdf-btn');
-                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    if (pdfBtn) pdfBtn.style.display = 'flex';
 
                     // Aggiungi pulsante per eliminazione multipla se l'utente può gestire
                     if (canManage) {
@@ -11109,15 +11159,18 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card">
                     <h3 class="card-title">Orari del Custode</h3>
-                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
-                        SCORRERE A DESTRA PER VISUALIZZARE
-                    </p>
-                    <button class="pdf-download-btn" id="custode-schedule-pdf-btn" onclick="downloadCustodeSchedulePDF()" style="display: none;">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                    <button class="pdf-download-btn w-full btn btn-primary" id="custode-schedule-pdf-btn" onclick="downloadCustodeSchedulePDF()" style="display: none; width: 100%; justify-content: center; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
                             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                         </svg>
                         Scarica PDF
                     </button>
+                    <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--accent-color); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--secondary-text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; line-height: 1.4;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-color);">
+                            <path d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
+                        </svg>
+                        <span>Scorri verso destra per visualizzare tutti i dati e le icone di modifica ed eliminazione singole.</span>
+                    </div>
                     <div id="custode-schedule-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento orari custode...</p>
                     </div>
@@ -11190,7 +11243,7 @@ ${renderBottomNavigation()}
 
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('custode-schedule-pdf-btn');
-                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    if (pdfBtn) pdfBtn.style.display = 'flex';
                 } else {
                     scheduleContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>`;
                 }
@@ -11688,9 +11741,9 @@ ${renderBottomNavigation()}
                     if (snapshot.empty) {
                         let message = 'Nessun sondaggio disponibile.';
                         if (status === 'active') {
-                            message = 'Nessun sondaggio attivo disponibile.';
+                            message = 'Nessun sondaggio disponibile.';
                         } else if (status === 'closed') {
-                            message = 'Nessun sondaggio concluso disponibile.';
+                            message = 'Nessun sondaggio disponibile.';
                         }
                         container.innerHTML = `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">${message}</p></div>`;
                         return;
@@ -13857,7 +13910,7 @@ ${renderBottomNavigation()}
 
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('useful-numbers-pdf-btn');
-                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    if (pdfBtn) pdfBtn.style.display = 'flex';
                 });
             }
             if (importedTableContainer) {
@@ -13918,14 +13971,12 @@ ${renderBottomNavigation()}
                     const pdfBtn = document.getElementById('imported-numbers-pdf-btn');
                     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
-                    // Aggiungi pulsante per eliminazione multipla se l'utente può gestire
+                    // Gestione azioni bulk: assicurati che il pulsante sia pronto e nascosto
                     if (canManage) {
-                        const bulkActionsHtml = `<div class="flex gap-2 mt-4" id="bulk-actions-imported" style="display: none;">
-                            <button onclick="deleteSelectedContactsImported()" class="btn" style="background:var(--danger); color:white;">
-                                Elimina Selezionati
-                            </button>
-                        </div>`;
-                        importedTableContainer.insertAdjacentHTML('afterbegin', bulkActionsHtml);
+                        const bulkActions = document.getElementById('bulk-actions-imported');
+                        if (bulkActions) {
+                            bulkActions.style.display = 'none';
+                        }
                     }
                 });
             }
@@ -18833,8 +18884,8 @@ ${renderBottomNavigation()}
                                     </div>
                                     <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-top:0.1rem;">
                                         ${d.isRegistered
-                                            ? `<span style="font-size:0.65rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">📱 App</span>`
-                                            : `<span style="font-size:0.65rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                        ? `<span style="font-size:0.65rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">📱 App</span>`
+                        : `<span style="font-size:0.65rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
                                         ${d.unit ? `<span style="font-size:0.72rem; color:var(--secondary-text); line-height:1.2;">Unità: ${escapeHtml(d.unit)}</span>` : ''}
                                     </div>
                                 </div>
@@ -22315,7 +22366,7 @@ ${renderBottomNavigation()}
                                 <label class="odg-num-label" style="font-weight:700; color:var(--accent-color, #10B981); font-size:0.85rem; margin:0;">Punto 1:</label>
                                 <button type="button" class="btn-remove-agenda" style="background:none; color:var(--danger, #EF4444); border:none; width:22px; height:22px; font-size:1.25rem; font-weight:800; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;" title="Rimuovi">&times;</button>
                             </div>
-                            <input type="text" class="form-input odg-title-input" style="width:100%; box-sizing:border-box; padding:0.35rem 0.55rem; font-size:0.85rem;" required placeholder="Es. Approvazione Bilancio o Lavori Scala" value="${escapeHtml(val)}">
+                            <input type="text" class="form-input odg-title-input" style="width:100%; box-sizing:border-box; padding:0.35rem 0.55rem; font-size:0.85rem;" required placeholder="Es. Approvazione Bilancio" value="${escapeHtml(val)}">
                         </div>
 
                         <div style="display:flex; flex-direction:column; gap:0.25rem; font-size:0.82rem; width:100%; box-sizing:border-box;">
