@@ -199,14 +199,14 @@ window.AssembleeModule = {
                         <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
                             🏢 <span>Quorum Intero Condominio</span>
                         </div>
-                        <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px;">
-                            <div>
-                                <span id="room-label-tot-teste" style="font-size: 0.75rem; color: var(--secondary-text);">Condom. presenti:</span>
-                                <strong id="room-tot-teste" style="display: block; font-size: 0.98rem; color: var(--accent-color); margin-top: 0.2rem;">0 Teste</strong>
+                        <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px; align-items: start;">
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
+                                <span id="room-label-tot-teste" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Condomini pres.:</span>
+                                <strong id="room-tot-teste" style="display: block; font-size: 0.98rem; color: var(--accent-color); margin-top: 0.2rem; word-break: break-word;">0 Teste</strong>
                             </div>
-                            <div>
-                                <span id="room-label-tot-millesimi" style="font-size: 0.75rem; color: var(--secondary-text);">Millesimi intervenuti:</span>
-                                <strong id="room-tot-millesimi" style="display: block; font-size: 0.98rem; color: var(--warning); margin-top: 0.2rem;">0.00 ‰</strong>
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
+                                <span id="room-label-tot-millesimi" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Millesimi pres.:</span>
+                                <strong id="room-tot-millesimi" style="display: block; font-size: 0.98rem; color: var(--warning); margin-top: 0.2rem; word-break: break-word;">0.00 ‰</strong>
                             </div>
                         </div>
                     </div>
@@ -215,13 +215,13 @@ window.AssembleeModule = {
                     <div id="room-partial-quorum-section" class="hidden" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1.5px dashed var(--surface-color-light);">
                         <div style="cursor: pointer; user-select: none; margin-bottom: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0.6rem 0.75rem; transition: background 0.2s;" onclick="window.togglePartialQuorumCollapsible()">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                                <div style="font-size: 0.84rem; font-weight: 800; color: var(--warning); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.35rem;">
+                                <div style="font-size: 0.84rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.35rem;">
                                     🪜 <span>Condominio Parziale</span>
                                 </div>
                                 <span id="room-partial-toggle-btn" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 800; flex-shrink: 0;">Nascondi ▲</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.45rem; flex-wrap: wrap;">
-                                <span id="room-partial-groups-count" class="badge" style="background: rgba(243, 156, 18, 0.2); color: var(--warning); font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 800;">0 Scale</span>
+                                <span id="room-partial-groups-count" class="badge" style="background: #1E293B; color: #FFFFFF; border: 1px solid #475569; font-size: 0.72rem; padding: 0.18rem 0.5rem; border-radius: 4px; font-weight: 800;">0 Scale</span>
                                 <span id="room-partial-status-summary" class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; display: none;"></span>
                             </div>
                         </div>
