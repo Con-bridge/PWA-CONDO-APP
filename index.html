@@ -16794,6 +16794,61 @@ ${renderBottomNavigation()}
             }
         };
 
+        // ==========================================
+        // CACHE DEI DATI STATICI PER LA STANZA LIVE
+        // Pre-fetch unico all'ingresso nella stanza live: elimina la riesecuzione di getDocs
+        // per importedData, users e partialCondos a ogni snapshot real-time.
+        // ==========================================
+        window._liveAssemblyStaticCache = null;
+        window._liveAssemblyStaticPromise = null;
+
+        window.fetchLiveAssemblyStaticData = async (forceRefresh = false) => {
+            const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
+            if (!forceRefresh && window._liveAssemblyStaticCache && window._liveAssemblyStaticCache.assemblyId === assemblyId) {
+                return window._liveAssemblyStaticCache;
+            }
+            if (!forceRefresh && window._liveAssemblyStaticPromise) {
+                return window._liveAssemblyStaticPromise;
+            }
+
+            window._liveAssemblyStaticPromise = (async () => {
+                try {
+                    const [importedSnap, usersSnap, partialCondosSnap] = await Promise.all([
+                        getDocs(collection(db, "importedData")),
+                        getDocs(collection(db, "users")),
+                        getDocs(collection(db, "partialCondos"))
+                    ]);
+
+                    let tableData = [];
+                    if (!importedSnap.empty) {
+                        const sortedDocs = importedSnap.docs.map(d => d.data()).sort((a, b) => {
+                            const tA = a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : (a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0);
+                            const tB = b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : (b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0);
+                            if (tB !== tA) return tB - tA;
+                            return (b.tableData?.length || 0) - (a.tableData?.length || 0);
+                        });
+                        tableData = sortedDocs[0]?.tableData || [];
+                    }
+
+                    const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    const partialCondosList = partialCondosSnap.docs.map(d => d.data()?.name).filter(Boolean);
+
+                    window._liveAssemblyStaticCache = {
+                        assemblyId,
+                        tableData,
+                        allUsers,
+                        partialCondosList,
+                        loadedAt: Date.now()
+                    };
+                    return window._liveAssemblyStaticCache;
+                } finally {
+                    window._liveAssemblyStaticPromise = null;
+                }
+            })();
+
+            return window._liveAssemblyStaticPromise;
+        };
+
         window.goToStartAssemblySession = () => {
             const btn = document.getElementById('btn-room-start');
             if (btn && typeof btn.onclick === 'function') {
@@ -16811,6 +16866,11 @@ ${renderBottomNavigation()}
         const setupStanzaLiveHandlers = () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             if (!assemblyId) return;
+
+            // Pre-fetch e caching dei dati statici all'ingresso nella stanza live (fuori dal listener onSnapshot)
+            window.fetchLiveAssemblyStaticData().catch(err => {
+                console.error("Errore pre-fetch dati statici assemblea:", err);
+            });
 
             const assemblyRef = doc(db, "assemblies", assemblyId);
             onSnapshot(assemblyRef, (docSnap) => {
@@ -16892,25 +16952,11 @@ ${renderBottomNavigation()}
                     groupsCountBadge.textContent = `${relevantGroups.length} ${relevantGroups.length === 1 ? 'Scala' : 'Scale'}`;
                 }
 
-                // Calcolo asincrono anagrafica generale e quorum gruppi parziali
-                Promise.all([
-                    getDocs(collection(db, "importedData")),
-                    getDocs(collection(db, "users")),
-                    getDocs(collection(db, "partialCondos"))
-                ]).then(([importedSnap, usersSnap, partialCondosSnap]) => {
-                    let tableData = [];
-                    if (!importedSnap.empty) {
-                        const sortedDocs = importedSnap.docs.map(d => d.data()).sort((a, b) => {
-                            const tA = a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : (a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0);
-                            const tB = b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : (b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0);
-                            if (tB !== tA) return tB - tA;
-                            return (b.tableData?.length || 0) - (a.tableData?.length || 0);
-                        });
-                        tableData = sortedDocs[0]?.tableData || [];
-                    }
-
-                    const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    const partialCondosList = partialCondosSnap.docs.map(d => d.data()?.name).filter(Boolean);
+                // Calcolo anagrafica generale e quorum gruppi parziali tramite cache in memoria
+                const renderQuorumCalculation = (staticData) => {
+                    const tableData = staticData?.tableData || [];
+                    const allUsers = staticData?.allUsers || [];
+                    const partialCondosList = staticData?.partialCondosList || [];
 
                     // Se 'Tutte le scale' è presente nei punti OdG, includi tutti i gruppi registrati
                     agendaList.forEach(item => {
@@ -16918,11 +16964,17 @@ ${renderBottomNavigation()}
                             partialCondosList.forEach(g => {
                                 if (g && !partialGroupsSet.has(g)) {
                                     partialGroupsSet.add(g);
-                                    relevantGroups.push(g);
+                                    if (!relevantGroups.includes(g)) {
+                                        relevantGroups.push(g);
+                                    }
                                 }
                             });
                         }
                     });
+
+                    if (groupsCountBadge) {
+                        groupsCountBadge.textContent = `${relevantGroups.length} ${relevantGroups.length === 1 ? 'Scala' : 'Scale'}`;
+                    }
 
                     // 1. Quorum Generale Edificio
                     const headers = Object.keys(tableData[0] || {});
@@ -17226,11 +17278,20 @@ ${renderBottomNavigation()}
                             }
                         }
                     }
-                }).catch(e => {
-                    console.error("Errore calcolo totali quorum:", e);
-                    if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.)`;
-                    if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
-                });
+                };
+
+                // Risoluzione istantanea con cache locale in memoria (Zero letture Firestore ripetute)
+                if (window._liveAssemblyStaticCache && window._liveAssemblyStaticCache.assemblyId === assemblyId) {
+                    renderQuorumCalculation(window._liveAssemblyStaticCache);
+                } else {
+                    window.fetchLiveAssemblyStaticData().then(staticData => {
+                        renderQuorumCalculation(staticData);
+                    }).catch(e => {
+                        console.error("Errore calcolo totali quorum:", e);
+                        if (totTesteEl) totTesteEl.textContent = `${totalPresences} (${activeAttendees.length} + ${activeProxies.length} del.)`;
+                        if (totMillesimiEl) totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} ‰`;
+                    });
+                }
 
                 // QUORUM INFORMATIONAL ONLY / STATUS BANNER
                 const isClosedOrCancelled = ['conclusa', 'annullata'].includes(assembly.status);
@@ -18001,7 +18062,34 @@ ${renderBottomNavigation()}
             }
         };
 
-        window.getUnifiedCondominiumRegistry = async () => {
+        // ==========================================
+        // CACHE ANAGRAFICA ACCREDITAMENTO CON TTL (60s)
+        // Evita il ricaricamento completo da Firestore su users e importedData
+        // ad ogni apertura dei modali di presenza/delega.
+        // ==========================================
+        window._unifiedCondominiumRegistryCache = {
+            data: null,
+            timestamp: 0
+        };
+
+        window.invalidateUnifiedCondominiumRegistryCache = () => {
+            window._unifiedCondominiumRegistryCache = {
+                data: null,
+                timestamp: 0
+            };
+        };
+
+        window.getUnifiedCondominiumRegistry = async (forceRefresh = false) => {
+            const now = Date.now();
+            const TTL = 60000; // 60 secondi
+            if (!forceRefresh && window._unifiedCondominiumRegistryCache?.data && (now - window._unifiedCondominiumRegistryCache.timestamp < TTL)) {
+                return {
+                    allCondomini: window._unifiedCondominiumRegistryCache.data.allCondomini.map(c => ({ ...c })),
+                    registeredCondomini: window._unifiedCondominiumRegistryCache.data.registeredCondomini.map(c => ({ ...c })),
+                    registeredUsers: window._unifiedCondominiumRegistryCache.data.registeredUsers.map(c => ({ ...c }))
+                };
+            }
+
             // 1. Fetch registered users from Firestore
             const usersSnapshot = await getDocs(query(collection(db, "users")));
             const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -18035,9 +18123,9 @@ ${renderBottomNavigation()}
                 const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
 
                 const findH = (keys) => {
-                    let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
+                    let found = headers.find(h => cleanHeader(h) === k.toLowerCase());
                     if (found) return found;
-                    found = headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase())));
+                    found = headers.find(h => cleanHeader(h).includes(k.toLowerCase()));
                     return found || null;
                 };
 
@@ -18650,10 +18738,11 @@ ${renderBottomNavigation()}
                     successMsg.innerHTML = `✅ Accreditate <strong>${newlyAccreditedList.length}</strong> presenze con successo (${totalBatchMillesimi.toFixed(2)} ‰ totali)`;
                     successMsg.classList.remove('hidden');
                 }
-                if (errorMsg) errorMsg.classList.add('hidden');
+                // Invalida cache anagrafica accreditamento su salvataggio presenza
+                if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
                 // Ricarica condomini disponibili aggiornati da tutta l'anagrafica
-                const { allCondomini: allUpdatedCondomini, registeredUsers: updatedRegUsers } = await window.getUnifiedCondominiumRegistry();
+                const { allCondomini: allUpdatedCondomini, registeredUsers: updatedRegUsers } = await window.getUnifiedCondominiumRegistry(true);
                 let remainingAvailable = allUpdatedCondomini.filter(u => {
                     const isPresent = updatedAttendees.some(a => {
                         if (a.status === 'uscito') return false;
@@ -19384,6 +19473,9 @@ ${renderBottomNavigation()}
                         delegateId
                     });
                 }
+
+                // Invalida cache anagrafica accreditamento su salvataggio delega
+                if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
                 hideModal();
                 const totalDelegatorsMil = delegatorsData.reduce((sum, d) => sum + (parseFloat(d.millesimiTotali) || 0), 0);
@@ -20590,6 +20682,9 @@ ${renderBottomNavigation()}
                 }
 
                 await updateDoc(assemblyRef, { attendees: updatedAttendees, proxies: updatedProxies });
+
+                // Invalida cache anagrafica accreditamento su annullamento presenza/delega
+                if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
                 await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_PRESENZA', `Presenza annullata per ${targetName}`);
                 hideModal();
@@ -22815,6 +22910,9 @@ ${renderBottomNavigation()}
                                 attendees: JSON.parse(JSON.stringify(updatedAttendees))
                             });
 
+                            // Invalida cache anagrafica accreditamento su scansione QR presenza
+                            if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
+
                             const fPopup = document.getElementById("quick-scanner-feedback-popup");
                             if (fPopup) {
                                 fPopup.className = '';
@@ -23223,6 +23321,8 @@ ${renderBottomNavigation()}
                     attendees: updatedAttendees
                 });
 
+                if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
+
                 await logActivity("proxy_revoked", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { assemblyId });
                 await customAlert("Delega ritirata con successo! Ora puoi votare autonomamente o conferire una nuova delega.");
 
@@ -23256,6 +23356,8 @@ ${renderBottomNavigation()}
         window.submitAdminManualVote = submitAdminManualVote;
         window.enterLiveRoom = enterLiveRoom;
         window.setupStanzaLiveHandlers = setupStanzaLiveHandlers;
+        window.fetchLiveAssemblyStaticData = fetchLiveAssemblyStaticData;
+        window.invalidateUnifiedCondominiumRegistryCache = invalidateUnifiedCondominiumRegistryCache;
         window.toggleRoomScanner = toggleRoomScanner;
         window.openManualAttendanceModal = openManualAttendanceModal;
         window.saveManualAttendance = saveManualAttendance;
