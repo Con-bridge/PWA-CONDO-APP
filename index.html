@@ -18123,9 +18123,9 @@ ${renderBottomNavigation()}
                 const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
 
                 const findH = (keys) => {
-                    let found = headers.find(h => cleanHeader(h) === k.toLowerCase());
+                    let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
                     if (found) return found;
-                    found = headers.find(h => cleanHeader(h).includes(k.toLowerCase()));
+                    found = headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase())));
                     return found || null;
                 };
 
@@ -18353,10 +18353,21 @@ ${renderBottomNavigation()}
                 unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
             })).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
 
-            return {
+            const result = {
                 allCondomini: unifiedList,
                 registeredCondomini: registeredCondomini,
                 registeredUsers: registeredUsers
+            };
+
+            window._unifiedCondominiumRegistryCache = {
+                data: result,
+                timestamp: Date.now()
+            };
+
+            return {
+                allCondomini: unifiedList.map(c => ({ ...c })),
+                registeredCondomini: registeredCondomini.map(c => ({ ...c })),
+                registeredUsers: registeredUsers.map(c => ({ ...c }))
             };
         };
 
