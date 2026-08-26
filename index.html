@@ -24027,6 +24027,7 @@ ${renderBottomNavigation()}
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
                         console.log('Service Worker registrato con successo:', registration);
+                        registration.update();
                     })
                     .catch(error => {
                         console.log('Registrazione Service Worker fallita:', error);
