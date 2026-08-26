@@ -126,7 +126,7 @@ window.AssembleeModule = {
         `;
     },
 
-    // LA STANZA LIVE UNIFICATA (Con Controlli Avanzati per gli Admin e Votazioni per Questione Stile Sondaggi)
+    // LA STANZA LIVE UNIFICATA (Con Controlli Avanzati per Admin e Votazioni per Questione Stile Sondaggi)
     renderStanzaLive: function (renderHeader, renderBottomNavigation) {
         return `
             ${renderHeader('Assemblea Live')}
