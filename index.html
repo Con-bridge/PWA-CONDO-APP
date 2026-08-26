@@ -17,7 +17,7 @@
          'unsafe-inline' è necessario per gli stili inline e gli handler onclick usati dall'app;
          la protezione principale contro l'XSS è comunque l'escaping dell'output lato JS. -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://cloud.activepieces.com https://primary-production-36d20.up.railway.app; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Con-bridge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -473,6 +473,22 @@
 
         .form-input::placeholder {
             color: var(--secondary-text);
+        }
+
+        .form-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b3b3b3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1.15rem center;
+            background-size: 16px 16px;
+            padding-right: 2.75rem !important;
+            cursor: pointer;
+        }
+
+        :root[data-theme="light"] .form-select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
         }
 
         .form-input:focus,
@@ -1439,6 +1455,14 @@
             justify-content: flex-end;
         }
 
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .justify-center {
+            justify-content: center;
+        }
+
         .w-full {
             width: 100%;
         }
@@ -1555,9 +1579,20 @@
             border-radius: var(--radius-sm);
         }
 
+        /* Stile uniforme per tutte le checkbox dell'app (identico alla selezione delegante) */
+        input[type="checkbox"]:not(.hidden):not(.service-toggle),
         .form-check-input {
-            width: 22px;
-            height: 22px;
+            accent-color: var(--accent-color) !important;
+            width: 18px !important;
+            height: 18px !important;
+            cursor: pointer !important;
+            flex-shrink: 0 !important;
+            vertical-align: middle;
+        }
+
+        input[type="radio"]:not(.hidden) {
+            accent-color: var(--accent-color) !important;
+            cursor: pointer !important;
         }
 
         /* Stili per i pulsanti di download PDF */
@@ -2404,7 +2439,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
             showModal(agreementTitle, agreementHtml);
         };
         const showPrivacyPolicy = () => {
-            const policyTitle = 'Informativa sul Trattamento dei Dati Personali';
+            const policyTitle = 'Informativa';
             const policyHtml = `
                 <p style="font-size: 0.8rem; text-align: center; color: var(--secondary-text); margin-top: -1rem; margin-bottom: 1.5rem;">Ai sensi dell'art. 13 del Regolamento (UE) 2016/679 (GDPR)</p>
 
@@ -2463,8 +2498,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                 <p>I tuoi dati potranno essere comunicati a:</p>
                 <ul style="padding-left: 20px; list-style-position: inside;">
                     <li style="margin-bottom: 0.5rem;"><strong>Altri utenti dell'applicazione:</strong> In base ai ruoli e alle autorizzazioni (es. l'amministratore, il custode, i fornitori per le segnalazioni di loro competenza).</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>Fornitori di servizi tecnici:</strong> Google Firebase per l'infrastruttura tecnica (database, autenticazione, hosting file).</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>Servizi di terze parti per le notifiche:</strong> Per l'invio di notifiche email, il tuo indirizzo email e il contenuto della notifica vengono condivisi con i nostri fornitori di webhook (es. <strong>Activepieces.com</strong>).</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Fornitori di servizi tecnici:</strong> Google Firebase per l'infrastruttura tecnica (database, autenticazione, hosting file, notifiche push FCM).</li>
                 </ul>
 
                 <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">5. Modalità di Trattamento e Trasferimento Dati Extra-UE</h4>
@@ -4654,7 +4688,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="report-location-manual" class="form-label">Ubicazione (*Facoltativo* Es. Interno, Piano, Area Comune)</label>
+                                <label for="report-location-manual" class="form-label">Ubicazione (*Facoltativo*)</label>
                                 <input type="text" id="report-location-manual" class="form-input" placeholder="Es. Interno 15, Piano 3">
                             </div>
                             
@@ -4779,13 +4813,6 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                         </div>
                         <p>Gestione Account</p>
                     </div>
-
-                    <div onclick="showPrivacyPolicy()" class="dashboard-item">
-                        <div class="dashboard-card">
-                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V5l-9-4zm0 10.9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-                        </div>
-                        <p>Informativa Privacy</p>
-                    </div>
                 </div>
 
                 <div style="margin-top: 2rem;">
@@ -4814,7 +4841,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     </div>
                 </form>
             `;
-            showModal('Modifica Dati Personali', modalContent);
+            showModal('Dati Personali', modalContent);
         };
 
         const savePersonalData = async (event) => {
@@ -4881,7 +4908,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     </div>
                 </div>
             `;
-            showModal('Le Mie Proprietà', modalContent);
+            showModal('Proprietà', modalContent);
         };
 
         const openPermissionsModal = () => {
@@ -4908,7 +4935,7 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     </div>
                 </form>
             `;
-            showModal('Autorizzazioni & Privacy', modalContent);
+            showModal('Autorizzazioni', modalContent);
         };
 
         const savePermissionsData = async (event) => {
@@ -6034,9 +6061,8 @@ ${renderBottomNavigation()}
         const renderGestioneGruppi_Regole = () => `
             ${renderHeader('Gestione Regole')}
             <main>
-                <div class="flex items-center justify-between" style="margin-bottom: 1rem;">
+                <div style="margin-bottom: 1.5rem;">
                     <h2 class="section-title" style="margin-bottom: 0;">Regole di Classificazione</h2>
-                    <button id="add-new-rule-btn" class="btn btn-secondary" style="padding: 0.6rem 1rem; font-size: 0.9rem;">+ Nuova Regola</button>
                 </div>
                 <div id="rule-editor-card" class="card hidden" style="margin-bottom: 2rem; background-color: var(--surface-color-light);">
                     <form id="rule-editor-form">
@@ -6055,6 +6081,9 @@ ${renderBottomNavigation()}
                     </form>
                 </div>
                 <div id="group-rules-list" class="list-container"><p>Caricamento regole...</p></div>
+                <div style="margin-top: 1.5rem; margin-bottom: 2rem;">
+                    <button id="add-new-rule-btn" class="btn btn-secondary w-full" style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; font-weight: 600;">+ Nuova Regola</button>
+                </div>
             </main>
             ${renderBottomNavigation()}
         `;
@@ -6152,13 +6181,11 @@ ${renderBottomNavigation()}
                         <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
 
                         <div class="form-group">
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="form-label" style="margin-bottom:0;">Proprietà, Millesimi e Gruppi</label>
-                                <button type="button" id="admin-add-property-btn" onclick="addPropertyRow()" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size:0.8rem;">+ Aggiungi Proprietà</button>
+                            <label class="form-label">Proprietà, Millesimi e Gruppi</label>
+                            <div id="properties-editor-container" style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
+                                <p class="form-label" style="color:var(--secondary-text); font-size:0.9rem; margin-bottom: 0.5rem;">Cerca un nominativo per caricare i dati o aggiungi le proprietà manualmente.</p>
                             </div>
-                            <div id="properties-editor-container">
-                                <p class="form-label" style="color:var(--secondary-text); font-size:0.9rem;">Cerca un nominativo per caricare i dati o aggiungi le proprietà manualmente.</p>
-                            </div>
+                            <button type="button" id="admin-add-property-btn" onclick="addPropertyRow()" class="btn btn-secondary w-full" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; font-weight: 600; margin-bottom: 0.75rem;">+ Aggiungi Proprietà</button>
                         </div>
 
                         <div class="flex justify-end pt-2">
@@ -6371,7 +6398,6 @@ ${renderBottomNavigation()}
                         </div>
                         <div class="flex flex-col gap-2">
                             <button type="submit" class="btn btn-primary">Applica Filtri</button>
-                            <button type="button" onclick="loadActivityHistory(false)" class="btn btn-secondary">Ricarica</button>
                             <button type="reset" id="reset-filters-btn" class="btn btn-secondary">Resetta</button>
                             <button type="button" onclick="clearActivityHistory()" class="btn" style="background-color: var(--danger); color: white;">Svuota Cronologia</button>
                         </div>
@@ -6382,8 +6408,8 @@ ${renderBottomNavigation()}
                     <p style="color:var(--secondary-text);">Caricamento cronologia...</p>
                 </div>
 
-                <div class="flex justify-center mt-4">
-                    <button id="load-more-activities-btn" class="btn btn-secondary hidden">Carica Altri</button>
+                <div class="mt-4" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+                    <button id="load-more-activities-btn" class="btn btn-secondary w-full hidden" style="width: 100%; padding: 0.85rem 1rem; border-radius: 10px; font-weight: 600;">Carica Altri</button>
                 </div>
             </main>
             ${renderBottomNavigation()}
@@ -6663,9 +6689,9 @@ ${renderBottomNavigation()}
 
             const generateServiceRow = (service) => `
                 <div class="card" style="margin-bottom: 1.5rem; background-color: var(--surface-color-light);">
-                    <div class="flex items-center justify-between" style="padding-bottom: 1rem; border-bottom: 1px solid var(--surface-color);">
-                        <h4 class="card-title" style="margin: 0;">${service.name}</h4>
-                        <label class="flex items-center cursor-pointer">
+                    <div class="flex items-center justify-between" style="display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-color);">
+                        <h4 class="card-title" style="margin: 0; flex: 1;">${service.name}</h4>
+                        <label class="flex items-center cursor-pointer" style="margin: 0; display: flex; align-items: center; flex-shrink: 0;">
                             <div style="position: relative;">
                                 <input type="checkbox" id="toggle-${service.id}" class="hidden service-toggle">
                                 <div class="toggle-bg" style="width: 40px; height: 22px; background-color: var(--surface-color); border-radius: 99px;"></div>
@@ -6673,11 +6699,11 @@ ${renderBottomNavigation()}
                             </div>
                         </label>
                     </div>
-                    <div style="padding-top: 1rem;">
-                        <p class="form-label">Chi può vedere questo servizio?</p>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div style="padding-top: 1.25rem;">
+                        <p class="form-label" style="margin-bottom: 1rem; font-weight: 600;">Chi può vedere questo servizio?</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
                             ${roles.map(role => `
-                                <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-center gap-2 cursor-pointer" style="padding: 0.25rem 0;">
                                     <input type="checkbox" class="role-checkbox" data-service="${service.id}" data-role="${role.id}" style="width: 18px; height: 18px; accent-color: var(--accent-color);">
                                     <span>${role.name}</span>
                                 </label>
@@ -6832,18 +6858,18 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card">
                     <h3 class="card-title">Pulizia Dati di Massa</h3>
-                    <p class="form-label" style="color:var(--secondary-text); margin-bottom: 1.5rem;">
+                    <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.5rem; text-align: left; line-height: 1.5; font-size: 0.95rem;">
                         Seleziona una categoria di dati da visualizzare. Potrai selezionare ed eliminare più elementi contemporaneamente. <strong>Questa operazione è irreversibile.</strong>
                     </p>
                     <div id="cleanup-message-box" class="message-box"></div>
-                    <div class="filter-chips-container" style="margin-bottom: 1.5rem;">
-                        <div id="cleanup-chip-communications" class="chip" onclick="loadItemsForCleanup('communications')">Comunicazioni</div>
-                        <div id="cleanup-chip-reports" class="chip" onclick="loadItemsForCleanup('reports')">Segnalazioni</div>
-                        <div id="cleanup-chip-polls" class="chip" onclick="loadItemsForCleanup('polls')">Sondaggi</div>
-                        <div id="cleanup-chip-assemblies" class="chip" onclick="loadItemsForCleanup('assemblies')">Assemblee</div>
+                    <div class="filter-chips-container" style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.5rem; padding-bottom: 0; overflow-x: visible;">
+                        <div id="cleanup-chip-communications" class="chip" style="text-align: center; width: 100%; padding: 0.75rem 1rem; border-radius: 12px; font-weight: 600; box-sizing: border-box;" onclick="loadItemsForCleanup('communications')">Comunicazioni</div>
+                        <div id="cleanup-chip-reports" class="chip" style="text-align: center; width: 100%; padding: 0.75rem 1rem; border-radius: 12px; font-weight: 600; box-sizing: border-box;" onclick="loadItemsForCleanup('reports')">Segnalazioni</div>
+                        <div id="cleanup-chip-polls" class="chip" style="text-align: center; width: 100%; padding: 0.75rem 1rem; border-radius: 12px; font-weight: 600; box-sizing: border-box;" onclick="loadItemsForCleanup('polls')">Sondaggi</div>
+                        <div id="cleanup-chip-assemblies" class="chip" style="text-align: center; width: 100%; padding: 0.75rem 1rem; border-radius: 12px; font-weight: 600; box-sizing: border-box;" onclick="loadItemsForCleanup('assemblies')">Assemblee</div>
                     </div>
                     <div id="cleanup-list-container" class="list-container" style="min-height: 200px; max-height: 60vh; overflow-y: auto;">
-                        <p style="color:var(--secondary-text);">Seleziona una categoria per iniziare.</p>
+                        <p style="color:var(--secondary-text); text-align: center;">Seleziona una categoria per iniziare.</p>
                     </div>
                     <div id="cleanup-actions-container" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--surface-color-light);">
                         <!-- "Select All" Checkbox will be injected here by JS -->
@@ -8287,57 +8313,6 @@ ${renderBottomNavigation()}
                         selectedCommunicationFiles = [];
                         renderCommunicationFilePreviews();
 
-                        // --- WEBHOOK TRIGGER: Call webhook after comunicazione creation ---
-                        (async () => {
-                            try {
-                                const WEBHOOK_URL = "https://cloud.activepieces.com/api/v1/webhooks/Qf51ggDWs4rGFTiX9067H";
-                                // Extract destinatari emails based on UI and rule classification
-                                let destinatariEmails = [];
-                                if (targetGroup && targetGroup !== 'Tutti') {
-                                    // Find users whose UI (proprieta.gruppo) matches the selected group
-                                    const usersQuery = query(collection(db, "users"), where("proprieta", ">", []));
-                                    const usersSnapshot = await getDocs(usersQuery);
-                                    usersSnapshot.forEach(docSnap => {
-                                        const user = docSnap.data();
-                                        if (Array.isArray(user.proprieta)) {
-                                            for (const prop of user.proprieta) {
-                                                if (prop.gruppo === targetGroup) {
-                                                    destinatariEmails.push(user.email);
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    });
-                                } else if (targetGroup === 'Tutti') {
-                                    // All users with an email
-                                    const usersSnapshot = await getDocs(collection(db, "users"));
-                                    usersSnapshot.forEach(docSnap => {
-                                        const user = docSnap.data();
-                                        if (user.email) destinatariEmails.push(user.email);
-                                    });
-                                }
-
-                                const payload = {
-                                    event: "comunicazione.create",
-                                    communication: {
-                                        title,
-                                        content,
-                                        targetGroup,
-                                        createdBy: `${userProfile.nome} ${userProfile.cognome}`,
-                                        createdById: currentUser.uid
-                                    },
-                                    destinatariEmails
-                                };
-                                await fetch(WEBHOOK_URL, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(payload)
-                                });
-                            } catch (err) {
-                                console.error("Errore invio webhook comunicazione:", err);
-                            }
-                        })();
-
                     } catch (error) {
                         console.error("Errore:", error);
                         await customAlert("Si è verificato un errore.");
@@ -8410,50 +8385,6 @@ ${renderBottomNavigation()}
             addOptionBtn.onclick = e => {
                 e.preventDefault();
                 addOptionInput();
-            };
-
-            const triggerMakeWebhookForNewPoll = async (pollData) => {
-                // --- SECURITY BEST PRACTICE ---
-                // This URL should be stored in a secure backend or environment variable,
-                // not exposed in client-side code.
-                const MAKE_WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/daf02a0d-306e-49c6-9f79-210a88f81de0";
-
-                try {
-                    // 1. Fetch all registered user emails from Firestore.
-                    const usersSnapshot = await getDocs(collection(db, "users"));
-                    const recipientEmails = usersSnapshot.docs
-                        .map(doc => doc.data().email)
-                        .filter(Boolean); // Filter out any null/undefined emails
-
-                    // 2. Prepare the payload for Make.com.
-                    //    The recipientEmails are formatted as a proper JSON array.
-                    //    Date objects are automatically converted to ISO strings by JSON.stringify.
-                    const payload = {
-                        surveyDetails: pollData,
-                        recipientEmails: recipientEmails
-                    };
-
-                    // 3. Send the data to the Make.com webhook endpoint.
-                    const response = await fetch(MAKE_WEBHOOK_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Webhook request failed with status: ${response.status}`);
-                    }
-
-                    console.log("Make.com webhook for new survey triggered successfully.");
-                    await logActivity("webhook_sent_poll", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { pollTitle: pollData.title, status: 'success' });
-
-                } catch (error) {
-                    console.error("Error triggering Make.com webhook:", error);
-                    // Log the failure but do not block the user interface.
-                    await logActivity("webhook_sent_poll_failed", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { pollTitle: pollData.title, error: error.message });
-                }
             };
 
             form.addEventListener("submit", async (event) => {
@@ -8539,10 +8470,6 @@ ${renderBottomNavigation()}
                     };
 
                     await addDoc(collection(db, "polls"), pollData);
-
-                    // WEBHOOK TRIGGER: Call the new function after successfully creating the poll.
-                    // This is a non-blocking "fire-and-forget" call to avoid delaying the UI.
-                    triggerMakeWebhookForNewPoll(pollData);
 
                     await logActivity("poll_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { title: title });
 
@@ -8700,6 +8627,84 @@ ${renderBottomNavigation()}
             const fileRef = ref(storage, filePath);
             await uploadBytes(fileRef, file);
             return await getDownloadURL(fileRef);
+        };
+
+        // --- Funzioni di Gestione e Pulizia Cartelle Storage / Foto Registrazione ---
+        const deleteFolderContents = async (path) => {
+            try {
+                const listRef = typeof path === 'string' ? ref(storage, path) : path;
+                const res = await listAll(listRef);
+
+                const deleteFilePromises = res.items.map(itemRef => deleteObject(itemRef).catch(err => {
+                    console.warn('Avviso eliminazione file storage:', itemRef.fullPath, err);
+                }));
+                const deleteFolderPromises = res.prefixes.map(folderRef => deleteFolderContents(folderRef.fullPath));
+
+                await Promise.all([...deleteFilePromises, ...deleteFolderPromises]);
+            } catch (err) {
+                console.warn('Avviso deleteFolderContents:', path, err);
+            }
+        };
+
+        const deleteRegistrationPhotosForUser = async (userId, photoUrl = null) => {
+            const tasks = [];
+            if (userId) {
+                tasks.push(deleteFolderContents(`registration-photos/${userId}`));
+            }
+            if (photoUrl && typeof photoUrl === 'string') {
+                try {
+                    const urlObj = new URL(photoUrl);
+                    let rawPath = urlObj.pathname;
+                    const oIdx = rawPath.indexOf('/o/');
+                    if (oIdx !== -1) {
+                        rawPath = rawPath.substring(oIdx + 3);
+                    }
+                    const cleanPath = decodeURIComponent(rawPath);
+                    if (cleanPath) {
+                        tasks.push(deleteObject(ref(storage, cleanPath)).catch(() => { }));
+                    }
+                } catch (e) {
+                    try {
+                        const match = photoUrl.match(/\/o\/(.+?)(\?|$)/);
+                        if (match && match[1]) {
+                            const cleanPath = decodeURIComponent(match[1]);
+                            tasks.push(deleteObject(ref(storage, cleanPath)).catch(() => { }));
+                        }
+                    } catch (err) { }
+                }
+            }
+            await Promise.all(tasks);
+        };
+
+        const cleanupAllValidatedRegistrationPhotos = async () => {
+            try {
+                const rootPhotosRef = ref(storage, 'registration-photos');
+                const res = await listAll(rootPhotosRef);
+
+                // 1. Elimina file orfani direttamente dentro registration-photos/
+                if (res.items.length > 0) {
+                    await Promise.all(res.items.map(item => deleteObject(item).catch(() => { })));
+                }
+
+                // 2. Per ciascuna cartella utente sotto registration-photos/
+                for (const userFolderRef of res.prefixes) {
+                    const folderUserId = userFolderRef.name;
+                    try {
+                        const userSnap = await getDoc(doc(db, 'users', folderUserId));
+                        // Se l'utente non esiste più o è già convalidato, la foto temporanea va rimossa
+                        if (!userSnap.exists() || userSnap.data()?.isValidated === true) {
+                            await deleteFolderContents(userFolderRef.fullPath);
+                            if (userSnap.exists() && userSnap.data()?.registrationPhotoUrl) {
+                                await updateDoc(doc(db, 'users', folderUserId), { registrationPhotoUrl: null }).catch(() => { });
+                            }
+                        }
+                    } catch (uErr) {
+                        console.warn('Controllo utente per cleanup foto:', folderUserId, uErr);
+                    }
+                }
+            } catch (err) {
+                // Cartella registration-photos inesistente o vuota, normale
+            }
         };
 
         const setupReportHandlers = () => {
@@ -8952,54 +8957,6 @@ ${renderBottomNavigation()}
                         transaction.set(newReportDocRef, reportData);
                     });
 
-                    // Webhook e log... (codice esistente)
-                    // --- WEBHOOK TRIGGER: Call webhook after report creation ---
-                    (async () => {
-                        try {
-                            const WEBHOOK_URL = "https://cloud.activepieces.com/api/v1/webhooks/kBsOMIcaQttqKA2fY6wfh";
-
-                            // Estrai l'email del destinatario per la notifica
-                            let receiverEmail = null;
-                            const recipientType = reportData.recipientType;
-                            let recipientQuery = null;
-
-                            if (reportData.specificRecipientId) {
-                                // Se è stato selezionato un utente specifico (es. un fornitore o un condomino)
-                                const userDoc = await getDoc(doc(db, "users", reportData.specificRecipientId));
-                                if (userDoc.exists()) {
-                                    receiverEmail = userDoc.data().email;
-                                }
-                            } else if (recipientType) {
-                                // Altrimenti, cerca un utente con quel ruolo generico
-                                recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", recipientType));
-                                const snapshot = await getDocs(recipientQuery);
-                                if (!snapshot.empty) {
-                                    // Prende l'email del primo utente trovato con quel ruolo (es. il primo amministratore o custode)
-                                    receiverEmail = snapshot.docs[0].data().email;
-                                }
-                            }
-
-                            const payload = {
-                                event: "segnalazione.create",
-                                reportId: reportId,
-                                report: reportData, // Contiene già tutti i dettagli della segnalazione
-                                user: {
-                                    id: currentUser.uid,
-                                    name: `${userProfile.nome} ${userProfile.cognome}`,
-                                    email: currentUser.email
-                                },
-                                receiverEmail: receiverEmail // Email del destinatario per la notifica
-                            };
-
-                            await fetch(WEBHOOK_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            });
-                        } catch (err) {
-                            console.error("Errore invio webhook segnalazione:", err);
-                        }
-                    })();
                     await logActivity("report_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId, title, attachments: fileUrls.length });
 
                     form.reset();
@@ -10258,6 +10215,7 @@ ${renderBottomNavigation()}
             form.querySelector('#rule-type').dispatchEvent(event);
             classificationSelect.dispatchEvent(event);
             card.classList.remove('hidden');
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
         const closeRuleEditor = () => {
@@ -10378,6 +10336,8 @@ ${renderBottomNavigation()}
                 }
                 listEl.innerHTML = snapshot.docs.map(docSnap => {
                     const rule = { id: docSnap.id, ...docSnap.data() };
+                    window._groupRulesCache = window._groupRulesCache || {};
+                    window._groupRulesCache[rule.id] = rule;
                     const params = rule.params;
                     let description = 'Regola non configurata.';
                     if (rule.type === 'row_range_classification') {
@@ -10388,7 +10348,7 @@ ${renderBottomNavigation()}
                     return `
                     <div class="list-item" style="background-color: var(--surface-color); align-items: flex-start;">
                         <div class="list-item-content" style="padding-top: 0.5rem;">
-                            <div class="title" style="font-weight: 600;">${rule.name}</div>
+                            <div class="title" style="font-weight: 600;">${escapeHtml(rule.name)}</div>
                             <div class="subtitle" style="margin-top: 0.5rem;">${description}</div>
                         </div>
                         <div class="flex flex-col items-end gap-2" style="padding-top: 0.5rem;">
@@ -10401,8 +10361,12 @@ ${renderBottomNavigation()}
                                 </div>
                             </label>
                             <div class="flex gap-2 mt-2">
-                                <button onclick='openRuleEditor(${JSON.stringify(rule).replace(/'/g, "'")})' class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size:0.8rem;">Modifica</button>
-                                <button onclick="deleteGroupRule('${rule.id}')" class="btn" style="background:var(--danger); color:white; padding: 0.4rem 0.8rem; font-size:0.8rem;">Elimina</button>
+                                <button onclick="openRuleEditor(window._groupRulesCache['${rule.id}'])" class="btn-icon" title="Modifica Regola">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                </button>
+                                <button onclick="deleteGroupRule('${rule.id}')" class="btn-icon" style="background:var(--danger); color:white;" title="Elimina Regola">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -13134,7 +13098,7 @@ ${renderBottomNavigation()}
                 <div style="margin-bottom: 2rem;">
                     <h2 class="section-title">Ticket Attivi</h2>
                     <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
-                        Segnalazioni aperte, in lavorazione o in attesa di una tua conferma.
+                        Segnalazioni aperte, in lavorazione o in attesa.
                     </p>
                     <div id="user-reports-active" class="list-container"></div>
                 </div>
@@ -13142,7 +13106,7 @@ ${renderBottomNavigation()}
                 <div>
                     <h2 class="section-title">Ticket Chiusi</h2>
                      <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
-                        Storico delle segnalazioni completate e archiviate.
+                        Storico segnalazioni archiviate e completate.
                     </p>
                     <div id="user-reports-closed" class="list-container"></div>
                 </div>
@@ -13456,6 +13420,7 @@ ${renderBottomNavigation()}
             }
             try {
                 await deleteDoc(doc(db, 'users', userId));
+                deleteRegistrationPhotosForUser(userId).catch(() => { });
                 await logActivity("user_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { deletedUserId: userId, deletedUserName: userName });
                 // Nota: L'eliminazione dell'utente da Firebase Authentication non può essere eseguita in modo sicuro dal client.
                 // Richiede una Cloud Function o la riautenticazione dell'utente da eliminare.
@@ -13564,7 +13529,7 @@ ${renderBottomNavigation()}
                     <input type="number" step="0.01" data-field="millesimi" value="${prop.millesimi || 0}" class="form-input" placeholder="Millesimi">
                     <select data-field="gruppo" class="form-select">${groupOptionsHtml}</select>
                     <select data-field="piano" class="form-select" ${!isSupervisor ? 'disabled' : ''}>${planOptionsHtml}</select>
-                    <button type="button" onclick="this.parentElement.remove()" class="btn-icon" style="background:var(--danger); color:white;">&times;</button>
+                    <button type="button" onclick="this.parentElement.remove()" class="btn" style="background:var(--danger); color:white; border:none; border-radius:var(--radius-sm); padding:0.8rem 0.25rem; font-size:0.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; width:100%; height:100%; box-sizing:border-box;">Rimuovi</button>
                 </div>
                 `;
             }).join('');
@@ -13582,10 +13547,8 @@ ${renderBottomNavigation()}
                     <div class="form-group"><label for="edit-telefono" class="form-label">Telefono</label><input id="edit-telefono" type="tel" class="form-input" value="${escapeHtml(user.telefono || '')}"></div>
                     <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
                     <div class="form-group">
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="form-label" style="margin-bottom:0;">Proprietà, Millesimi e Gruppi</label>
-                            <button type="button" onclick="addPropertyRow()" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size:0.8rem;">+ Aggiungi</button>
-                        </div>
+                        <label class="form-label">Proprietà, Millesimi e Gruppi</label>
+                        <button type="button" onclick="addPropertyRow()" class="btn btn-secondary w-full" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; font-weight: 600; margin-top: 0.5rem; margin-bottom: 0.75rem;">+ Aggiungi Proprietà</button>
                         <div id="properties-editor-container">${propertiesHtml}</div>
                     </div>
                     <div class="flex justify-end gap-4 pt-2">
@@ -14541,6 +14504,9 @@ ${renderBottomNavigation()}
             const form = document.getElementById('validation-form');
             if (!listContainer || !form) return;
 
+            // Pulizia automatica immediata in background delle foto di condomini già convalidati
+            cleanupAllValidatedRegistrationPhotos().catch(() => { });
+
             try {
                 const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"), orderBy("createdAt", "desc"));
                 const snapshot = await getDocs(q);
@@ -14590,48 +14556,28 @@ ${renderBottomNavigation()}
                     const checkboxes = form.querySelectorAll('.validation-checkbox');
                     const photoDeletionPromises = [];
 
-                    // Prima raccogli tutti gli utenti che stanno per essere validati
                     for (const cb of checkboxes) {
                         const userId = cb.dataset.id;
                         const isValidated = cb.checked;
                         const userRef = doc(db, 'users', userId);
 
-                        // Se l'utente viene validato, elimina la foto profilo temporanea
+                        // Se l'utente viene validato, elimina la foto profilo e la relativa cartella in Storage
                         if (isValidated) {
                             const userDoc = await getDoc(userRef);
                             if (userDoc.exists()) {
                                 const userData = userDoc.data();
-                                // Controlla se l'utente ha una foto registrazione e non era già validato
-                                if (userData.registrationPhotoUrl && !userData.isValidated) {
-                                    // Estrai il percorso del file dalla URL
-                                    try {
-                                        const fileUrl = userData.registrationPhotoUrl;
-                                        const urlObj = new URL(fileUrl);
-                                        const pathMatch = urlObj.pathname.match(/\/o\/(.+?)\?/);
-                                        if (pathMatch) {
-                                            const filePath = decodeURIComponent(pathMatch[1]);
-                                            const photoRef = ref(storage, filePath);
-                                            photoDeletionPromises.push(deleteObject(photoRef).catch(err => {
-                                                console.warn(`Impossibile eliminare la foto per l'utente ${userId}:`, err);
-                                            }));
-                                        }
-                                    } catch (urlError) {
-                                        console.warn('Errore nel parsing URL foto:', urlError);
-                                    }
-                                    // Rimuovi anche il campo dalla Firestore
-                                    batch.update(userRef, { isValidated: true, registrationPhotoUrl: null });
-                                } else {
-                                    batch.update(userRef, { isValidated: isValidated });
-                                }
+                                photoDeletionPromises.push(deleteRegistrationPhotosForUser(userId, userData.registrationPhotoUrl));
+                                batch.update(userRef, { isValidated: true, registrationPhotoUrl: null });
                             }
                         } else {
-                            batch.update(userRef, { isValidated: isValidated });
+                            batch.update(userRef, { isValidated: false });
                         }
                     }
 
                     // Esegui le eliminazioni delle foto in parallelo
                     await Promise.all(photoDeletionPromises);
                     await batch.commit();
+                    await cleanupAllValidatedRegistrationPhotos();
                     await logActivity("user_validation_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`);
 
                     messageBox.className = 'message-box success';
@@ -14686,51 +14632,6 @@ ${renderBottomNavigation()}
                         wasEverUrgent: true // NUOVO: Traccia che questo ticket è stato urgente
                     });
                 });
-
-                // --- WEBHOOK TRIGGER: Call webhook after sollecito creation ---
-                (async () => {
-                    try {
-                        const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/98dd3855-bcf5-4ef3-867b-2888ef3f801c";
-                        // Extract receiver email from Firestore based on report recipientType
-                        let receiverEmail = null;
-                        let recipientType = reportDocSnap.data().recipientType;
-                        let recipientQuery = null;
-                        if (recipientType === "amministratore") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "amministratore"));
-                        } else if (recipientType === "custode") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "custode"));
-                        } else if (recipientType === "consigliere") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "consigliere"));
-                        } else if (recipientType === "adm") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "adm"));
-                        }
-                        if (recipientQuery) {
-                            const snapshot = await getDocs(recipientQuery);
-                            if (!snapshot.empty) {
-                                receiverEmail = snapshot.docs[0].data().email;
-                            }
-                        }
-
-                        const payload = {
-                            event: "solleciti.create",
-                            reportId: reportId,
-                            report: reportDocSnap.data(),
-                            user: {
-                                id: currentUser.uid,
-                                name: `${userProfile.nome} ${userProfile.cognome}`,
-                                email: currentUser.email
-                            },
-                            receiverEmail: receiverEmail
-                        };
-                        await fetch(WEBHOOK_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                    } catch (err) {
-                        console.error("Errore invio webhook sollecito:", err);
-                    }
-                })();
 
                 await logActivity("report_reminder_sent", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId: reportId });
                 await customAlert("Sollecito inviato.");
@@ -15147,9 +15048,18 @@ ${renderBottomNavigation()}
                 const res = await listAll(listRef);
                 const canManage = ['amministratore', 'consigliere'].includes(userProfile?.tipoUtente);
 
+                // Pulizia in background per utenti convalidati se siamo nella radice dell'archivio
+                if (!path) {
+                    cleanupAllValidatedRegistrationPhotos().catch(() => { });
+                }
+
                 let itemsHtml = '';
 
                 res.prefixes.forEach(folderRef => {
+                    // Nascondi sempre la cartella di sistema delle foto di registrazione dall'archivio documentale
+                    if (folderRef.name === 'registration-photos') {
+                        return;
+                    }
                     // Amministratore vede solo la sua cartella
                     if (userProfile?.tipoUtente === 'amministratore' && folderRef.name !== 'Archivio Amministratore') {
                         return;
@@ -15496,6 +15406,9 @@ ${renderBottomNavigation()}
 
                         let foldersHtml = '';
                         res.prefixes.forEach(folderRef => {
+                            if (folderRef.name === 'registration-photos') {
+                                return;
+                            }
                             const isAmministratore = userProfile?.tipoUtente === 'amministratore';
                             const isConsigliere = userProfile?.tipoUtente === 'consigliere';
                             const isAdminFolder = folderRef.name === 'Archivio Amministratore';
@@ -15601,16 +15514,6 @@ ${renderBottomNavigation()}
                 console.error("Errore nel download:", error);
                 await customAlert(`Impossibile scaricare il file: ${error.message}`);
             }
-        };
-
-        const deleteFolderContents = async (path) => {
-            const listRef = ref(storage, path);
-            const res = await listAll(listRef);
-
-            const deleteFilePromises = res.items.map(itemRef => deleteObject(itemRef));
-            const deleteFolderPromises = res.prefixes.map(folderRef => deleteFolderContents(folderRef.fullPath));
-
-            await Promise.all([...deleteFilePromises, ...deleteFolderPromises]);
         };
 
         const handleDeleteItem = async (fullPath, isFolder) => {
@@ -23504,8 +23407,10 @@ ${renderBottomNavigation()}
                     <option value="">Nessun Gruppo</option>
                     ${groupOptionsHtml}
                 </select>
-                <button type="button" onclick="this.parentElement.remove()" class="btn-icon" style="background:var(--danger); color:white;">&times;</button>
+                <button type="button" onclick="this.parentElement.remove()" class="btn" style="background:var(--danger); color:white; border:none; border-radius:var(--radius-sm); padding:0.8rem 0.25rem; font-size:0.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; width:100%; height:100%; box-sizing:border-box;">Rimuovi</button>
             `;
+            const hint = container.querySelector('p');
+            if (hint) hint.remove();
             container.appendChild(newRow);
         };
         window.addPropertyRow = addPropertyRow;
