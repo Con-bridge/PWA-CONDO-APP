@@ -17431,7 +17431,7 @@ ${renderBottomNavigation()}
                             <div style="display:flex; align-items:flex-start; gap:0.65rem;">
                                 <span style="font-size:1.35rem; line-height:1; flex-shrink:0; margin-top:0.1rem;">🔒</span>
                                 <div style="flex:1; min-width:0;">
-                                    <strong style="color:#FEF3C7; font-size:0.95rem; display:block; margin-bottom:0.15rem;">Votazioni bloccate</strong>
+                                    <strong style="color:var(--primary-text); font-size:0.98rem; font-weight:900; display:block; margin-bottom:0.15rem;">Votazioni bloccate</strong>
                                     <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.4; display:block;">Per sbloccare i punti di discussione bisogna approvarne l'ordine.</span>
                                 </div>
                             </div>
@@ -18739,6 +18739,32 @@ ${renderBottomNavigation()}
             }
         };
 
+        window._proxyDelegatorsDetailExpanded = false;
+
+        window.toggleSelectedDelegatorsDetail = (forceState) => {
+            if (typeof forceState === 'boolean') {
+                window._proxyDelegatorsDetailExpanded = forceState;
+            } else {
+                window._proxyDelegatorsDetailExpanded = !window._proxyDelegatorsDetailExpanded;
+            }
+            const listEl = document.getElementById('selected-delegators-detail-list');
+            const toggleBtn = document.getElementById('toggle-delegators-detail-btn');
+            if (listEl) {
+                listEl.style.display = window._proxyDelegatorsDetailExpanded ? 'flex' : 'none';
+            }
+            if (toggleBtn) {
+                toggleBtn.textContent = window._proxyDelegatorsDetailExpanded ? 'Nascondi deleganti ▲' : 'Mostra deleganti ▼';
+            }
+        };
+
+        window.removeSelectedDelegator = (delegatorId) => {
+            const cb = document.querySelector(`.proxy-delegator-checkbox[value="${delegatorId}"]`);
+            if (cb) {
+                cb.checked = false;
+                window.onProxyDelegatorsChanged();
+            }
+        };
+
         window.onProxyDelegatorsChanged = () => {
             const checkedCbs = Array.from(document.querySelectorAll('.proxy-delegator-checkbox:checked'));
             const badge = document.getElementById('selected-delegator-badge');
@@ -18747,6 +18773,7 @@ ${renderBottomNavigation()}
             if (!badge) return;
 
             if (checkedCbs.length === 0) {
+                window._proxyDelegatorsDetailExpanded = false;
                 badge.style.display = 'none';
                 badge.innerHTML = '';
                 if (submitBtn) submitBtn.textContent = 'Registra Delega';
@@ -18754,28 +18781,70 @@ ${renderBottomNavigation()}
             }
 
             let totalMil = 0;
-            const names = [];
+            const delegatorsList = [];
             checkedCbs.forEach(cb => {
                 const raw = cb.getAttribute('data-delegator-json');
                 if (raw) {
                     try {
                         const d = JSON.parse(raw);
-                        names.push(d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim());
-                        totalMil += (parseFloat(d.millesimiTotali) || 0);
+                        const name = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
+                        const mil = parseFloat(d.millesimiTotali) || 0;
+                        const unit = d.unitaStr || (Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || ''));
+                        totalMil += mil;
+                        delegatorsList.push({
+                            id: d.id || cb.value,
+                            name: name,
+                            mil: mil,
+                            unit: unit,
+                            isRegistered: !!d.isRegistered
+                        });
                     } catch (e) { }
                 }
             });
 
             badge.style.display = 'flex';
+            badge.style.flexDirection = 'column';
+
             if (checkedCbs.length === 1) {
+                window._proxyDelegatorsDetailExpanded = false;
                 badge.innerHTML = `
-                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(names[0] || '1 delegante')}</span>
-                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${totalMil.toFixed(2)} ‰</strong>
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                        <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(delegatorsList[0]?.name || '1 delegante')}</span>
+                        <strong style="color:var(--warning); font-size:0.82rem; white-space:nowrap;">${totalMil.toFixed(2)} ‰</strong>
+                    </div>
                 `;
             } else {
                 badge.innerHTML = `
-                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;" title="${escapeHtml(names.join(', '))}">✓ ${checkedCbs.length} deleganti selezionati</span>
-                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">Totale: ${totalMil.toFixed(2)} ‰</strong>
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                        <span style="color:#10B981; font-weight:800; font-size:0.84rem; white-space:nowrap;">✓ ${checkedCbs.length} deleganti selezionati</span>
+                        <strong style="color:var(--warning); font-size:0.84rem; font-weight:800; white-space:nowrap; margin-left:0.5rem;">Totale: ${totalMil.toFixed(2)} ‰</strong>
+                    </div>
+                    <div onclick="window.toggleSelectedDelegatorsDetail()" style="cursor:pointer; margin-top:0.35rem; padding:0.22rem 0.5rem; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:5px; display:flex; align-items:center; justify-content:center; gap:0.3rem; user-select:none;">
+                        <span id="toggle-delegators-detail-btn" style="font-size:0.75rem; color:var(--text-color); font-weight:700;">
+                            ${window._proxyDelegatorsDetailExpanded ? 'Nascondi deleganti ▲' : 'Mostra deleganti ▼'}
+                        </span>
+                    </div>
+                    <div id="selected-delegators-detail-list" style="display:${window._proxyDelegatorsDetailExpanded ? 'flex' : 'none'}; width:100%; margin-top:0.4rem; padding-top:0.35rem; border-top:1px dashed rgba(16,185,129,0.3); flex-direction:column; gap:0.35rem; max-height:160px; overflow-y:auto;">
+                        ${delegatorsList.map(d => `
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; background:rgba(255,255,255,0.06); padding:0.4rem 0.55rem; border-radius:7px; border:1px solid rgba(255,255,255,0.05); gap:0.4rem;">
+                                <div style="display:flex; flex-direction:column; min-width:0; flex:1; gap:0.15rem;">
+                                    <div style="font-weight:800; font-size:0.85rem; color:var(--text-color); line-height:1.3; word-break:break-word;">
+                                        ${escapeHtml(d.name)}
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-top:0.1rem;">
+                                        ${d.isRegistered
+                                            ? `<span style="font-size:0.65rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">📱 App</span>`
+                                            : `<span style="font-size:0.65rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
+                                        ${d.unit ? `<span style="font-size:0.72rem; color:var(--secondary-text); line-height:1.2;">Unità: ${escapeHtml(d.unit)}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.45rem; flex-shrink:0; margin-left:0.35rem; padding-top:0.1rem;">
+                                    <strong style="color:var(--warning); font-size:0.82rem; font-weight:800; white-space:nowrap;">${d.mil.toFixed(2)} ‰</strong>
+                                    <span onclick="event.stopPropagation(); window.removeSelectedDelegator('${d.id}')" title="Deseleziona" style="color:var(--danger, #EF4444); cursor:pointer; font-weight:800; font-size:0.95rem; padding:0.12rem 0.3rem; line-height:1; display:inline-flex; align-items:center; border-radius:4px; background:rgba(239,68,68,0.1);">✕</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
                 `;
             }
 
@@ -18818,6 +18887,8 @@ ${renderBottomNavigation()}
         window.openManualProxyModal = async () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             if (!assemblyId) return;
+
+            window._proxyDelegatorsDetailExpanded = false;
 
             try {
                 const { allCondomini, registeredCondomini, registeredUsers } = await window.getUnifiedCondominiumRegistry();
@@ -18862,8 +18933,8 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                // Delegates list: registered condomini/consiglieri (who can vote in assembly)
-                const allDelegates = registeredCondomini.length > 0 ? registeredCondomini : allDelegators;
+                // Delegates list: tutta l'anagrafica (App + Anagrafica) come per i deleganti
+                const allDelegates = [...allDelegators];
 
                 const delegatorCardsHtml = allDelegators.map((d) => {
                     const dDisplayName = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
@@ -18896,7 +18967,7 @@ ${renderBottomNavigation()}
                     const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
                     const uUnitaStr = u.unitaStr || (u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare.join(', ') : u.unitaImmobiliare) : (u.proprieta ? u.proprieta.map(p => p.interno).join(', ') : ''));
                     return `
-                        <label class="proxy-delegate-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml((uDisplayName + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
+                        <label class="proxy-delegate-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
                             <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
                                 <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" onchange="onProxyDelegateSelected(this)" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
                                 <div style="flex:1; min-width:0; overflow:hidden;">
@@ -18904,7 +18975,7 @@ ${renderBottomNavigation()}
                                         ${escapeHtml(uDisplayName)}
                                     </div>
                                     <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
-                                        ${u.isRegistered !== false
+                                        ${u.isRegistered
                             ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📱 App</span>`
                             : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">📋 Anagrafica</span>`}
                                     </div>
@@ -18938,7 +19009,7 @@ ${renderBottomNavigation()}
                                             <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
                                             <svg id="proxy-delegator-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div id="selected-delegator-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: none; align-items: center; justify-content: space-between;"></div>
+                                        <div id="selected-delegator-badge" onclick="event.stopPropagation();" style="margin-top: 0.35rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.55rem; display: none; flex-direction: column;"></div>
                                     </div>
                                     <div id="proxy-delegator-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
                                         <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autofocus autocomplete="off">
