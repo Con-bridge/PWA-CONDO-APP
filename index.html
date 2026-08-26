@@ -74,7 +74,7 @@
             --accent-color: #1DB954;
             --accent-color-dark: #19a34a;
             --danger: #dc3545;
-            --warning: #ffc107;
+            --warning: #B45309;
         }
 
         /* Theme Transition Styles */
@@ -2028,7 +2028,7 @@
         };
 
         // Funzione per mostrare un confirm personalizzato
-        window.customConfirm = function (message) {
+        window.customConfirm = function (message, confirmText = 'OK', cancelText = 'Annulla') {
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
@@ -2045,7 +2045,7 @@
 
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'custom-dialog-btn custom-dialog-btn-secondary';
-                cancelBtn.textContent = 'Annulla';
+                cancelBtn.textContent = cancelText;
                 cancelBtn.onclick = () => {
                     document.body.removeChild(overlay);
                     resolve(false);
@@ -2053,7 +2053,7 @@
 
                 const okBtn = document.createElement('button');
                 okBtn.className = 'custom-dialog-btn custom-dialog-btn-primary';
-                okBtn.textContent = 'OK';
+                okBtn.textContent = confirmText;
                 okBtn.onclick = () => {
                     document.body.removeChild(overlay);
                     resolve(true);
@@ -16816,6 +16816,31 @@ ${renderBottomNavigation()}
             }
         };
 
+        window._openScaleAttendees = window._openScaleAttendees || new Set();
+        window.toggleScaleAttendeesCollapsible = (scaleSafeId) => {
+            const el = document.getElementById(`attendees-collapsible-${scaleSafeId}`);
+            const ic = document.getElementById(`attendees-toggle-icon-${scaleSafeId}`);
+            if (!el) return;
+            const isHidden = el.classList.toggle('hidden');
+            if (isHidden) {
+                window._openScaleAttendees.delete(scaleSafeId);
+            } else {
+                window._openScaleAttendees.add(scaleSafeId);
+            }
+            if (ic) {
+                ic.textContent = isHidden ? 'Espandi ▼' : 'Comprimi ▲';
+            }
+        };
+
+        window.goToStartAssemblySession = () => {
+            const btn = document.getElementById('btn-room-start');
+            if (btn && typeof btn.onclick === 'function') {
+                btn.click();
+            } else if (typeof window.startLiveAssemblySession === 'function') {
+                window.startLiveAssemblySession();
+            }
+        };
+
         const enterLiveRoom = (assemblyId) => {
             sessionStorage.setItem('activeLiveAssemblyId', assemblyId);
             navigateTo('assemblea_room');
@@ -16843,7 +16868,7 @@ ${renderBottomNavigation()}
                     if (a && a.uid) uniqueAttendeesMap.set(a.uid, a);
                 });
                 const attendees = Array.from(uniqueAttendeesMap.values());
-                const activeAttendees = attendees.filter(a => a.status !== 'uscito');
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                 const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && activeAttendees.some(a => a.uid === p.delegateId));
                 const totalPresences = activeAttendees.length + activeProxies.length;
                 let totMillesimi = 0;
@@ -17054,6 +17079,7 @@ ${renderBottomNavigation()}
                                 // B. Presenti del Gruppo in Aula (Numeratore)
                                 const presentGroupHeadsSet = new Set();
                                 let presentGroupMil = 0;
+                                const groupAttendeesList = [];
 
                                 activeAttendees.forEach(a => {
                                     const u = allUsers.find(usr => usr.id === a.uid);
@@ -17061,8 +17087,17 @@ ${renderBottomNavigation()}
                                     const groupProps = props.filter(p => window.isScaleInTargetGroup(p.gruppo, groupName));
                                     if (groupProps.length > 0) {
                                         presentGroupHeadsSet.add(a.uid);
-                                        groupProps.forEach(p => {
-                                            presentGroupMil += (parseFloat(p.millesimi) || 0);
+                                        const mil = groupProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                                        presentGroupMil += mil;
+                                        const units = groupProps.map(p => p.interno).filter(Boolean).join(', ');
+                                        const cleanName = (a.nome || `${u?.cognome || ''} ${u?.nome || ''}` || 'Condòmino').replace(/\s*\(\+\d+\s+deleghe?\s+ricevute?\)/i, '').trim();
+                                        groupAttendeesList.push({
+                                            uid: a.uid,
+                                            name: cleanName,
+                                            millesimi: mil,
+                                            units: units,
+                                            isManual: !!a.isManual,
+                                            isProxy: false
                                         });
                                     }
                                 });
@@ -17071,9 +17106,22 @@ ${renderBottomNavigation()}
                                     const isProxyInGroup = window.isScaleInTargetGroup(p.delegatorGroup, groupName) || (!p.delegatorGroup && p.delegatorMillesimi);
                                     if (isProxyInGroup) {
                                         presentGroupHeadsSet.add(p.delegatorId || p.id);
-                                        presentGroupMil += (parseFloat(p.delegatorMillesimi) || 0);
+                                        const proxyMil = parseFloat(p.delegatorMillesimi) || 0;
+                                        presentGroupMil += proxyMil;
+                                        groupAttendeesList.push({
+                                            uid: p.delegatorId || p.id,
+                                            name: p.delegatorName || 'Condòmino in delega',
+                                            millesimi: proxyMil,
+                                            units: p.delegatorUnit || '',
+                                            delegateName: p.delegateName || '',
+                                            isManual: true,
+                                            isProxy: true
+                                        });
                                     }
                                 });
+
+                                // Ordina per millesimi decrescenti, poi per nome
+                                groupAttendeesList.sort((x, y) => y.millesimi - x.millesimi || x.name.localeCompare(y.name));
 
                                 const presentHeadsCount = presentGroupHeadsSet.size;
                                 const requiredHeads = Math.ceil(totalGroupHeads / 3);
@@ -17084,7 +17132,50 @@ ${renderBottomNavigation()}
                                     quorumReachedCount++;
                                 }
 
-                                // C. Punti all'OdG collegati a questa specifica scala/gruppo
+                                // C. Elenco Presenti del Gruppo (Comprimi/Espandi, compresso di default)
+                                const isAttendeesOpen = window._openScaleAttendees && window._openScaleAttendees.has(scaleSafeId);
+                                let attendeesHtml = '';
+                                if (groupAttendeesList.length > 0) {
+                                    attendeesHtml = `
+                                        <div style="margin-top: 0.65rem; padding-top: 0.55rem; border-top: 1px dashed rgba(255, 255, 255, 0.12);">
+                                            <div style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; font-weight: 700; color: var(--secondary-text); user-select: none;" onclick="window.toggleScaleAttendeesCollapsible('${scaleSafeId}')">
+                                                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                                                    👥 <span>Condòmini presenti (${groupAttendeesList.length})</span>
+                                                </div>
+                                                <span id="attendees-toggle-icon-${scaleSafeId}" style="color: var(--accent-color); font-size: 0.72rem; font-weight: 700;">${isAttendeesOpen ? 'Comprimi ▲' : 'Espandi ▼'}</span>
+                                            </div>
+                                            <div id="attendees-collapsible-${scaleSafeId}" class="${isAttendeesOpen ? '' : 'hidden'}" style="margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                                ${groupAttendeesList.map(att => `
+                                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.38rem 0.6rem; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                                        <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                                                            <div style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden;">
+                                                                <strong style="color: var(--primary-text); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(att.name)}">${escapeHtml(att.name)}</strong>
+                                                                ${att.isProxy ? `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93C5FD; font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0;">📜 Delega a ${escapeHtml(att.delegateName || 'Delegato')}</span>` : (att.isManual ? `<span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--secondary-text); font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0;">✍️ Manuale</span>` : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0;">📱 App</span>`)}
+                                                            </div>
+                                                            ${att.units ? `<span style="font-size: 0.68rem; color: var(--secondary-text); margin-top: 0.1rem;">Int. ${escapeHtml(att.units)}</span>` : ''}
+                                                        </div>
+                                                        <div style="text-align: right; flex-shrink: 0;">
+                                                            <strong style="color: var(--primary-text); font-size: 0.82rem; font-weight: 800; white-space: nowrap;">${att.millesimi.toFixed(2)} ‰</strong>
+                                                        </div>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    attendeesHtml = `
+                                        <div style="margin-top: 0.65rem; padding-top: 0.55rem; border-top: 1px dashed rgba(255, 255, 255, 0.12);">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; font-weight: 700; color: var(--secondary-text);">
+                                                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                                                    👥 <span>Condòmini presenti (0)</span>
+                                                </div>
+                                                <span style="font-size: 0.7rem; color: var(--secondary-text); font-style: italic;">Nessun presente</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+
+                                // D. Punti all'OdG collegati a questa specifica scala/gruppo
                                 const matchedPoints = agendaList.map((item, pIdx) => ({ item, index: pIdx + 1 })).filter(({ item }) => {
                                     const sc = item.scope || 'intero';
                                     const tg = item.targetGroup || '';
@@ -17108,7 +17199,7 @@ ${renderBottomNavigation()}
                                                             <span class="badge" style="background: var(--accent-color); color: black; font-weight: 800; font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: 4px; flex-shrink: 0;">Punto ${index}</span>
                                                             <strong style="color: var(--primary-text); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(item.title || '')}">${escapeHtml(item.title || '')}</strong>
                                                         </div>
-                                                        <span style="font-size: 0.72rem; color: var(--warning); font-weight: 700; flex-shrink: 0;">${(item.status === 'closed' ? '🏁 Concluso' : (item.status === 'voting' ? '🔴 In Voto' : '⏳ In Attesa'))}</span>
+                                                        <span style="font-size: 0.72rem; color: var(--primary-text); font-weight: 800; flex-shrink: 0; background: rgba(255, 255, 255, 0.08); padding: 0.12rem 0.45rem; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.15);">${(item.status === 'closed' ? '🏁 Concluso' : (item.status === 'voting' ? '🔴 In Voto' : '⏳ In Attesa'))}</span>
                                                     </div>
                                                 `).join('')}
                                             </div>
@@ -17116,13 +17207,17 @@ ${renderBottomNavigation()}
                                     `;
                                 }
 
+                                const statusBadgeStyle = isQuorumReached
+                                    ? 'background: #064E3B; color: #A7F3D0; font-weight: 800; font-size: 0.74rem; padding: 0.25rem 0.65rem; border-radius: 6px; border: 1.5px solid #10B981;'
+                                    : 'background: #78350F; color: #FEF3C7; font-weight: 800; font-size: 0.74rem; padding: 0.25rem 0.65rem; border-radius: 6px; border: 1.5px solid #F59E0B;';
+
                                 return `
-                                    <div class="card" style="background: ${isQuorumReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(243, 156, 18, 0.08)'}; border: 1.5px solid ${isQuorumReached ? '#10B981' : 'var(--warning)'}; border-radius: 10px; padding: 0.95rem; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                                    <div class="card" style="background: ${isQuorumReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.06)'}; border: 1.5px solid ${isQuorumReached ? '#10B981' : '#F59E0B'}; border-radius: 10px; padding: 0.95rem; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.4rem;">
                                             <div style="font-weight: 800; font-size: 0.95rem; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem;">
                                                 🏢 <span>Scala / Gruppo: <strong style="color: var(--accent-color); font-size: 1rem;">${escapeHtml(groupName)}</strong></span>
                                             </div>
-                                            <span class="badge" style="background: ${isQuorumReached ? 'rgba(16, 185, 129, 0.25)' : 'rgba(243, 156, 18, 0.25)'}; color: ${isQuorumReached ? '#10B981' : 'var(--warning)'}; font-weight: 800; font-size: 0.74rem; padding: 0.25rem 0.6rem; border-radius: 6px; border: 1px solid ${isQuorumReached ? '#10B981' : 'var(--warning)'};">
+                                            <span class="badge" style="${statusBadgeStyle}">
                                                 ${isQuorumReached ? '✅ Quorum Raggiunto (≥ 1/3)' : '⚠️ Sotto Quorum (Richiesto 1/3)'}
                                             </span>
                                         </div>
@@ -17136,13 +17231,14 @@ ${renderBottomNavigation()}
                                             </div>
                                             <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
                                                 <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Millesimi presenti</span>
-                                                <strong style="display: block; font-size: 0.98rem; color: var(--warning); font-weight: 800; margin: 0.1rem 0;">
+                                                <strong style="display: block; font-size: 0.98rem; color: var(--primary-text); font-weight: 900; margin: 0.1rem 0;">
                                                     ${presentGroupMil.toFixed(2)} su ${totalGroupMil.toFixed(2)} ‰
                                                 </strong>
                                                 <span style="font-size: 0.68rem; color: var(--secondary-text);">min. ${requiredMil.toFixed(2)} ‰ (1/3)</span>
                                             </div>
                                         </div>
 
+                                        ${attendeesHtml}
                                         ${pointsHtml}
                                     </div>
                                 `;
@@ -17153,14 +17249,16 @@ ${renderBottomNavigation()}
                             if (summaryBadge) {
                                 summaryBadge.style.display = 'inline-block';
                                 if (quorumReachedCount === relevantGroups.length) {
-                                    summaryBadge.style.background = 'rgba(16, 185, 129, 0.2)';
-                                    summaryBadge.style.color = '#10B981';
-                                    summaryBadge.style.border = '1px solid #10B981';
+                                    summaryBadge.style.background = '#064E3B';
+                                    summaryBadge.style.color = '#A7F3D0';
+                                    summaryBadge.style.border = '1.5px solid #10B981';
+                                    summaryBadge.style.fontWeight = '800';
                                     summaryBadge.textContent = '✅ Tutte in Quorum';
                                 } else {
-                                    summaryBadge.style.background = 'rgba(243, 156, 18, 0.2)';
-                                    summaryBadge.style.color = 'var(--warning)';
-                                    summaryBadge.style.border = '1px solid var(--warning)';
+                                    summaryBadge.style.background = '#78350F';
+                                    summaryBadge.style.color = '#FEF3C7';
+                                    summaryBadge.style.border = '1.5px solid #F59E0B';
+                                    summaryBadge.style.fontWeight = '800';
                                     summaryBadge.textContent = `⚠️ ${quorumReachedCount}/${relevantGroups.length} in Quorum`;
                                 }
                             }
@@ -17321,17 +17419,22 @@ ${renderBottomNavigation()}
                     } else {
                         attendeesListEl.innerHTML = attendees.map(a => {
                             const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                            const isLeft = a.status === 'uscito';
+                            const isDelegated = a.status === 'delegato' || a.isDelegated === true;
+                            const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+
                             let proxyInfo = '';
                             if (heldProxies.length > 0) {
                                 proxyInfo = `<div style="font-size:0.72rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem;">📜 Deleghe (${heldProxies.length}): ${heldProxies.map(p => escapeHtml(p.delegatorName)).join(', ')}</div>`;
+                            } else if (isDelegated && a.delegatedToName) {
+                                proxyInfo = `<div style="font-size:0.72rem; color:#3B82F6; font-weight:600; margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem;">📜 Delegato a: ${escapeHtml(a.delegatedToName)}</div>`;
                             }
-
-                            const isLeft = a.status === 'uscito';
-                            const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
 
                             let statusBadge = isLeft
                                 ? `<span class="badge" style="background:rgba(239,68,68,0.18); color:var(--danger, #EF4444); border:1px solid rgba(239,68,68,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">🔴 Uscito</span>`
-                                : `<span class="badge" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid rgba(29,185,84,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">🟢 Presente</span>`;
+                                : (isDelegated
+                                    ? `<span class="badge" style="background:rgba(59,130,246,0.18); color:#3B82F6; border:1px solid rgba(59,130,246,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">📜 In Delega</span>`
+                                    : `<span class="badge" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid rgba(29,185,84,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">🟢 Presente</span>`);
 
                             const regTypeBadge = isManual
                                 ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10B981; font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">✍️ Manuale</span>`
@@ -17343,29 +17446,30 @@ ${renderBottomNavigation()}
 
                             if (isAdmin && !isClosedOrCancelled) {
                                 if (isSessionActive) {
-                                    // Attivo non appena il pulsante "Inizia" si trasforma nello stato "Seduta avviata"
-                                    if (isLeft) {
-                                        toggleButtonHtml = `<button type="button" onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid #1DB954; font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
-                                    } else {
-                                        toggleButtonHtml = `<button type="button" onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger, #EF4444); color:white; border:none; font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Segnala uscita dall'aula (rimuove presenza e deleghe dal conteggio)">🚪 Uscita</button>`;
+                                    if (!isDelegated) {
+                                        if (isLeft) {
+                                            toggleButtonHtml = `<button type="button" onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'presente')" class="btn" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid #1DB954; font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Segnala rientro in aula">🟢 Rientro</button>`;
+                                        } else {
+                                            toggleButtonHtml = `<button type="button" onclick="event.stopPropagation(); toggleAttendeeStatus('${assemblyId}', '${a.uid}', 'uscito')" class="btn" style="background:var(--danger, #EF4444); color:white; border:none; font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Segnala uscita dall'aula (rimuove presenza e deleghe dal conteggio)">🚪 Uscita</button>`;
+                                        }
                                     }
                                 } else {
-                                    // Tasto Annulla abilitato fino al momento esatto in cui viene premuto "Inizia"
-                                    cancelBtnHtml = `<button type="button" onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger, #EF4444); border:1px solid var(--danger, #EF4444); font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Annulla registrazione presenza">🗑️ Annulla</button>`;
+                                    cancelBtnHtml = `<button type="button" onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${a.uid}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger, #EF4444); border:1px solid var(--danger, #EF4444); font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Annulla registrazione presenza">${isDelegated ? '🗑️ Annulla Delega' : '🗑️ Annulla'}</button>`;
                                 }
                             }
 
                             const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || '');
+                            const displayMillesimi = (isDelegated && a.baseMillesimi !== undefined) ? a.baseMillesimi : (a.millesimi || 0);
 
                             return `
-                                <div style="background:var(--surface-color-light); padding:0.75rem 0.9rem; border-radius:10px; font-size:0.85rem; margin-bottom:0.45rem; ${isLeft ? 'opacity:0.85; border-left:3.5px solid var(--danger, #EF4444);' : 'border-left:3.5px solid #1DB954;'}">
+                                <div style="background:var(--surface-color-light); padding:0.75rem 0.9rem; border-radius:10px; font-size:0.85rem; margin-bottom:0.45rem; ${isLeft ? 'opacity:0.85; border-left:3.5px solid var(--danger, #EF4444);' : (isDelegated ? 'border-left:3.5px solid #3B82F6;' : 'border-left:3.5px solid #1DB954;')}">
                                     <!-- Riga 1: Nome a sinistra e Millesimi a destra -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.45rem;">
                                         <div style="font-weight:700; font-size:0.95rem; color:var(--primary-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(displayName)}">
                                             ${escapeHtml(displayName)}
                                         </div>
                                         <div style="flex-shrink:0; text-align:right;">
-                                            <strong style="color:var(--warning); font-size:0.92rem; font-weight:800; white-space:nowrap;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                                            <strong style="color:var(--warning); font-size:0.92rem; font-weight:800; white-space:nowrap;">${(displayMillesimi || 0).toFixed(2)} ‰</strong>
                                         </div>
                                     </div>
 
@@ -17412,11 +17516,19 @@ ${renderBottomNavigation()}
                 if (odgPollContainer && assembly.agenda) {
                     const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
                     const odgLockedBanner = !isOdgApproved ? `
-                        <div style="padding:0.75rem 1rem; background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; margin-bottom:1rem; text-align:left; font-size:0.85rem; color:var(--warning); display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:1.2rem;">🔒</span>
-                            <div>
-                                <strong>Votazioni bloccate</strong><br>
-                                <span style="font-size:0.78rem; color:var(--secondary-text);">Per sbloccare le votazioni dei punti di discussione bisogna approvarne l'ordine.</span>
+                        <div style="padding:0.85rem 1rem; background:rgba(245, 158, 11, 0.08); border:1.5px solid #F59E0B; border-radius:10px; margin-bottom:1rem; text-align:left; font-size:0.85rem; display:flex; flex-direction:column; gap:0.6rem;">
+                            <div style="display:flex; align-items:flex-start; gap:0.65rem;">
+                                <span style="font-size:1.35rem; line-height:1; flex-shrink:0; margin-top:0.1rem;">🔒</span>
+                                <div style="flex:1; min-width:0;">
+                                    <strong style="color:#FEF3C7; font-size:0.95rem; display:block; margin-bottom:0.15rem;">Votazioni bloccate</strong>
+                                    <span style="font-size:0.8rem; color:var(--secondary-text); line-height:1.4; display:block;">Per sbloccare le votazioni dei punti di discussione bisogna approvarne l'ordine.</span>
+                                </div>
+                            </div>
+                            <div style="width:100%; margin-top:0.25rem;">
+                                <button type="button" onclick="goToStartAssemblySession()" class="btn" style="width:100%; height:42px; background:#10B981; color:#FFFFFF; font-weight:800; font-size:0.9rem; padding:0.6rem 1rem; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.5rem; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.35); transition:all 0.15s ease;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                    <span>Inizia</span>
+                                </button>
                             </div>
                         </div>
                     ` : '';
@@ -17447,7 +17559,7 @@ ${renderBottomNavigation()}
                         let groupMillesimiPresent = 0;
 
                         if (isGroupScope) {
-                            scopeBadge = `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left;">🪜 Condominio Parziale: ${escapeHtml(itemGroup)}</span>`;
+                            scopeBadge = `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; font-weight:800; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left; box-shadow:0 1px 3px rgba(0,0,0,0.15);">🪜 Condominio Parziale: ${escapeHtml(itemGroup)}</span>`;
 
                             // Calcolo aventi diritto presenti per questo gruppo/scala
                             const groupPresentHeadsSet = new Set();
@@ -17478,12 +17590,12 @@ ${renderBottomNavigation()}
                             const minRequiredMil = baseMillesimi / 3;
 
                             groupQuorumBoxHtml = `
-                                <div style="background: rgba(243, 156, 18, 0.08); border: 1.5px solid var(--warning); border-radius: 8px; padding: 0.65rem 0.75rem; margin-top: 0.5rem; margin-bottom: 0.65rem; text-align: left;">
+                                <div style="background: rgba(245, 158, 11, 0.06); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 0.65rem 0.75rem; margin-top: 0.5rem; margin-bottom: 0.65rem; text-align: left;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; flex-wrap: wrap; gap: 0.35rem;">
                                         <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); display: flex; align-items: center; gap: 0.35rem;">
                                             ⚖️ <strong>Quorum Deliberativo</strong>
                                         </span>
-                                        <span class="badge" style="background: rgba(243, 156, 18, 0.2); color: var(--warning); font-weight: 800; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(243, 156, 18, 0.3); max-width: 100%; white-space: normal; text-align: right;">
+                                        <span class="badge" style="background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; font-weight: 800; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: 6px; max-width: 100%; white-space: normal; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.15);">
                                             🪜 ${escapeHtml(itemGroup)}
                                         </span>
                                     </div>
@@ -17495,7 +17607,7 @@ ${renderBottomNavigation()}
                                         </div>
                                         <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
                                             <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Millesimi presenti</span>
-                                            <strong style="display: block; font-size: 0.95rem; color: var(--warning); font-weight: 800; margin: 0.1rem 0;">${groupMillesimiPresent.toFixed(2)} ‰</strong>
+                                            <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 900; margin: 0.1rem 0;">${groupMillesimiPresent.toFixed(2)} ‰</strong>
                                             <span style="font-size: 0.68rem; color: var(--secondary-text);">min. ${minRequiredMil.toFixed(2)} ‰ (1/3)</span>
                                         </div>
                                     </div>
@@ -17632,7 +17744,7 @@ ${renderBottomNavigation()}
                             if (isAdmin && !isAccreditedCondominoAttendee) {
                                 voteButtonsHtml = `
                                     <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
-                                        ℹ️ <strong>Modalità Amministratore:</strong> Non sei accreditato come condòmino in quest'assemblea. Utilizza il pulsante <strong>✍️ Voto Manuale</strong> per registrare i voti dei condòmini presenti.
+                                        ℹ️ <strong>Modalità Amministratore:</strong> Utilizza il pulsante <strong>Voto Manuale</strong> per registrare i voti dei condomini presenti
                                     </div>
                                 `;
                             } else if (isAttendee || isAdmin) {
@@ -17805,19 +17917,35 @@ ${renderBottomNavigation()}
                         const targetAttendees = isGroupScope ? eligibleAttendees : (eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees);
                         const pointNonVoters = targetAttendees.filter(a => !votesList.some(v => v.voterId === a.uid || v.userId === a.uid));
 
+                        const nonVotersMilSum = pointNonVoters.reduce((acc, a) => acc + getAttendeeGroupMilForPoint(a), 0);
                         const nonVotersHtml = `
-                            <div style="margin-top: 0.85rem; padding: 0.65rem 0.75rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--surface-color-light); border-radius: 8px; text-align: left;">
-                                <div style="font-size: 0.76rem; font-weight: 700; color: var(--warning); margin-bottom: 0.35rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Senza voto ${isGroupScope ? `(${escapeHtml(itemGroup)}: ${pointNonVoters.length})` : `(${pointNonVoters.length})`}:</span>
-                                    <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 500;"></span>
+                            <div style="margin-top: 0.85rem; padding: 0.75rem 0.85rem; background: rgba(245, 158, 11, 0.06); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; text-align: left;">
+                                <div style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.3px;">
+                                            ⏳ Senza voto
+                                        </span>
+                                        <span style="font-size: 0.82rem; font-weight: 700; color: var(--primary-text);">
+                                            ${isGroupScope ? `(${escapeHtml(itemGroup)}: ${pointNonVoters.length})` : `(${pointNonVoters.length})`}
+                                        </span>
+                                    </div>
+                                    ${pointNonVoters.length > 0 ? `
+                                        <span style="font-size: 0.75rem; color: var(--primary-text); font-weight: 700; background: rgba(255, 255, 255, 0.08); padding: 0.12rem 0.45rem; border-radius: 4px;">
+                                            ${nonVotersMilSum.toFixed(2)} ‰
+                                        </span>
+                                    ` : ''}
                                 </div>
                                 ${pointNonVoters.length === 0 ? `
-                                    <p style="font-size: 0.78rem; color: #10B981; font-weight: 700; margin: 0; padding: 0.1rem 0;">✅ Tutti i condòmini aventi diritto hanno espresso il voto per questo punto (inclusi gli astenuti).</p>
+                                    <p style="font-size: 0.82rem; color: #10B981; font-weight: 700; margin: 0; padding: 0.2rem 0; display: flex; align-items: center; gap: 0.35rem;">
+                                        <span>✅</span> Tutti i condòmini aventi diritto hanno espresso il voto per questo punto (inclusi gli astenuti).
+                                    </p>
                                 ` : `
-                                    <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; max-height: 120px; overflow-y: auto; padding-top: 0.2rem;">
+                                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; max-height: 140px; overflow-y: auto; padding-top: 0.1rem;">
                                         ${pointNonVoters.map(a => `
-                                            <span class="badge" style="background: rgba(243, 156, 18, 0.12); color: var(--warning); border: 1px solid rgba(243, 156, 18, 0.3); font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 6px;">
-                                                👤 ${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))} (${getAttendeeGroupMilForPoint(a).toFixed(2)} ‰)
+                                            <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; font-size: 0.76rem; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+                                                <span style="color: #FDE68A;">👤</span>
+                                                <span style="color: #FEF3C7;">${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</span>
+                                                <strong style="color: #FDE68A; margin-left: 0.2rem; background: rgba(0,0,0,0.25); padding: 0.05rem 0.3rem; border-radius: 4px;">${getAttendeeGroupMilForPoint(a).toFixed(2)} ‰</strong>
                                             </span>
                                         `).join('')}
                                     </div>
@@ -18276,11 +18404,11 @@ ${renderBottomNavigation()}
                 const modalContent = `
                     <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                         <!-- OVERLAY POPUP DI FEEDBACK -->
-                        <div id="manual-attendance-feedback-popup" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 2500; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); padding: 1rem; box-sizing: border-box;"></div>
+                        <div id="manual-attendance-feedback-popup" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 2500; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(5px); padding: 1rem; box-sizing: border-box;"></div>
 
                         <form id="form-manual-attendance" onsubmit="saveManualAttendance(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left; min-height: 0; height: 100%; overflow: hidden; gap: 0.35rem;">
-                            <!-- FEEDBACK NOTIFICA INLINE -->
-                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.4rem 0.65rem; margin-bottom: 0.15rem; flex-shrink: 0;"></div>
+                            <!-- FEEDBACK NOTIFICA INLINE (CHIARA AD ALTO CONTRASTO) -->
+                            <div id="manual-attendee-success-msg" class="message-box success hidden" style="font-size:0.85rem; padding:0.5rem 0.75rem; margin-bottom: 0.25rem; flex-shrink: 0; background: #ECFDF5 !important; color: #065F46 !important; border: 1.5px solid #10B981 !important; border-radius: 8px !important; font-weight: 600 !important; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;"></div>
 
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; gap: 0.4rem; flex-shrink: 0;">
                                 <span id="manual-attendees-count-badge" style="font-size: 0.82rem; color: var(--accent-color); font-weight: 700;">
@@ -18526,30 +18654,30 @@ ${renderBottomNavigation()}
 
                     const isSingle = newlyAccreditedList.length === 1;
                     const itemsDetailHtml = newlyAccreditedList.map(item => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0.5rem; background:rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem; text-align:left; gap:0.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.65rem; background:#F3F4F6; border:1px solid #E5E7EB; border-radius:8px; font-size:0.82rem; text-align:left; gap:0.5rem;">
                             <div style="flex:1; min-width:0; overflow:hidden;">
-                                <div style="font-weight:700; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    ${escapeHtml(item.name)} ${item.proxyText ? `<span style="color:var(--accent-color); font-size:0.72rem;">${escapeHtml(item.proxyText)}</span>` : ''}
+                                <div style="font-weight:700; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    ${escapeHtml(item.name)} ${item.proxyText ? `<span style="color:#059669; font-weight:700; font-size:0.75rem;">${escapeHtml(item.proxyText)}</span>` : ''}
                                 </div>
-                                ${item.unita ? `<div style="font-size:0.7rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Unità: ${escapeHtml(item.unita)}</div>` : ''}
+                                ${item.unita ? `<div style="font-size:0.72rem; color:#4B5563; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Unità: ${escapeHtml(item.unita)}</div>` : ''}
                             </div>
-                            <strong style="color:var(--warning); font-size:0.82rem; white-space:nowrap; flex-shrink:0;">${item.millesimi.toFixed(2)} ‰</strong>
+                            <strong style="color:#B45309; font-size:0.88rem; font-weight:800; white-space:nowrap; flex-shrink:0;">${item.millesimi.toFixed(2)} ‰</strong>
                         </div>
                     `).join('');
 
                     fPopup.innerHTML = `
-                        <div style="background: rgba(18, 26, 23, 0.97); border: 1.5px solid rgba(16, 185, 129, 0.45); border-radius: 14px; padding: 1.25rem 1.1rem; box-shadow: 0 16px 36px rgba(0,0,0,0.7), 0 0 24px rgba(16,185,129,0.2); text-align: center; width: 100%; max-width: 320px; box-sizing: border-box; backdrop-filter: blur(8px); max-height: 85vh; display: flex; flex-direction: column;">
-                            <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: #10B981; font-size: 1.35rem; font-weight: 800; flex-shrink: 0;">✓</div>
-                            <div style="font-size: 0.72rem; font-weight: 800; color: #10B981; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.2rem; flex-shrink: 0;">
+                        <div style="background: #FFFFFF; border: 2px solid #10B981; border-radius: 16px; padding: 1.3rem 1.15rem; box-shadow: 0 20px 45px rgba(0,0,0,0.28), 0 4px 16px rgba(16,185,129,0.25); text-align: center; width: 100%; max-width: 330px; box-sizing: border-box; max-height: 85vh; display: flex; flex-direction: column;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: #ECFDF5; border: 2.5px solid #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; color: #047857; font-size: 1.5rem; font-weight: 900; flex-shrink: 0;">✓</div>
+                            <div style="font-size: 0.82rem; font-weight: 800; color: #065F46; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.25rem; flex-shrink: 0;">
                                 ${isSingle ? 'Presenza Convalidata' : `${newlyAccreditedList.length} Presenze Convalidate`}
                             </div>
-                            <div style="font-size: 0.88rem; color: var(--secondary-text); margin-bottom: 0.65rem; flex-shrink: 0;">
-                                Totale Millesimi accreditati: <strong style="color: var(--warning); font-size: 0.95rem;">${totalBatchMillesimi.toFixed(2)} ‰</strong>
+                            <div style="font-size: 0.88rem; color: #374151; font-weight: 600; margin-bottom: 0.75rem; flex-shrink: 0;">
+                                Totale Millesimi accreditati: <strong style="color: #B45309; font-size: 1rem; font-weight: 800;">${totalBatchMillesimi.toFixed(2)} ‰</strong>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 0.35rem; overflow-y: auto; max-height: 220px; margin-bottom: 0.85rem; padding-right: 0.2rem; flex: 1;">
+                            <div style="display: flex; flex-direction: column; gap: 0.4rem; overflow-y: auto; max-height: 220px; margin-bottom: 0.85rem; padding-right: 0.2rem; flex: 1;">
                                 ${itemsDetailHtml}
                             </div>
-                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 700; font-size: 0.88rem; background: #10B981; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); flex-shrink: 0;">
+                            <button type="button" onclick="dismissManualAttendanceFeedback()" class="btn btn-primary" style="width: 100%; height: 42px; font-weight: 800; font-size: 0.92rem; background: #10B981; color: #FFFFFF; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); flex-shrink: 0;">
                                 <span>Continua ➔</span>
                             </button>
                         </div>
@@ -18700,23 +18828,48 @@ ${renderBottomNavigation()}
             }
         };
 
-        window.onProxyDelegatorSelected = (radioElem) => {
-            const rawJson = radioElem.getAttribute('data-delegator-json');
-            let nameStr = '';
-            let millStr = '';
-            if (rawJson) {
-                try {
-                    const d = JSON.parse(rawJson);
-                    nameStr = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
-                    millStr = (parseFloat(d.millesimiTotali) || 0).toFixed(2) + ' ‰';
-                } catch (e) { }
-            }
+        window.onProxyDelegatorsChanged = () => {
+            const checkedCbs = Array.from(document.querySelectorAll('.proxy-delegator-checkbox:checked'));
             const badge = document.getElementById('selected-delegator-badge');
-            if (badge && nameStr) {
+            const submitBtn = document.getElementById('btn-submit-manual-proxy');
+
+            if (!badge) return;
+
+            if (checkedCbs.length === 0) {
+                badge.style.display = 'none';
+                badge.innerHTML = '';
+                if (submitBtn) submitBtn.textContent = 'Registra Delega';
+                return;
+            }
+
+            let totalMil = 0;
+            const names = [];
+            checkedCbs.forEach(cb => {
+                const raw = cb.getAttribute('data-delegator-json');
+                if (raw) {
+                    try {
+                        const d = JSON.parse(raw);
+                        names.push(d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim());
+                        totalMil += (parseFloat(d.millesimiTotali) || 0);
+                    } catch (e) { }
+                }
+            });
+
+            badge.style.display = 'flex';
+            if (checkedCbs.length === 1) {
                 badge.innerHTML = `
-                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(nameStr)}</span>
-                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${millStr}</strong>
+                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(names[0] || '1 delegante')}</span>
+                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${totalMil.toFixed(2)} ‰</strong>
                 `;
+            } else {
+                badge.innerHTML = `
+                    <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;" title="${escapeHtml(names.join(', '))}">✓ ${checkedCbs.length} deleganti selezionati</span>
+                    <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">Totale: ${totalMil.toFixed(2)} ‰</strong>
+                `;
+            }
+
+            if (submitBtn) {
+                submitBtn.textContent = checkedCbs.length > 1 ? `Registra Deleghe (${checkedCbs.length})` : 'Registra Delega';
             }
 
             // Apri automaticamente la sezione 2 (Delegato) se chiusa
@@ -18727,6 +18880,8 @@ ${renderBottomNavigation()}
                 if (delegateChevron) delegateChevron.style.transform = 'rotate(180deg)';
             }
         };
+
+        window.onProxyDelegatorSelected = window.onProxyDelegatorsChanged;
 
         window.onProxyDelegateSelected = (radioElem) => {
             const rawJson = radioElem.getAttribute('data-delegate-json');
@@ -18741,6 +18896,7 @@ ${renderBottomNavigation()}
             }
             const badge = document.getElementById('selected-delegate-badge');
             if (badge && nameStr) {
+                badge.style.display = 'flex';
                 badge.innerHTML = `
                     <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(nameStr)}</span>
                     <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${millStr}</strong>
@@ -18798,20 +18954,12 @@ ${renderBottomNavigation()}
                 // Delegates list: registered condomini/consiglieri (who can vote in assembly)
                 const allDelegates = registeredCondomini.length > 0 ? registeredCondomini : allDelegators;
 
-                const firstDelegator = allDelegators[0] || null;
-                const firstDelegatorName = firstDelegator ? (firstDelegator.nominativo || `${firstDelegator.cognome || ''} ${firstDelegator.nome || ''}`.trim()) : '';
-                const firstDelegatorMill = firstDelegator ? (parseFloat(firstDelegator.millesimiTotali) || 0).toFixed(2) + ' ‰' : '';
-
-                const firstDelegate = allDelegates.length > 1 ? allDelegates[1] : (allDelegates[0] || null);
-                const firstDelegateName = firstDelegate ? (firstDelegate.nominativo || `${firstDelegate.cognome || ''} ${firstDelegate.nome || ''}`.trim()) : '';
-                const firstDelegateMill = firstDelegate ? (parseFloat(firstDelegate.millesimiTotali) || 0).toFixed(2) + ' ‰' : '';
-
-                const delegatorCardsHtml = allDelegators.map((d, idx) => {
+                const delegatorCardsHtml = allDelegators.map((d) => {
                     const dDisplayName = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
                     return `
                     <label class="proxy-delegator-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml(((dDisplayName || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + d.unitaStr).toLowerCase())}">
                         <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                            <input type="radio" name="proxy-delegator-radio" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" onchange="onProxyDelegatorSelected(this)" class="proxy-delegator-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 0 ? 'checked' : ''}>
+                            <input type="checkbox" name="proxy-delegator-checkbox" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" onchange="onProxyDelegatorsChanged()" class="proxy-delegator-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
                             <div style="flex:1; min-width:0; overflow:hidden;">
                                 <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     ${escapeHtml(dDisplayName)}
@@ -18833,13 +18981,13 @@ ${renderBottomNavigation()}
                     </label>
                 `}).join('');
 
-                const delegateCardsHtml = allDelegates.map((u, idx) => {
+                const delegateCardsHtml = allDelegates.map((u) => {
                     const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
                     const uUnitaStr = u.unitaStr || (u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare.join(', ') : u.unitaImmobiliare) : (u.proprieta ? u.proprieta.map(p => p.interno).join(', ') : ''));
                     return `
                         <label class="proxy-delegate-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:58px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box;" data-search-text="${escapeHtml((uDisplayName + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
                             <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                                <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" onchange="onProxyDelegateSelected(this)" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0;" ${idx === 1 ? 'checked' : (idx === 0 && allDelegates.length === 1 ? 'checked' : '')}>
+                                <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" onchange="onProxyDelegateSelected(this)" class="proxy-delegate-radio" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
                                 <div style="flex:1; min-width:0; overflow:hidden;">
                                     <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                         ${escapeHtml(uDisplayName)}
@@ -18879,9 +19027,7 @@ ${renderBottomNavigation()}
                                             <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
                                             <svg id="proxy-delegator-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div id="selected-delegator-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                                            ${firstDelegatorName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegatorName)}</span> <strong style="color:var(--warning); font-size:0.78rem; white-space:nowrap;">${firstDelegatorMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegante selezionato</span>'}
-                                        </div>
+                                        <div id="selected-delegator-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: none; align-items: center; justify-content: space-between;"></div>
                                     </div>
                                     <div id="proxy-delegator-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
                                         <input type="text" id="input-search-proxy-delegator" placeholder="🔍 Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autofocus autocomplete="off">
@@ -18898,9 +19044,7 @@ ${renderBottomNavigation()}
                                             <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">2. Delegato in aula</span>
                                             <svg id="proxy-delegate-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div id="selected-delegate-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                                            ${firstDelegateName ? `<span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">✓ ${escapeHtml(firstDelegateName)}</span> <strong style="color:var(--warning); font-size:0.78rem; white-space:nowrap;">${firstDelegateMill}</strong>` : '<span style="color:var(--secondary-text);">Nessun delegato selezionato</span>'}
-                                        </div>
+                                        <div id="selected-delegate-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: none; align-items: center; justify-content: space-between;"></div>
                                     </div>
                                     <div id="proxy-delegate-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
                                         <input type="text" id="input-search-proxy-delegate" placeholder="🔍 Cerca delegato in aula..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autocomplete="off">
@@ -18915,7 +19059,7 @@ ${renderBottomNavigation()}
                                 <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
                                     <span>Annulla</span>
                                 </button>
-                                <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
+                                <button type="submit" id="btn-submit-manual-proxy" class="btn btn-primary" style="width: 100%; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">
                                     <span>Registra Delega</span>
                                 </button>
                             </div>
@@ -18951,33 +19095,21 @@ ${renderBottomNavigation()}
 
         window.saveManualProxy = async (event, assemblyId) => {
             event.preventDefault();
-            const delegatorRadio = document.querySelector('input[name="proxy-delegator-radio"]:checked');
+            const selectedDelegatorCbs = Array.from(document.querySelectorAll('.proxy-delegator-checkbox:checked'));
             const delegateRadio = document.querySelector('input[name="proxy-delegate-radio"]:checked');
 
-            const delegatorId = delegatorRadio?.value;
-            const delegateId = delegateRadio?.value;
+            if (selectedDelegatorCbs.length === 0) {
+                await customAlert("Seleziona almeno un condòmino delegante.");
+                return;
+            }
+            if (!delegateRadio) {
+                await customAlert("Seleziona il delegato in aula.");
+                return;
+            }
 
-            if (!delegatorId || !delegateId) {
-                await customAlert("Seleziona sia il delegante che il delegato.");
-                return;
-            }
-            if (delegatorId === delegateId) {
-                await customAlert("Il delegante e il delegato non possono essere la stessa persona.");
-                return;
-            }
+            const delegateId = delegateRadio.value;
 
             try {
-                let delegatorData = null;
-                const delegatorJsonStr = delegatorRadio.getAttribute('data-delegator-json');
-                if (delegatorJsonStr) {
-                    try { delegatorData = JSON.parse(delegatorJsonStr); } catch (e) { }
-                }
-                if (!delegatorData) {
-                    const delegatorDoc = await getDoc(doc(db, "users", delegatorId));
-                    if (delegatorDoc.exists()) delegatorData = { id: delegatorDoc.id, ...delegatorDoc.data() };
-                }
-                if (!delegatorData) throw new Error("Dati delegante non trovati.");
-
                 let delegateData = null;
                 const delegateJsonStr = delegateRadio.getAttribute('data-delegate-json');
                 if (delegateJsonStr) {
@@ -18989,44 +19121,78 @@ ${renderBottomNavigation()}
                 }
                 if (!delegateData) throw new Error("Dati delegato non trovati.");
 
+                const delegatorsData = [];
+                for (const cb of selectedDelegatorCbs) {
+                    let dData = null;
+                    const dJsonStr = cb.getAttribute('data-delegator-json');
+                    if (dJsonStr) {
+                        try { dData = JSON.parse(dJsonStr); } catch (e) { }
+                    }
+                    if (!dData) {
+                        const dDoc = await getDoc(doc(db, "users", cb.value));
+                        if (dDoc.exists()) dData = { id: dDoc.id, ...dDoc.data() };
+                    }
+                    if (dData) {
+                        delegatorsData.push(dData);
+                    }
+                }
+
+                if (delegatorsData.length === 0) {
+                    await customAlert("Dati deleganti non validi.");
+                    return;
+                }
+
+                // Verifica che nessun delegante sia anche il delegato
+                for (const d of delegatorsData) {
+                    if (d.id === delegateId || (delegateData.registeredUid && d.id === delegateData.registeredUid)) {
+                        await customAlert("Un condòmino non può delegare se stesso.");
+                        return;
+                    }
+                }
+
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const assemblySnap = await getDoc(assemblyRef);
                 if (!assemblySnap.exists()) throw new Error("Assemblea non trovata.");
                 const assembly = assemblySnap.data();
 
-                const delegatorFullName = (delegatorData.nominativo || `${delegatorData.cognome || ''} ${delegatorData.nome || ''}`).trim();
                 const delegateFullName = (delegateData.nominativo || `${delegateData.cognome || ''} ${delegateData.nome || ''}`).trim();
 
-                // VERIFICA SE DELEGANTE È GIÀ PRESENTE
-                const isDelegatorPresent = (assembly.attendees || []).some(a => {
-                    if (a.status === 'uscito') return false;
-                    if (a.uid === delegatorId) return true;
-                    if (a.nome && delegatorFullName && a.nome.toLowerCase().includes(delegatorFullName.toLowerCase())) return true;
-                    return false;
-                });
+                // VERIFICA SE UNO DEI DELEGANTI È GIÀ PRESENTE DI PERSONA O HA GIÀ CONFERITO DELEGA
+                for (const d of delegatorsData) {
+                    const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
+                    const isDelegatorPresent = (assembly.attendees || []).some(a => {
+                        if (a.status === 'uscito') return false;
+                        if (a.uid === d.id) return true;
+                        if (d.registeredUid && a.uid === d.registeredUid) return true;
+                        if (a.nome && delegatorFullName && a.nome.toLowerCase().trim() === delegatorFullName.toLowerCase().trim()) return true;
+                        return false;
+                    });
 
-                if (isDelegatorPresent) {
-                    await customAlert(`Impossibile registrare delega: il condomino delegante ${delegatorFullName} è già registrato come presente di persona in aula.`);
-                    return;
-                }
+                    if (isDelegatorPresent) {
+                        await customAlert(`Impossibile registrare delega: il condomino delegante ${delegatorFullName} è già registrato come presente di persona in aula.`);
+                        return;
+                    }
 
-                const existingProxy = (assembly.proxies || []).find(p =>
-                    p.status !== 'rejected' && (
-                        p.delegatorId === delegatorId ||
-                        (p.delegatorName && delegatorFullName && p.delegatorName.toLowerCase().trim() === delegatorFullName.toLowerCase().trim())
-                    )
-                );
-                if (existingProxy) {
-                    throw new Error(`Il condomino ${delegatorFullName} ha già conferito una delega a ${existingProxy.delegateName}.`);
+                    const existingProxy = (assembly.proxies || []).find(p =>
+                        p.status !== 'rejected' && (
+                            p.delegatorId === d.id ||
+                            (d.registeredUid && p.delegatorId === d.registeredUid) ||
+                            (p.delegatorName && delegatorFullName && p.delegatorName.toLowerCase().trim() === delegatorFullName.toLowerCase().trim())
+                        )
+                    );
+                    if (existingProxy) {
+                        await customAlert(`Il condomino ${delegatorFullName} ha già conferito una delega a ${existingProxy.delegateName}.`);
+                        return;
+                    }
                 }
 
                 // CHECK TETTO LEGALE DELEGHE (ART. 67 DISP. ATT. C.C.)
                 const totalCondoCount = document.querySelectorAll('.proxy-delegator-card').length || 1;
-
                 if (totalCondoCount > 20) {
                     const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === delegateId && p.status !== 'rejected');
-                    const totalHeads = 1 + heldProxies.length + 1; // delegato + deleghe esistenti + nuova delega
-                    let totalMillesimi = (parseFloat(delegateData.millesimiTotali) || 0) + (parseFloat(delegatorData.millesimiTotali) || 0);
+                    const totalHeads = 1 + heldProxies.length + delegatorsData.length;
+                    let totalMillesimi = (parseFloat(delegateData.millesimiTotali) || 0);
+                    delegatorsData.forEach(d => totalMillesimi += (parseFloat(d.millesimiTotali) || 0));
                     heldProxies.forEach(p => totalMillesimi += (parseFloat(p.delegatorMillesimi) || 0));
 
                     const maxHeadsAllowed = Math.floor(totalCondoCount / 5);
@@ -19036,34 +19202,136 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                const proxyData = {
-                    id: 'proxy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                    delegatorId: delegatorId,
-                    delegatorName: delegatorFullName,
-                    delegatorMillesimi: parseFloat(delegatorData.millesimiTotali) || 0,
-                    delegatorUnita: delegatorData.unitaStr || (Array.isArray(delegatorData.unitaImmobiliare) ? delegatorData.unitaImmobiliare.join(', ') : (delegatorData.unitaImmobiliare || '')),
-                    delegateId: delegateId,
-                    delegateName: delegateFullName,
-                    isDigital: false,
-                    status: 'accepted',
-                    createdAt: new Date().toISOString()
-                };
+                // VERIFICA SE IL DELEGATO È GIÀ REGISTRATO IN PRESENZA
+                const isDelegatePresent = (assembly.attendees || []).some(a => {
+                    if (a.status === 'uscito') return false;
+                    if (a.uid === delegateId) return true;
+                    if (delegateData.registeredUid && a.uid === delegateData.registeredUid) return true;
+                    if (a.nome && delegateFullName && a.nome.toLowerCase().trim().includes(delegateFullName.toLowerCase().trim())) return true;
+                    return false;
+                });
 
-                const updatedProxies = [...(assembly.proxies || []), proxyData];
+                if (!isDelegatePresent) {
+                    const userConfirmed = await customConfirm(
+                        "Il delegante non ha registrato la presenza con il QR code. Se lo registri la votazione sarà manuale, vuoi procedere?",
+                        "Sì",
+                        "No"
+                    );
 
-                let updatedAttendees = assembly.attendees || [];
-                const delegateAttendeeIndex = updatedAttendees.findIndex(a => a.uid === delegateId);
+                    if (!userConfirmed) {
+                        await customAlert("Deleghe non registrate per mancata registrazione presenza del delegato");
+                        return;
+                    }
+                }
+
+                // REGISTRAZIONE DELEGHE
+                const newProxies = delegatorsData.map(d => {
+                    const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
+                    return {
+                        id: 'proxy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        delegatorId: d.id,
+                        delegatorName: delegatorFullName,
+                        delegatorMillesimi: parseFloat(d.millesimiTotali) || 0,
+                        delegatorUnita: d.unitaStr || (Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')),
+                        delegatorGroup: d.gruppo || '',
+                        delegateId: delegateId,
+                        delegateName: delegateFullName,
+                        isDigital: false,
+                        status: 'accepted',
+                        createdAt: new Date().toISOString()
+                    };
+                });
+
+                const updatedProxies = [...(assembly.proxies || []), ...newProxies];
+
+                // REGISTRAZIONE PRESENZA DEL DELEGATO (E CONTABILIZZAZIONE DELEGHE)
+                let updatedAttendees = assembly.attendees ? [...assembly.attendees] : [];
+                const delegateAttendeeIndex = updatedAttendees.findIndex(a => {
+                    if (a.status === 'uscito') return false;
+                    if (a.uid === delegateId) return true;
+                    if (delegateData.registeredUid && a.uid === delegateData.registeredUid) return true;
+                    if (a.nome && delegateFullName && a.nome.toLowerCase().trim().includes(delegateFullName.toLowerCase().trim())) return true;
+                    return false;
+                });
+
+                const allHeldProxies = updatedProxies.filter(p =>
+                    p.status !== 'rejected' && (
+                        p.delegateId === delegateId ||
+                        (delegateData.registeredUid && p.delegateId === delegateData.registeredUid)
+                    )
+                );
+
+                let totalDelegateMillesimi = parseFloat(delegateData.millesimiTotali) || 0;
+                if (totalDelegateMillesimi <= 0 && Array.isArray(delegateData.proprieta)) {
+                    totalDelegateMillesimi = delegateData.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+                allHeldProxies.forEach(p => { totalDelegateMillesimi += (parseFloat(p.delegatorMillesimi) || 0); });
+
                 if (delegateAttendeeIndex !== -1) {
-                    const heldProxies = updatedProxies.filter(p => p.delegateId === delegateId && p.status !== 'rejected');
-                    let totalMillesimi = parseFloat(delegateData.millesimiTotali) || 0;
-                    heldProxies.forEach(p => { totalMillesimi += (parseFloat(p.delegatorMillesimi) || 0); });
-
                     updatedAttendees[delegateAttendeeIndex] = {
                         ...updatedAttendees[delegateAttendeeIndex],
-                        nome: `${delegateFullName} (+${heldProxies.length} deleghe ricevute)`,
-                        millesimi: totalMillesimi,
-                        heldProxiesCount: heldProxies.length
+                        status: 'presente',
+                        nome: `${delegateFullName} (+${allHeldProxies.length} deleghe ricevute)`,
+                        millesimi: totalDelegateMillesimi,
+                        heldProxiesCount: allHeldProxies.length
                     };
+                } else {
+                    // Delegato registrato con presenza manuale
+                    const newDelegateAttendee = {
+                        uid: delegateData.id,
+                        nome: `${delegateFullName} (+${allHeldProxies.length} deleghe ricevute)`,
+                        cognome: delegateData.cognome || '',
+                        millesimi: totalDelegateMillesimi,
+                        proprieta: delegateData.proprieta || (delegateData.unitaImmobiliare ? (Array.isArray(delegateData.unitaImmobiliare) ? delegateData.unitaImmobiliare.map(u => ({ interno: u, millesimi: totalDelegateMillesimi, gruppo: delegateData.gruppo || '' })) : [{ interno: delegateData.unitaImmobiliare, millesimi: totalDelegateMillesimi, gruppo: delegateData.gruppo || '' }]) : []),
+                        unitaImmobiliare: delegateData.unitaImmobiliare || [],
+                        heldProxiesCount: allHeldProxies.length,
+                        status: 'presente',
+                        isManual: true,
+                        isAnagraficaOnly: !delegateData.isRegistered,
+                        registrationType: 'manual',
+                        joinedAt: Date.now()
+                    };
+                    updatedAttendees.push(newDelegateAttendee);
+                }
+
+                // REGISTRAZIONE DELEGANTE(I) IN PRESENZA (COME CONDÒMINI DELEGATI)
+                for (const d of delegatorsData) {
+                    const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
+                    const delegatorMil = parseFloat(d.millesimiTotali) || 0;
+                    const delegatorAttendeeIndex = updatedAttendees.findIndex(a => {
+                        if (a.status === 'uscito') return false;
+                        if (a.uid === d.id) return true;
+                        if (d.registeredUid && a.uid === d.registeredUid) return true;
+                        if (a.nome && delegatorFullName && a.nome.toLowerCase().trim() === delegatorFullName.toLowerCase().trim()) return true;
+                        return false;
+                    });
+
+                    const delegatorAttendeeData = {
+                        uid: d.id,
+                        nome: delegatorFullName,
+                        cognome: d.cognome || '',
+                        millesimi: 0, // i millesimi per il voto e quorum sono computati sul delegato
+                        baseMillesimi: delegatorMil,
+                        status: 'delegato',
+                        isDelegated: true,
+                        delegatedTo: delegateId,
+                        delegatedToName: delegateFullName,
+                        proprieta: d.proprieta || (d.unitaImmobiliare ? (Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.map(u => ({ interno: u, millesimi: delegatorMil, gruppo: d.gruppo || '' })) : [{ interno: d.unitaImmobiliare, millesimi: delegatorMil, gruppo: d.gruppo || '' }]) : []),
+                        unitaImmobiliare: d.unitaImmobiliare || [],
+                        isManual: true,
+                        isAnagraficaOnly: !d.isRegistered,
+                        registrationType: 'manual',
+                        joinedAt: Date.now()
+                    };
+
+                    if (delegatorAttendeeIndex !== -1) {
+                        updatedAttendees[delegatorAttendeeIndex] = {
+                            ...updatedAttendees[delegatorAttendeeIndex],
+                            ...delegatorAttendeeData
+                        };
+                    } else {
+                        updatedAttendees.push(delegatorAttendeeData);
+                    }
                 }
 
                 await updateDoc(assemblyRef, {
@@ -19071,14 +19339,23 @@ ${renderBottomNavigation()}
                     attendees: JSON.parse(JSON.stringify(updatedAttendees))
                 });
 
-                await logAssemblyEvent(assemblyId, 'DELEGA_CARTACEA', `Registrata delega cartacea da ${delegatorFullName} (${(delegatorData.millesimiTotali || 0).toFixed(2)} ‰) a ${delegateFullName}`);
+                for (const d of delegatorsData) {
+                    const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
+                    await logAssemblyEvent(assemblyId, 'DELEGA_CARTACEA', `Registrata delega cartacea da ${delegatorFullName} (${(d.millesimiTotali || 0).toFixed(2)} ‰) a ${delegateFullName}`);
+                }
 
                 if (typeof logActivity === 'function' && typeof currentUser !== 'undefined' && currentUser) {
-                    await logActivity("proxy_manual_assigned", currentUser.uid, `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim(), { assemblyId, delegatorId, delegateId });
+                    await logActivity("proxy_manual_assigned", currentUser.uid, `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim(), {
+                        assemblyId,
+                        delegatorIds: delegatorsData.map(d => d.id),
+                        delegateId
+                    });
                 }
 
                 hideModal();
-                await customAlert(`Delega cartacea registrata con successo: ${delegatorFullName} -> ${delegateFullName} (${(delegatorData.millesimiTotali || 0).toFixed(2)} ‰)`);
+                const totalDelegatorsMil = delegatorsData.reduce((sum, d) => sum + (parseFloat(d.millesimiTotali) || 0), 0);
+                const delegatorsNamesStr = delegatorsData.map(d => (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim()).join(', ');
+                await customAlert(`${delegatorsData.length === 1 ? 'Delega cartacea registrata' : 'Deleghe cartacee registrate'} con successo:\n${delegatorsNamesStr} ➔ ${delegateFullName} (${totalDelegatorsMil.toFixed(2)} ‰)`);
             } catch (error) {
                 console.error("Errore salvataggio delega cartacea:", error);
                 await customAlert("Errore durante la registrazione della delega: " + error.message);
@@ -20251,8 +20528,35 @@ ${renderBottomNavigation()}
                 }
 
                 const targetName = getAttendeeDisplayName(targetAttendee);
-                const updatedAttendees = (assembly.attendees || []).filter(a => a.uid !== attendeeUid);
-                await updateDoc(assemblyRef, { attendees: updatedAttendees });
+                let updatedAttendees = (assembly.attendees || []).filter(a => a.uid !== attendeeUid);
+                let updatedProxies = assembly.proxies || [];
+
+                // Se l'annullato era in delega (delegante), rimuovi la delega e scomputa i millesimi dal delegato
+                if (targetAttendee.isDelegated || targetAttendee.status === 'delegato') {
+                    const heldProxy = updatedProxies.find(p => p.delegatorId === attendeeUid && p.status !== 'rejected');
+                    updatedProxies = updatedProxies.filter(p => p.delegatorId !== attendeeUid);
+                    if (heldProxy) {
+                        const delIndex = updatedAttendees.findIndex(a => a.uid === heldProxy.delegateId);
+                        if (delIndex !== -1) {
+                            const remainingHeld = updatedProxies.filter(p => p.delegateId === heldProxy.delegateId && p.status !== 'rejected');
+                            const delUser = updatedAttendees[delIndex];
+                            let newMil = (parseFloat(delUser.baseMillesimi) || 0);
+                            if (newMil <= 0 && Array.isArray(delUser.proprieta)) {
+                                newMil = delUser.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                            }
+                            remainingHeld.forEach(p => newMil += (parseFloat(p.delegatorMillesimi) || 0));
+                            const cleanName = (delUser.nome || '').replace(/\s*\(\+\d+\s+deleghe?\s+ricevute?\)/i, '');
+                            updatedAttendees[delIndex] = {
+                                ...delUser,
+                                nome: remainingHeld.length > 0 ? `${cleanName} (+${remainingHeld.length} deleghe ricevute)` : cleanName,
+                                millesimi: newMil,
+                                heldProxiesCount: remainingHeld.length
+                            };
+                        }
+                    }
+                }
+
+                await updateDoc(assemblyRef, { attendees: updatedAttendees, proxies: updatedProxies });
 
                 await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_PRESENZA', `Presenza annullata per ${targetName}`);
                 hideModal();
@@ -20779,13 +21083,13 @@ ${renderBottomNavigation()}
                         const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
                         const searchText = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
                         return `
-                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3px solid var(--warning); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
+                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3.5px solid #F59E0B; border:1px solid rgba(255, 255, 255, 0.08); border-left-width:3.5px; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
                                     <input type="checkbox" class="odg-voter-cb" value="${a.uid}" onchange="updateOdgSelectedVotersCount()" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0;">
                                     <div style="flex:1; min-width:0;">
                                         <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
                                             <strong style="color:var(--primary-text); font-size:0.85rem;">👤 ${escapeHtml(displayName)}</strong>
-                                            <span class="badge" style="background:rgba(243, 156, 18, 0.15); color:var(--warning); font-weight:700; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:10px;">📱 App/QR</span>
+                                            <span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:6px;">📱 App/QR</span>
                                         </div>
                                         <div style="font-size:0.75rem; color:var(--secondary-text);">${(a.millesimi || 0).toFixed(2)} ‰${unitText}</div>
                                     </div>
@@ -20951,12 +21255,13 @@ ${renderBottomNavigation()}
                         </div>
 
                         <!-- ELENCO DEI NON ANCORA VOTANTI -->
-                        <div class="card" style="padding:0.75rem; margin:0 !important; border:1.5px solid rgba(243, 156, 18, 0.35); background:rgba(243, 156, 18, 0.04); border-radius:12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                                <strong style="color:var(--warning); font-size:0.88rem; display:flex; align-items:center; gap:0.35rem;">
-                                    Senza voto (${pendingList.length})
-                                </strong>
-                                <span style="font-size:0.8rem; font-weight:700; color:var(--warning);">${pendingMil.toFixed(2)} ‰ (${pendingPercent}%)</span>
+                        <div class="card" style="padding:0.75rem; margin:0 !important; border:1.5px solid rgba(245, 158, 11, 0.35); background:rgba(245, 158, 11, 0.06); border-radius:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <span style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; padding:0.15rem 0.5rem; border-radius:6px; font-size:0.75rem; font-weight:800;">⏳ Senza voto</span>
+                                    <strong style="color:var(--primary-text); font-size:0.88rem;">(${pendingList.length})</strong>
+                                </div>
+                                <span style="font-size:0.8rem; font-weight:800; color:var(--primary-text); background:rgba(255,255,255,0.08); padding:0.15rem 0.45rem; border-radius:4px;">${pendingMil.toFixed(2)} ‰ (${pendingPercent}%)</span>
                             </div>
                             <div>
                                 ${pendingHtml}
@@ -21671,12 +21976,12 @@ ${renderBottomNavigation()}
                         } else if (vLower.includes('contrario') || vLower.includes('no')) {
                             currentVoteBadge = `<span style="font-size:0.68rem; color:var(--danger); background:rgba(239,68,68,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(239,68,68,0.3); white-space:nowrap;">🔴 ${escapeHtml(vChoice)}</span>`;
                         } else if (vLower.includes('astenuto')) {
-                            currentVoteBadge = `<span style="font-size:0.68rem; color:var(--warning); background:rgba(245,158,11,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(245,158,11,0.3); white-space:nowrap;">⚪ ${escapeHtml(vChoice)}</span>`;
+                            currentVoteBadge = `<span style="font-size:0.68rem; color:#FEF3C7; background:#78350F; padding:0.12rem 0.45rem; border-radius:4px; font-weight:800; border:1px solid #F59E0B; white-space:nowrap;">⚪ ${escapeHtml(vChoice)}</span>`;
                         } else {
-                            currentVoteBadge = `<span style="font-size:0.68rem; color:var(--secondary-text); background:rgba(255,255,255,0.08); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; white-space:nowrap;">${escapeHtml(vChoice)}</span>`;
+                            currentVoteBadge = `<span style="font-size:0.68rem; color:var(--primary-text); background:rgba(255,255,255,0.12); padding:0.12rem 0.45rem; border-radius:4px; font-weight:700; white-space:nowrap;">${escapeHtml(vChoice)}</span>`;
                         }
                     } else {
-                        currentVoteBadge = `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:700; border:1px solid rgba(243,156,18,0.3); white-space:nowrap;">⏳ Senza voto</span>`;
+                        currentVoteBadge = `<span style="font-size:0.68rem; color:#FEF3C7; background:#78350F; border:1.5px solid #F59E0B; padding:0.12rem 0.45rem; border-radius:4px; font-weight:800; white-space:nowrap; box-shadow:0 1px 2px rgba(0,0,0,0.15);">⏳ Senza voto</span>`;
                     }
 
                     return `
@@ -21701,7 +22006,7 @@ ${renderBottomNavigation()}
                             </div>
                         </div>
                         <div style="text-align:right; flex-shrink:0; min-width:65px; margin-left:0.5rem;">
-                            <strong style="color:var(--warning); font-size:0.85rem; white-space:nowrap;">${dispMillesimi.toFixed(2)} ‰</strong>
+                            <strong style="color:var(--primary-text); font-size:0.88rem; font-weight:800; white-space:nowrap;">${dispMillesimi.toFixed(2)} ‰</strong>
                         </div>
                     </label>
                 `;
