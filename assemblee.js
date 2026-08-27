@@ -152,8 +152,8 @@ window.AssembleeModule = {
                     <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
                         <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
                             <!-- PULSANTE RAPIDO X NELL'ANGOLO IN ALTO A DESTRA -->
-                            <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; font-weight: 700; transition: all 0.2s;">
-                                ✕
+                            <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
 
                             <div id="reader" style="width: 100%; min-height: 250px;"></div>
@@ -163,11 +163,12 @@ window.AssembleeModule = {
 
                         <!-- MICRO-COPY ED ISTRUZIONI ESPLICITE DI CHIUSURA SOTTO IL FRAME -->
                         <div style="margin-top: 0.65rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
-                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4;">
-                                💡 <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path></svg>
+                                <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
                             </p>
                             <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
-                                <span>✕ Chiudi Fotocamera</span>
+                                <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi Fotocamera</span>
                             </button>
                         </div>
 
@@ -188,16 +189,16 @@ window.AssembleeModule = {
                 <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--surface-color-light);">
                         <div>
-                            <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text);">🏛️ Quorum Costitutivo</h3>
+                            <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text); display:flex; align-items:center; gap:0.4rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg> Quorum Costitutivo</h3>
                             <span id="room-assembly-subtitle" style="font-size: 0.76rem; color: var(--secondary-text); display: block; margin-top: 0.15rem;">Verifica presenze e validità della seduta assembleare</span>
                         </div>
-                        <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0;">LIVE 🔴</span>
+                        <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
                     </div>
 
                     <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
                     <div id="room-general-quorum-section" style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid var(--surface-color-light); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
                         <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
-                            🏢 <span>Quorum Intero Condominio</span>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="12"></line><line x1="15" y1="22" x2="15" y2="12"></line><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="7" x2="9.01" y2="7"></line><line x1="15" y1="7" x2="15.01" y2="7"></line></svg><span>Quorum Intero Condominio</span>
                         </div>
                         <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px; align-items: start;">
                             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
@@ -216,7 +217,7 @@ window.AssembleeModule = {
                         <div style="cursor: pointer; user-select: none; margin-bottom: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0.6rem 0.75rem; transition: background 0.2s;" onclick="window.togglePartialQuorumCollapsible()">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
                                 <div style="font-size: 0.84rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.35rem;">
-                                    🪜 <span>Condominio Parziale</span>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg><span>Condominio Parziale</span>
                                 </div>
                                 <span id="room-partial-toggle-btn" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 800; flex-shrink: 0;">Nascondi ▲</span>
                             </div>
@@ -238,10 +239,10 @@ window.AssembleeModule = {
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-top: 0.6rem;">
                             <div class="badge" style="background: rgba(29, 185, 84, 0.15); color: #1DB954; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(29, 185, 84, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
-                                👤 <span id="room-badge-in-aula">0</span> in aula
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span id="room-badge-in-aula">0</span> in aula
                             </div>
                             <div class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-color); font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
-                                📜 <span id="room-badge-deleghe">0</span> deleghe
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span id="room-badge-deleghe">0</span> deleghe
                             </div>
                         </div>
                     </div>
