@@ -599,6 +599,44 @@
             color: #78350F;
         }
 
+        .btn-expand-voters {
+            padding: 0.12rem 0.4rem;
+            border-radius: 6px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1.2;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .btn-expand-voters,
+        :root .btn-expand-voters {
+            background: rgba(16, 185, 129, 0.2);
+            color: #D1FAE5;
+            border: 1px solid #10B981;
+        }
+
+        :root[data-theme="dark"] .btn-expand-voters:hover {
+            background: rgba(16, 185, 129, 0.35);
+        }
+
+        :root[data-theme="light"] .btn-expand-voters {
+            background: #D1FAE5;
+            color: #065F46;
+            border: 1.5px solid #10B981;
+            box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
+        }
+
+        :root[data-theme="light"] .btn-expand-voters:hover {
+            background: #A7F3D0;
+            color: #047857;
+        }
+
         .badge-nonvoters-total-mil {
             font-size: 0.72rem;
             font-weight: 800;
@@ -2913,6 +2951,7 @@
         const hideModal = (fromPopState = false) => {
             window.isOdgApprovalModalOpen = false;
             window._openNonVotersModalIndex = null;
+            window._openVotersModalIndex = null;
             if (typeof window.stopQuickQRScanner === 'function') {
                 try { window.stopQuickQRScanner(); } catch (e) { }
             }
@@ -17625,6 +17664,160 @@ ${renderBottomNavigation()}
             }
         };
 
+        window._currentVotersByPoint = window._currentVotersByPoint || {};
+        window._openVotersModalIndex = null;
+
+        window.openVotersFullscreenModal = (pointIndex, isLiveRefresh = false) => {
+            const data = window._currentVotersByPoint ? window._currentVotersByPoint[pointIndex] : null;
+            if (!data) return;
+
+            window._openVotersModalIndex = pointIndex;
+
+            const prevSearchInput = document.getElementById('input-search-fullscreen-voters');
+            const prevSearchVal = isLiveRefresh && prevSearchInput ? prevSearchInput.value : '';
+            const wasFocused = isLiveRefresh && document.activeElement && document.activeElement.id === 'input-search-fullscreen-voters';
+
+            const modalTitle = `Dettaglio Votanti - Punto ${data.pointIndex}`;
+            const votes = data.votes || [];
+
+            let totalMil = 0;
+            votes.forEach(v => { totalMil += (v.millesimi || 0); });
+
+            const modalContent = `
+                <div style="display: flex; flex-direction: column; height: 100%;">
+                    <!-- Banner riassuntivo punto -->
+                    <div class="nonvoters-modal-summary" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); border-left: 4px solid #10B981; border-radius: 8px; padding: 0.65rem 0.85rem; margin-bottom: 0.75rem;">
+                        <div style="font-size: 0.9rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.35rem; line-height: 1.35;">
+                            Punto ${data.pointIndex}: <span style="color: var(--accent-color);">${escapeHtml(data.title)}</span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center;">
+                            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 800; font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 6px;">
+                                ${THEME_ICONS.clipboard(13)} ${votes.length} Voti Espressi
+                            </span>
+                            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--warning); font-weight: 800; font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 6px;">
+                                Totale: ${totalMil.toFixed(2)} ‰
+                            </span>
+                            ${data.isGroupScope ? `
+                                <span class="badge" style="background: rgba(37, 99, 235, 0.15); color: var(--accent-color); font-weight: 700; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px;">
+                                    ${THEME_ICONS.layers(12)} Ambito: ${escapeHtml(data.itemGroup)}
+                                </span>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    ${votes.length === 0 ? `
+                        <div style="padding: 2rem 1rem; text-align: center; background: rgba(245, 158, 11, 0.08); border: 1.5px dashed #F59E0B; border-radius: 10px;">
+                            <div style="color: var(--warning); margin-bottom: 0.5rem;">${THEME_ICONS.hourglass(30, 2)}</div>
+                            <strong style="color: var(--warning); font-size: 1rem; display: block; margin-bottom: 0.3rem;">Nessun voto ancora registrato</strong>
+                            <p style="color: var(--secondary-text); font-size: 0.85rem; margin: 0;">I condòmini non hanno ancora espresso voti per questo punto.</p>
+                        </div>
+                    ` : `
+                        <!-- Barra di ricerca rapida votanti -->
+                        <div style="position: relative; margin-bottom: 0.75rem;">
+                            <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <input type="text" id="input-search-fullscreen-voters" placeholder="Cerca votante, voto o delega..." oninput="window.filterFullscreenVoters(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.45rem 2rem 0.45rem 2.2rem; font-size: 0.85rem; border-radius: 8px;" autocomplete="off" value="${escapeHtml(prevSearchVal)}">
+                            <button type="button" id="btn-clear-search-fullscreen-voters" onclick="document.getElementById('input-search-fullscreen-voters').value = ''; window.filterFullscreenVoters(''); this.style.display = 'none';" style="display: ${prevSearchVal ? 'block' : 'none'}; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                        </div>
+
+                        <!-- Lista dettagliata dei votanti a tutto schermo -->
+                        <div id="fullscreen-voters-list" style="display: flex; flex-direction: column; gap: 0.45rem; overflow-y: auto; padding-right: 0.15rem; flex: 1 1 auto; -webkit-overflow-scrolling: touch;">
+                            ${votes.map(v => {
+                                const cLower = (v.choice || '').toLowerCase();
+                                let choiceBadge = '';
+                                let borderColor = 'var(--surface-color-light)';
+                                if (cLower.includes('favor') || cLower.includes('approv') || cLower === 'sì' || cLower === 'si') {
+                                    choiceBadge = `<span style="color:#10B981; font-weight:800; font-size:0.75rem; background:rgba(16,185,129,0.12); padding:0.12rem 0.45rem; border-radius:4px; border:1px solid rgba(16,185,129,0.3); display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGreen(11)} ${escapeHtml(v.choice || 'Favorevole')}</span>`;
+                                    borderColor = '#10B981';
+                                } else if (cLower.includes('contrar') || cLower.includes('respint') || cLower === 'no') {
+                                    choiceBadge = `<span style="color:var(--danger); font-weight:800; font-size:0.75rem; background:rgba(239,68,68,0.12); padding:0.12rem 0.45rem; border-radius:4px; border:1px solid rgba(239,68,68,0.3); display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleRed(11)} ${escapeHtml(v.choice || 'Contrario')}</span>`;
+                                    borderColor = 'var(--danger)';
+                                } else if (cLower.includes('astenut')) {
+                                    choiceBadge = `<span style="color:#FEF3C7; background:#78350F; font-weight:800; font-size:0.75rem; padding:0.12rem 0.45rem; border-radius:4px; border:1px solid #F59E0B; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGray(11)} ${escapeHtml(v.choice || 'Astenuto')}</span>`;
+                                    borderColor = '#F59E0B';
+                                } else {
+                                    choiceBadge = `<span style="color:var(--primary-text); background:rgba(255,255,255,0.1); font-weight:700; font-size:0.75rem; padding:0.12rem 0.45rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem;">${escapeHtml(v.choice)}</span>`;
+                                }
+
+                                const proxies = v.proxies || [];
+                                const proxySearchText = proxies.map(p => `${p.name} ${p.unit}`).join(' ');
+                                const searchText = `${v.voterName} ${v.choice} ${proxySearchText} ${(v.millesimi || 0).toFixed(2)}`.toLowerCase();
+
+                                return `
+                                    <div class="fullscreen-voter-card" data-search-text="${escapeHtml(searchText)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid ${borderColor}; border-radius:8px; padding:0.55rem 0.7rem; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                                        <!-- Riga 1: Nome e Millesimi -->
+                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                                            <strong style="color:var(--primary-text); font-size:0.88rem; display:inline-flex; align-items:center; gap:0.3rem;">
+                                                ${THEME_ICONS.user(14)} ${escapeHtml(v.voterName)}
+                                            </strong>
+                                            <strong style="color:var(--warning); font-size:0.88rem; white-space:nowrap;">
+                                                ${(v.millesimi || 0).toFixed(2)} ‰
+                                            </strong>
+                                        </div>
+                                        <!-- Riga 2: Scelta del voto -->
+                                        <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:${proxies.length > 0 ? '0.35rem' : '0'};">
+                                            ${choiceBadge}
+                                        </div>
+                                        <!-- Riga 3: Deleghe sotto al nome -->
+                                        ${proxies.length > 0 ? `
+                                            <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:0.35rem; margin-top:0.25rem; font-size:0.75rem; color:var(--accent-color); font-weight:600; display:flex; align-items:center; gap:0.3rem;">
+                                                ${THEME_ICONS.scroll(12)} <span>${proxies.length === 1 ? 'Delega da:' : `Deleghe (${proxies.length}) da:`} ${proxies.map(p => `${escapeHtml(p.name)} [${(p.millesimi || 0).toFixed(2)} ‰]`).join(', ')}</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <p id="fullscreen-voters-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 1rem 0; margin: 0;">Nessun votante trovato con i criteri di ricerca.</p>
+                    `}
+
+                    <!-- Pulsante Chiudi a fondo modale -->
+                    <div style="margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                        <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width: 100%; height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 8px;">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            showModal(modalTitle, modalContent, true);
+
+            if (prevSearchVal) {
+                window.filterFullscreenVoters(prevSearchVal);
+            }
+            if (wasFocused) {
+                const newSearch = document.getElementById('input-search-fullscreen-voters');
+                if (newSearch) newSearch.focus();
+            }
+        };
+
+        window.filterFullscreenVoters = (queryVal) => {
+            const searchInput = document.getElementById('input-search-fullscreen-voters');
+            const clearBtn = document.getElementById('btn-clear-search-fullscreen-voters');
+            const q = (queryVal !== undefined ? queryVal : (searchInput?.value || '')).toLowerCase().trim();
+            const cards = document.querySelectorAll('.fullscreen-voter-card');
+            const noResultsEl = document.getElementById('fullscreen-voters-no-results');
+
+            if (clearBtn) {
+                clearBtn.style.display = q ? 'block' : 'none';
+            }
+
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = !q || text.includes(q);
+                card.style.display = isMatch ? '' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            if (noResultsEl) {
+                const shouldShow = (visibleCount === 0 && cards.length > 0 && q.length > 0);
+                noResultsEl.classList.toggle('hidden', !shouldShow);
+                noResultsEl.style.display = shouldShow ? 'block' : 'none';
+            }
+        };
+
         // ==========================================
         // CACHE DEI DATI STATICI PER LA STANZA LIVE
         // Pre-fetch unico all'ingresso nella stanza live: elimina la riesecuzione di getDocs
@@ -18764,26 +18957,71 @@ ${renderBottomNavigation()}
                         // DETTAGLIO VOTANTI E DELEGHE PER LA QUESTIONE
                         const votesList = item.votes || [];
                         let votersDetailHtml = '';
+
+                        window._currentVotersByPoint = window._currentVotersByPoint || {};
+                        window._currentVotersByPoint[idx] = {
+                            title: item.title || '',
+                            pointIndex: idx + 1,
+                            itemGroup: itemGroup || '',
+                            isGroupScope: isGroupScope,
+                            votes: votesList.map(v => {
+                                const voterHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === v.voterId && p.status !== 'rejected');
+                                const rawName = (typeof window.formatVoterDisplayName === 'function') ? window.formatVoterDisplayName(v.voterName) : (v.voterName || 'Votante');
+                                const cleanName = (rawName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
+                                return {
+                                    voterId: v.voterId,
+                                    voterName: cleanName,
+                                    choice: v.choice || '',
+                                    millesimi: v.millesimi || 0,
+                                    votedAt: v.votedAt || null,
+                                    proxies: voterHeldProxies.map(p => ({
+                                        name: p.delegatorName || 'Delegante',
+                                        millesimi: parseFloat(p.delegatorMillesimi) || 0,
+                                        unit: p.delegatorUnit || ''
+                                    }))
+                                };
+                            })
+                        };
+
                         if (votesList.length > 0) {
                             const votersItemsHtml = votesList.map(v => {
+                                const cLower = (v.choice || '').toLowerCase();
                                 let choiceBadge = '';
-                                if (v.choice === 'Favorevole') choiceBadge = '<span style="color:var(--accent-color); font-weight:700;">${THEME_ICONS.circleGreen(12)} Favorevole</span>';
-                                else if (v.choice === 'Contrario') choiceBadge = '<span style="color:var(--danger); font-weight:700;">${THEME_ICONS.circleRed(12)} Contrario</span>';
-                                else choiceBadge = '<span style="color:var(--secondary-text); font-weight:700;">${THEME_ICONS.circleGray(12)} Astenuto</span>';
-
-                                const voterHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === v.voterId);
-                                let proxyDetailText = '';
-                                if (voterHeldProxies.length > 0) {
-                                    proxyDetailText = `<div style="font-size:0.75rem; color:var(--secondary-text); margin-top:0.15rem;">(Inclusa delega di: ${voterHeldProxies.map(p => `${escapeHtml(p.delegatorName)} [${(p.delegatorMillesimi || 0).toFixed(2)} ‰]`).join(', ')})</div>`;
+                                let borderAccent = '#10B981';
+                                if (cLower.includes('favor') || cLower.includes('approv') || cLower === 'sì' || cLower === 'si') {
+                                    choiceBadge = `<span style="color:#10B981; font-weight:800; font-size:0.72rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGreen(11)} ${escapeHtml(v.choice || 'Favorevole')}</span>`;
+                                    borderAccent = '#10B981';
+                                } else if (cLower.includes('contrar') || cLower.includes('respint') || cLower === 'no') {
+                                    choiceBadge = `<span style="color:var(--danger); font-weight:800; font-size:0.72rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleRed(11)} ${escapeHtml(v.choice || 'Contrario')}</span>`;
+                                    borderAccent = 'var(--danger)';
+                                } else if (cLower.includes('astenut')) {
+                                    choiceBadge = `<span style="color:#F59E0B; font-weight:800; font-size:0.72rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGray(11)} ${escapeHtml(v.choice || 'Astenuto')}</span>`;
+                                    borderAccent = '#F59E0B';
+                                } else {
+                                    choiceBadge = `<span style="color:var(--primary-text); font-weight:700; font-size:0.72rem; display:inline-flex; align-items:center; gap:0.25rem;">${escapeHtml(v.choice || '')}</span>`;
                                 }
 
-                                const formattedVoterName = (typeof window.formatVoterDisplayName === 'function') ? window.formatVoterDisplayName(v.voterName) : v.voterName;
+                                const voterHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === v.voterId && p.status !== 'rejected');
+                                let proxyDetailText = '';
+                                if (voterHeldProxies.length > 0) {
+                                    proxyDetailText = `
+                                        <div style="font-size:0.72rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem; line-height:1.2;">
+                                            ${THEME_ICONS.scroll(12)} <span>(Inclusa delega di: ${voterHeldProxies.map(p => `${escapeHtml(p.delegatorName || '')} [${(p.delegatorMillesimi || 0).toFixed(2)} ‰]`).join(', ')})</span>
+                                        </div>
+                                    `;
+                                }
+
+                                const rawName = (typeof window.formatVoterDisplayName === 'function') ? window.formatVoterDisplayName(v.voterName) : (v.voterName || 'Votante');
+                                const cleanName = (rawName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
 
                                 return `
-                                    <div style="padding:0.4rem 0.6rem; background:var(--surface-color-light); border-radius:6px; font-size:0.8rem; margin-bottom:0.3rem;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                            <span><strong>${escapeHtml(formattedVoterName)}</strong> ${choiceBadge}</span>
-                                            <strong style="color:var(--warning);">${(v.millesimi || 0).toFixed(2)} ‰</strong>
+                                    <div style="padding:0.45rem 0.65rem; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid ${borderAccent}; border-radius:6px; font-size:0.8rem; margin-bottom:0.35rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                            <span style="font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;">${escapeHtml(cleanName)}</span>
+                                            <span style="color:var(--warning); font-weight:800; white-space:nowrap; font-size:0.82rem; flex-shrink:0;">${(v.millesimi || 0).toFixed(2)} ‰</span>
+                                        </div>
+                                        <div style="margin-top:0.15rem; display:flex; align-items:center; gap:0.35rem;">
+                                            ${choiceBadge}
                                         </div>
                                         ${proxyDetailText}
                                     </div>
@@ -18792,7 +19030,15 @@ ${renderBottomNavigation()}
 
                             votersDetailHtml = `
                                 <details style="margin-top: 0.75rem; font-size: 0.8rem;">
-                                    <summary style="cursor: pointer; color: var(--accent-color); font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.clipboard(15)} <span>Dettaglio Votanti (${votesList.length})</span></summary>
+                                    <summary style="cursor: pointer; color: var(--accent-color); font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; box-sizing: border-box;">
+                                        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #10B981; font-weight: 700;">
+                                            ${THEME_ICONS.clipboard(15)} <span>Dettaglio Votanti (${votesList.length})</span>
+                                        </span>
+                                        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); window.openVotersFullscreenModal(${idx})" class="btn btn-expand-voters" title="Espandi a tutto schermo">
+                                            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                                            <span>Espandi</span>
+                                        </button>
+                                    </summary>
                                     <div style="margin-top: 0.5rem;">
                                         ${votersItemsHtml}
                                     </div>
@@ -18863,57 +19109,67 @@ ${renderBottomNavigation()}
                             })
                         };
 
-                        const nonVotersHtml = `
-                            <div style="margin-top: 0.85rem; padding: 0.65rem 0.55rem; background: rgba(245, 158, 11, 0.06); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; text-align: left; box-sizing: border-box; width: 100%;">
-                                <div style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.45rem; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
-                                    <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
-                                        <span style="display: inline-flex; align-items: center; gap: 0.2rem; background: #78350F; color: #FEF3C7; border: 1.2px solid #F59E0B; padding: 0.1rem 0.35rem; border-radius: 5px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.2px; white-space: nowrap; flex-shrink: 0;">
-                                            ${THEME_ICONS.hourglass(10, 2)} Senza voto
-                                        </span>
-                                        <span style="font-size: 0.76rem; font-weight: 800; color: var(--primary-text); white-space: nowrap; flex-shrink: 0;">
-                                            (${pointNonVoters.length})
-                                        </span>
+                        let nonVotersHtml = '';
+                        if (pointNonVoters.length === 0) {
+                            nonVotersHtml = `
+                                <div style="margin-top: 0.65rem; font-size: 0.8rem; color: #10B981; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0;">
+                                    <span style="display:inline-flex; align-items:center; color:#10B981;">${THEME_ICONS.checkSuccess(15)}</span>
+                                    <span>Tutti i condòmini hanno votato</span>
+                                </div>
+                            `;
+                        } else {
+                            const nonVotersItemsHtml = pointNonVoters.map(a => {
+                                const rawName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || 'Condòmino');
+                                const cleanName = (rawName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
+                                const milVal = getAttendeeGroupMilForPoint(a);
+                                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+
+                                let proxyDetailText = '';
+                                if (heldProxies.length > 0) {
+                                    proxyDetailText = `
+                                        <div style="font-size:0.72rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem; line-height:1.2;">
+                                            ${THEME_ICONS.scroll(12)} <span>(Inclusa delega di: ${heldProxies.map(p => `${escapeHtml(p.delegatorName || '')} [${(p.delegatorMillesimi || 0).toFixed(2)} ‰]`).join(', ')})</span>
+                                        </div>
+                                    `;
+                                }
+
+                                const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+                                const methodBadge = isManual
+                                    ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
+                                    : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
+
+                                return `
+                                    <div style="padding:0.45rem 0.65rem; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #F59E0B; border-radius:6px; font-size:0.8rem; margin-bottom:0.35rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                            <span style="font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;">${escapeHtml(cleanName)}</span>
+                                            <span style="color:var(--warning); font-weight:800; white-space:nowrap; font-size:0.82rem; flex-shrink:0;">${milVal.toFixed(2)} ‰</span>
+                                        </div>
+                                        <div style="margin-top:0.15rem; display:flex; align-items:center; gap:0.35rem;">
+                                            ${methodBadge}
+                                        </div>
+                                        ${proxyDetailText}
                                     </div>
-                                    ${pointNonVoters.length > 0 ? `
-                                        <button type="button" onclick="window.openNonVotersFullscreenModal(${idx})" class="btn btn-expand-nonvoters" title="Espandi a tutto schermo">
+                                `;
+                            }).join('');
+
+                            nonVotersHtml = `
+                                <details style="margin-top: 0.75rem; font-size: 0.8rem;">
+                                    <summary style="cursor: pointer; color: #F59E0B; font-weight: 600; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; box-sizing: border-box;">
+                                        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #F59E0B; font-weight: 700;">
+                                            ${THEME_ICONS.hourglass(14, 2)} <span>Senza voto (${pointNonVoters.length})</span>
+                                            <span style="font-size:0.75rem; color:var(--secondary-text); font-weight:600; margin-left:0.25rem;">• ${nonVotersMilSum.toFixed(2)} ‰</span>
+                                        </span>
+                                        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); window.openNonVotersFullscreenModal(${idx})" class="btn btn-expand-nonvoters" title="Espandi a tutto schermo">
                                             <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                                             <span>Espandi</span>
                                         </button>
-                                    ` : ''}
-                                </div>
-                                ${pointNonVoters.length > 0 ? `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; padding: 0 0.1rem; width: 100%; box-sizing: border-box;">
-                                        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary-text);">Tot. millesimi:</span>
-                                        <span class="badge-nonvoters-total-mil">
-                                            ${nonVotersMilSum.toFixed(2)} ‰
-                                        </span>
+                                    </summary>
+                                    <div style="margin-top: 0.5rem;">
+                                        ${nonVotersItemsHtml}
                                     </div>
-                                ` : ''}
-                                ${pointNonVoters.length === 0 ? `
-                                    <p style="font-size: 0.82rem; color: #10B981; font-weight: 700; margin: 0; padding: 0.2rem 0; display: flex; align-items: center; gap: 0.35rem;">
-                                        <span style="display:inline-flex; align-items:center; color:#10B981;">${THEME_ICONS.checkSuccess(16)}</span> Tutti i condòmini aventi diritto hanno espresso il voto per questo punto (inclusi gli astenuti).
-                                    </p>
-                                ` : `
-                                    <div style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 155px; overflow-y: auto; padding-top: 0.1rem; width: 100%; box-sizing: border-box;">
-                                        ${pointNonVoters.map(a => {
-                            const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || '');
-                            const milVal = getAttendeeGroupMilForPoint(a);
-                            return `
-                                                <div class="nonvoter-item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 700; padding: 0.26rem 0.45rem; border-radius: 6px; width: 100%; box-sizing: border-box;">
-                                                    <div style="display: flex; align-items: center; gap: 0.3rem; min-width: 0; flex: 1;">
-                                                        <span style="color: #F59E0B; display: inline-flex; align-items: center; flex-shrink: 0;">${THEME_ICONS.user(14)}</span>
-                                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dName)}">${escapeHtml(dName)}</span>
-                                                    </div>
-                                                    <div style="flex-shrink: 0; text-align: right;">
-                                                        <strong class="nonvoter-item-mil">${milVal.toFixed(2)} ‰</strong>
-                                                    </div>
-                                                </div>
-                                            `;
-                        }).join('')}
-                                    </div>
-                                `}
-                            </div>
-                        `;
+                                </details>
+                            `;
+                        }
 
                         const exPointText = (item.originalIndex && item.originalIndex !== (idx + 1)) ? ` <span style="font-size:0.8rem; color:var(--warning); font-weight:700;">(ex punto ${item.originalIndex})</span>` : '';
 
@@ -18955,6 +19211,12 @@ ${renderBottomNavigation()}
                     if (window._openNonVotersModalIndex !== null && typeof window._openNonVotersModalIndex === 'number') {
                         if (window._currentNonVotersByPoint && window._currentNonVotersByPoint[window._openNonVotersModalIndex]) {
                             window.openNonVotersFullscreenModal(window._openNonVotersModalIndex, true);
+                        }
+                    }
+
+                    if (window._openVotersModalIndex !== null && typeof window._openVotersModalIndex === 'number') {
+                        if (window._currentVotersByPoint && window._currentVotersByPoint[window._openVotersModalIndex]) {
+                            window.openVotersFullscreenModal(window._openVotersModalIndex, true);
                         }
                     }
                 }
