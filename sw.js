@@ -1,10 +1,11 @@
-// Definiamo nuovo nome per la cache (BUMP v12)
-const CACHE_NAME = 'condo-app-pwa-cache-v12';
+// Definiamo nuovo nome per la cache (BUMP v24)
+const CACHE_NAME = 'condo-app-pwa-cache-v24';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
   './',
   './index.html',
+  './icons.js',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
