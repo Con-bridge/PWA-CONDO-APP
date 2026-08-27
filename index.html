@@ -560,6 +560,387 @@
             background: var(--surface-color-light) !important;
         }
 
+        /* --- STILI ADATTIVI TEMA (DARK / LIGHT) PER SEZIONE E MODALE SENZA VOTO --- */
+        .btn-expand-nonvoters {
+            padding: 0.12rem 0.4rem;
+            border-radius: 6px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1.2;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .btn-expand-nonvoters,
+        :root .btn-expand-nonvoters {
+            background: rgba(245, 158, 11, 0.2);
+            color: #FEF3C7;
+            border: 1px solid #F59E0B;
+        }
+
+        :root[data-theme="dark"] .btn-expand-nonvoters:hover {
+            background: rgba(245, 158, 11, 0.35);
+        }
+
+        :root[data-theme="light"] .btn-expand-nonvoters {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1.5px solid #F59E0B;
+            box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2);
+        }
+
+        :root[data-theme="light"] .btn-expand-nonvoters:hover {
+            background: #FDE68A;
+            color: #78350F;
+        }
+
+        .badge-nonvoters-total-mil {
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 0.08rem 0.35rem;
+            border-radius: 4px;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            display: inline-block;
+            min-width: 52px;
+            text-align: right;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .badge-nonvoters-total-mil,
+        :root .badge-nonvoters-total-mil {
+            background: #78350F;
+            color: #FEF3C7;
+            border: 1.2px solid #F59E0B;
+        }
+
+        :root[data-theme="light"] .badge-nonvoters-total-mil {
+            background: #78350F;
+            color: #FEF3C7;
+            border: 1.2px solid #F59E0B;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Badge Deleghe con supporto al contrasto per Modalità Giorno / Notte */
+        .badge-proxy {
+            font-size: 0.66rem;
+            font-weight: 700;
+            padding: 0.12rem 0.4rem;
+            border-radius: 5px;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .badge-proxy,
+        :root .badge-proxy {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93C5FD;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+
+        :root[data-theme="light"] .badge-proxy {
+            background: #DBEAFE;
+            color: #1E40AF;
+            border: 1.5px solid #93C5FD;
+            box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .scale-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.35rem 1.8rem 0.35rem 1.8rem;
+            font-size: 0.76rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .scale-search-input,
+        :root .scale-search-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--primary-text);
+        }
+
+        :root[data-theme="light"] .scale-search-input {
+            background: #FFFFFF;
+            border: 1.5px solid #CBD5E1;
+            color: #1E293B;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .nonvoter-item-row {
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .nonvoter-item-row,
+        :root .nonvoter-item-row {
+            background: #78350F;
+            color: #FEF3C7;
+            border: 1.5px solid #F59E0B;
+        }
+
+        :root[data-theme="light"] .nonvoter-item-row {
+            background: #FFFFFF;
+            color: #78350F;
+            border: 1.5px solid #F59E0B;
+            box-shadow: 0 1px 2px rgba(245, 158, 11, 0.12);
+        }
+
+        .nonvoter-item-mil {
+            padding: 0.08rem 0.3rem;
+            border-radius: 4px;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            display: inline-block;
+            min-width: 52px;
+            text-align: right;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .nonvoter-item-mil,
+        :root .nonvoter-item-mil {
+            color: #FDE68A;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        :root[data-theme="light"] .nonvoter-item-mil {
+            color: #92400E;
+            background: #FEF3C7;
+            border: 1px solid #FDE68A;
+        }
+
+        /* Modale Non Votanti - Stili Adattivi */
+        .nonvoters-modal-summary {
+            border: 1.5px solid #F59E0B;
+            border-radius: 10px;
+            padding: 0.75rem 0.9rem;
+            margin-bottom: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .nonvoters-modal-summary,
+        :root .nonvoters-modal-summary {
+            background: rgba(245, 158, 11, 0.08);
+        }
+
+        :root[data-theme="light"] .nonvoters-modal-summary {
+            background: #FFFBEB;
+            box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);
+        }
+
+        .nonvoters-modal-count-badge {
+            font-weight: 800;
+            font-size: 0.78rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .nonvoters-modal-count-badge,
+        :root .nonvoters-modal-count-badge {
+            background: #78350F;
+            color: #FEF3C7;
+            border: 1px solid #F59E0B;
+        }
+
+        :root[data-theme="light"] .nonvoters-modal-count-badge {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1.5px solid #F59E0B;
+        }
+
+        .nonvoters-modal-total-badge {
+            font-weight: 800;
+            font-size: 0.78rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .nonvoters-modal-total-badge,
+        :root .nonvoters-modal-total-badge {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-text);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        :root[data-theme="light"] .nonvoters-modal-total-badge {
+            background: #FFFFFF;
+            color: #1E293B;
+            border: 1.5px solid #E2E8F0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .nonvoters-modal-scope-badge {
+            font-weight: 700;
+            font-size: 0.76rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .nonvoters-modal-scope-badge,
+        :root .nonvoters-modal-scope-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93C5FD;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        :root[data-theme="light"] .nonvoters-modal-scope-badge {
+            background: #EFF6FF;
+            color: #1D4ED8;
+            border: 1.5px solid #BFDBFE;
+        }
+
+        .fullscreen-nonvoter-card {
+            border-radius: 8px;
+            padding: 0.65rem 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .fullscreen-nonvoter-card,
+        :root .fullscreen-nonvoter-card {
+            background: var(--surface-color-light);
+            border: 1.5px solid rgba(245, 158, 11, 0.4);
+            border-left: 4px solid #F59E0B;
+        }
+
+        :root[data-theme="light"] .fullscreen-nonvoter-card {
+            background: #FFFFFF;
+            border: 1.5px solid #FDE68A;
+            border-left: 4px solid #F59E0B;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .fullscreen-nv-mil {
+            font-size: 0.92rem;
+            font-weight: 900;
+            white-space: nowrap;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            display: inline-block;
+            font-variant-numeric: tabular-nums;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .fullscreen-nv-mil,
+        :root .fullscreen-nv-mil {
+            background: rgba(0, 0, 0, 0.35);
+            color: #FDE68A;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        :root[data-theme="light"] .fullscreen-nv-mil {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1.5px solid #F59E0B;
+        }
+
+        .fullscreen-nv-proxies {
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            transition: all 0.2s ease;
+        }
+
+        :root[data-theme="dark"] .fullscreen-nv-proxies,
+        :root .fullscreen-nv-proxies {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+        }
+
+        :root[data-theme="light"] .fullscreen-nv-proxies {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+        }
+
+        .fullscreen-nv-proxies-title {
+            font-size: 0.74rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-bottom: 0.25rem;
+        }
+
+        :root[data-theme="dark"] .fullscreen-nv-proxies-title,
+        :root .fullscreen-nv-proxies-title {
+            color: #93C5FD;
+        }
+
+        :root[data-theme="light"] .fullscreen-nv-proxies-title {
+            color: #1D4ED8;
+        }
+
+        .fullscreen-nv-proxy-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.74rem;
+            color: var(--primary-text);
+            padding-left: 0.35rem;
+        }
+
+        :root[data-theme="dark"] .fullscreen-nv-proxy-row,
+        :root .fullscreen-nv-proxy-row {
+            border-left: 2px solid rgba(59, 130, 246, 0.4);
+        }
+
+        :root[data-theme="light"] .fullscreen-nv-proxy-row {
+            border-left: 2px solid #93C5FD;
+        }
+
+        .fullscreen-nv-proxy-mil {
+            font-size: 0.76rem;
+            white-space: nowrap;
+            margin-left: 0.5rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        :root[data-theme="dark"] .fullscreen-nv-proxy-mil,
+        :root .fullscreen-nv-proxy-mil {
+            color: #93C5FD;
+        }
+
+        :root[data-theme="light"] .fullscreen-nv-proxy-mil {
+            color: #1D4ED8;
+            font-weight: 800;
+        }
+
+        :root[data-theme="light"] #input-search-fullscreen-nonvoters {
+            background: #FFFFFF !important;
+            color: #1E293B !important;
+            border: 1.5px solid #CBD5E1 !important;
+        }
+
         /* Stile per pulsante mostra/nascondi password */
         .password-toggle-container {
             position: relative;
@@ -1100,25 +1481,33 @@
         .modal-header {
             position: relative;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
+            gap: 0.65rem;
             margin-bottom: 1rem;
-        }
-
-        .modal-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            padding: 0 2.2rem;
-            text-align: center;
             width: 100%;
             box-sizing: border-box;
         }
 
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            text-align: left;
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            line-height: 1.3;
+            color: var(--primary-text);
+            white-space: normal;
+            word-break: break-word;
+        }
+
         .modal-close-btn {
-            position: absolute;
-            right: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
+            position: static;
+            transform: none;
+            flex-shrink: 0;
             background: var(--surface-color-light, rgba(255, 255, 255, 0.08));
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 50%;
@@ -1141,7 +1530,7 @@
             background: rgba(255, 255, 255, 0.16);
             color: var(--primary-text);
             border-color: rgba(255, 255, 255, 0.25);
-            transform: translateY(-50%) scale(1.06);
+            transform: scale(1.06);
         }
 
         .modal-close-btn svg {
@@ -2523,6 +2912,7 @@
 
         const hideModal = (fromPopState = false) => {
             window.isOdgApprovalModalOpen = false;
+            window._openNonVotersModalIndex = null;
             if (typeof window.stopQuickQRScanner === 'function') {
                 try { window.stopQuickQRScanner(); } catch (e) { }
             }
@@ -17003,9 +17393,235 @@ ${renderBottomNavigation()}
                 window._openScaleAttendees.delete(scaleSafeId);
             } else {
                 window._openScaleAttendees.add(scaleSafeId);
+                const searchInput = document.getElementById(`input-search-scale-attendees-${scaleSafeId}`);
+                if (searchInput) {
+                    setTimeout(() => searchInput.focus(), 60);
+                }
             }
             if (ic) {
                 ic.textContent = isHidden ? 'Espandi ▼' : 'Comprimi ▲';
+            }
+        };
+
+        window.filterScaleAttendeesList = (scaleSafeId, queryVal) => {
+            const searchInput = document.getElementById(`input-search-scale-attendees-${scaleSafeId}`);
+            const clearBtn = document.getElementById(`btn-clear-search-scale-attendees-${scaleSafeId}`);
+            const q = (queryVal !== undefined ? queryVal : (searchInput?.value || '')).toLowerCase().trim();
+            const cards = document.querySelectorAll(`.scale-attendee-card-${scaleSafeId}`);
+            const noResultsEl = document.getElementById(`scale-attendees-no-results-${scaleSafeId}`);
+
+            if (clearBtn) {
+                clearBtn.style.display = q ? 'block' : 'none';
+            }
+
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = !q || text.includes(q);
+                card.style.display = isMatch ? '' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            if (noResultsEl) {
+                const shouldShowNoResults = (visibleCount === 0 && cards.length > 0 && q.length > 0);
+                noResultsEl.classList.toggle('hidden', !shouldShowNoResults);
+                noResultsEl.style.display = shouldShowNoResults ? 'block' : 'none';
+            }
+        };
+
+        window.toggleRoomAttendeesCollapsible = () => {
+            const el = document.getElementById('room-attendees-collapsible');
+            const toggleIcon = document.getElementById('room-attendees-toggle-text');
+            if (!el) return;
+            const isHidden = el.classList.toggle('hidden');
+            if (toggleIcon) {
+                toggleIcon.textContent = isHidden ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';
+            }
+            if (!isHidden) {
+                const searchInput = document.getElementById('input-search-room-attendees');
+                if (searchInput) {
+                    setTimeout(() => searchInput.focus(), 60);
+                }
+            }
+        };
+
+        window.filterRoomAttendeesList = (queryVal) => {
+            const searchInput = document.getElementById('input-search-room-attendees');
+            const clearBtn = document.getElementById('btn-clear-search-room-attendees');
+            const q = (queryVal !== undefined ? queryVal : (searchInput?.value || '')).toLowerCase().trim();
+            const cards = document.querySelectorAll('.room-attendee-card');
+            const noResultsEl = document.getElementById('room-attendees-no-results');
+
+            if (clearBtn) {
+                clearBtn.style.display = q ? 'block' : 'none';
+            }
+
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = !q || text.includes(q);
+                card.style.display = isMatch ? '' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            if (noResultsEl) {
+                const shouldShowNoResults = (visibleCount === 0 && cards.length > 0 && q.length > 0);
+                noResultsEl.classList.toggle('hidden', !shouldShowNoResults);
+                noResultsEl.style.display = shouldShowNoResults ? 'block' : 'none';
+            }
+        };
+
+        // GESTIONE MODALE A TUTTO SCHERMO NON VOTANTI
+        window._currentNonVotersByPoint = window._currentNonVotersByPoint || {};
+        window._openNonVotersModalIndex = null;
+
+        window.openNonVotersFullscreenModal = (pointIndex, isLiveRefresh = false) => {
+            const data = window._currentNonVotersByPoint[pointIndex];
+            if (!data) return;
+
+            window._openNonVotersModalIndex = pointIndex;
+
+            const prevSearchInput = document.getElementById('input-search-fullscreen-nonvoters');
+            const prevSearchVal = isLiveRefresh && prevSearchInput ? prevSearchInput.value : '';
+            const wasFocused = isLiveRefresh && document.activeElement && document.activeElement.id === 'input-search-fullscreen-nonvoters';
+
+            const modalTitle = `Non Votanti - Punto ${data.pointIndex}`;
+            const nonVoters = data.nonVoters || [];
+
+            const modalContent = `
+                <div style="display: flex; flex-direction: column; height: 100%;">
+                    <!-- Banner riassuntivo punto -->
+                    <div class="nonvoters-modal-summary">
+                        <div style="font-size: 0.9rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.4rem; line-height: 1.35;">
+                            Punto ${data.pointIndex}: <span style="color: var(--accent-color);">${escapeHtml(data.title)}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.45rem; width: 100%;">
+                            <div class="badge nonvoters-modal-count-badge">
+                                ${THEME_ICONS.hourglass(13, 2.2)} ${nonVoters.length} Condòmini Senza Voto
+                            </div>
+                            <div class="badge nonvoters-modal-total-badge">
+                                Totale: ${data.nonVotersMilSum.toFixed(2)} ‰
+                            </div>
+                            ${data.isGroupScope ? `
+                                <div class="badge nonvoters-modal-scope-badge">
+                                    ${THEME_ICONS.layers(13)} Ambito: ${escapeHtml(data.itemGroup)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    ${nonVoters.length === 0 ? `
+                        <div style="padding: 2rem 1rem; text-align: center; background: rgba(16, 185, 129, 0.08); border: 1.5px solid #10B981; border-radius: 10px;">
+                            <div style="color: #10B981; margin-bottom: 0.5rem;">${THEME_ICONS.checkSuccess(32)}</div>
+                            <strong style="color: #10B981; font-size: 1rem; display: block; margin-bottom: 0.3rem;">Tutti i condòmini hanno votato!</strong>
+                            <p style="color: var(--secondary-text); font-size: 0.85rem; margin: 0;">Tutti i condòmini aventi diritto hanno espresso il loro voto per questo punto.</p>
+                        </div>
+                    ` : `
+                        <!-- Barra di ricerca rapida non votanti -->
+                        <div style="position: relative; margin-bottom: 0.75rem;">
+                            <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <input type="text" id="input-search-fullscreen-nonvoters" placeholder="Cerca tra i non votanti o deleghe..." oninput="window.filterFullscreenNonVoters(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.45rem 2rem 0.45rem 2.2rem; font-size: 0.85rem; border-radius: 8px;" autocomplete="off" value="${escapeHtml(prevSearchVal)}">
+                            <button type="button" id="btn-clear-search-fullscreen-nonvoters" onclick="document.getElementById('input-search-fullscreen-nonvoters').value = ''; window.filterFullscreenNonVoters(''); this.style.display = 'none';" style="display: ${prevSearchVal ? 'block' : 'none'}; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                        </div>
+
+                        <!-- Lista dettagliata dei non votanti -->
+                        <div id="fullscreen-nonvoters-list" style="display: flex; flex-direction: column; gap: 0.55rem; overflow-y: auto; padding-right: 0.15rem; flex: 1 1 auto; -webkit-overflow-scrolling: touch;">
+                            ${nonVoters.map((nv) => {
+                const heldProxies = nv.heldProxies || [];
+                const proxySearchText = heldProxies.map(p => `${p.name} ${p.unit}`).join(' ');
+                const searchText = `${nv.name} ${proxySearchText} ${nv.units} ${nv.millesimi.toFixed(2)} ${nv.isManual ? 'manuale' : 'app'}`.toLowerCase();
+
+                return `
+                                    <div class="fullscreen-nonvoter-card" data-search-text="${escapeHtml(searchText)}">
+                                        <!-- Riga 1: Nome e Millesimi -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                                            <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 1;">
+                                                <span style="color: #F59E0B; display: inline-flex; align-items: center; flex-shrink: 0;">${THEME_ICONS.user(15)}</span>
+                                                <strong style="color: var(--primary-text); font-size: 0.9rem; word-break: break-word;" title="${escapeHtml(nv.name)}">${escapeHtml(nv.name)}</strong>
+                                            </div>
+                                            <div style="text-align: right; flex-shrink: 0;">
+                                                <strong class="fullscreen-nv-mil">${nv.millesimi.toFixed(2)} ‰</strong>
+                                            </div>
+                                        </div>
+
+                                        <!-- Riga 2: Tipologia di registrazione e Unità -->
+                                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: ${heldProxies.length > 0 ? '0.4rem' : '0'};">
+                                            ${nv.isManual ? `
+                                                <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--secondary-text); font-size: 0.68rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 4px;">${THEME_ICONS.pen(13)} Manuale</span>
+                                            ` : `
+                                                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.68rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 4px;">${THEME_ICONS.smartphone(13)} App/QR</span>
+                                            `}
+                                            ${nv.units ? `<span style="font-size: 0.72rem; color: var(--secondary-text);">• Int. ${escapeHtml(nv.units)}</span>` : ''}
+                                        </div>
+
+                                        <!-- Riga 3: Dettaglio Deleghe Ricevute -->
+                                        ${heldProxies.length > 0 ? `
+                                            <div class="fullscreen-nv-proxies">
+                                                <div class="fullscreen-nv-proxies-title">
+                                                    ${THEME_ICONS.scroll(13)} Deleghe ricevute (${heldProxies.length}):
+                                                </div>
+                                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                                    ${heldProxies.map(p => `
+                                                        <div class="fullscreen-nv-proxy-row">
+                                                            <span>${escapeHtml(p.name)}${p.unit ? ` <span style="color: var(--secondary-text); font-size: 0.7rem;">(Int. ${escapeHtml(p.unit)})</span>` : ''}</span>
+                                                            <strong class="fullscreen-nv-proxy-mil">${p.millesimi.toFixed(2)} ‰</strong>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+            }).join('')}
+                        </div>
+                        <p id="fullscreen-nonvoters-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 1rem 0; margin: 0;">Nessun condòmino non votante trovato con i criteri di ricerca.</p>
+                    `}
+
+                    <!-- Pulsante Chiudi a fondo modale -->
+                    <div style="margin-top: 1rem; padding-top: 0.65rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                        <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width: 100%; height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 8px;">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            showModal(modalTitle, modalContent, true);
+
+            if (prevSearchVal) {
+                window.filterFullscreenNonVoters(prevSearchVal);
+            }
+            if (wasFocused) {
+                const newSearch = document.getElementById('input-search-fullscreen-nonvoters');
+                if (newSearch) newSearch.focus();
+            }
+        };
+
+        window.filterFullscreenNonVoters = (queryVal) => {
+            const searchInput = document.getElementById('input-search-fullscreen-nonvoters');
+            const clearBtn = document.getElementById('btn-clear-search-fullscreen-nonvoters');
+            const q = (queryVal !== undefined ? queryVal : (searchInput?.value || '')).toLowerCase().trim();
+            const cards = document.querySelectorAll('.fullscreen-nonvoter-card');
+            const noResultsEl = document.getElementById('fullscreen-nonvoters-no-results');
+
+            if (clearBtn) {
+                clearBtn.style.display = q ? 'block' : 'none';
+            }
+
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const text = card.getAttribute('data-search-text') || '';
+                const isMatch = !q || text.includes(q);
+                card.style.display = isMatch ? '' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            if (noResultsEl) {
+                const shouldShow = (visibleCount === 0 && cards.length > 0 && q.length > 0);
+                noResultsEl.classList.toggle('hidden', !shouldShow);
+                noResultsEl.style.display = shouldShow ? 'block' : 'none';
             }
         };
 
@@ -17148,14 +17764,10 @@ ${renderBottomNavigation()}
 
                 const subtitleEl = document.getElementById('room-assembly-subtitle');
                 if (titleEl) {
-                    titleEl.innerHTML = THEME_ICONS.scale(18) + ' Quorum Costitutivo';
+                    titleEl.innerHTML = THEME_ICONS.scale(18) + ' Quorum';
                 }
                 if (subtitleEl) {
-                    if (isOnlyPartial && relevantGroups.length > 0) {
-                        subtitleEl.textContent = `Validità seduta • Condominio Parziale (${relevantGroups.join(', ')})`;
-                    } else {
-                        subtitleEl.textContent = 'Verifica presenze e validità assemblea';
-                    }
+                    subtitleEl.remove();
                 }
 
                 const partialSection = document.getElementById('room-partial-quorum-section');
@@ -17363,6 +17975,9 @@ ${renderBottomNavigation()}
 
                                 // C. Elenco Presenti del Gruppo (Comprimi/Espandi, compresso di default)
                                 const isAttendeesOpen = window._openScaleAttendees && window._openScaleAttendees.has(scaleSafeId);
+                                const prevScaleSearchInput = document.getElementById(`input-search-scale-attendees-${scaleSafeId}`);
+                                const prevScaleSearchVal = isAttendeesOpen && prevScaleSearchInput ? prevScaleSearchInput.value : '';
+
                                 let attendeesHtml = '';
                                 if (groupAttendeesList.length > 0) {
                                     attendeesHtml = `
@@ -17374,20 +17989,36 @@ ${renderBottomNavigation()}
                                                 <span id="attendees-toggle-icon-${scaleSafeId}" style="color: var(--accent-color); font-size: 0.72rem; font-weight: 700;">${isAttendeesOpen ? 'Comprimi ▲' : 'Espandi ▼'}</span>
                                             </div>
                                             <div id="attendees-collapsible-${scaleSafeId}" class="${isAttendeesOpen ? '' : 'hidden'}" style="margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                                                ${groupAttendeesList.map(att => `
-                                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.38rem 0.6rem; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                                                        <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
-                                                            <div style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden;">
-                                                                <strong style="color: var(--primary-text); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(att.name)}">${escapeHtml(att.name)}</strong>
-                                                                ${att.isProxy ? `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93C5FD; font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0;">${THEME_ICONS.scroll(13)} Delega a ${escapeHtml(att.delegateName || 'Delegato')}</span>` : (att.isManual ? `<span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--secondary-text); font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0;">${THEME_ICONS.pen(13)} Manuale</span>` : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0;">${THEME_ICONS.smartphone(13)} App</span>`)}
-                                                            </div>
-                                                            ${att.units ? `<span style="font-size: 0.68rem; color: var(--secondary-text); margin-top: 0.1rem;">Int. ${escapeHtml(att.units)}</span>` : ''}
-                                                        </div>
-                                                        <div style="text-align: right; flex-shrink: 0;">
-                                                            <strong style="color: var(--primary-text); font-size: 0.82rem; font-weight: 800; white-space: nowrap;">${att.millesimi.toFixed(2)} ‰</strong>
-                                                        </div>
+                                                <!-- Barra di ricerca rapida presenti della scala -->
+                                                <div style="position: relative; margin-bottom: 0.15rem;">
+                                                    <div style="position: absolute; left: 0.55rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                                                     </div>
-                                                `).join('')}
+                                                    <input type="text" id="input-search-scale-attendees-${scaleSafeId}" placeholder="Cerca presente o delega..." oninput="window.filterScaleAttendeesList('${scaleSafeId}', this.value)" class="form-input scale-search-input" autocomplete="off" value="${escapeHtml(prevScaleSearchVal)}">
+                                                    <button type="button" id="btn-clear-search-scale-attendees-${scaleSafeId}" onclick="document.getElementById('input-search-scale-attendees-${scaleSafeId}').value = ''; window.filterScaleAttendeesList('${scaleSafeId}', ''); this.style.display = 'none';" style="display: ${prevScaleSearchVal ? 'block' : 'none'}; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.15rem; font-size: 0.8rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                                                </div>
+
+                                                <div id="scale-attendees-list-${scaleSafeId}" style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                                    ${groupAttendeesList.map(att => {
+                                        const proxyText = att.isProxy ? `delega a ${att.delegateName || ''}` : '';
+                                        const typeText = att.isManual ? 'manuale' : 'app qr';
+                                        const searchText = `${att.name} ${proxyText} ${att.units || ''} ${typeText} ${att.millesimi.toFixed(2)}`.toLowerCase();
+
+                                        return `
+                                                            <div class="scale-attendee-card-${scaleSafeId}" data-search-text="${escapeHtml(searchText)}" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.42rem 0.6rem; border-radius: 6px; display: flex; flex-direction: column; gap: 0.25rem;">
+                                                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                                                    <strong style="color: var(--primary-text); font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;" title="${escapeHtml(att.name)}">${escapeHtml(att.name)}</strong>
+                                                                    <strong style="color: var(--primary-text); font-size: 0.82rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; margin-left: auto;">${att.millesimi.toFixed(2)} ‰</strong>
+                                                                </div>
+                                                                <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                                                                    ${att.isProxy ? `<span class="badge badge-proxy">${THEME_ICONS.scroll(13)} Delega a ${escapeHtml(att.delegateName || 'Delegato')}</span>` : (att.isManual ? `<span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--secondary-text); font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.25rem;">${THEME_ICONS.pen(13)} Manuale</span>` : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.25rem;">${THEME_ICONS.smartphone(13)} App</span>`)}
+                                                                    ${att.units ? `<span style="font-size: 0.68rem; color: var(--secondary-text);">Int. ${escapeHtml(att.units)}</span>` : ''}
+                                                                </div>
+                                                            </div>
+                                                        `;
+                                    }).join('')}
+                                                </div>
+                                                <p id="scale-attendees-no-results-${scaleSafeId}" class="hidden" style="color: var(--secondary-text); font-size: 0.75rem; text-align: center; padding: 0.4rem 0; margin: 0; font-style: italic;">Nessun presente trovato.</p>
                                             </div>
                                         </div>
                                     `;
@@ -17639,7 +18270,7 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                // GESTIONE REAL-TIME VOTAZIONE APPROVAZIONE ORDINE DEI LAVORI (ODG)
+                // GESTIONE REAL-TIME VOTAZIONE APPROVAZIONE ORDINE DEI PUNTI (ODG)
                 if (isClosedOrCancelled) {
                     if (window.isOdgApprovalModalOpen) {
                         window.isOdgApprovalModalOpen = false;
@@ -17733,8 +18364,14 @@ ${renderBottomNavigation()}
                             const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || '');
                             const displayMillesimi = (isDelegated && a.baseMillesimi !== undefined) ? a.baseMillesimi : (a.millesimi || 0);
 
+                            const proxyNames = heldProxies.map(p => p.delegatorName || '').join(' ');
+                            const unitNames = (a.proprieta && Array.isArray(a.proprieta)) ? a.proprieta.map(p => p.interno || '').join(' ') : (a.unitaImmobiliare || a.units || '');
+                            const statusText = isLeft ? 'uscito' : (isDelegated ? 'in delega delegato' : 'presente');
+                            const typeText = isManual ? 'manuale' : 'qr app';
+                            const searchText = `${displayName} ${proxyNames} ${a.delegatedToName || ''} ${unitNames} ${statusText} ${typeText} ${(displayMillesimi || 0).toFixed(2)}`.toLowerCase();
+
                             return `
-                                <div style="background:var(--surface-color-light); padding:0.75rem 0.9rem; border-radius:10px; font-size:0.85rem; margin-bottom:0.45rem; ${isLeft ? 'opacity:0.85; border-left:3.5px solid var(--danger, #EF4444);' : (isDelegated ? 'border-left:3.5px solid #3B82F6;' : 'border-left:3.5px solid #1DB954;')}">
+                                <div class="room-attendee-card" data-search-text="${escapeHtml(searchText)}" style="background:var(--surface-color-light); padding:0.75rem 0.9rem; border-radius:10px; font-size:0.85rem; margin-bottom:0.45rem; ${isLeft ? 'opacity:0.85; border-left:3.5px solid var(--danger, #EF4444);' : (isDelegated ? 'border-left:3.5px solid #3B82F6;' : 'border-left:3.5px solid #1DB954;')}">
                                     <!-- Riga 1: Nome a sinistra e Millesimi a destra -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.45rem;">
                                         <div style="font-weight:700; font-size:0.95rem; color:var(--primary-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(displayName)}">
@@ -17763,6 +18400,11 @@ ${renderBottomNavigation()}
                                 </div>
                             `;
                         }).join('');
+
+                        // Riapplica eventuale filtro di ricerca attivo
+                        if (window.filterRoomAttendeesList) {
+                            window.filterRoomAttendeesList();
+                        }
                     }
                 }
 
@@ -17886,7 +18528,7 @@ ${renderBottomNavigation()}
                                 </div>
                             `;
                         } else {
-                            scopeBadge = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:600; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left;">${THEME_ICONS.building(16)} Intero Condominio</span>`;
+                            scopeBadge = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:600; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.35rem; max-width:100%; text-align:left;">${THEME_ICONS.building(16)} <span>Intero Condominio</span></span>`;
                             baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
                         }
 
@@ -17950,32 +18592,32 @@ ${renderBottomNavigation()}
                         if (isAdmin && !isClosedOrCancelled) {
                             let btnScope = '';
                             if (!isOdgApproved || !prevItemClosed) {
-                                btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="L'ambito potrà essere modificato solo quando il punto precedente sarà concluso dall'amministratore">${THEME_ICONS.lock(14)} Ambito</button>`;
+                                btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="L'ambito potrà essere modificato solo quando il punto precedente sarà concluso dall'amministratore">${THEME_ICONS.lock(14)} <span>Ambito</span></button>`;
                             } else {
-                                btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">${THEME_ICONS.settings(14)} Ambito</button>`;
+                                btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">${THEME_ICONS.settings(14)} <span>Ambito</span></button>`;
                             }
 
                             let btnStatus = '';
                             if (!isOdgApproved) {
-                                btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno da parte dei presenti">${THEME_ICONS.lock(14)} In attesa approvazione OdG</button>`;
+                                btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno da parte dei presenti">${THEME_ICONS.lock(14)} <span>In attesa approvazione OdG</span></button>`;
                             } else if (itemStatus === 'pending') {
                                 if (prevItemClosed) {
-                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.play(14, 2)} Inizia Voto</button>`;
+                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.play(14, 2)} <span>Inizia Voto</span></button>`;
                                 } else {
-                                    btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto per questo punto potrà essere avviato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} In attesa punto precedente</button>`;
+                                    btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto per questo punto potrà essere avviato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>In attesa punto precedente</span></button>`;
                                 }
                             } else if (itemStatus === 'voting') {
-                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.35rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.stop(14, 2)} Chiudi Votazione</button>`;
+                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione</span></button>`;
                             } else {
-                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:600; border-radius:6px; white-space:nowrap;">${THEME_ICONS.refresh(15)} Riapri Voto</button>`;
+                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.8rem; font-weight:600; border-radius:6px; white-space:nowrap;">${THEME_ICONS.refresh(15)} <span>Riapri Voto</span></button>`;
                             }
 
                             let btnManualVote = '';
                             if (isOdgApproved && (itemStatus === 'voting' || itemStatus === 'pending')) {
                                 if (!prevItemClosed) {
-                                    btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} Voto Manuale</button>`;
+                                    btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
                                 } else {
-                                    btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">${THEME_ICONS.pen(14)} Voto Manuale</button>`;
+                                    btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">${THEME_ICONS.pen(14)} <span>Voto Manuale</span></button>`;
                                 }
                             }
 
@@ -17993,8 +18635,8 @@ ${renderBottomNavigation()}
 
                             adminActionHtml = `
                                 <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--surface-color-light); border-radius: 8px; padding: 0.6rem; margin-top: 0.75rem; margin-bottom: 0.75rem;">
-                                    <div style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
-                                        ${THEME_ICONS.settings(16)} Pannello Gestione Admin
+                                    <div style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.35rem;">
+                                        ${THEME_ICONS.settings(16)} <span>Pannello Gestione Admin</span>
                                     </div>
                                     <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 100%;">
                                         <div style="width: 100%;">
@@ -18150,14 +18792,14 @@ ${renderBottomNavigation()}
 
                             votersDetailHtml = `
                                 <details style="margin-top: 0.75rem; font-size: 0.8rem;">
-                                    <summary style="cursor: pointer; color: var(--accent-color); font-weight: 600;">${THEME_ICONS.clipboard(15)} Dettaglio Votanti (${votesList.length})</summary>
+                                    <summary style="cursor: pointer; color: var(--accent-color); font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.clipboard(15)} <span>Dettaglio Votanti (${votesList.length})</span></summary>
                                     <div style="margin-top: 0.5rem;">
                                         ${votersItemsHtml}
                                     </div>
                                 </details>
                             `;
                         } else {
-                            votersDetailHtml = `<p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--secondary-text);">Nessun voto ancora registrato.</p>`;
+                            votersDetailHtml = '';
                         }
 
                         // ELENCO DI CHI NON HA ANCORA VOTATO QUESTO PUNTO (FILTRATO PER SCALA/GRUPPO)
@@ -18190,36 +18832,84 @@ ${renderBottomNavigation()}
                         const pointNonVoters = targetAttendees.filter(a => !votesList.some(v => v.voterId === a.uid || v.userId === a.uid));
 
                         const nonVotersMilSum = pointNonVoters.reduce((acc, a) => acc + getAttendeeGroupMilForPoint(a), 0);
+
+                        window._currentNonVotersByPoint = window._currentNonVotersByPoint || {};
+                        window._currentNonVotersByPoint[idx] = {
+                            title: item.title || '',
+                            pointIndex: idx + 1,
+                            itemGroup: itemGroup || '',
+                            isGroupScope: isGroupScope,
+                            nonVotersMilSum: nonVotersMilSum,
+                            nonVoters: pointNonVoters.map(a => {
+                                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                                const u = (typeof allUsers !== 'undefined' && Array.isArray(allUsers)) ? allUsers.find(usr => usr.id === a.uid) : null;
+                                const props = (a.proprieta && a.proprieta.length > 0) ? a.proprieta : (u?.proprieta || []);
+                                const units = props.map(p => p.interno).filter(Boolean).join(', ') || a.unitaImmobiliare || a.units || '';
+                                const name = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || 'Condòmino');
+                                const mil = getAttendeeGroupMilForPoint(a);
+                                const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+                                return {
+                                    uid: a.uid,
+                                    name: name,
+                                    millesimi: mil,
+                                    units: units,
+                                    isManual: isManual,
+                                    heldProxies: heldProxies.map(p => ({
+                                        name: p.delegatorName || 'Delegante',
+                                        millesimi: parseFloat(p.delegatorMillesimi) || 0,
+                                        unit: p.delegatorUnit || ''
+                                    }))
+                                };
+                            })
+                        };
+
                         const nonVotersHtml = `
-                            <div style="margin-top: 0.85rem; padding: 0.75rem 0.85rem; background: rgba(245, 158, 11, 0.06); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; text-align: left;">
-                                <div style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.4rem;">
-                                        <span style="display: inline-flex; align-items: center; gap: 0.25rem; background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.3px;">
-                                            ${THEME_ICONS.hourglass(13, 2.2)} Senza voto
+                            <div style="margin-top: 0.85rem; padding: 0.65rem 0.55rem; background: rgba(245, 158, 11, 0.06); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; text-align: left; box-sizing: border-box; width: 100%;">
+                                <div style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); margin-bottom: 0.45rem; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+                                    <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
+                                        <span style="display: inline-flex; align-items: center; gap: 0.2rem; background: #78350F; color: #FEF3C7; border: 1.2px solid #F59E0B; padding: 0.1rem 0.35rem; border-radius: 5px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.2px; white-space: nowrap; flex-shrink: 0;">
+                                            ${THEME_ICONS.hourglass(10, 2)} Senza voto
                                         </span>
-                                        <span style="font-size: 0.82rem; font-weight: 700; color: var(--primary-text);">
-                                            ${isGroupScope ? `(${escapeHtml(itemGroup)}: ${pointNonVoters.length})` : `(${pointNonVoters.length})`}
+                                        <span style="font-size: 0.76rem; font-weight: 800; color: var(--primary-text); white-space: nowrap; flex-shrink: 0;">
+                                            (${pointNonVoters.length})
                                         </span>
                                     </div>
                                     ${pointNonVoters.length > 0 ? `
-                                        <span style="font-size: 0.75rem; color: var(--primary-text); font-weight: 700; background: rgba(255, 255, 255, 0.08); padding: 0.12rem 0.45rem; border-radius: 4px;">
-                                            ${nonVotersMilSum.toFixed(2)} ‰
-                                        </span>
+                                        <button type="button" onclick="window.openNonVotersFullscreenModal(${idx})" class="btn btn-expand-nonvoters" title="Espandi a tutto schermo">
+                                            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                                            <span>Espandi</span>
+                                        </button>
                                     ` : ''}
                                 </div>
+                                ${pointNonVoters.length > 0 ? `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; padding: 0 0.1rem; width: 100%; box-sizing: border-box;">
+                                        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary-text);">Tot. millesimi:</span>
+                                        <span class="badge-nonvoters-total-mil">
+                                            ${nonVotersMilSum.toFixed(2)} ‰
+                                        </span>
+                                    </div>
+                                ` : ''}
                                 ${pointNonVoters.length === 0 ? `
                                     <p style="font-size: 0.82rem; color: #10B981; font-weight: 700; margin: 0; padding: 0.2rem 0; display: flex; align-items: center; gap: 0.35rem;">
                                         <span style="display:inline-flex; align-items:center; color:#10B981;">${THEME_ICONS.checkSuccess(16)}</span> Tutti i condòmini aventi diritto hanno espresso il voto per questo punto (inclusi gli astenuti).
                                     </p>
                                 ` : `
-                                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; max-height: 140px; overflow-y: auto; padding-top: 0.1rem;">
-                                        ${pointNonVoters.map(a => `
-                                            <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; font-size: 0.76rem; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
-                                                <span style="color: #FDE68A; display:inline-flex; align-items:center;">${THEME_ICONS.user(15)}</span>
-                                                <span style="color: #FEF3C7;">${escapeHtml(window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || ''))}</span>
-                                                <strong style="color: #FDE68A; margin-left: 0.2rem; background: rgba(0,0,0,0.25); padding: 0.05rem 0.3rem; border-radius: 4px;">${getAttendeeGroupMilForPoint(a).toFixed(2)} ‰</strong>
-                                            </span>
-                                        `).join('')}
+                                    <div style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 155px; overflow-y: auto; padding-top: 0.1rem; width: 100%; box-sizing: border-box;">
+                                        ${pointNonVoters.map(a => {
+                            const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || '');
+                            const milVal = getAttendeeGroupMilForPoint(a);
+                            return `
+                                                <div class="nonvoter-item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 700; padding: 0.26rem 0.45rem; border-radius: 6px; width: 100%; box-sizing: border-box;">
+                                                    <div style="display: flex; align-items: center; gap: 0.3rem; min-width: 0; flex: 1;">
+                                                        <span style="color: #F59E0B; display: inline-flex; align-items: center; flex-shrink: 0;">${THEME_ICONS.user(14)}</span>
+                                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dName)}">${escapeHtml(dName)}</span>
+                                                    </div>
+                                                    <div style="flex-shrink: 0; text-align: right;">
+                                                        <strong class="nonvoter-item-mil">${milVal.toFixed(2)} ‰</strong>
+                                                    </div>
+                                                </div>
+                                            `;
+                        }).join('')}
                                     </div>
                                 `}
                             </div>
@@ -18250,7 +18940,7 @@ ${renderBottomNavigation()}
 
                                 <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO -->
                                 <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light);">
-                                    <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">${THEME_ICONS.chart(15)} Votazioni ${isGroupScope ? `(${escapeHtml(itemGroup)})` : ''}</div>
+                                    <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.35rem;">${THEME_ICONS.chart(15)} <span>Votazioni ${isGroupScope ? `(${escapeHtml(itemGroup)})` : ''}</span></div>
                                     ${optionsProgressHtml}
                                 </div>
 
@@ -18261,6 +18951,12 @@ ${renderBottomNavigation()}
                             </div>
                         `;
                     }).join('');
+
+                    if (window._openNonVotersModalIndex !== null && typeof window._openNonVotersModalIndex === 'number') {
+                        if (window._currentNonVotersByPoint && window._currentNonVotersByPoint[window._openNonVotersModalIndex]) {
+                            window.openNonVotersFullscreenModal(window._openNonVotersModalIndex, true);
+                        }
+                    }
                 }
             });
 
@@ -19776,9 +20472,9 @@ ${renderBottomNavigation()}
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const nowTs = Date.now();
-                await updateDoc(assemblyRef, { 
-                    status: 'conclusa', 
-                    endedAt: serverTimestamp(), 
+                await updateDoc(assemblyRef, {
+                    status: 'conclusa',
+                    endedAt: serverTimestamp(),
                     concludedAt: nowTs,
                     'odgApproval.status': 'concluded'
                 });
@@ -21180,6 +21876,48 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.toggleOdgPendingCollapsible = () => {
+            window._isOdgPendingCollapsed = !window._isOdgPendingCollapsed;
+            const body = document.getElementById('odg-pending-body');
+            const icon = document.getElementById('odg-pending-toggle-icon');
+            if (body) {
+                body.classList.toggle('hidden', window._isOdgPendingCollapsed);
+            }
+            if (icon) {
+                icon.textContent = window._isOdgPendingCollapsed ? 'Espandi ▼' : 'Comprimi ▲';
+            }
+        };
+
+        window.toggleOdgPointsCollapsible = () => {
+            window._isOdgPointsCollapsed = !window._isOdgPointsCollapsed;
+            const body = document.getElementById('odg-admin-points-list-top');
+            const icon = document.getElementById('odg-admin-points-toggle-icon');
+            if (body) {
+                body.classList.toggle('hidden', window._isOdgPointsCollapsed);
+            }
+            if (icon) {
+                icon.textContent = window._isOdgPointsCollapsed ? 'Espandi ▼' : 'Comprimi ▲';
+            }
+        };
+
+        window._odgFullscreenView = null; // null | 'pending' | 'voted'
+
+        window.openOdgFullscreenView = (viewType) => {
+            window._odgFullscreenView = viewType;
+            if (window._lastOdgAdminArgs) {
+                const { assembly, assemblyId, activeAttendees, activeProxies } = window._lastOdgAdminArgs;
+                window.renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+            }
+        };
+
+        window.closeOdgFullscreenView = () => {
+            window._odgFullscreenView = null;
+            if (window._lastOdgAdminArgs) {
+                const { assembly, assemblyId, activeAttendees, activeProxies } = window._lastOdgAdminArgs;
+                window.renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+            }
+        };
+
         window.filterOdgVotersList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
             const cards = document.querySelectorAll('.odg-voter-card');
@@ -21371,6 +22109,7 @@ ${renderBottomNavigation()}
                 return;
             }
             window.isOdgApprovalModalOpen = true;
+            window._lastOdgAdminArgs = { assembly, assemblyId, activeAttendees, activeProxies };
             const agenda = assembly.agenda || [];
             const votes = assembly.odgApproval?.votes || [];
 
@@ -21423,42 +22162,84 @@ ${renderBottomNavigation()}
             } else if (isMajorityDown) {
                 statusBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto;">${THEME_ICONS.circleRed(13)} MAGGIORANZA CONTRARIA ALL'ORDINE ATTUALE</span>`;
             } else {
-                statusBadge = `<span class="badge" style="background:var(--warning); color:black; font-weight:800; font-size:0.85rem; padding:0.45rem 1rem; border-radius:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; margin:0 auto; animation:pulse 1.5s infinite;">${THEME_ICONS.hourglass(16, 2.4)} VOTAZIONE IN CORSO...</span>`;
+                statusBadge = '';
             }
 
             const isManualAttendee = (a) => a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
 
+            const getAttendeeHeldProxies = (attendee) => {
+                const uid = attendee.uid || attendee.id;
+                return (assembly.proxies || []).filter(p =>
+                    (p.delegateId === uid || p.delegateUid === uid || (attendee.registeredUid && p.delegateId === attendee.registeredUid)) &&
+                    p.status !== 'rejected'
+                );
+            };
+
+            const formatVoterCardNameAndProxies = (attendee) => {
+                const rawDisplayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(attendee) : ((attendee.cognome ? attendee.cognome + ' ' : '') + (attendee.nome || ''));
+                const cleanName = (rawDisplayName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
+
+                const held = getAttendeeHeldProxies(attendee);
+                let proxySubLineHtml = '';
+                if (held.length > 0) {
+                    const delegatorsList = held.map(p => escapeHtml((p.delegatorName || p.delegator || 'Delega').trim())).filter(Boolean);
+                    const label = held.length === 1 ? 'Delega da:' : `Deleghe (${held.length}) da:`;
+                    proxySubLineHtml = `
+                        <div style="font-size:0.72rem; color:var(--accent-color); font-weight:700; display:flex; align-items:center; gap:0.25rem; margin-top:0.12rem; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            ${THEME_ICONS.scroll(12)} <span>${label} ${delegatorsList.join(', ')}</span>
+                        </div>
+                    `;
+                } else if ((attendee.nome || '').match(/\(\+?(\d+)\s*deleghe?/i)) {
+                    const match = (attendee.nome || '').match(/\(\+?(\d+)\s*deleghe?[^\)]*\)/i);
+                    const countText = match ? match[0].replace(/[\(\)]/g, '') : 'Con delega';
+                    proxySubLineHtml = `
+                        <div style="font-size:0.72rem; color:var(--accent-color); font-weight:700; display:flex; align-items:center; gap:0.25rem; margin-top:0.12rem; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            ${THEME_ICONS.scroll(12)} <span>${escapeHtml(countText)}</span>
+                        </div>
+                    `;
+                }
+                return { cleanName, proxySubLineHtml };
+            };
+
             const pendingManual = pendingList.filter(a => isManualAttendee(a));
             const pendingQr = pendingList.filter(a => !isManualAttendee(a));
+
+            let pendingManualMil = 0;
+            pendingManual.forEach(a => pendingManualMil += (a.millesimi || 0));
+            let pendingQrMil = 0;
+            pendingQr.forEach(a => pendingQrMil += (a.millesimi || 0));
 
             // RENDERING LISTA NON ANCORA VOTANTI (CON SUPPORTO FILTRO E SELEZIONA TUTTI)
             let pendingHtml = '';
             if (pendingList.length === 0) {
-                pendingHtml = `<p style="font-size:0.82rem; color:#10B981; font-weight:700; margin:0; padding:0.4rem 0.5rem; text-align:center;">${THEME_ICONS.checkSuccess(15)} Tutti i presenti hanno votato.</p>`;
+                pendingHtml = `<p style="font-size:0.84rem; color:#10B981; font-weight:700; margin:0; padding:0.6rem 0.5rem; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.35rem;">${THEME_ICONS.checkSuccess(16)} Tutti i presenti hanno espresso il proprio voto.</p>`;
             } else {
                 let manualSectionHtml = '';
                 if (pendingManual.length > 0) {
                     const manualItems = pendingManual.map(a => {
-                        const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                        const { cleanName, proxySubLineHtml } = formatVoterCardNameAndProxies(a);
                         const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
-                        const searchText = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+                        const searchText = ((cleanName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '') + ' manuale').toLowerCase();
                         return `
-                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; border:1px solid rgba(16, 185, 129, 0.25); border-left-width:4px; border-radius:6px; padding:0.5rem 0.65rem; margin-bottom:0.35rem; gap:0.5rem;">
+                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid rgba(16, 185, 129, 0.25); border-left:4px solid #10B981; border-radius:8px; padding:0.45rem 0.6rem; margin-bottom:0.35rem; gap:0.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
                                     <input type="checkbox" class="odg-voter-cb" value="${a.uid}" onchange="updateOdgSelectedVotersCount()" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0;">
                                     <div style="flex:1; min-width:0;">
-                                        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                                            <strong style="color:var(--primary-text); font-size:0.85rem; display:inline-flex; align-items:center; gap:0.35rem;">${THEME_ICONS.user(15)} ${escapeHtml(displayName)}</strong>
-                                            <span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:10px;">${THEME_ICONS.circleGreen(11)} Manuale</span>
+                                        <div style="margin-bottom:0.12rem;">
+                                            <strong style="color:var(--primary-text); font-size:0.84rem; display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">${THEME_ICONS.user(14)} ${escapeHtml(cleanName)}</strong>
                                         </div>
-                                        <div style="font-size:0.75rem; color:var(--secondary-text);">${(a.millesimi || 0).toFixed(2)} ‰${unitText}</div>
+                                        ${proxySubLineHtml}
+                                        <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem;">
+                                            <span class="badge" style="background:#10B981; color:white; font-size:0.65rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(10)} Manuale</span>
+                                            <span>${(a.millesimi || 0).toFixed(2)} ‰${unitText}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Favorevole per ${escapeHtml(displayName)}">
+                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; font-weight:800; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem; box-shadow:0 2px 4px rgba(16, 185, 129, 0.2);" title="Registra voto Favorevole per ${escapeHtml(cleanName)}">
                                         ${THEME_ICONS.thumbsUp(13)} <span style="font-size:0.72rem; font-weight:700;">Sì</span>
                                     </button>
-                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.65rem; font-size:0.82rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem;" title="Registra voto Contrario per ${escapeHtml(displayName)}">
+                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; font-weight:800; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.25rem; box-shadow:0 2px 4px rgba(239, 68, 68, 0.2);" title="Registra voto Contrario per ${escapeHtml(cleanName)}">
                                         ${THEME_ICONS.thumbsDown(13)} <span style="font-size:0.72rem; font-weight:700;">No</span>
                                     </button>
                                 </div>
@@ -21467,11 +22248,47 @@ ${renderBottomNavigation()}
                     }).join('');
 
                     manualSectionHtml = `
-                        <div style="margin-bottom:0.5rem;">
-                            <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.35rem;">
-                                <span style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px;">${THEME_ICONS.pen(14)} Registrati Manualmente (${pendingManual.length})</span>
+                        <div style="margin-bottom:0.85rem; padding:0.55rem 0.65rem; background:rgba(16, 185, 129, 0.04); border:1px solid rgba(16, 185, 129, 0.2); border-radius:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.2rem;">
+                                <div style="display:flex; align-items:center; gap:0.35rem;">
+                                    <span style="font-size:0.78rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.4px; display:inline-flex; align-items:center; gap:0.25rem;">
+                                        ${THEME_ICONS.pen(13)} Voto Manuale (${pendingManual.length})
+                                    </span>
+                                </div>
+                                <span style="font-size:0.75rem; font-weight:800; color:#10B981;">
+                                    ${pendingManualMil.toFixed(2)} ‰
+                                </span>
                             </div>
-                            ${manualItems}
+                            <div style="font-size:0.71rem; color:var(--secondary-text); margin-bottom:0.45rem;">
+                                Registra il voto espresso in aula (singolo o per selezione multipla):
+                            </div>
+
+                            <!-- SELECT ALL E AZIONI BATCH (SOLO PER MANUALI) -->
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; padding:0.25rem 0; flex-wrap:wrap; gap:0.4rem; border-bottom:1px dashed rgba(16, 185, 129, 0.25);">
+                                <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.8rem; font-weight:700; color:var(--primary-text); margin:0;">
+                                    <input type="checkbox" id="odg-select-all-voters" onchange="toggleSelectAllOdgVoters(this)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
+                                    <span>Seleziona Tutti (${pendingManual.length})</span>
+                                    <span id="odg-selected-count-badge" style="font-size:0.74rem; color:var(--accent-color); font-weight:700;"></span>
+                                </label>
+                                <div id="odg-batch-actions-container" style="display:flex; align-items:center; gap:0.3rem;">
+                                    <button type="button" id="btn-batch-odg-up" onclick="submitBatchOdgVote('${assemblyId}', 'up')" class="btn" style="padding:0.25rem 0.55rem; font-size:0.75rem; font-weight:700; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.2rem;" disabled>
+                                        ${THEME_ICONS.thumbsUp(13)} Vota Sì (0)
+                                    </button>
+                                    <button type="button" id="btn-batch-odg-down" onclick="submitBatchOdgVote('${assemblyId}', 'down')" class="btn" style="padding:0.25rem 0.55rem; font-size:0.75rem; font-weight:700; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.2rem;" disabled>
+                                        ${THEME_ICONS.thumbsDown(13)} Vota No (0)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                                ${manualItems}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    manualSectionHtml = `
+                        <div style="margin-bottom:0.75rem; padding:0.45rem 0.65rem; background:rgba(16, 185, 129, 0.06); border:1px dashed rgba(16, 185, 129, 0.3); border-radius:8px; font-size:0.76rem; color:#10B981; font-weight:700; display:flex; align-items:center; gap:0.35rem;">
+                            ${THEME_ICONS.checkSuccess(14)} Tutti i condòmini registrati manualmente hanno votato.
                         </div>
                     `;
                 }
@@ -21479,72 +22296,65 @@ ${renderBottomNavigation()}
                 let qrSectionHtml = '';
                 if (pendingQr.length > 0) {
                     const qrItems = pendingQr.map(a => {
-                        const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                        const { cleanName, proxySubLineHtml } = formatVoterCardNameAndProxies(a);
                         const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
-                        const searchText = ((displayName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '')).toLowerCase();
+                        const searchText = ((cleanName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '') + ' qr app smartphone').toLowerCase();
                         return `
-                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255, 255, 255, 0.03); border-left:3.5px solid #F59E0B; border:1px solid rgba(255, 255, 255, 0.08); border-left-width:3.5px; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.35rem; gap:0.5rem;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
-                                    <input type="checkbox" class="odg-voter-cb" value="${a.uid}" onchange="updateOdgSelectedVotersCount()" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0;">
-                                    <div style="flex:1; min-width:0;">
-                                        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                                            <strong style="color:var(--primary-text); font-size:0.85rem; display:inline-flex; align-items:center; gap:0.35rem;">${THEME_ICONS.user(15)} ${escapeHtml(displayName)}</strong>
-                                            <span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:6px;">${THEME_ICONS.smartphone(13)} App/QR</span>
-                                        </div>
-                                        <div style="font-size:0.75rem; color:var(--secondary-text);">${(a.millesimi || 0).toFixed(2)} ‰${unitText}</div>
+                            <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid rgba(245, 158, 11, 0.25); border-left:4px solid #F59E0B; border-radius:8px; padding:0.45rem 0.6rem; margin-bottom:0.35rem; gap:0.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                                <div style="flex:1; min-width:0;">
+                                    <div style="margin-bottom:0.12rem;">
+                                        <strong style="color:var(--primary-text); font-size:0.84rem; display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">${THEME_ICONS.user(14)} ${escapeHtml(cleanName)}</strong>
+                                    </div>
+                                    ${proxySubLineHtml}
+                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem;">
+                                        <span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(11)} App/QR</span>
+                                        <span>${(a.millesimi || 0).toFixed(2)} ‰${unitText}</span>
                                     </div>
                                 </div>
-                                <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.3rem 0.55rem; font-size:0.78rem; font-weight:700; background:rgba(16, 185, 129, 0.2); color:#10B981; border:1px solid #10B981; border-radius:6px; cursor:pointer;" title="Registra voto Favorevole per conto di ${escapeHtml(displayName)}">
-                                        ${THEME_ICONS.thumbsUp(13)} Sì
-                                    </button>
-                                    <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.3rem 0.55rem; font-size:0.78rem; font-weight:700; background:rgba(239, 68, 68, 0.2); color:var(--danger); border:1px solid var(--danger); border-radius:6px; cursor:pointer;" title="Registra voto Contrario per conto di ${escapeHtml(displayName)}">
-                                        ${THEME_ICONS.thumbsDown(13)} No
-                                    </button>
+                                <div style="flex-shrink:0; text-align:right;">
+                                    <span class="badge" style="background:rgba(245, 158, 11, 0.15); color:#D97706; border:1px solid rgba(245, 158, 11, 0.35); font-weight:800; font-size:0.72rem; padding:0.2rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem; white-space:nowrap;">
+                                        ${THEME_ICONS.hourglass(11, 2)} In attesa
+                                    </span>
                                 </div>
                             </div>
                         `;
                     }).join('');
 
                     qrSectionHtml = `
-                        <div>
-                            ${pendingManual.length > 0 ? `
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin:0.75rem 0 0.5rem 0;">
-                                    <div style="flex:1; height:1px; background:rgba(255, 255, 255, 0.1);"></div>
-                                    <span style="font-size:0.7rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">${THEME_ICONS.smartphone(14)} Accreditati con QR Code (${pendingQr.length})</span>
-                                    <div style="flex:1; height:1px; background:rgba(255, 255, 255, 0.1);"></div>
+                        <div style="margin-bottom:0.5rem; padding:0.55rem 0.65rem; background:rgba(245, 158, 11, 0.04); border:1px solid rgba(245, 158, 11, 0.2); border-radius:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.2rem;">
+                                <div style="display:flex; align-items:center; gap:0.35rem;">
+                                    <span style="font-size:0.78rem; font-weight:800; color:#D97706; text-transform:uppercase; letter-spacing:0.4px; display:inline-flex; align-items:center; gap:0.25rem;">
+                                        ${THEME_ICONS.smartphone(13)} Accreditati con App/QR (${pendingQr.length})
+                                    </span>
                                 </div>
-                            ` : `
-                                <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.35rem;">
-                                    <span style="font-size:0.75rem; font-weight:700; color:var(--secondary-text); text-transform:uppercase; letter-spacing:0.5px;">${THEME_ICONS.smartphone(14)} Accreditati con QR Code (${pendingQr.length})</span>
-                                </div>
-                            `}
-                            ${qrItems}
+                                <span style="font-size:0.75rem; font-weight:800; color:#D97706;">
+                                    ${pendingQrMil.toFixed(2)} ‰
+                                </span>
+                            </div>
+                            <div style="font-size:0.71rem; color:var(--secondary-text); margin-bottom:0.45rem;">
+                                I seguenti condòmini votano autonomamente dal loro smartphone:
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                                ${qrItems}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    qrSectionHtml = `
+                        <div style="margin-bottom:0.5rem; padding:0.45rem 0.65rem; background:rgba(16, 185, 129, 0.06); border:1px dashed rgba(16, 185, 129, 0.3); border-radius:8px; font-size:0.76rem; color:#10B981; font-weight:700; display:flex; align-items:center; gap:0.35rem;">
+                            ${THEME_ICONS.checkSuccess(14)} Tutti i condòmini collegati via App hanno espresso il loro voto.
                         </div>
                     `;
                 }
 
                 pendingHtml = `
-                    <!-- BARRA DI RICERCA CONDÒMINI (REQ-07) -->
-                    <div style="margin-bottom:0.5rem;">
-                        <input type="text" id="input-search-odg-voters" placeholder="Cerca votante..." oninput="filterOdgVotersList(this.value)" class="form-input" style="width:100%; font-size:0.85rem; padding:0.4rem 0.65rem; box-sizing:border-box;" autocomplete="off">
-                    </div>
-
-                    <!-- SELECT ALL E AZIONI BATCH (REQ-08) -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; padding:0.25rem 0; flex-wrap:wrap; gap:0.4rem; border-bottom:1px dashed var(--surface-color-light);">
-                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.82rem; font-weight:700; color:var(--primary-text); margin:0;">
-                            <input type="checkbox" id="odg-select-all-voters" onchange="toggleSelectAllOdgVoters(this)" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer;">
-                            <span>Seleziona Tutti</span>
-                            <span id="odg-selected-count-badge" style="font-size:0.75rem; color:var(--accent-color); font-weight:700;"></span>
-                        </label>
-                        <div id="odg-batch-actions-container" style="display:flex; align-items:center; gap:0.3rem;">
-                            <button type="button" id="btn-batch-odg-up" onclick="submitBatchOdgVote('${assemblyId}', 'up')" class="btn" style="padding:0.25rem 0.55rem; font-size:0.75rem; font-weight:700; background:#10B981; color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.2rem;" disabled>
-                                ${THEME_ICONS.thumbsUp(13)} Vota Sì (0)
-                            </button>
-                            <button type="button" id="btn-batch-odg-down" onclick="submitBatchOdgVote('${assemblyId}', 'down')" class="btn" style="padding:0.25rem 0.55rem; font-size:0.75rem; font-weight:700; background:var(--danger, #EF4444); color:white; border-radius:6px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.2rem;" disabled>
-                                ${THEME_ICONS.thumbsDown(13)} Vota No (0)
-                            </button>
+                    <!-- BARRA DI RICERCA CONDÒMINI -->
+                    <div style="position:relative; margin-bottom:0.65rem;">
+                        <div style="position:absolute; left:0.6rem; top:50%; transform:translateY(-50%); color:var(--secondary-text); pointer-events:none; display:flex; align-items:center;">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         </div>
+                        <input type="text" id="input-search-odg-voters" placeholder="Cerca votante o unità..." oninput="filterOdgVotersList(this.value)" class="form-input" style="width:100%; font-size:0.8rem; padding:0.38rem 1.8rem 0.38rem 1.8rem; box-sizing:border-box; border-radius:6px;" autocomplete="off">
                     </div>
 
                     <div id="odg-voters-no-match-msg" class="message-box error hidden" style="font-size:0.8rem; padding:0.35rem 0.6rem; margin-bottom:0.4rem;">${THEME_ICONS.alertWarning(15)} Nessun condòmino trovato.</div>
@@ -21556,20 +22366,36 @@ ${renderBottomNavigation()}
                 `;
             }
 
-            // RENDERING DETTAGLIO CHI HA VOTATO (CON OPZIONE CAMBIO VOTO PER AMMINISTRATORE)
+            // RENDERING DETTAGLIO CHI HA VOTATO (SENZA ETICHETTA RIDONDANTE, CON CAMBIO SOLO SU MANUALI)
             const declinedHtml = declinedList.map(a => {
                 const v = downVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
-                const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                const { cleanName, proxySubLineHtml } = formatVoterCardNameAndProxies(a);
+                const methodBadge = isManual
+                    ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(9)} Manuale</span>`
+                    : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(10)} App/QR</span>`;
                 return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(239, 68, 68, 0.08); border-left:3px solid var(--danger); padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(239, 68, 68, 0.08); border-left:3.5px solid var(--danger); padding:0.42rem 0.6rem; border-radius:7px; margin-bottom:0.3rem; gap:0.45rem;">
                         <div style="flex:1; min-width:0;">
-                            <strong style="color:var(--primary-text); font-size:0.82rem; display:flex; align-items:center; gap:0.35rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${THEME_ICONS.user(14)} ${escapeHtml(displayName)} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(${THEME_ICONS.circleGreen(11)} Manuale)</span>' : ''}</strong>
-                            <strong style="color:var(--danger); font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
+                            <div style="margin-bottom:0.12rem;">
+                                <strong style="color:var(--primary-text); font-size:0.84rem; display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}</strong>
+                            </div>
+                            ${proxySubLineHtml}
+                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem;">
+                                ${methodBadge}
+                                <span style="color:var(--primary-text); font-weight:700;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</span>
+                            </div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                            <span class="badge" style="background:rgba(239, 68, 68, 0.2); color:var(--danger); font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">${THEME_ICONS.thumbsDown(13)} Contrario</span>
-                            ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(16, 185, 129, 0.2); color:#10B981; border:1px solid #10B981; border-radius:5px; cursor:pointer;" title="Cambia voto in Favorevole">Passa a ${THEME_ICONS.thumbsUp(12)}</button>` : ''}
+                        <div style="flex-shrink:0; text-align:right;">
+                            ${isManual ? `
+                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'up')" class="btn" style="padding:0.22rem 0.5rem; font-size:0.72rem; font-weight:800; background:rgba(16, 185, 129, 0.15); color:#10B981; border:1px solid #10B981; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;" title="Cambia voto in Favorevole">
+                                    Passa a ${THEME_ICONS.thumbsUp(12)}
+                                </button>
+                            ` : `
+                                <span style="color:var(--danger); padding:0.15rem 0.35rem; background:rgba(239, 68, 68, 0.15); border-radius:5px; display:inline-flex; align-items:center;" title="Votato tramite App/QR">
+                                    ${THEME_ICONS.thumbsDown(13)}
+                                </span>
+                            `}
                         </div>
                     </div>
                 `;
@@ -21578,16 +22404,32 @@ ${renderBottomNavigation()}
             const approvedHtml = approvedList.map(a => {
                 const v = upVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
-                const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : ((a.cognome ? a.cognome + ' ' : '') + (a.nome || ''));
+                const { cleanName, proxySubLineHtml } = formatVoterCardNameAndProxies(a);
+                const methodBadge = isManual
+                    ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(9)} Manuale</span>`
+                    : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(10)} App/QR</span>`;
                 return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3px solid #10B981; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.3rem; gap:0.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; padding:0.42rem 0.6rem; border-radius:7px; margin-bottom:0.3rem; gap:0.45rem;">
                         <div style="flex:1; min-width:0;">
-                            <strong style="color:var(--primary-text); font-size:0.82rem; display:flex; align-items:center; gap:0.35rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${THEME_ICONS.user(14)} ${escapeHtml(displayName)} ${isManual ? '<span style="color:#10B981; font-size:0.7rem;">(${THEME_ICONS.circleGreen(11)} Manuale)</span>' : ''}</strong>
-                            <strong style="color:#10B981; font-size:0.78rem;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</strong>
+                            <div style="margin-bottom:0.12rem;">
+                                <strong style="color:var(--primary-text); font-size:0.84rem; display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}</strong>
+                            </div>
+                            ${proxySubLineHtml}
+                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem;">
+                                ${methodBadge}
+                                <span style="color:var(--primary-text); font-weight:700;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</span>
+                            </div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
-                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#10B981; font-weight:800; font-size:0.72rem; padding:0.2rem 0.4rem;">${THEME_ICONS.thumbsUp(13)} Favorevole</span>
-                            ${isManual ? `<button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700; background:rgba(239, 68, 68, 0.2); color:var(--danger); border:1px solid var(--danger); border-radius:5px; cursor:pointer;" title="Cambia voto in Contrario">Passa a ${THEME_ICONS.thumbsDown(12)}</button>` : ''}
+                        <div style="flex-shrink:0; text-align:right;">
+                            ${isManual ? `
+                                <button type="button" onclick="submitOdgApprovalVoteForAttendee('${assemblyId}', '${a.uid}', 'down')" class="btn" style="padding:0.22rem 0.5rem; font-size:0.72rem; font-weight:800; background:rgba(239, 68, 68, 0.15); color:var(--danger); border:1px solid var(--danger); border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem;" title="Cambia voto in Contrario">
+                                    Passa a ${THEME_ICONS.thumbsDown(12)}
+                                </button>
+                            ` : `
+                                <span style="color:#10B981; padding:0.15rem 0.35rem; background:rgba(16, 185, 129, 0.15); border-radius:5px; display:inline-flex; align-items:center;" title="Votato tramite App/QR">
+                                    ${THEME_ICONS.thumbsUp(13)}
+                                </span>
+                            `}
                         </div>
                     </div>
                 `;
@@ -21595,118 +22437,230 @@ ${renderBottomNavigation()}
 
             // LISTA PUNTI ODG ORDINATA (SOLO TITOLI PUNTI SENZA OPZIONI)
             const pointsListHtml = agenda.map((item, idx) => `
-                <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; margin-bottom:0.35rem; text-align:left; border-left:3px solid var(--accent-color);">
-                    <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
-                    <span style="font-weight:600; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
+                <div style="display:flex; align-items:flex-start; gap:0.55rem; padding:0.45rem 0.65rem; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid var(--accent-color); border-radius:6px; font-size:0.84rem; text-align:left; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                    <span style="background:rgba(37, 99, 235, 0.15); color:var(--accent-color); font-weight:800; font-size:0.74rem; padding:0.1rem 0.4rem; border-radius:4px; flex-shrink:0; margin-top:0.05rem;">#${idx + 1}</span>
+                    <span style="font-weight:700; color:var(--primary-text); line-height:1.35; flex:1;">${escapeHtml(item.title || '')}</span>
                 </div>
             `).join('');
 
-            // I DUE PULSANTI DI SCELTA PER L'AMMINISTRATORE: "Ordine dei punti invariato" oppure "Ordine dei punti da variare"
-            const actionButtonsHtml = `
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; width:100%; box-sizing:border-box;">
-                    <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; height:44px; padding:0; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(16, 185, 129, 0.4); display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <span>Ordine invariato</span>
-                    </button>
-                    <button type="button" onclick="rejectAndReorderOdg('${assemblyId}')" class="btn" style="width:100%; height:44px; padding:0; font-weight:800; font-size:0.85rem; background:linear-gradient(135deg, #F59E0B, #D97706); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(245, 158, 11, 0.4); display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        <span>Varia ordine punti</span>
-                    </button>
-                </div>
-            `;
+            const isPointsCollapsed = window._isOdgPointsCollapsed === true;
+            const isPendingCollapsed = window._isOdgPendingCollapsed === true;
 
-            const modalContent = `
-                <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.35rem;">
-                    <!-- CONTENUTO CENTRALE SCROLLABILE -->
-                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.6rem; -webkit-overflow-scrolling: touch;">
-                        <!-- QUESITO E BADGE STATO CENTRATO -->
+            // VERIFICA MAGGIORANZA / MINORANZA PER LA SCELTA DELL'AMMINISTRATORE
+            const hasCompletedVotes = pendingList.length === 0 && (upMil > 0 || downMil > 0);
+            const effectiveMajorityUp = isMajorityUp || (hasCompletedVotes && upMil >= downMil);
+            const effectiveMajorityDown = isMajorityDown || (hasCompletedVotes && downMil > upMil);
+
+            let actionButtonsHtml = '';
+            if (effectiveMajorityUp && !effectiveMajorityDown) {
+                // SOLO PULSANTE PROCEDI A TUTTA LARGHEZZA
+                actionButtonsHtml = `
+                    <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                        <div style="font-size:0.78rem; font-weight:800; color:#10B981; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            ${THEME_ICONS.checkSuccess(14)} Maggioranza per Ordine Attuale (${upPercent}%)
+                        </div>
+                        <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; height:46px; padding:0; font-weight:800; font-size:0.9rem; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(16, 185, 129, 0.4); display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span>Procedi</span>
+                        </button>
+                    </div>
+                `;
+            } else if (effectiveMajorityDown && !effectiveMajorityUp) {
+                // SOLO PULSANTE VARIA A TUTTA LARGHEZZA
+                actionButtonsHtml = `
+                    <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                        <div style="font-size:0.78rem; font-weight:800; color:var(--danger); text-align:center; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            ${THEME_ICONS.alertWarning(14)} Maggioranza per Ordine da Cambiare (${downPercent}%)
+                        </div>
+                        <button type="button" onclick="rejectAndReorderOdg('${assemblyId}')" class="btn" style="width:100%; height:46px; padding:0; font-weight:800; font-size:0.9rem; background:linear-gradient(135deg, #F59E0B, #D97706); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(245, 158, 11, 0.4); display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <span>Varia</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                // IN CORSO: ENTRAMBI I PULSANTI AFFIANCATI
+                actionButtonsHtml = `
+                    <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                        <div style="font-size:0.72rem; color:var(--secondary-text); font-weight:600; text-align:center;">
+                            Votazione in corso • ${votedHeads}/${totalPresences} voti espressi
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; width:100%; box-sizing:border-box;">
+                            <button type="button" onclick="confirmStartLiveAssemblySession('${assemblyId}')" class="btn" style="width:100%; height:44px; padding:0; font-weight:800; font-size:0.88rem; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(16, 185, 129, 0.4); display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Procedi</span>
+                            </button>
+                            <button type="button" onclick="rejectAndReorderOdg('${assemblyId}')" class="btn" style="width:100%; height:44px; padding:0; font-weight:800; font-size:0.88rem; background:linear-gradient(135deg, #F59E0B, #D97706); color:white; border:none; border-radius:10px; box-shadow:0 4px 14px rgba(245, 158, 11, 0.4); display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                <span>Varia</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            let modalContent = '';
+            let currentModalTitle = 'Approvazione Ordine';
+
+            if (window._odgFullscreenView === 'pending') {
+                currentModalTitle = `Senza Voto (${pendingList.length})`;
+                modalContent = `
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.4rem;">
+                        <!-- HEADER CON PULSANTE TORNA AL RIEPILOGO -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0 0.5rem 0; border-bottom:1px solid var(--surface-color-light); flex-shrink:0;">
+                            <button type="button" onclick="window.closeOdgFullscreenView()" class="btn" style="padding:0.35rem 0.65rem; font-size:0.8rem; font-weight:700; background:rgba(255,255,255,0.08); color:var(--primary-text); border:1px solid var(--surface-color-light); border-radius:7px; display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                Torna al riepilogo
+                            </button>
+                            <span style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; padding:0.18rem 0.55rem; border-radius:6px; font-size:0.78rem; font-weight:800; display:inline-flex; align-items:center; gap:0.3rem;">
+                                ${THEME_ICONS.hourglass(12, 2.2)} Senza voto (${pendingList.length})
+                            </span>
+                        </div>
+
+                        <!-- CONTENUTO SCROLLABILE A TUTTO SCHERMO -->
+                        <div style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.45rem; -webkit-overflow-scrolling:touch;">
+                            ${pendingHtml}
+                        </div>
+
+                        <!-- BARRA BOTTOM FISSA -->
+                        <div style="padding-top:0.5rem; padding-bottom:max(0.4rem, env(safe-area-inset-bottom)); border-top:1px solid var(--surface-color-light); width:100%; flex-shrink:0; margin-top:auto;">
+                            <button type="button" onclick="window.closeOdgFullscreenView()" class="btn btn-primary" style="width:100%; padding:0.7rem; font-weight:800; font-size:0.88rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                <span>✓ Fatto / Torna al riepilogo</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (window._odgFullscreenView === 'voted') {
+                currentModalTitle = `Voti Registrati (${votes.length}/${activeAttendees.length})`;
+                modalContent = `
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.4rem;">
+                        <!-- HEADER CON PULSANTE TORNA AL RIEPILOGO -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0 0.5rem 0; border-bottom:1px solid var(--surface-color-light); flex-shrink:0;">
+                            <button type="button" onclick="window.closeOdgFullscreenView()" class="btn" style="padding:0.35rem 0.65rem; font-size:0.8rem; font-weight:700; background:rgba(255,255,255,0.08); color:var(--primary-text); border:1px solid var(--surface-color-light); border-radius:7px; display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                Torna al riepilogo
+                            </button>
+                            <span style="background:#064E3B; color:#D1FAE5; border:1px solid #10B981; padding:0.18rem 0.55rem; border-radius:6px; font-size:0.78rem; font-weight:800; display:inline-flex; align-items:center; gap:0.3rem;">
+                                ${THEME_ICONS.check(12, 2.2)} Voti Registrati (${votes.length}/${activeAttendees.length})
+                            </span>
+                        </div>
+
+                        <!-- CONTENUTO SCROLLABILE A TUTTO SCHERMO -->
+                        <div style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.5rem; -webkit-overflow-scrolling:touch;">
+                            ${declinedList.length > 0 ? `<div style="margin-bottom:0.4rem;"><strong style="font-size:0.78rem; color:var(--danger); display:block; margin-bottom:0.25rem;">${THEME_ICONS.thumbsDown(14)} Ordine da cambiare (${declinedList.length}):</strong>${declinedHtml}</div>` : ''}
+                            ${approvedList.length > 0 ? `<div><strong style="font-size:0.78rem; color:#10B981; display:block; margin-bottom:0.25rem;">${THEME_ICONS.thumbsUp(14)} ORDINE ATTUALE (${approvedList.length}):</strong>${approvedHtml}</div>` : ''}
+                            ${votes.length === 0 ? `<p style="font-size:0.85rem; color:var(--secondary-text); margin:1.5rem 0; text-align:center;">Nessun voto ancora registrato.</p>` : ''}
+                        </div>
+
+                        <!-- BARRA BOTTOM FISSA -->
+                        <div style="padding-top:0.5rem; padding-bottom:max(0.4rem, env(safe-area-inset-bottom)); border-top:1px solid var(--surface-color-light); width:100%; flex-shrink:0; margin-top:auto;">
+                            <button type="button" onclick="window.closeOdgFullscreenView()" class="btn btn-primary" style="width:100%; padding:0.7rem; font-weight:800; font-size:0.88rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                <span>✓ Fatto / Torna al riepilogo</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                currentModalTitle = 'Approvazione Ordine';
+                modalContent = `
+                    <div style="position: relative; text-align: left; width: 100%; display: flex; flex-direction: column; gap: 0.55rem;">
+                        ${statusBadge ? `
                         <div style="text-align:center; margin-bottom:0.1rem;">
-                            <h3 style="margin:0 0 0.35rem 0; font-size:1.05rem; font-weight:800; color:var(--primary-text); line-height:1.35;">
-                            </h3>
-                            <div style="display:flex; justify-content:center; align-items:center; width:100%; margin:0.15rem 0 0.35rem 0; text-align:center;">
+                            <div style="display:flex; justify-content:center; align-items:center; width:100%; margin:0.1rem 0 0.25rem 0; text-align:center;">
                                 ${statusBadge}
                             </div>
-                        </div>
+                        </div>` : ''}
 
-                        <!-- DICITURA PARTECIPAZIONE AL VOTO -->
-                        <div style="text-align:center; padding:0.45rem 0.7rem; background:rgba(255,255,255,0.03); border:1px solid var(--surface-color-light); border-radius:10px;">
-                            <p style="margin:0; font-size:0.84rem; font-weight:700; color:var(--primary-text);">
-                                ${THEME_ICONS.chart(15)} Il ${votedPercent}% dei presenti ha votato (${votedHeads}/${totalPresences} condòmini • ${(votedMil).toFixed(2)} / ${totMillesimi.toFixed(2)} ‰)
-                            </p>
-                        </div>
-
-                        <!-- 2 CARD POLLICI ORIZZONTALI: SINISTRA POLLICE GIÙ (CONTRARI/INVARIATO), DESTRA POLLICE SU (ORDINE ATTUALE) -->
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
-                            <!-- POLLICE IN BASSO A SINISTRA (ROSSO) -->
-                            <div class="card" style="padding:0.75rem 0.4rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(239, 68, 68, 0.08); border:2px solid var(--danger, #EF4444); border-radius:12px; margin:0 !important;">
-                                <div style="margin-bottom:0.25rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center; color:var(--danger);">${THEME_ICONS.thumbsDown(32, 2)}</div>
-                                <span style="font-size:0.75rem; font-weight:800; color:var(--danger); text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.15rem;">Ordine da cambiare</span>
-                                <strong style="font-size:1.45rem; color:var(--danger); display:block; width:100%; text-align:center !important; margin-bottom:0.15rem;">${downPercent}%</strong>
-                                <span style="font-size:0.75rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${downMil.toFixed(2)} ‰ (${downHeads} ${downHeads === 1 ? 'voto' : 'voti'})</span>
-                            </div>
-
-                            <!-- POLLICE IN ALTO A DESTRA (VERDE) -->
-                            <div class="card" style="padding:0.75rem 0.4rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(16, 185, 129, 0.08); border:2px solid #10B981; border-radius:12px; margin:0 !important;">
-                                <div style="margin-bottom:0.25rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center; color:#10B981;">${THEME_ICONS.thumbsUp(32, 2)}</div>
-                                <span style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.15rem;">ORDINE ATTUALE</span>
-                                <strong style="font-size:1.45rem; color:#10B981; display:block; width:100%; text-align:center !important; margin-bottom:0.15rem;">${upPercent}%</strong>
-                                <span style="font-size:0.75rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${upMil.toFixed(2)} ‰ (${upHeads} ${upHeads === 1 ? 'voto' : 'voti'})</span>
-                            </div>
-                        </div>
-
-                        <!-- ELENCO DEI NON ANCORA VOTANTI -->
-                        <div class="card" style="padding:0.75rem; margin:0 !important; border:1.5px solid rgba(245, 158, 11, 0.35); background:rgba(245, 158, 11, 0.06); border-radius:12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
+                        <!-- 1. ANTEPRIMA PUNTI ALL'ODG SUBITO IN ALTO (COLLAPSIBILE) -->
+                        <div class="card" style="padding:0.55rem 0.65rem; margin:0 !important; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:4px solid var(--accent-color); border-radius:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;" onclick="window.toggleOdgPointsCollapsible()">
                                 <div style="display:flex; align-items:center; gap:0.4rem;">
-                                    <span style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; padding:0.15rem 0.5rem; border-radius:6px; font-size:0.75rem; font-weight:800; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.hourglass(13, 2.2)} Senza voto</span>
-                                    <strong style="color:var(--primary-text); font-size:0.88rem;">(${pendingList.length})</strong>
+                                    <span style="font-size:0.78rem; font-weight:800; color:var(--accent-color); text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:0.3rem;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        Punti all'OdG (${agenda.length})
+                                    </span>
                                 </div>
-                                <span style="font-size:0.8rem; font-weight:800; color:var(--primary-text); background:rgba(255,255,255,0.08); padding:0.15rem 0.45rem; border-radius:4px;">${pendingMil.toFixed(2)} ‰ (${pendingPercent}%)</span>
+                                <span id="odg-admin-points-toggle-icon" style="font-size:0.74rem; font-weight:700; color:var(--accent-color);">
+                                    ${isPointsCollapsed ? 'Espandi ▼' : 'Comprimi ▲'}
+                                </span>
                             </div>
-                            <div>
-                                ${pendingHtml}
-                            </div>
-                        </div>
-
-                        <!-- DETTAGLIO VOTI ESPRESSI (COLLAPSIBILE) -->
-                        <div style="margin:0;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:0.35rem 0.2rem;" onclick="const el = document.getElementById('odg-voted-details-list'); if(el) el.classList.toggle('hidden');">
-                                <strong style="font-size:0.82rem; color:var(--accent-color);">Dettaglio Voti (${votes.length}/${activeAttendees.length})</strong>
-                                <span style="font-size:0.75rem; color:var(--secondary-text);">Mostra/Nascondi ▼</span>
-                            </div>
-                            <div id="odg-voted-details-list" class="hidden" style="margin-top:0.4rem; max-height:140px; overflow-y:auto;">
-                                ${declinedList.length > 0 ? `<div style="margin-bottom:0.4rem;"><strong style="font-size:0.75rem; color:var(--danger); display:block; margin-bottom:0.2rem;">${THEME_ICONS.thumbsDown(14)} Ordine da cambiare (${declinedList.length}):</strong>${declinedHtml}</div>` : ''}
-                                ${approvedList.length > 0 ? `<div><strong style="font-size:0.75rem; color:#10B981; display:block; margin-bottom:0.2rem;">${THEME_ICONS.thumbsUp(14)} ORDINE ATTUALE (${approvedList.length}):</strong>${approvedHtml}</div>` : ''}
-                                ${votes.length === 0 ? `<p style="font-size:0.8rem; color:var(--secondary-text); margin:0;">Nessun voto ancora registrato.</p>` : ''}
-                            </div>
-                        </div>
-
-                        <!-- LISTA PUNTI ODG PROPOSTI (SOLO TITOLI PUNTI SENZA OPZIONI) -->
-                        <div style="margin:0;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:0.35rem 0.2rem;" onclick="const el = document.getElementById('odg-admin-points-list'); if(el) el.classList.toggle('hidden');">
-                                <strong style="font-size:0.82rem; color:var(--secondary-text);">Punti OdG Attuali (${agenda.length})</strong>
-                                <span style="font-size:0.75rem; color:var(--secondary-text);">Mostra/Nascondi ▼</span>
-                            </div>
-                            <div id="odg-admin-points-list" class="hidden" style="max-height:120px; overflow-y:auto; padding-right:0.2rem;">
+                            <div id="odg-admin-points-list-top" class="${isPointsCollapsed ? 'hidden' : ''}" style="margin-top:0.45rem; display:flex; flex-direction:column; gap:0.3rem; max-height:140px; overflow-y:auto; padding-right:0.2rem; -webkit-overflow-scrolling:touch;">
                                 ${pointsListHtml}
                             </div>
                         </div>
-                    </div>
 
-                    <!-- SCELTA FINALE AMMINISTRATORE (BARRA AZIONI BOTTOM FISSA) -->
-                    <div style="display:flex; flex-direction:column; gap:0.5rem; padding-top:0.5rem; padding-bottom:max(0.4rem, env(safe-area-inset-bottom)); border-top:1px solid var(--surface-color-light); width:100%; flex-shrink:0; margin-top:auto;">
-                        ${actionButtonsHtml}
+                        <!-- 2. MINI PROGRESS BAR BICOLORE -->
+                        <div style="display:flex; height:6px; border-radius:4px; overflow:hidden; background:rgba(255,255,255,0.08); margin:0.05rem 0;">
+                            <div style="width:${downPercent}%; background:var(--danger, #EF4444); transition:width 0.3s ease;" title="Ordine da cambiare: ${downPercent}%"></div>
+                            <div style="width:${upPercent}%; background:#10B981; transition:width 0.3s ease;" title="Ordine attuale: ${upPercent}%"></div>
+                        </div>
+
+                        <!-- 3. 2 CARD POLLICI ORIZZONTALI: COMPATTE -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                            <!-- POLLICE IN BASSO A SINISTRA (ROSSO) -->
+                            <div class="card" style="padding:0.55rem 0.4rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(239, 68, 68, 0.08); border:2px solid var(--danger, #EF4444); border-radius:10px; margin:0 !important;">
+                                <div style="margin-bottom:0.15rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center; color:var(--danger);">${THEME_ICONS.thumbsDown(24, 2)}</div>
+                                <span style="font-size:0.72rem; font-weight:800; color:var(--danger); text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.1rem;">Ordine da cambiare</span>
+                                <strong style="font-size:1.3rem; color:var(--danger); display:block; width:100%; text-align:center !important; margin-bottom:0.1rem; line-height:1.2;">${downPercent}%</strong>
+                                <span style="font-size:0.72rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${downMil.toFixed(2)} ‰ (${downHeads} ${downHeads === 1 ? 'voto' : 'voti'})</span>
+                            </div>
+
+                            <!-- POLLICE IN ALTO A DESTRA (VERDE) -->
+                            <div class="card" style="padding:0.55rem 0.4rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(16, 185, 129, 0.08); border:2px solid #10B981; border-radius:10px; margin:0 !important;">
+                                <div style="margin-bottom:0.15rem; text-align:center !important; width:100%; display:flex; align-items:center; justify-content:center; color:#10B981;">${THEME_ICONS.thumbsUp(24, 2)}</div>
+                                <span style="font-size:0.72rem; font-weight:800; color:#10B981; text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.1rem;">ORDINE ATTUALE</span>
+                                <strong style="font-size:1.3rem; color:#10B981; display:block; width:100%; text-align:center !important; margin-bottom:0.1rem; line-height:1.2;">${upPercent}%</strong>
+                                <span style="font-size:0.72rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${upMil.toFixed(2)} ‰ (${upHeads} ${upHeads === 1 ? 'voto' : 'voti'})</span>
+                            </div>
+                        </div>
+
+                        <!-- 4. BOX SENZA VOTO (STILE CARD CON ESPANDI A SCHERMO INTERO) -->
+                        <div class="card" style="padding:0.55rem 0.65rem; margin:0 !important; border:1.5px solid rgba(245, 158, 11, 0.35); background:rgba(245, 158, 11, 0.06); border-radius:10px; cursor:pointer; transition:background 0.2s;" onclick="window.openOdgFullscreenView('pending')">
+                            <div style="display:flex; justify-content:space-between; align-items:center; user-select:none; width:100%; gap:0.5rem;">
+                                <div style="display:flex; align-items:center; gap:0.35rem;">
+                                    <span style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; padding:0.15rem 0.5rem; border-radius:6px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap;">
+                                        ${THEME_ICONS.hourglass(12, 2.2)} Senza voto (${pendingList.length})
+                                    </span>
+                                </div>
+                                <span style="font-size:0.74rem; font-weight:800; color:#F59E0B; padding:0.18rem 0.45rem; background:rgba(245,158,11,0.12); border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.2rem;">
+                                    Espandi ↗
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 5. BOX VOTI REGISTRATI (STILE CARD CON ESPANDI A SCHERMO INTERO) -->
+                        <div class="card" style="padding:0.55rem 0.65rem; margin:0 !important; border:1.5px solid rgba(16, 185, 129, 0.35); background:rgba(16, 185, 129, 0.06); border-radius:10px; cursor:pointer; transition:background 0.2s;" onclick="window.openOdgFullscreenView('voted')">
+                            <div style="display:flex; justify-content:space-between; align-items:center; user-select:none; width:100%; gap:0.5rem;">
+                                <div style="display:flex; align-items:center; gap:0.35rem;">
+                                    <span style="background:#064E3B; color:#D1FAE5; border:1px solid #10B981; padding:0.15rem 0.5rem; border-radius:6px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:0.3rem; white-space:nowrap;">
+                                        ${THEME_ICONS.check(12, 2.2)} Voti Registrati (${votes.length}/${activeAttendees.length})
+                                    </span>
+                                </div>
+                                <span style="font-size:0.74rem; font-weight:800; color:#10B981; padding:0.18rem 0.45rem; background:rgba(16,185,129,0.12); border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.2rem;">
+                                    Espandi ↗
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- SCELTA FINALE AMMINISTRATORE (BARRA AZIONI SUBITO SOTTO SENZA VUOTI) -->
+                        <div style="display:flex; flex-direction:column; gap:0.5rem; padding-top:0.7rem; border-top:1px solid var(--surface-color-light); width:100%; margin-top:0.25rem;">
+                            ${actionButtonsHtml}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
 
             const modalContainer = document.getElementById('modal-container');
             const modalTitle = document.getElementById('modal-title');
             const modalBody = document.getElementById('modal-body');
             if (modalContainer && modalTitle && modalBody) {
-                modalTitle.textContent = 'Approvazione Ordine dei Punti';
+                modalTitle.textContent = currentModalTitle;
                 modalBody.innerHTML = modalContent;
-                modalContainer.classList.add('fullscreen-notification');
+                if (window._odgFullscreenView) {
+                    modalContainer.classList.add('fullscreen-notification');
+                } else {
+                    modalContainer.classList.remove('fullscreen-notification');
+                }
                 modalContainer.classList.remove('hidden');
 
                 // Ripristina eventuale ricerca precedente
@@ -21737,19 +22691,23 @@ ${renderBottomNavigation()}
             const userHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected');
             const myVote = votes.find(v => v.voterId === currentUser.uid);
 
-            // AI PARTECIPANTI VENGONO PRESENTATI SOLAMENTE I PUNTI (NUMERO E TITOLO) SENZA ALCUNA OPZIONE DI VOTO SINGOLO
+            // AI PARTECIPANTI VENGONO PRESENTATI SUBITO I PUNTI ORDINATI CON NUMERO E TITOLO
             const pointsListHtml = agenda.map((item, idx) => `
-                <div style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem 0.8rem; background:var(--surface-color-light); border-radius:8px; font-size:0.9rem; margin-bottom:0.45rem; text-align:left; border-left:3px solid var(--accent-color);">
-                    <strong style="color:var(--accent-color); min-width:65px; font-size:0.85rem;">Punto ${idx + 1}:</strong>
-                    <span style="font-weight:700; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
+                <div style="display:flex; align-items:flex-start; gap:0.6rem; padding:0.5rem 0.65rem; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:4px solid var(--accent-color); border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    <span style="background:rgba(37, 99, 235, 0.15); color:var(--accent-color); font-weight:800; font-size:0.75rem; padding:0.12rem 0.45rem; border-radius:5px; flex-shrink:0; margin-top:0.05rem;">
+                        #${idx + 1}
+                    </span>
+                    <span style="font-weight:700; color:var(--primary-text); font-size:0.86rem; line-height:1.35; flex:1;">
+                        ${escapeHtml(item.title || '')}
+                    </span>
                 </div>
             `).join('');
 
             let proxyNoticeHtml = '';
             if (userHeldProxies.length > 0) {
                 proxyNoticeHtml = `
-                    <div style="background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:1rem; font-size:0.82rem; color:var(--warning); text-align:left;">
-                        ${THEME_ICONS.scroll(16)} <strong>Deleghe incluse (${userHeldProxies.length}):</strong> Il tuo voto esprimerà anche la preferenza per le deleghe ricevute, per un totale di <strong>${userMillesimi.toFixed(2)} ‰</strong>.
+                    <div style="background:rgba(243, 156, 18, 0.12); border:1px solid rgba(243, 156, 18, 0.3); border-radius:8px; padding:0.55rem 0.75rem; margin-bottom:0.75rem; font-size:0.8rem; color:var(--warning); text-align:left; display:flex; align-items:center; gap:0.4rem;">
+                        ${THEME_ICONS.scroll(16)} <div><strong>Deleghe incluse (${userHeldProxies.length}):</strong> Il tuo voto vale per un totale di <strong>${userMillesimi.toFixed(2)} ‰</strong>.</div>
                     </div>
                 `;
             }
@@ -21757,21 +22715,21 @@ ${renderBottomNavigation()}
             let voteSectionHtml = '';
             if (!myVote) {
                 voteSectionHtml = `
-                    <div style="margin-top:1.25rem;">
-                        <p style="font-size:0.92rem; color:var(--primary-text); font-weight:800; margin-bottom:0.75rem; text-align:center;">
-                            Siete ORDINE ATTUALE dei punti all'ODG?
+                    <div style="margin-top:0.85rem; padding-top:0.75rem; border-top:1px dashed var(--surface-color-light);">
+                        <p style="font-size:0.9rem; color:var(--primary-text); font-weight:800; margin-bottom:0.65rem; text-align:center;">
+                            Sei favorevole a discutere i punti in questo ordine?
                         </p>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; width:100%; box-sizing:border-box;">
-                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'up')" class="btn" style="padding:1rem 0.5rem; font-size:1rem; font-weight:800; background:#10B981; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(16, 185, 129, 0.35); cursor:pointer;">
-                                <span style="display:inline-flex; align-items:center; justify-content:center;">${THEME_ICONS.thumbsUp(28, 2)}</span>
+                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'up')" class="btn" style="padding:0.9rem 0.4rem; font-size:0.95rem; font-weight:800; background:#10B981; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.3rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(16, 185, 129, 0.35); cursor:pointer;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center;">${THEME_ICONS.thumbsUp(26, 2)}</span>
                                 <span>FAVOREVOLE</span>
-                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(Sì al riordino)</span>
+                                <span style="font-size:0.72rem; opacity:0.95; font-weight:600;">(Ordine invariato)</span>
                             </button>
 
-                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'down')" class="btn" style="padding:1rem 0.5rem; font-size:1rem; font-weight:800; background:var(--danger, #EF4444); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(239, 68, 68, 0.35); cursor:pointer;">
-                                <span style="display:inline-flex; align-items:center; justify-content:center;">${THEME_ICONS.thumbsDown(28, 2)}</span>
+                            <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', 'down')" class="btn" style="padding:0.9rem 0.4rem; font-size:0.95rem; font-weight:800; background:var(--danger, #EF4444); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.3rem; border-radius:12px; border:none; box-shadow:0 4px 12px rgba(239, 68, 68, 0.35); cursor:pointer;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center;">${THEME_ICONS.thumbsDown(26, 2)}</span>
                                 <span>CONTRARIO</span>
-                                <span style="font-size:0.75rem; opacity:0.9; font-weight:600;">(Invariato)</span>
+                                <span style="font-size:0.72rem; opacity:0.95; font-weight:600;">(Da variare)</span>
                             </button>
                         </div>
                     </div>
@@ -21779,17 +22737,17 @@ ${renderBottomNavigation()}
             } else {
                 const isUp = myVote.choice === 'up';
                 voteSectionHtml = `
-                    <div style="margin-top:1.25rem; padding:1rem; background:${isUp ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'}; border:2px solid ${isUp ? '#10B981' : 'var(--danger)'}; border-radius:12px; text-align:center;">
-                        <div style="font-size:2.2rem; line-height:1; margin-bottom:0.4rem;">${isUp ? THEME_ICONS.thumbsUp(32, 2) : THEME_ICONS.thumbsDown(32, 2)}</div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:1.05rem; font-weight:800; color:${isUp ? '#10B981' : 'var(--danger)'};">
-                            Hai votato: ${isUp ? 'FAVOREVOLE AL RIORDINO' : 'CONTRARIO AL RIORDINO'}
+                    <div style="margin-top:0.85rem; padding:0.85rem 0.75rem; background:${isUp ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; border:2px solid ${isUp ? '#10B981' : 'var(--danger)'}; border-radius:12px; text-align:center;">
+                        <div style="font-size:1.8rem; line-height:1; margin-bottom:0.35rem;">${isUp ? THEME_ICONS.thumbsUp(28, 2) : THEME_ICONS.thumbsDown(28, 2)}</div>
+                        <h4 style="margin:0 0 0.2rem 0; font-size:1rem; font-weight:800; color:${isUp ? '#10B981' : 'var(--danger)'};">
+                            Hai votato: ${isUp ? 'FAVOREVOLE (ORDINE ATTUALE)' : 'CONTRARIO (DA VARIARE)'}
                         </h4>
-                        <p style="font-size:0.82rem; color:var(--secondary-text); margin:0 0 0.75rem 0;">
+                        <p style="font-size:0.8rem; color:var(--secondary-text); margin:0 0 0.65rem 0;">
                             Voto registrato con successo (${(myVote.millesimi || userMillesimi).toFixed(2)} ‰).<br>
-                            In attesa che l'amministratore verifichi l'esito della votazione...
+                            In attesa che l'amministratore verifichi l'esito della consultazione...
                         </p>
-                        <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', '${isUp ? 'down' : 'up'}')" class="btn btn-secondary" style="font-size:0.78rem; padding:0.4rem 0.8rem; margin:0 auto;">
-                            ${THEME_ICONS.refresh(14)} Cambia in ${isUp ? (THEME_ICONS.thumbsDown(13) + ' Contrario') : (THEME_ICONS.thumbsUp(13) + ' Favorevole')}
+                        <button type="button" onclick="submitOdgApprovalVote('${assemblyId}', '${isUp ? 'down' : 'up'}')" class="btn btn-secondary" style="font-size:0.76rem; padding:0.35rem 0.75rem; margin:0 auto; display:inline-flex; align-items:center; gap:0.3rem;">
+                            ${THEME_ICONS.refresh(13)} Cambia in ${isUp ? (THEME_ICONS.thumbsDown(12) + ' Contrario (Da variare)') : (THEME_ICONS.thumbsUp(12) + ' Favorevole (Invariato)')}
                         </button>
                     </div>
                 `;
@@ -21797,21 +22755,28 @@ ${renderBottomNavigation()}
 
             const modalContent = `
                 <div style="text-align:left !important; padding:0.25rem 0;">
-                    <div style="text-align:center; margin-bottom:1rem;">
-                        <div style="width:54px; height:54px; border-radius:50%; background:rgba(37, 99, 235, 0.15); border:2px solid var(--accent-color); display:flex; align-items:center; justify-content:center; margin:0 auto 0.75rem auto; color:var(--accent-color);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <!-- INTESTAZIONE COMPATTA CON INDICAZIONE ORDINE DEI PUNTI -->
+                    <div style="margin-bottom:0.65rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.25rem;">
+                            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-color); text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:0.35rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                Ordine dei Punti all'OdG
+                            </span>
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--secondary-text); background:var(--surface-color-light); padding:0.15rem 0.5rem; border-radius:12px;">
+                                ${agenda.length} ${agenda.length === 1 ? 'punto' : 'punti'}
+                            </span>
                         </div>
-                        <h3 style="margin:0 0 0.35rem 0; font-size:1.15rem; font-weight:800; color:var(--primary-text);">Votazione Ordine del Giorno</h3>
-                        <p style="margin:0; font-size:0.84rem; color:var(--secondary-text); line-height:1.4;">
-                            L'amministratore ha avviato la consultazione preliminare tra i condòmini presenti:
+                        <p style="margin:0; font-size:0.8rem; color:var(--secondary-text); line-height:1.35;">
+                            Verifica la sequenza proposta dall'amministratore prima di votare:
                         </p>
                     </div>
 
-                    ${proxyNoticeHtml}
-
-                    <div style="max-height:200px; overflow-y:auto; padding-right:0.2rem; margin-bottom:0.5rem;">
+                    <!-- ELENCO DEI PUNTI SUBITO IN ALTO -->
+                    <div style="display:flex; flex-direction:column; gap:0.35rem; max-height:220px; overflow-y:auto; padding-right:0.2rem; margin-bottom:0.65rem; -webkit-overflow-scrolling:touch;">
                         ${pointsListHtml}
                     </div>
+
+                    ${proxyNoticeHtml}
 
                     ${voteSectionHtml}
                 </div>
