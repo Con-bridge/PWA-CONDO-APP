@@ -189,8 +189,7 @@ window.AssembleeModule = {
                 <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--surface-color-light);">
                         <div>
-                            <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text); display:flex; align-items:center; gap:0.4rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg> Quorum Costitutivo</h3>
-                            <span id="room-assembly-subtitle" style="font-size: 0.76rem; color: var(--secondary-text); display: block; margin-top: 0.15rem;">Verifica presenze e validità della seduta assembleare</span>
+                            <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text); display:flex; align-items:center; gap:0.4rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg> Quorum</h3>
                         </div>
                         <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
                     </div>
@@ -232,10 +231,10 @@ window.AssembleeModule = {
 
                 <!-- Presenti -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="cursor: pointer; margin-bottom: 0.5rem;" onclick="const el = document.getElementById('room-attendees-collapsible'); el.classList.toggle('hidden');">
+                    <div style="cursor: pointer; margin-bottom: 0.5rem;" onclick="window.toggleRoomAttendeesCollapsible ? window.toggleRoomAttendeesCollapsible() : (function(){ const el = document.getElementById('room-attendees-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-attendees-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
                             <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text);">Elenco Presenti</h3>
-                            <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                            <span id="room-attendees-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-top: 0.6rem;">
                             <div class="badge" style="background: rgba(29, 185, 84, 0.15); color: #1DB954; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(29, 185, 84, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
@@ -247,9 +246,18 @@ window.AssembleeModule = {
                         </div>
                     </div>
                     <div id="room-attendees-collapsible" class="mt-3 hidden space-y-2">
+                        <!-- Barra di ricerca Elenco Presenti -->
+                        <div style="position: relative; margin-bottom: 0.65rem;">
+                            <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <input type="text" id="input-search-room-attendees" placeholder="Cerca presente o delega..." oninput="window.filterRoomAttendeesList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.42rem 1.8rem 0.42rem 2.05rem; font-size: 0.82rem; border-radius: 8px;" autocomplete="off">
+                            <button type="button" id="btn-clear-search-room-attendees" onclick="document.getElementById('input-search-room-attendees').value = ''; window.filterRoomAttendeesList(''); this.style.display = 'none';" style="display: none; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                        </div>
                         <div id="room-attendees-list">
                             <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento presenti...</p>
                         </div>
+                        <p id="room-attendees-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 0.6rem 0; margin: 0;">Nessun condomino presente trovato con i criteri di ricerca.</p>
                     </div>
                 </div>
 
