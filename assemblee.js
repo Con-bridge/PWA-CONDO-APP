@@ -194,6 +194,20 @@ window.AssembleeModule = {
                         <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
                     </div>
 
+                    <!-- BADGE PRESIDENTE ELETTTO -->
+                    <div id="room-president-badge-container" class="hidden" style="margin-bottom: 1rem; padding: 0.65rem 0.85rem; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0;">
+                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #2563EB; color: white; flex-shrink: 0;">
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
+                            </span>
+                            <div style="min-width: 0;">
+                                <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; display: block; line-height: 1.1;">Presidente dell'Assemblea</span>
+                                <strong id="room-president-name" style="font-size: 0.88rem; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; margin-top: 0.1rem;">-</strong>
+                            </div>
+                        </div>
+                        <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; font-weight: 700; white-space: nowrap;">-</span>
+                    </div>
+
                     <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
                     <div id="room-general-quorum-section" style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid var(--surface-color-light); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
                         <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
@@ -208,6 +222,15 @@ window.AssembleeModule = {
                                 <span id="room-label-tot-millesimi" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Millesimi pres.:</span>
                                 <strong id="room-tot-millesimi" style="display: block; font-size: 0.98rem; color: var(--warning); margin-top: 0.2rem; word-break: break-word;">0.00 ‰</strong>
                             </div>
+                        </div>
+                        <!-- BADGE REGOLA LIMITE DELEGHE -->
+                        <div id="room-proxy-limit-badge" style="margin-top: 0.6rem; padding: 0.45rem 0.65rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; display: flex; align-items: center; gap: 0.45rem; font-size: 0.76rem; line-height: 1.35;">
+                            <span style="color: var(--accent-color); display: inline-flex; align-items: center; flex-shrink: 0;">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            </span>
+                            <span style="color: var(--primary-text); min-width: 0; word-break: break-word;">
+                                <strong style="color: var(--accent-color); font-weight: 700;">Regola Deleghe:</strong> <span id="room-proxy-limit-text">Caricamento regola...</span>
+                            </span>
                         </div>
                     </div>
 
@@ -371,5 +394,237 @@ window.AssembleeModule = {
     },
     cleanup: function () {
         if (this.qrInterval) { clearInterval(this.qrInterval); this.qrInterval = null; }
+    },
+
+    getProxyLimitConfig: function (assembly, totalCondoCount = 20) {
+        const config = assembly?.proxyLimitConfig;
+        if (!config || !config.type) {
+            const heads = Math.floor(totalCondoCount / 5);
+            return {
+                type: 'legge_oltre_20',
+                maxHeads: heads > 0 ? heads : 1,
+                maxMillesimi: 200.00
+            };
+        }
+        if (config.type === 'legge_oltre_20') {
+            const heads = config.maxHeads !== undefined && config.maxHeads !== null
+                ? config.maxHeads
+                : Math.floor(totalCondoCount / 5);
+            return {
+                type: 'legge_oltre_20',
+                maxHeads: heads > 0 ? heads : 1,
+                maxMillesimi: config.maxMillesimi !== undefined && config.maxMillesimi !== null ? config.maxMillesimi : 200.00
+            };
+        }
+        if (config.type === 'regolamento') {
+            return {
+                type: 'regolamento',
+                maxHeads: config.maxHeads !== undefined && config.maxHeads !== null ? parseInt(config.maxHeads, 10) : null,
+                maxMillesimi: config.maxMillesimi !== undefined && config.maxMillesimi !== null ? parseFloat(config.maxMillesimi) : null
+            };
+        }
+        if (config.type === 'nessun_limite') {
+            return {
+                type: 'nessun_limite',
+                maxHeads: null,
+                maxMillesimi: null
+            };
+        }
+        return {
+            type: 'legge_oltre_20',
+            maxHeads: Math.floor(totalCondoCount / 5) || 1,
+            maxMillesimi: 200.00
+        };
+    },
+
+    getProxyLimitDescription: function (assembly, totalCondoCount = 20) {
+        const config = this.getProxyLimitConfig(assembly, totalCondoCount);
+        if (config.type === 'nessun_limite') {
+            return "Nessun limite di legge (Fino a 20 condòmini)";
+        }
+        if (config.type === 'regolamento') {
+            const parts = [];
+            if (config.maxHeads !== null && config.maxHeads !== undefined) {
+                parts.push(`Max ${config.maxHeads} ${config.maxHeads === 1 ? 'testa' : 'teste'}`);
+            }
+            if (config.maxMillesimi !== null && config.maxMillesimi !== undefined) {
+                if (parts.length > 0) {
+                    parts.push(`${parseFloat(config.maxMillesimi).toFixed(2)} ‰`);
+                } else {
+                    parts.push(`Max ${parseFloat(config.maxMillesimi).toFixed(2)} ‰`);
+                }
+            }
+            const limits = parts.length > 0 ? ` (${parts.join(' / ')})` : '';
+            return `Regolamento${limits}`;
+        }
+        // Fallback e default: legge_oltre_20 (Art. 67 disp. att. c.c.)
+        const heads = config.maxHeads !== null && config.maxHeads !== undefined ? config.maxHeads : (totalCondoCount ? Math.floor(totalCondoCount / 5) : 0);
+        const headsPart = heads > 0 ? ` - Max ${heads} ${heads === 1 ? 'testa' : 'teste'} / 200.00 ‰` : ' - Max 200.00 ‰';
+        return `Legge (Max 1/5 teste e 1/5 millesimi - Art. 67 disp. att. c.c.${headsPart})`;
+    },
+
+    validateProxyLimit: function (assembly, delegate, existingHeldProxies = [], newDelegators = [], totalCondoCount = 20) {
+        const config = this.getProxyLimitConfig(assembly, totalCondoCount);
+        if (config.type === 'nessun_limite') {
+            return { valid: true };
+        }
+
+        // Teste: 1 (il delegato stesso) + deleghe già attive/accettate + nuove deleghe da assegnare
+        const totalHeads = 1 + (existingHeldProxies ? existingHeldProxies.length : 0) + (newDelegators ? newDelegators.length : 0);
+
+        // Millesimi delegato
+        let delegateMillesimi = parseFloat(delegate?.millesimiTotali) || 0;
+        if (delegateMillesimi <= 0 && Array.isArray(delegate?.proprieta)) {
+            delegateMillesimi = delegate.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+        }
+
+        // Millesimi deleghe già detenute
+        let heldProxiesMillesimi = 0;
+        (existingHeldProxies || []).forEach(p => {
+            heldProxiesMillesimi += (parseFloat(p.delegatorMillesimi) || 0);
+        });
+
+        // Millesimi nuovi deleganti
+        let newDelegatorsMillesimi = 0;
+        (newDelegators || []).forEach(d => {
+            let dMil = parseFloat(d.millesimiTotali) || parseFloat(d.delegatorMillesimi) || 0;
+            if (dMil <= 0 && Array.isArray(d.proprieta)) {
+                dMil = d.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+            }
+            newDelegatorsMillesimi += dMil;
+        });
+
+        const totalMillesimi = delegateMillesimi + heldProxiesMillesimi + newDelegatorsMillesimi;
+
+        const maxHeads = config.maxHeads;
+        const maxMillesimi = config.maxMillesimi;
+
+        const headsExceeded = maxHeads !== null && maxHeads !== undefined && totalHeads > maxHeads;
+        const millesimiExceeded = maxMillesimi !== null && maxMillesimi !== undefined && totalMillesimi > (maxMillesimi + 0.001);
+
+        if (headsExceeded || millesimiExceeded) {
+            const headsLimitStr = maxHeads !== null ? `${maxHeads} teste` : 'Nessun limite';
+            const millesimiLimitStr = maxMillesimi !== null ? `${maxMillesimi.toFixed(2)} ‰` : 'Nessun limite';
+            return {
+                valid: false,
+                totalHeads,
+                totalMillesimi,
+                maxHeads,
+                maxMillesimi,
+                errorMessage: `Impossibile assegnare la delega: per questo delegato verrebbe superato il limite massimo consentito (Limite: ${headsLimitStr} / ${millesimiLimitStr}. Carico con questa delega: ${totalHeads} teste / ${totalMillesimi.toFixed(2)} ‰).`
+            };
+        }
+
+        return {
+            valid: true,
+            totalHeads,
+            totalMillesimi,
+            maxHeads,
+            maxMillesimi
+        };
+    },
+
+    isScaleInTargetGroup: function (propGroup, targetGroup) {
+        if (!targetGroup) return true;
+        if (targetGroup === 'Tutte le scale' || targetGroup === 'Intero Condominio' || targetGroup === 'Intero condominio') return true;
+        if (!propGroup) return false;
+        const allowed = targetGroup.split(',').map(s => s.trim().toLowerCase());
+        return allowed.includes(propGroup.trim().toLowerCase());
+    },
+
+    getEffectiveUnitMillesimi: function (userOrAttendee, targetGroup, allUsers = null) {
+        if (!userOrAttendee) return 0;
+        
+        const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
+        const isGlobal = !targetGroup || 
+            targetGroup === 'Tutte le scale' || 
+            targetGroup === 'Intero Condominio' || 
+            targetGroup === 'Intero condominio' || 
+            targetGroup.trim().toLowerCase() === 'intero';
+
+        if (isGlobal) {
+            if (userOrAttendee.baseMillesimi !== undefined && userOrAttendee.baseMillesimi !== null) {
+                return parseFloat(userOrAttendee.baseMillesimi) || 0;
+            }
+            if (userOrAttendee.millesimiTotali !== undefined && userOrAttendee.millesimiTotali !== null) {
+                return parseFloat(userOrAttendee.millesimiTotali) || 0;
+            }
+            if (userOrAttendee.millesimi !== undefined && userOrAttendee.millesimi !== null) {
+                return parseFloat(userOrAttendee.millesimi) || 0;
+            }
+            if (Array.isArray(userOrAttendee.proprieta) && userOrAttendee.proprieta.length > 0) {
+                return userOrAttendee.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+            }
+            return 0;
+        }
+
+        let props = [];
+        if (Array.isArray(userOrAttendee.proprieta) && userOrAttendee.proprieta.length > 0) {
+            props = userOrAttendee.proprieta;
+        } else if (Array.isArray(userOrAttendee.properties) && userOrAttendee.properties.length > 0) {
+            props = userOrAttendee.properties;
+        } else if (allUsers && (userOrAttendee.uid || userOrAttendee.id)) {
+            const uId = userOrAttendee.uid || userOrAttendee.id;
+            const matched = allUsers.find(u => u.id === uId || u.uid === uId);
+            if (matched && Array.isArray(matched.proprieta) && matched.proprieta.length > 0) {
+                props = matched.proprieta;
+            }
+        }
+
+        if (props.length > 0) {
+            const matchingProps = props.filter(p => checkGroup(p.gruppo, targetGroup));
+            return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+        }
+
+        const singleGroup = userOrAttendee.gruppo || userOrAttendee.delegatorGroup || '';
+        if (checkGroup(singleGroup, targetGroup)) {
+            const rawMil = userOrAttendee.baseMillesimi !== undefined ? userOrAttendee.baseMillesimi : (userOrAttendee.delegatorMillesimi !== undefined ? userOrAttendee.delegatorMillesimi : (userOrAttendee.millesimiTotali !== undefined ? userOrAttendee.millesimiTotali : userOrAttendee.millesimi));
+            return parseFloat(rawMil) || 0;
+        }
+
+        return 0;
+    },
+
+    getEffectiveProxyMillesimi: function (proxy, targetGroup, allUsers = null) {
+        if (!proxy || proxy.status === 'rejected') return 0;
+        
+        const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
+        const isGlobal = !targetGroup || 
+            targetGroup === 'Tutte le scale' || 
+            targetGroup === 'Intero Condominio' || 
+            targetGroup === 'Intero condominio' || 
+            targetGroup.trim().toLowerCase() === 'intero';
+
+        if (isGlobal) {
+            return parseFloat(proxy.delegatorMillesimi) || 0;
+        }
+
+        let delegatorProps = [];
+        if (Array.isArray(proxy.proprieta) && proxy.proprieta.length > 0) {
+            delegatorProps = proxy.proprieta;
+        } else if (allUsers && proxy.delegatorId) {
+            const delegatorUser = allUsers.find(u => u.id === proxy.delegatorId || u.uid === proxy.delegatorId);
+            if (delegatorUser && Array.isArray(delegatorUser.proprieta) && delegatorUser.proprieta.length > 0) {
+                delegatorProps = delegatorUser.proprieta;
+            }
+        }
+
+        if (delegatorProps.length > 0) {
+            const matchingProps = delegatorProps.filter(p => checkGroup(p.gruppo, targetGroup));
+            return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+        }
+
+        if (checkGroup(proxy.delegatorGroup, targetGroup)) {
+            return parseFloat(proxy.delegatorMillesimi) || 0;
+        }
+
+        return 0;
     }
 };
+
+window.isScaleInTargetGroup = window.AssembleeModule.isScaleInTargetGroup.bind(window.AssembleeModule);
+window.getEffectiveUnitMillesimi = window.AssembleeModule.getEffectiveUnitMillesimi.bind(window.AssembleeModule);
+window.getEffectiveProxyMillesimi = window.AssembleeModule.getEffectiveProxyMillesimi.bind(window.AssembleeModule);
+window.getProxyLimitConfig = window.AssembleeModule.getProxyLimitConfig.bind(window.AssembleeModule);
+window.getProxyLimitDescription = window.AssembleeModule.getProxyLimitDescription.bind(window.AssembleeModule);
+window.validateProxyLimit = window.AssembleeModule.validateProxyLimit.bind(window.AssembleeModule);
