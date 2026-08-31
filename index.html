@@ -17414,6 +17414,7 @@ ${renderBottomNavigation()}
             const assembly = docSnap.data();
             const agenda = assembly.agenda || [];
             const targetIdx = agenda.findIndex(i => i.id === itemId);
+            if (targetIdx < 0) return;
 
             if (newStatus === 'voting') {
                 const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
@@ -17425,6 +17426,50 @@ ${renderBottomNavigation()}
                     const prevItem = agenda[targetIdx - 1];
                     if (prevItem && (prevItem.status || 'pending') !== 'closed') {
                         await customAlert(`Impossibile avviare la votazione per il Punto ${targetIdx + 1}. Il Punto ${targetIdx} deve prima essere concluso dall'amministratore.`);
+                        return;
+                    }
+                }
+            }
+
+            if (newStatus === 'closed') {
+                const item = agenda[targetIdx];
+                if (item) {
+                    const itemScope = item.scope || 'intero';
+                    const targetGroup = item.targetGroup || null;
+                    const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio' && targetGroup !== 'Tutte le scale' && targetGroup !== 'Intero Condominio';
+
+                    let allUsers = [];
+                    try {
+                        const uSnap = await getDocs(query(collection(db, "users")));
+                        allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    } catch (e) {
+                        console.warn("Errore lettura users in toggleOdgVote:", e);
+                    }
+
+                    const attendees = assembly.attendees || [];
+                    const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+
+                    const isAttendeeEligibleForPoint = (a) => {
+                        const selfM = window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(a, targetGroup, allUsers) : (a.millesimi || 0);
+                        const held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                        const proxM = held.reduce((sum, p) => sum + (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0)), 0);
+                        return (selfM + proxM) > 0;
+                    };
+
+                    const eligibleAttendees = isGroupScope ? activeAttendees.filter(a => isAttendeeEligibleForPoint(a)) : activeAttendees;
+                    const votesList = item.votes || [];
+                    const hasAttendeeVoted = (a) => votesList.some(v => (a.uid && (v.voterId === a.uid || v.userId === a.uid)) || (a.id && (v.voterId === a.id || v.userId === a.id)));
+                    const pointNonVoters = eligibleAttendees.filter(a => !hasAttendeeVoted(a));
+
+                    if (pointNonVoters.length > 0) {
+                        const nonVoterNames = pointNonVoters.map(a => {
+                            const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
+                            return window.cleanCandidateName ? window.cleanCandidateName(dName) : dName;
+                        }).join(', ');
+
+                        await customAlert(
+                            `Impossibile chiudere la votazione: ci sono ancora ${pointNonVoters.length} condòmin${pointNonVoters.length === 1 ? 'o che non ha' : 'i che non hanno'} espresso il voto (o per cui non è stato registrato il voto manuale):\n\n${nonVoterNames}\n\nTutti i condòmini aventi diritto presenti devono votare prima della chiusura.`
+                        );
                         return;
                     }
                 }
@@ -19172,6 +19217,31 @@ ${renderBottomNavigation()}
                             }
                         }
 
+                        // DETTAGLIO VOTANTI E DELEGHE PER LA QUESTIONE
+                        const votesList = item.votes || [];
+
+                        // ELENCO DI CHI NON HA ANCORA VOTATO QUESTO PUNTO (FILTRATO PER SCALA/GRUPPO)
+                        const isAttendeeEligibleForPoint = (a) => {
+                            const selfM = window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(a, itemGroup, allUsers) : (a.millesimi || 0);
+                            const held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                            const proxM = held.reduce((sum, p) => sum + (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0)), 0);
+                            return (selfM + proxM) > 0;
+                        };
+
+                        const getAttendeeGroupMilForPoint = (a) => {
+                            const selfM = window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(a, itemGroup, allUsers) : (a.millesimi || 0);
+                            const held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                            const proxM = held.reduce((sum, p) => sum + (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0)), 0);
+                            return selfM + proxM;
+                        };
+
+                        const eligibleAttendees = activeAttendees.filter(a => isAttendeeEligibleForPoint(a));
+                        const targetAttendees = isGroupScope ? eligibleAttendees : (eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees);
+                        const hasAttendeeVoted = (a) => votesList.some(v => (a.uid && (v.voterId === a.uid || v.userId === a.uid)) || (a.id && (v.voterId === a.id || v.userId === a.id)));
+                        const pointNonVoters = targetAttendees.filter(a => !hasAttendeeVoted(a));
+
+                        const nonVotersMilSum = pointNonVoters.reduce((acc, a) => acc + getAttendeeGroupMilForPoint(a), 0);
+
                         let adminActionHtml = '';
                         if (isAdmin && !isClosedOrCancelled) {
                             let btnScope = '';
@@ -19191,7 +19261,11 @@ ${renderBottomNavigation()}
                                     btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto per questo punto potrà essere avviato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>In attesa punto precedente</span></button>`;
                                 }
                             } else if (itemStatus === 'voting') {
-                                btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione</span></button>`;
+                                if (pointNonVoters.length > 0) {
+                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;" title="Ci sono ancora ${pointNonVoters.length} condòmini che non hanno votato">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione (${pointNonVoters.length} senza voto)</span></button>`;
+                                } else {
+                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione</span></button>`;
+                                }
                             } else {
                                 btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.8rem; font-weight:600; border-radius:6px; white-space:nowrap;">${THEME_ICONS.refresh(15)} <span>Riapri Voto</span></button>`;
                             }
@@ -19344,7 +19418,6 @@ ${renderBottomNavigation()}
                         }
 
                         // DETTAGLIO VOTANTI E DELEGHE PER LA QUESTIONE
-                        const votesList = item.votes || [];
                         let votersDetailHtml = '';
 
                         window._currentVotersByPoint = window._currentVotersByPoint || {};
@@ -19436,27 +19509,6 @@ ${renderBottomNavigation()}
                         } else {
                             votersDetailHtml = '';
                         }
-
-                        // ELENCO DI CHI NON HA ANCORA VOTATO QUESTO PUNTO (FILTRATO PER SCALA/GRUPPO)
-                        const isAttendeeEligibleForPoint = (a) => {
-                            const selfM = window.getEffectiveUnitMillesimi(a, itemGroup, allUsers);
-                            const held = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
-                            const proxM = held.reduce((sum, p) => sum + window.getEffectiveProxyMillesimi(p, itemGroup, allUsers), 0);
-                            return (selfM + proxM) > 0;
-                        };
-
-                        const getAttendeeGroupMilForPoint = (a) => {
-                            const selfM = window.getEffectiveUnitMillesimi(a, itemGroup, allUsers);
-                            const held = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
-                            const proxM = held.reduce((sum, p) => sum + window.getEffectiveProxyMillesimi(p, itemGroup, allUsers), 0);
-                            return selfM + proxM;
-                        };
-
-                        const eligibleAttendees = activeAttendees.filter(a => isAttendeeEligibleForPoint(a));
-                        const targetAttendees = isGroupScope ? eligibleAttendees : (eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees);
-                        const pointNonVoters = targetAttendees.filter(a => !votesList.some(v => v.voterId === a.uid || v.userId === a.uid));
-
-                        const nonVotersMilSum = pointNonVoters.reduce((acc, a) => acc + getAttendeeGroupMilForPoint(a), 0);
 
                         window._currentNonVotersByPoint = window._currentNonVotersByPoint || {};
                         window._currentNonVotersByPoint[idx] = {
