@@ -280,7 +280,7 @@ window.AssembleeModule = {
                         <div id="room-attendees-list">
                             <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento presenti...</p>
                         </div>
-                        <p id="room-attendees-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 0.6rem 0; margin: 0;">Nessun condomino presente trovato con i criteri di ricerca.</p>
+                        <p id="room-attendees-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 0.6rem 0; margin: 0;">Nessun condòmino presente trovato con i criteri di ricerca.</p>
                     </div>
                 </div>
 
