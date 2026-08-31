@@ -23242,13 +23242,27 @@ ${renderBottomNavigation()}
                         
                         let proxiesBadge = '';
                         if (attendeeProxies.length > 0) {
-                            const delegatorDetails = attendeeProxies.map(p => {
+                            const delegatorRows = attendeeProxies.map(p => {
                                 const dName = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
-                                return `${escapeHtml(dName)} (${(p.millesimi || 0).toFixed(2)} ‰)`;
-                            }).join(', ');
+                                const dMil = (p.millesimi || 0).toFixed(2);
+                                return `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--secondary-text); padding:0.15rem 0; border-top:1px dashed rgba(255,255,255,0.07);">
+                                        <span style="display:inline-flex; align-items:center; gap:0.3rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                            <span style="color:var(--accent-color); font-weight:700; flex-shrink:0;">↳</span>
+                                            <span style="color:var(--primary-text); font-weight:600; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dName)}</span>
+                                        </span>
+                                        <span style="color:var(--accent-color); font-weight:700; flex-shrink:0; margin-left:0.35rem;">${dMil} ‰</span>
+                                    </div>
+                                `;
+                            }).join('');
                             proxiesBadge = `
-                                <div style="font-size:0.68rem; color:var(--accent-color); margin-top:0.15rem; display:flex; align-items:center; gap:0.25rem;">
-                                    ${THEME_ICONS.scroll(10)} +${attendeeProxies.length} deleghe: <span style="color:var(--secondary-text);">${delegatorDetails}</span>
+                                <div style="margin-top:0.25rem; padding:0.2rem 0.4rem; background:rgba(0,0,0,0.15); border-radius:5px;">
+                                    <div style="font-size:0.68rem; color:var(--accent-color); font-weight:700; display:flex; align-items:center; gap:0.25rem; margin-bottom:0.1rem;">
+                                        ${THEME_ICONS.scroll(11)} +${attendeeProxies.length} ${attendeeProxies.length === 1 ? 'delega' : 'deleghe'}:
+                                    </div>
+                                    <div style="display:flex; flex-direction:column;">
+                                        ${delegatorRows}
+                                    </div>
                                 </div>
                             `;
                         }
@@ -23381,13 +23395,27 @@ ${renderBottomNavigation()}
 
                     let proxiesBadgeHtml = '';
                     if (attendeeProxies.length > 0) {
-                        const delegators = attendeeProxies.map(p => {
+                        const delegatorRows = attendeeProxies.map(p => {
                             const dp = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
-                            return `${escapeHtml(dp)} (${(p.millesimi || 0).toFixed(2)} ‰)`;
-                        }).join(', ');
+                            const dpMil = (p.millesimi || 0).toFixed(2);
+                            return `
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:var(--secondary-text); padding:0.15rem 0; border-top:1px dashed rgba(255,255,255,0.07);">
+                                    <span style="display:inline-flex; align-items:center; gap:0.3rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                        <span style="color:var(--accent-color); font-weight:700; flex-shrink:0;">↳</span>
+                                        <span style="color:var(--primary-text); font-weight:600; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dp)}</span>
+                                    </span>
+                                    <span style="color:var(--accent-color); font-weight:700; flex-shrink:0; margin-left:0.35rem;">${dpMil} ‰</span>
+                                </div>
+                            `;
+                        }).join('');
                         proxiesBadgeHtml = `
-                            <div style="font-size:0.71rem; color:var(--accent-color); margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
-                                ${THEME_ICONS.scroll(11)} <strong>+${attendeeProxies.length} deleghe:</strong> <span style="color:var(--secondary-text);">${delegators}</span>
+                            <div style="margin-top:0.25rem; padding:0.2rem 0.4rem; background:rgba(0,0,0,0.15); border-radius:5px;">
+                                <div style="font-size:0.7rem; color:var(--accent-color); font-weight:700; display:flex; align-items:center; gap:0.25rem; margin-bottom:0.1rem;">
+                                    ${THEME_ICONS.scroll(11)} +${attendeeProxies.length} ${attendeeProxies.length === 1 ? 'delega' : 'deleghe'}:
+                                </div>
+                                <div style="display:flex; flex-direction:column;">
+                                    ${delegatorRows}
+                                </div>
                             </div>
                         `;
                     }
