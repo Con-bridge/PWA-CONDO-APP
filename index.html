@@ -22339,9 +22339,19 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.cleanCandidateName = (nameStr) => {
+            if (!nameStr) return '';
+            return nameStr
+                .replace(/\s*\(\s*\+?\d*\s*(?:deleghe|delega|delegati)[^)]*\)/gi, '')
+                .replace(/\s*\(\s*\+\s*\d+\s*\)/gi, '')
+                .replace(/\s*\(\s*\+\s*\d*\s*[^)]*\)/gi, '')
+                .replace(/\s*\+\s*\d+\s*(?:deleghe|delega)\b/gi, '')
+                .trim();
+        };
+
         window.formatVoterDisplayName = (nameStr) => {
             if (!nameStr) return '';
-            let str = nameStr.trim();
+            let str = window.cleanCandidateName(nameStr);
             const suffixMatch = str.match(/\s*(\([^)]+\))$/);
             const suffix = suffixMatch ? suffixMatch[1] : '';
             let mainName = suffixMatch ? str.substring(0, str.length - suffix.length).trim() : str;
@@ -22361,14 +22371,14 @@ ${renderBottomNavigation()}
             if (!attendee) return '';
             let rawNome = (attendee.nome || '').trim();
             const rawCognome = (attendee.cognome || '').trim();
-            const baseNome = rawNome.replace(/\s*\(\+?\d+\s*deleghe[^\)]*\)/gi, '').trim();
+            const baseNome = window.cleanCandidateName(rawNome);
             let result = '';
             if (!rawCognome) {
-                result = rawNome;
+                result = baseNome;
             } else if (baseNome.toLowerCase().includes(rawCognome.toLowerCase())) {
-                result = rawNome;
+                result = baseNome;
             } else {
-                result = `${rawNome} ${rawCognome}`.trim();
+                result = `${baseNome} ${rawCognome}`.trim();
             }
             return window.formatVoterDisplayName(result);
         };
@@ -22763,7 +22773,10 @@ ${renderBottomNavigation()}
                 dropdown.classList.add('hidden');
                 dropdown.innerHTML = '';
             }
-            const candName = (candidateName || input?.value || '').trim();
+            let candName = (candidateName || input?.value || '').trim();
+            if (window.cleanCandidateName) {
+                candName = window.cleanCandidateName(candName);
+            }
             if (!candName) {
                 return;
             }
@@ -22792,12 +22805,15 @@ ${renderBottomNavigation()}
             if (window._tempPresidentCandidates.length === 0) {
                 container.innerHTML = `<p style="font-size:0.78rem; color:var(--secondary-text); margin:0.3rem 0; text-align:center;">Nessun candidato aggiunto (min. 2).</p>`;
             } else {
-                container.innerHTML = window._tempPresidentCandidates.map((c, idx) => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3px solid var(--accent-color); border-radius:6px; padding:0.35rem 0.6rem; font-size:0.83rem;">
-                        <span style="font-weight:700; color:var(--primary-text);">${escapeHtml(c)}</span>
-                        <button type="button" onclick="removePresidentCandidateFromList(${idx})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.9rem; font-weight:700; padding:0 0.3rem;" title="Rimuovi candidato">✕</button>
-                    </div>
-                `).join('');
+                container.innerHTML = window._tempPresidentCandidates.map((c, idx) => {
+                    const cClean = window.cleanCandidateName ? window.cleanCandidateName(c) : c;
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3px solid var(--accent-color); border-radius:6px; padding:0.35rem 0.6rem; font-size:0.83rem;">
+                            <span style="font-weight:700; color:var(--primary-text);">${escapeHtml(cClean)}</span>
+                            <button type="button" onclick="removePresidentCandidateFromList(${idx})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.9rem; font-weight:700; padding:0 0.3rem;" title="Rimuovi candidato">✕</button>
+                        </div>
+                    `;
+                }).join('');
             }
 
             const count = window._tempPresidentCandidates.length;
@@ -22846,7 +22862,7 @@ ${renderBottomNavigation()}
             }
 
             const uid = selected.uid;
-            const name = selected.name;
+            const name = window.cleanCandidateName ? window.cleanCandidateName(selected.name) : selected.name;
             const millesimi = parseFloat(selected.millesimi) || 0;
 
             try {
@@ -22882,7 +22898,7 @@ ${renderBottomNavigation()}
 
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
-                const candidatesToSave = [...window._tempPresidentCandidates];
+                const candidatesToSave = window._tempPresidentCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
                 await updateDoc(assemblyRef, {
                     presidentVoting: {
                         status: 'voting',
@@ -22970,11 +22986,11 @@ ${renderBottomNavigation()}
             const userHeads = 1 + userHeldProxies.length;
 
             const myVote = (assembly.presidentVoting?.votes || []).find(v => v.voterId === currentUser.uid);
-            const allCandidates = assembly.presidentVoting?.candidates || [];
-            const candidates = allCandidates;
+            const rawCandidates = assembly.presidentVoting?.candidates || [];
+            const candidates = rawCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
 
             const candidatesHtml = candidates.length > 0 ? candidates.map(cand => {
-                const isSelected = myVote && myVote.candidate === cand;
+                const isSelected = myVote && (myVote.candidate === cand || (window.cleanCandidateName && window.cleanCandidateName(myVote.candidate) === cand));
                 return `
                     <div style="background:${isSelected ? 'rgba(16, 185, 129, 0.12)' : 'var(--surface-color-light)'}; border:1.5px solid ${isSelected ? '#10B981' : 'rgba(255,255,255,0.08)'}; border-radius:8px; padding:0.7rem 0.85rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.4rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem; min-width:0;">
@@ -22996,7 +23012,7 @@ ${renderBottomNavigation()}
 
             const statusHtml = myVote ? `
                 <div style="padding:0.5rem 0.75rem; background:rgba(16, 185, 129, 0.12); border:1px solid rgba(16, 185, 129, 0.3); border-radius:6px; font-size:0.8rem; color:#10B981; margin-top:0.6rem; text-align:center;">
-                    ${THEME_ICONS.check(13, 2.5)} Hai votato per: <strong>${escapeHtml(myVote.candidate)}</strong>
+                    ${THEME_ICONS.check(13, 2.5)} Hai votato per: <strong>${escapeHtml(window.cleanCandidateName ? window.cleanCandidateName(myVote.candidate) : myVote.candidate)}</strong>
                     <div style="font-size:0.72rem; color:var(--secondary-text); margin-top:0.15rem;">Puoi modificare il voto selezionando un altro candidato finché la votazione è aperta.</div>
                 </div>
             ` : `
@@ -23038,6 +23054,8 @@ ${renderBottomNavigation()}
                     return;
                 }
 
+                candidateName = window.cleanCandidateName ? window.cleanCandidateName(candidateName) : (candidateName || '').trim();
+
                 const attendees = assembly.attendees || [];
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                 const attendee = activeAttendees.find(a => a.uid === currentUser.uid);
@@ -23074,6 +23092,7 @@ ${renderBottomNavigation()}
         window.submitPresidentVoteForAttendee = async (assemblyId, attendeeUid, candidateName) => {
             try {
                 if (!candidateName) return;
+                candidateName = window.cleanCandidateName ? window.cleanCandidateName(candidateName) : (candidateName || '').trim();
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
                 if (!docSnap.exists()) return;
@@ -23163,6 +23182,7 @@ ${renderBottomNavigation()}
         };
 
         window.togglePresidentCandidateVoters = (candidateName) => {
+            candidateName = window.cleanCandidateName ? window.cleanCandidateName(candidateName) : candidateName;
             if (window._expandedPresidentVoterCards.has(candidateName)) {
                 window._expandedPresidentVoterCards.delete(candidateName);
             } else {
@@ -23189,8 +23209,13 @@ ${renderBottomNavigation()}
             activeAttendees = Array.isArray(activeAttendees) ? activeAttendees : ((assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated));
             activeProxies = Array.isArray(activeProxies) ? activeProxies : ((assembly.proxies || []).filter(p => p.status !== 'rejected'));
 
-            const candidates = assembly.presidentVoting?.candidates || [];
-            const votes = assembly.presidentVoting?.votes || [];
+            const rawCandidates = assembly.presidentVoting?.candidates || [];
+            const candidates = rawCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
+            const rawVotes = assembly.presidentVoting?.votes || [];
+            const votes = rawVotes.map(v => ({
+                ...v,
+                candidate: window.cleanCandidateName ? window.cleanCandidateName(v.candidate) : v.candidate
+            }));
 
             let totalRoomMil = 0;
             activeAttendees.forEach(a => totalRoomMil += (a.millesimi || 0));
@@ -23573,8 +23598,13 @@ ${renderBottomNavigation()}
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
 
-                const candidates = assembly.presidentVoting?.candidates || [];
-                const votes = assembly.presidentVoting?.votes || [];
+                const rawCandidates = assembly.presidentVoting?.candidates || [];
+                const candidates = rawCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
+                const rawVotes = assembly.presidentVoting?.votes || [];
+                const votes = rawVotes.map(v => ({
+                    ...v,
+                    candidate: window.cleanCandidateName ? window.cleanCandidateName(v.candidate) : v.candidate
+                }));
 
                 if (candidates.length === 0) {
                     await customAlert("Nessun candidato presente.");
