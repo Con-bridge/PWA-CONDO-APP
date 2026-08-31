@@ -22971,7 +22971,7 @@ ${renderBottomNavigation()}
 
             const myVote = (assembly.presidentVoting?.votes || []).find(v => v.voterId === currentUser.uid);
             const allCandidates = assembly.presidentVoting?.candidates || [];
-            const candidates = allCandidates.filter(c => !isCandidateSelf(c, attendee, userProfile));
+            const candidates = allCandidates;
 
             const candidatesHtml = candidates.length > 0 ? candidates.map(cand => {
                 const isSelected = myVote && myVote.candidate === cand;
@@ -22990,7 +22990,7 @@ ${renderBottomNavigation()}
                 `;
             }).join('') : `
                 <div style="text-align:center; padding:1rem 0.5rem; color:var(--secondary-text); font-size:0.85rem; background:var(--surface-color-light); border-radius:8px; margin-bottom:0.4rem;">
-                    Nessun altro candidato disponibile per la votazione.
+                    Nessun candidato disponibile per la votazione.
                 </div>
             `;
 
@@ -23042,11 +23042,6 @@ ${renderBottomNavigation()}
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                 const attendee = activeAttendees.find(a => a.uid === currentUser.uid);
 
-                if (isCandidateSelf(candidateName, attendee, userProfile)) {
-                    await customAlert("Non è possibile votare per se stessi come Presidente.");
-                    return;
-                }
-
                 const userMillesimi = attendee ? (attendee.millesimi || 0) : (parseFloat(userProfile?.millesimiTotali) || 0);
                 const userProxiesCount = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected').length;
                 const userHeads = 1 + userProxiesCount;
@@ -23093,11 +23088,6 @@ ${renderBottomNavigation()}
                 const attendee = activeAttendees.find(a => (a.uid && a.uid === attendeeUid) || (a.id && a.id === attendeeUid) || (a.qrUid && a.qrUid === attendeeUid) || (a.nome && a.nome === attendeeUid));
                 if (!attendee) {
                     await customAlert("Partecipante non trovato tra i presenti.");
-                    return;
-                }
-
-                if (isCandidateSelf(candidateName, attendee)) {
-                    await customAlert("Un candidato non può votare per se stesso.");
                     return;
                 }
 
@@ -23346,7 +23336,7 @@ ${renderBottomNavigation()}
                 const pendingRows = pendingAttendees.map(a => {
                     const aIdentifier = a.uid || a.id || a.qrUid || a.nome || '';
                     const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
-                    const allowedCandidates = candidates.filter(c => !isCandidateSelf(c, a));
+                    const allowedCandidates = candidates;
                     const optionsCand = allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
                     const isManual = isManualAttendee(a);
                     const regBadge = isManual
@@ -23378,7 +23368,7 @@ ${renderBottomNavigation()}
                 fullscreenPendingRows = pendingAttendees.map(a => {
                     const aIdentifier = a.uid || a.id || a.qrUid || a.nome || '';
                     const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
-                    const allowedCandidates = candidates.filter(c => !isCandidateSelf(c, a));
+                    const allowedCandidates = candidates;
                     const optionsCand = allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
                     const isManual = isManualAttendee(a);
                     const regBadge = isManual
@@ -23454,7 +23444,7 @@ ${renderBottomNavigation()}
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0 0.45rem 0; border-bottom:1px solid var(--surface-color-light); flex-shrink:0;">
                             <button type="button" onclick="window.closePresidentFullscreenView()" class="btn" style="padding:0.35rem 0.65rem; font-size:0.8rem; font-weight:700; background:rgba(255,255,255,0.08); color:var(--primary-text); border:1px solid var(--surface-color-light); border-radius:7px; display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                                ← Riepilogo
+                                Riepilogo
                             </button>
                             <span style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; padding:0.18rem 0.55rem; border-radius:6px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:0.3rem;">
                                 ${THEME_ICONS.hourglass(12, 2.2)} Senza voto (${pendingAttendees.length}) • ${pendingMil.toFixed(2)} ‰
