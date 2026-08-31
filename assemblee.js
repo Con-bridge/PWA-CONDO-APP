@@ -469,8 +469,8 @@ window.AssembleeModule = {
             return { valid: true };
         }
 
-        // Teste: 1 (il delegato stesso) + deleghe già attive/accettate + nuove deleghe da assegnare
-        const totalHeads = 1 + (existingHeldProxies ? existingHeldProxies.length : 0) + (newDelegators ? newDelegators.length : 0);
+        // Conteggio delle deleghe: deleghe già attive/accettate + nuove deleghe da assegnare (esclusa la presenza personale del delegato)
+        const totalProxies = (existingHeldProxies ? existingHeldProxies.length : 0) + (newDelegators ? newDelegators.length : 0);
 
         // Millesimi delegato
         let delegateMillesimi = parseFloat(delegate?.millesimiTotali) || 0;
@@ -494,30 +494,34 @@ window.AssembleeModule = {
             newDelegatorsMillesimi += dMil;
         });
 
+        // Totale millesimi: millesimi del delegato + millesimi di tutte le deleghe
         const totalMillesimi = delegateMillesimi + heldProxiesMillesimi + newDelegatorsMillesimi;
 
         const maxHeads = config.maxHeads;
         const maxMillesimi = config.maxMillesimi;
 
-        const headsExceeded = maxHeads !== null && maxHeads !== undefined && totalHeads > maxHeads;
+        const headsExceeded = maxHeads !== null && maxHeads !== undefined && totalProxies > maxHeads;
         const millesimiExceeded = maxMillesimi !== null && maxMillesimi !== undefined && totalMillesimi > (maxMillesimi + 0.001);
 
         if (headsExceeded || millesimiExceeded) {
-            const headsLimitStr = maxHeads !== null ? `${maxHeads} teste` : 'Nessun limite';
+            const headsLimitStr = maxHeads !== null ? `${maxHeads} ${maxHeads === 1 ? 'delega' : 'deleghe'}` : 'Nessun limite';
             const millesimiLimitStr = maxMillesimi !== null ? `${maxMillesimi.toFixed(2)} ‰` : 'Nessun limite';
+            const proxiesStr = `${totalProxies} ${totalProxies === 1 ? 'delega' : 'deleghe'}`;
             return {
                 valid: false,
-                totalHeads,
+                totalProxies,
+                totalHeads: totalProxies,
                 totalMillesimi,
                 maxHeads,
                 maxMillesimi,
-                errorMessage: `Impossibile assegnare la delega: per questo delegato verrebbe superato il limite massimo consentito (Limite: ${headsLimitStr} / ${millesimiLimitStr}. Carico con questa delega: ${totalHeads} teste / ${totalMillesimi.toFixed(2)} ‰).`
+                errorMessage: `Impossibile assegnare la delega: per questo delegato verrebbe superato il limite massimo consentito (Limite: ${headsLimitStr} / ${millesimiLimitStr}. Carico con questa operazione: ${proxiesStr} / ${totalMillesimi.toFixed(2)} ‰).`
             };
         }
 
         return {
             valid: true,
-            totalHeads,
+            totalProxies,
+            totalHeads: totalProxies,
             totalMillesimi,
             maxHeads,
             maxMillesimi
