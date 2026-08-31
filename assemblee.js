@@ -399,7 +399,7 @@ window.AssembleeModule = {
     getProxyLimitConfig: function (assembly, totalCondoCount = 20) {
         const config = assembly?.proxyLimitConfig;
         if (!config || !config.type) {
-            const heads = Math.floor(totalCondoCount / 5);
+            const heads = Math.ceil(totalCondoCount / 5);
             return {
                 type: 'legge_oltre_20',
                 maxHeads: heads > 0 ? heads : 1,
@@ -407,9 +407,9 @@ window.AssembleeModule = {
             };
         }
         if (config.type === 'legge_oltre_20') {
-            const heads = config.maxHeads !== undefined && config.maxHeads !== null
-                ? config.maxHeads
-                : Math.floor(totalCondoCount / 5);
+            const heads = totalCondoCount
+                ? Math.ceil(totalCondoCount / 5)
+                : (config.maxHeads !== undefined && config.maxHeads !== null ? config.maxHeads : 1);
             return {
                 type: 'legge_oltre_20',
                 maxHeads: heads > 0 ? heads : 1,
@@ -432,7 +432,7 @@ window.AssembleeModule = {
         }
         return {
             type: 'legge_oltre_20',
-            maxHeads: Math.floor(totalCondoCount / 5) || 1,
+            maxHeads: Math.ceil(totalCondoCount / 5) || 1,
             maxMillesimi: 200.00
         };
     },
@@ -458,7 +458,7 @@ window.AssembleeModule = {
             return `Regolamento${limits}`;
         }
         // Fallback e default: legge_oltre_20 (Art. 67 disp. att. c.c.)
-        const heads = config.maxHeads !== null && config.maxHeads !== undefined ? config.maxHeads : (totalCondoCount ? Math.floor(totalCondoCount / 5) : 0);
+        const heads = config.maxHeads !== null && config.maxHeads !== undefined ? config.maxHeads : (totalCondoCount ? Math.ceil(totalCondoCount / 5) : 0);
         const headsPart = heads > 0 ? ` - Max ${heads} ${heads === 1 ? 'testa' : 'teste'} / 200.00 ‰` : ' - Max 200.00 ‰';
         return `Legge (Max 1/5 teste e 1/5 millesimi - Art. 67 disp. att. c.c.${headsPart})`;
     },
