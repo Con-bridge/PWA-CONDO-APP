@@ -17,7 +17,7 @@
          'unsafe-inline' è necessario per gli stili inline e gli handler onclick usati dall'app;
          la protezione principale contro l'XSS è comunque l'escaping dell'output lato JS. -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://cdnjs.cloudflare.com https://www.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://*.google.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Con-bridge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1898,8 +1898,8 @@
             min-height: 0 !important;
             display: flex !important;
             flex-direction: column !important;
-            padding: 0.75rem 1rem !important;
-            overflow-y: auto !important;
+            padding: 0.65rem 0.85rem !important;
+            overflow: hidden !important;
             -webkit-overflow-scrolling: touch;
             box-sizing: border-box;
         }
@@ -1910,7 +1910,7 @@
             }
 
             .modal-overlay.fullscreen-notification .modal-body {
-                padding: 0.65rem 1rem !important;
+                padding: 0.55rem 0.75rem !important;
             }
         }
 
@@ -2518,6 +2518,26 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- Icone SVG Outline a tema -->
     <script src="icons.js" onerror="this.onerror=null;this.src='icon.js';"></script>
+    <script>
+        (function() {
+            if (!window.THEME_ICONS) window.THEME_ICONS = {};
+            window.THEME_ICONS = new Proxy(window.THEME_ICONS, {
+                get(target, prop) {
+                    if (prop in target && typeof target[prop] === 'function') {
+                        return target[prop];
+                    }
+                    return (size = 16, stroke = 2, extraClass = '', extraStyle = '', color = 'currentColor') => {
+                        if (prop === 'userCheck') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>`;
+                        if (prop === 'circleGreen') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3"></circle></svg>`;
+                        if (prop === 'check' || prop === 'checkSuccess') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color === 'currentColor' ? '#10B981' : color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                        if (prop === 'hourglass') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg>`;
+                        if (prop === 'scroll') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><path d="M8 2h8a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z"></path><path d="M8 6h8"></path><path d="M8 10h8"></path><path d="M8 14h5"></path></svg>`;
+                        return `<span class="icon-${String(prop)}"></span>`;
+                    };
+                }
+            });
+        })();
+    </script>
     <!-- Aggancio del nostro file esterno Assemblee -->
     <script src="assemblee.js"></script>
 </head>
@@ -2949,6 +2969,7 @@
         };
 
         const hideModal = (fromPopState = false) => {
+            window.isPresidentVotingModalOpen = false;
             window.isOdgApprovalModalOpen = false;
             window._openNonVotersModalIndex = null;
             window._openVotersModalIndex = null;
@@ -16480,36 +16501,39 @@ ${renderBottomNavigation()}
             });
         };
 
-        const checkForNewSolleciti = () => {
-            const checkForSentReminderUpdates = () => {
-                if (!currentUser) return;
-                sentRemindersListener && sentRemindersListener();
+        const checkForSentReminderUpdates = () => {
+            if (!currentUser) return;
+            sentRemindersListener && sentRemindersListener();
 
-                let lastSeen = parseInt(localStorage.getItem(`lastSeenSollecitiInviati_${currentUser.uid}`), 10);
-                if (!lastSeen) {
-                    lastSeen = Date.now();
-                    localStorage.setItem(`lastSeenSollecitiInviati_${currentUser.uid}`, lastSeen);
-                }
-                const lastSeenDate = new Date(lastSeen);
+            let lastSeen = parseInt(localStorage.getItem(`lastSeenSollecitiInviati_${currentUser.uid}`), 10);
+            if (!lastSeen) {
+                lastSeen = Date.now();
+                localStorage.setItem(`lastSeenSollecitiInviati_${currentUser.uid}`, lastSeen);
+            }
 
-                const q = query(
-                    collection(db, "reports"),
-                    where("createdById", "==", currentUser.uid),
-                    where("isUrgent", "==", true), // Solo quelle che l'utente ha sollecitato
-                    where("updatedAt", ">", lastSeenDate)
-                );
+            const q = query(
+                collection(db, "reports"),
+                where("createdById", "==", currentUser.uid)
+            );
 
-                sentRemindersListener = onSnapshot(q, snapshot => {
-                    const updatedByOthers = snapshot.docs.filter(doc => {
-                        const report = doc.data();
-                        const lastUpdate = report.updates && report.updates.length > 0 ? report.updates[report.updates.length - 1] : null;
-                        const userFullName = `${userProfile?.nome} ${userProfile?.cognome}`;
-                        return lastUpdate && lastUpdate.by !== userFullName;
-                    });
-
-                    updateNotificationUI('solleciti-inviati', updatedByOthers.length);
+            sentRemindersListener = onSnapshot(q, snapshot => {
+                const updatedByOthers = snapshot.docs.filter(doc => {
+                    const report = doc.data();
+                    if (!report.isUrgent) return false;
+                    const repUpdatedAt = report.updatedAt?.toMillis ? report.updatedAt.toMillis() : (new Date(report.updatedAt || 0).getTime() || 0);
+                    if (repUpdatedAt <= lastSeen) return false;
+                    const lastUpdate = report.updates && report.updates.length > 0 ? report.updates[report.updates.length - 1] : null;
+                    const userFullName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim();
+                    return lastUpdate && lastUpdate.by !== userFullName;
                 });
-            };
+
+                updateNotificationUI('solleciti-inviati', updatedByOthers.length);
+            }, error => {
+                console.warn("Avviso listener solleciti inviati:", error?.message || error);
+            });
+        };
+
+        const checkForNewSolleciti = () => {
             if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere', 'custode', 'fornitore', 'condomino'].includes(userProfile?.tipoUtente)) return;
             sollecitisListener && sollecitisListener();
 
@@ -16521,19 +16545,18 @@ ${renderBottomNavigation()}
                 localStorage.setItem(`lastSeenSolleciti_${currentUser.uid}`, lastSeen);
             }
 
-            const lastSeenDate = new Date(lastSeen);
-
             // Query for reports marked as urgent (solleciti) that the user should be notified about
             const q = query(
                 collection(db, "reports"),
-                where("isUrgent", "==", true),
-                where("updatedAt", ">", lastSeenDate)
+                where("isUrgent", "==", true)
             );
 
             sollecitisListener = onSnapshot(q, snapshot => {
-                const userRole = userProfile.tipoUtente;
+                const userRole = userProfile?.tipoUtente;
                 const relevantDocs = snapshot.docs.filter(doc => {
                     const data = doc.data();
+                    const repUpdatedAt = data.updatedAt?.toMillis ? data.updatedAt.toMillis() : (new Date(data.updatedAt || 0).getTime() || 0);
+                    if (repUpdatedAt <= lastSeen) return false;
 
                     // Do not notify the user for their own actions (e.g., if they created the ticket)
                     if (data.createdById === currentUser.uid) {
@@ -16556,7 +16579,7 @@ ${renderBottomNavigation()}
                         return data.recipientType === 'supervisore';
                     }
                     if (userRole === 'consigliere') {
-                        if (userProfile.canAccessSupervisorFunctions === true) {
+                        if (userProfile?.canAccessSupervisorFunctions === true) {
                             return data.recipientType === 'consigliere' || data.recipientType === 'supervisore';
                         }
                         return data.recipientType === 'consigliere';
@@ -16577,6 +16600,8 @@ ${renderBottomNavigation()}
                 });
 
                 // updateNotificationUI('solleciti', relevantDocs.length);
+            }, error => {
+                console.warn("Avviso listener nuovi solleciti:", error?.message || error);
             });
         };
 
@@ -18631,7 +18656,7 @@ ${renderBottomNavigation()}
                             btnStart.style.color = 'black';
                             btnStart.style.border = 'none';
                             btnStart.style.cursor = 'pointer';
-                            btnStart.onclick = () => renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+                            btnStart.onclick = () => window.renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
                             btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> OdG in corso`;
                         }
                     } else if (assembly.presidentVoting && assembly.presidentVoting.status === 'voting') {
@@ -18639,7 +18664,7 @@ ${renderBottomNavigation()}
                         btnStart.style.color = 'black';
                         btnStart.style.border = 'none';
                         btnStart.style.cursor = 'pointer';
-                        btnStart.onclick = () => renderPresidentVotingAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+                        btnStart.onclick = () => window.renderPresidentVotingAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
                         btnStart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Votaz. Presidente`;
                     } else {
                         btnStart.style.backgroundColor = '#10B981';
@@ -18670,9 +18695,9 @@ ${renderBottomNavigation()}
                     }
                 } else if (assembly.presidentVoting && assembly.presidentVoting.status === 'voting') {
                     if (isAdmin) {
-                        renderPresidentVotingAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+                        window.renderPresidentVotingAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
                     } else if (isAttendee) {
-                        renderPresidentVotingCondominoModal(assembly, assemblyId, currentUser, activeAttendees, activeProxies);
+                        window.renderPresidentVotingCondominoModal(assembly, assemblyId, currentUser, activeAttendees, activeProxies);
                     }
                 } else if (assembly.president && assembly.president.nome) {
                     if (window.isPresidentVotingModalOpen) {
@@ -18689,9 +18714,9 @@ ${renderBottomNavigation()}
                     }
                 } else if (assembly.odgApproval && assembly.odgApproval.status === 'voting') {
                     if (isAdmin) {
-                        renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
+                        window.renderOdgApprovalAdminModal(assembly, assemblyId, activeAttendees, activeProxies);
                     } else if (isAttendee) {
-                        renderOdgApprovalCondominoModal(assembly, assemblyId, currentUser, activeAttendees, activeProxies);
+                        window.renderOdgApprovalCondominoModal(assembly, assemblyId, currentUser, activeAttendees, activeProxies);
                     }
                 } else if (assembly.odgApproval && assembly.odgApproval.status === 'rejected') {
                     if (!isAdmin && isAttendee && window.isOdgApprovalModalOpen) {
@@ -22642,7 +22667,7 @@ ${renderBottomNavigation()}
                 const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(dName) : dName;
                 const mil = (a.millesimi || 0).toFixed(2);
                 return `
-                    <div class="president-preview-item" onclick="selectPresidentAcclamationFromPreview('${escapeJsAttr(a.uid)}', '${escapeJsAttr(cleanName)}', ${a.millesimi || 0})" style="padding: 0.45rem 0.65rem; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--primary-text); text-align: left; transition: background 0.15s ease;" onmouseenter="this.style.background='var(--surface-color-light)'" onmouseleave="this.style.background='transparent'">
+                    <div class="president-preview-item" onpointerdown="event.stopPropagation(); selectPresidentAcclamationFromPreview('${escapeJsAttr(a.uid || a.id || '')}', '${escapeJsAttr(cleanName)}', ${a.millesimi || 0})" onclick="selectPresidentAcclamationFromPreview('${escapeJsAttr(a.uid || a.id || '')}', '${escapeJsAttr(cleanName)}', ${a.millesimi || 0})" style="padding: 0.45rem 0.65rem; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--primary-text); text-align: left; transition: background 0.15s ease;" onmouseenter="this.style.background='var(--surface-color-light)'" onmouseleave="this.style.background='transparent'">
                         <span style="font-weight: 700;">${escapeHtml(cleanName)}</span>
                         <span style="font-size: 0.76rem; color: var(--secondary-text); font-weight: 600;">${mil} ‰</span>
                     </div>
@@ -22692,7 +22717,7 @@ ${renderBottomNavigation()}
                 const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(dName) : dName;
                 const mil = (a.millesimi || 0).toFixed(2);
                 return `
-                    <div class="president-preview-item" onclick="selectPresidentCandidateFromPreview('${escapeJsAttr(cleanName)}')" style="padding: 0.45rem 0.65rem; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--primary-text); text-align: left; transition: background 0.15s ease;" onmouseenter="this.style.background='var(--surface-color-light)'" onmouseleave="this.style.background='transparent'">
+                    <div class="president-preview-item" onpointerdown="event.stopPropagation(); selectPresidentCandidateFromPreview('${escapeJsAttr(cleanName)}')" onclick="selectPresidentCandidateFromPreview('${escapeJsAttr(cleanName)}')" style="padding: 0.45rem 0.65rem; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--primary-text); text-align: left; transition: background 0.15s ease;" onmouseenter="this.style.background='var(--surface-color-light)'" onmouseleave="this.style.background='transparent'">
                         <span style="font-weight: 700;">${escapeHtml(cleanName)}</span>
                         <span style="font-size: 0.76rem; color: var(--secondary-text); font-weight: 600;">${mil} ‰</span>
                     </div>
@@ -22702,16 +22727,12 @@ ${renderBottomNavigation()}
         };
 
         window.selectPresidentCandidateFromPreview = (name) => {
-            const input = document.getElementById('input-president-candidate');
-            if (input) {
-                input.value = name;
-                input.focus();
-            }
             const dropdown = document.getElementById('dropdown-president-candidates-preview');
             if (dropdown) {
                 dropdown.classList.add('hidden');
                 dropdown.innerHTML = '';
             }
+            window.addPresidentCandidateToList(name);
         };
 
         if (!window._presidentPreviewClickListenerAttached) {
@@ -22735,24 +22756,23 @@ ${renderBottomNavigation()}
             });
         }
 
-        window.addPresidentCandidateToList = () => {
+        window.addPresidentCandidateToList = (candidateName) => {
             const input = document.getElementById('input-president-candidate');
             const dropdown = document.getElementById('dropdown-president-candidates-preview');
             if (dropdown) {
                 dropdown.classList.add('hidden');
                 dropdown.innerHTML = '';
             }
-            if (!input) return;
-            const candName = (input.value || '').trim();
+            const candName = (candidateName || input?.value || '').trim();
             if (!candName) {
                 return;
             }
             if (window._tempPresidentCandidates.some(c => c.toLowerCase() === candName.toLowerCase())) {
-                input.value = '';
+                if (input) input.value = '';
                 return;
             }
             window._tempPresidentCandidates.push(candName);
-            input.value = '';
+            if (input) input.value = '';
             window.renderPresidentCandidatesList();
         };
 
@@ -22874,7 +22894,7 @@ ${renderBottomNavigation()}
 
                 await logAssemblyEvent(assemblyId, 'AVVIO_VOTAZIONE_PRESIDENTE', `Avviata votazione tra i presenti per l'elezione del Presidente dell'Assemblea. Candidati: ${candidatesToSave.join(', ')}`);
                 window._tempPresidentCandidates = [];
-                hideModal();
+                // Non chiudere il modale: la modale transita direttamente nella schermata di votazione in corso
             } catch (err) {
                 console.error("Errore avvio votazione presidente:", err);
                 await customAlert("Errore durante l'avvio della votazione: " + (err?.message || err));
@@ -22893,6 +22913,8 @@ ${renderBottomNavigation()}
                 });
                 await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_VOTAZIONE_PRESIDENTE', 'Votazione per il Presidente annullata dall\'amministratore.');
                 window.isPresidentVotingModalOpen = false;
+                window._hasInitializedPresidentVoterExpansion = false;
+                if (window._expandedPresidentVoterCards) window._expandedPresidentVoterCards.clear();
                 hideModal();
                 setTimeout(() => window.startLiveAssemblySession(), 100);
             } catch (err) {
@@ -22901,18 +22923,57 @@ ${renderBottomNavigation()}
             }
         };
 
+        const isCandidateSelf = (candidateName, attendee, profile) => {
+            if (!candidateName) return false;
+            const cleanStr = (s) => (s || '').toString().trim().toLowerCase().replace(/[\s\/\-_.,()]+/g, '');
+            const cClean = cleanStr(candidateName);
+            if (!cClean) return false;
+
+            if (attendee) {
+                const aNome = cleanStr(attendee.nome);
+                const aCognome = cleanStr(attendee.cognome);
+                const aFull1 = cleanStr(`${attendee.nome || ''} ${attendee.cognome || ''}`);
+                const aFull2 = cleanStr(`${attendee.cognome || ''} ${attendee.nome || ''}`);
+                const aDisplay = window.getAttendeeDisplayName ? cleanStr(window.getAttendeeDisplayName(attendee)) : '';
+
+                if (aNome && cClean === aNome) return true;
+                if (aFull1 && cClean === aFull1) return true;
+                if (aFull2 && cClean === aFull2) return true;
+                if (aDisplay && cClean === aDisplay) return true;
+            }
+
+            if (profile) {
+                const pNome = cleanStr(profile.nome);
+                const pCognome = cleanStr(profile.cognome);
+                const pFull1 = cleanStr(`${profile.nome || ''} ${profile.cognome || ''}`);
+                const pFull2 = cleanStr(`${profile.cognome || ''} ${profile.nome || ''}`);
+                
+                if (pNome && cClean === pNome) return true;
+                if (pFull1 && cClean === pFull1) return true;
+                if (pFull2 && cClean === pFull2) return true;
+            }
+
+            return false;
+        };
+        window.isCandidateSelf = isCandidateSelf;
+
         window.renderPresidentVotingCondominoModal = (assembly, assemblyId, currentUser, activeAttendees, activeProxies) => {
             window.isPresidentVotingModalOpen = true;
+            assembly = assembly || {};
+            currentUser = currentUser || window.currentUser;
+            activeAttendees = Array.isArray(activeAttendees) ? activeAttendees : ((assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated));
+            activeProxies = Array.isArray(activeProxies) ? activeProxies : ((assembly.proxies || []).filter(p => p.status !== 'rejected'));
 
-            const attendee = activeAttendees.find(a => a.uid === currentUser.uid);
+            const attendee = activeAttendees.find(a => a.uid === currentUser?.uid);
             const userMillesimi = attendee ? (attendee.millesimi || 0) : (parseFloat(userProfile?.millesimiTotali) || 0);
-            const userHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected');
+            const userHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser?.uid && p.status !== 'rejected');
             const userHeads = 1 + userHeldProxies.length;
 
             const myVote = (assembly.presidentVoting?.votes || []).find(v => v.voterId === currentUser.uid);
-            const candidates = assembly.presidentVoting?.candidates || [];
+            const allCandidates = assembly.presidentVoting?.candidates || [];
+            const candidates = allCandidates.filter(c => !isCandidateSelf(c, attendee, userProfile));
 
-            const candidatesHtml = candidates.map(cand => {
+            const candidatesHtml = candidates.length > 0 ? candidates.map(cand => {
                 const isSelected = myVote && myVote.candidate === cand;
                 return `
                     <div style="background:${isSelected ? 'rgba(16, 185, 129, 0.12)' : 'var(--surface-color-light)'}; border:1.5px solid ${isSelected ? '#10B981' : 'rgba(255,255,255,0.08)'}; border-radius:8px; padding:0.7rem 0.85rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.4rem;">
@@ -22927,7 +22988,11 @@ ${renderBottomNavigation()}
                         </button>
                     </div>
                 `;
-            }).join('');
+            }).join('') : `
+                <div style="text-align:center; padding:1rem 0.5rem; color:var(--secondary-text); font-size:0.85rem; background:var(--surface-color-light); border-radius:8px; margin-bottom:0.4rem;">
+                    Nessun altro candidato disponibile per la votazione.
+                </div>
+            `;
 
             const statusHtml = myVote ? `
                 <div style="padding:0.5rem 0.75rem; background:rgba(16, 185, 129, 0.12); border:1px solid rgba(16, 185, 129, 0.3); border-radius:6px; font-size:0.8rem; color:#10B981; margin-top:0.6rem; text-align:center;">
@@ -22976,6 +23041,12 @@ ${renderBottomNavigation()}
                 const attendees = assembly.attendees || [];
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                 const attendee = activeAttendees.find(a => a.uid === currentUser.uid);
+
+                if (isCandidateSelf(candidateName, attendee, userProfile)) {
+                    await customAlert("Non è possibile votare per se stessi come Presidente.");
+                    return;
+                }
+
                 const userMillesimi = attendee ? (attendee.millesimi || 0) : (parseFloat(userProfile?.millesimiTotali) || 0);
                 const userProxiesCount = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status !== 'rejected').length;
                 const userHeads = 1 + userProxiesCount;
@@ -23019,19 +23090,25 @@ ${renderBottomNavigation()}
 
                 const attendees = assembly.attendees || [];
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
-                const attendee = activeAttendees.find(a => a.uid === attendeeUid);
+                const attendee = activeAttendees.find(a => (a.uid && a.uid === attendeeUid) || (a.id && a.id === attendeeUid) || (a.qrUid && a.qrUid === attendeeUid) || (a.nome && a.nome === attendeeUid));
                 if (!attendee) {
                     await customAlert("Partecipante non trovato tra i presenti.");
                     return;
                 }
 
+                if (isCandidateSelf(candidateName, attendee)) {
+                    await customAlert("Un candidato non può votare per se stesso.");
+                    return;
+                }
+
                 const userMillesimi = attendee.millesimi || 0;
-                const userProxiesCount = (assembly.proxies || []).filter(p => p.delegateId === attendeeUid && p.status !== 'rejected').length;
+                const userProxiesCount = (assembly.proxies || []).filter(p => (p.delegateId === attendeeUid || (attendee.uid && p.delegateId === attendee.uid) || (attendee.id && p.delegateId === attendee.id)) && p.status !== 'rejected').length;
                 const userHeads = 1 + userProxiesCount;
                 const voterName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(attendee) : (`${attendee.nome || ''} ${attendee.cognome || ''}`.trim() || 'Condòmino');
 
+                const targetUid = attendee.uid || attendee.id || attendeeUid;
                 const newVote = {
-                    voterId: attendeeUid,
+                    voterId: targetUid,
                     voterName: voterName,
                     candidate: candidateName,
                     millesimi: userMillesimi,
@@ -23041,7 +23118,7 @@ ${renderBottomNavigation()}
                     timestamp: Date.now()
                 };
 
-                const existingVotes = (assembly.presidentVoting.votes || []).filter(v => v.voterId !== attendeeUid);
+                const existingVotes = (assembly.presidentVoting.votes || []).filter(v => v.voterId !== targetUid && v.voterId !== attendeeUid && v.voterId !== attendee.uid && v.voterId !== attendee.id);
                 existingVotes.push(newVote);
 
                 await updateDoc(assemblyRef, {
@@ -23055,8 +23132,72 @@ ${renderBottomNavigation()}
             }
         };
 
+        window._expandedPresidentVoterCards = window._expandedPresidentVoterCards || new Set();
+        window._hasInitializedPresidentVoterExpansion = window._hasInitializedPresidentVoterExpansion || false;
+        window._presidentFullscreenView = null;
+        window._lastPresidentVotingArgs = null;
+
+        window.openPresidentFullscreenView = (view) => {
+            window._presidentFullscreenView = view;
+            if (window._lastPresidentVotingArgs) {
+                window.renderPresidentVotingAdminModal(...window._lastPresidentVotingArgs);
+            }
+        };
+
+        window.closePresidentFullscreenView = () => {
+            window._presidentFullscreenView = null;
+            if (window._lastPresidentVotingArgs) {
+                window.renderPresidentVotingAdminModal(...window._lastPresidentVotingArgs);
+            }
+        };
+
+        window.filterPresidentNonVoters = (queryText) => {
+            const q = (queryText || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.president-nonvoter-card');
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const text = (card.getAttribute('data-search-text') || '').toLowerCase();
+                const match = !q || text.includes(q);
+                card.style.display = match ? 'flex' : 'none';
+                if (match) visibleCount++;
+            });
+            const noResults = document.getElementById('president-nonvoters-no-results');
+            if (noResults) {
+                noResults.classList.toggle('hidden', visibleCount > 0);
+                noResults.style.display = visibleCount > 0 ? 'none' : 'block';
+            }
+            const clearBtn = document.getElementById('btn-clear-search-president-nonvoters');
+            if (clearBtn) {
+                clearBtn.style.display = q ? 'block' : 'none';
+            }
+        };
+
+        window.togglePresidentCandidateVoters = (candidateName) => {
+            if (window._expandedPresidentVoterCards.has(candidateName)) {
+                window._expandedPresidentVoterCards.delete(candidateName);
+            } else {
+                window._expandedPresidentVoterCards.add(candidateName);
+            }
+            const isExp = window._expandedPresidentVoterCards.has(candidateName);
+            const safeId = 'cand_voters_' + encodeURIComponent(candidateName).replace(/[^a-zA-Z0-9]/g, '_');
+            const section = document.getElementById(`president-voters-${safeId}`);
+            const toggleBtn = document.getElementById(`president-voters-btn-${safeId}`);
+            if (section) {
+                section.style.display = isExp ? 'flex' : 'none';
+            }
+            if (toggleBtn) {
+                toggleBtn.textContent = isExp ? 'Chiudi ▲' : 'Dettagli ▼';
+            }
+        };
+
         window.renderPresidentVotingAdminModal = (assembly, assemblyId, activeAttendees, activeProxies) => {
             window.isPresidentVotingModalOpen = true;
+            window._expandedPresidentVoterCards = window._expandedPresidentVoterCards || new Set();
+            window._lastPresidentVotingArgs = [assembly, assemblyId, activeAttendees, activeProxies];
+
+            assembly = assembly || {};
+            activeAttendees = Array.isArray(activeAttendees) ? activeAttendees : ((assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated));
+            activeProxies = Array.isArray(activeProxies) ? activeProxies : ((assembly.proxies || []).filter(p => p.status !== 'rejected'));
 
             const candidates = assembly.presidentVoting?.candidates || [];
             const votes = assembly.presidentVoting?.votes || [];
@@ -23065,6 +23206,18 @@ ${renderBottomNavigation()}
             activeAttendees.forEach(a => totalRoomMil += (a.millesimi || 0));
             if (totalRoomMil <= 0) totalRoomMil = 1000.00;
 
+            if (!window._hasInitializedPresidentVoterExpansion) {
+                candidates.forEach(c => {
+                    const cVotes = votes.filter(v => v.candidate === c);
+                    if (cVotes.length > 0) {
+                        window._expandedPresidentVoterCards.add(c);
+                    }
+                });
+                if (votes.length > 0) {
+                    window._hasInitializedPresidentVoterExpansion = true;
+                }
+            }
+
             const candidateScores = candidates.map(c => {
                 const cVotes = votes.filter(v => v.candidate === c);
                 let mil = 0, heads = 0;
@@ -23072,105 +23225,327 @@ ${renderBottomNavigation()}
                     mil += (v.millesimi || 0);
                     heads += (v.heads || 1);
                 });
-                return { name: c, millesimi: mil, heads: heads, count: cVotes.length };
+                return {
+                    name: c,
+                    millesimi: mil,
+                    heads: heads,
+                    count: cVotes.length,
+                    votes: cVotes
+                };
             }).sort((a, b) => b.millesimi !== a.millesimi ? (b.millesimi - a.millesimi) : (b.heads - a.heads));
 
-            let totalVotedMil = 0, totalVotedHeads = 0;
-            votes.forEach(v => {
-                totalVotedMil += (v.millesimi || 0);
-                totalVotedHeads += (v.heads || 1);
-            });
-
-            const maxMil = candidateScores.length > 0 ? candidateScores[0].millesimi : 0;
+            const totalVotedMil = candidateScores.reduce((acc, c) => acc + c.millesimi, 0);
 
             const tallyCardsHtml = candidateScores.map((c, idx) => {
                 const percent = totalRoomMil > 0 ? ((c.millesimi / totalRoomMil) * 100).toFixed(1) : '0.0';
-                const isLeading = maxMil > 0 && c.millesimi === maxMil;
-                return `
-                    <div style="background:var(--surface-color-light); border:1.5px solid ${isLeading ? '#10B981' : 'rgba(255,255,255,0.06)'}; border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:0.4rem;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
-                            <div style="display:flex; align-items:center; gap:0.4rem;">
-                                <span style="font-weight:800; font-size:0.85rem; color:var(--primary-text);">${idx + 1}. ${escapeHtml(c.name)}</span>
-                                ${isLeading ? '<span class="badge" style="background:rgba(16,185,129,0.2); color:#10B981; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:4px; font-weight:800;">In Vantaggio</span>' : ''}
+                const isLeader = idx === 0 && c.millesimi > 0;
+                const isExpanded = window._expandedPresidentVoterCards.has(c.name);
+                const safeId = 'cand_voters_' + encodeURIComponent(c.name).replace(/[^a-zA-Z0-9]/g, '_');
+                const cVotes = c.votes || [];
+
+                let votersListHtml = '';
+                if (cVotes.length > 0) {
+                    const voterItems = cVotes.map(v => {
+                        const isManual = v.recordedByAdmin === true;
+                        const attendeeData = activeAttendees.find(a => (a.uid && a.uid === v.voterId) || (a.id && a.id === v.voterId) || (a.nome && a.nome === v.voterName));
+                        const attendeeProxies = (activeProxies || []).filter(p => (p.delegateId === v.voterId || (attendeeData?.uid && p.delegateId === attendeeData.uid) || (attendeeData?.id && p.delegateId === attendeeData.id)));
+                        
+                        let proxiesBadge = '';
+                        if (attendeeProxies.length > 0) {
+                            const delegatorDetails = attendeeProxies.map(p => {
+                                const dName = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
+                                return `${escapeHtml(dName)} (${(p.millesimi || 0).toFixed(2)} ‰)`;
+                            }).join(', ');
+                            proxiesBadge = `
+                                <div style="font-size:0.68rem; color:var(--accent-color); margin-top:0.15rem; display:flex; align-items:center; gap:0.25rem;">
+                                    ${THEME_ICONS.scroll(10)} +${attendeeProxies.length} deleghe: <span style="color:var(--secondary-text);">${delegatorDetails}</span>
+                                </div>
+                            `;
+                        }
+
+                        return `
+                            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:0.35rem 0.5rem; margin-bottom:0.25rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; min-width:0;">
+                                        <strong style="font-size:0.8rem; color:var(--primary-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            ${escapeHtml(v.voterName)}
+                                        </strong>
+                                        ${isManual ? '<span style="font-size:0.62rem; background:rgba(245,158,11,0.2); color:var(--warning); padding:0.1rem 0.35rem; border-radius:4px; font-weight:700;">Manuale</span>' : ''}
+                                    </div>
+                                    <div style="text-align:right; flex-shrink:0;">
+                                        <span style="font-size:0.78rem; font-weight:800; color:var(--warning);">${(v.millesimi || 0).toFixed(2)} ‰</span>
+                                        <span style="font-size:0.65rem; color:var(--secondary-text); display:block;">${v.heads || 1} ${(v.heads || 1) === 1 ? 'testa' : 'teste'}</span>
+                                    </div>
+                                </div>
+                                ${proxiesBadge}
                             </div>
-                            <strong style="font-size:0.85rem; color:${isLeading ? '#10B981' : 'var(--accent-color)'};">${c.millesimi.toFixed(2)} ‰</strong>
+                        `;
+                    }).join('');
+
+                    votersListHtml = `
+                        <div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:0.3rem; margin-top:0.3rem;">
+                            <div onclick="window.togglePresidentCandidateVoters('${escapeJsAttr(c.name)}')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; padding:0.15rem 0.1rem; margin-bottom:0.25rem;">
+                                <span style="font-size:0.74rem; font-weight:700; color:var(--secondary-text); display:inline-flex; align-items:center; gap:0.25rem;">
+                                    ${THEME_ICONS.userCheck(12)} Votanti (${cVotes.length})
+                                </span>
+                                <span id="president-voters-btn-${safeId}" data-count="${cVotes.length}" style="font-size:0.72rem; color:var(--accent-color); font-weight:700;">
+                                    ${isExpanded ? 'Chiudi ▲' : 'Dettagli ▼'}
+                                </span>
+                            </div>
+                            <div id="president-voters-${safeId}" style="display:${isExpanded ? 'flex' : 'none'}; flex-direction:column; gap:0.25rem; max-height:160px; overflow-y:auto; padding-right:0.1rem;">
+                                ${voterItems}
+                            </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.74rem; color:var(--secondary-text); margin-bottom:0.3rem;">
-                            <span>${c.heads} ${c.heads === 1 ? 'testa' : 'teste'} (${c.count} voti)</span>
-                            <span>${percent}% dei presenti</span>
+                    `;
+                }
+
+                return `
+                    <div style="background:var(--surface-color); border:1.5px solid ${isLeader ? '#10B981' : 'var(--surface-color-light)'}; border-radius:8px; padding:0.6rem 0.75rem; margin-bottom:0.35rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.3rem; gap:0.4rem;">
+                            <div style="min-width:0; flex:1;">
+                                <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                    <strong style="font-size:0.9rem; color:var(--primary-text);">${idx + 1}. ${escapeHtml(c.name)}</strong>
+                                    ${isLeader ? `<span class="badge" style="background:#10B981; color:white; font-size:0.65rem; font-weight:800; padding:0.12rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.userCheck(10)} In Vantaggio</span>` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align:right; flex-shrink:0;">
+                                <span style="font-size:0.92rem; font-weight:800; color:#10B981;">${c.millesimi.toFixed(2)} ‰</span>
+                            </div>
                         </div>
-                        <div style="width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
-                            <div style="width:${Math.min(100, Math.max(0, parseFloat(percent)))}%; height:100%; background:${isLeading ? '#10B981' : 'var(--accent-color)'}; border-radius:3px;"></div>
+
+                        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:var(--secondary-text); margin-bottom:0.25rem;">
+                            <span><strong>${c.heads}</strong> ${c.heads === 1 ? 'testa' : 'teste'} (${c.count} ${c.count === 1 ? 'voto' : 'voti'})</span>
+                            <span><strong>${percent}%</strong> dei presenti</span>
                         </div>
+
+                        <div style="background:rgba(255,255,255,0.08); border-radius:10px; height:5px; overflow:hidden;">
+                            <div style="background:#10B981; height:100%; width:${Math.min(100, Math.max(0, parseFloat(percent)))}%; transition:width 0.3s ease;"></div>
+                        </div>
+
+                        ${votersListHtml}
                     </div>
                 `;
             }).join('');
 
             // Votanti in attesa (manuali o non votati)
             const votedUids = new Set(votes.map(v => v.voterId));
-            const pendingAttendees = activeAttendees.filter(a => !votedUids.has(a.uid));
+            const pendingAttendees = activeAttendees.filter(a => {
+                const uidVal = a.uid || a.id;
+                return !votedUids.has(uidVal) && !votedUids.has(a.uid) && !votedUids.has(a.id) && !votedUids.has(a.nome);
+            });
+
+            const isManualAttendee = (a) => a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || a.registeredVia === 'manual' || (!a.scannedAt && !!a.joinedAt);
+
+            let pendingMil = 0;
+            pendingAttendees.forEach(a => pendingMil += (a.millesimi || 0));
 
             let manualSectionHtml = '';
+            let fullscreenPendingRows = '';
+
             if (pendingAttendees.length > 0) {
                 const pendingRows = pendingAttendees.map(a => {
+                    const aIdentifier = a.uid || a.id || a.qrUid || a.nome || '';
                     const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
-                    const optionsCand = candidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                    const allowedCandidates = candidates.filter(c => !isCandidateSelf(c, a));
+                    const optionsCand = allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                    const isManual = isManualAttendee(a);
+                    const regBadge = isManual
+                        ? `<span class="badge" style="background:#10B981; color:white; font-size:0.65rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.circleGreen ? THEME_ICONS.circleGreen(9) : '●'} Manuale</span>`
+                        : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.smartphone ? THEME_ICONS.smartphone(10) : '📱'} App/QR</span>`;
+                    const unitText = a.unitaImmobiliare ? ` • Int. ${escapeHtml(a.unitaImmobiliare)}` : '';
+                    const attendeeProxies = (activeProxies || []).filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id || (a.uid && p.delegateId === a.uid)));
+
                     return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid var(--surface-color-light); border-radius:6px; padding:0.35rem 0.55rem; gap:0.4rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid var(--surface-color-light); border-radius:7px; padding:0.4rem 0.55rem; gap:0.4rem;">
                             <div style="min-width:0; flex:1;">
-                                <strong style="font-size:0.8rem; color:var(--primary-text); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dName)}</strong>
-                                <span style="font-size:0.7rem; color:var(--secondary-text);">${(a.millesimi || 0).toFixed(2)} ‰</span>
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-bottom:0.15rem;">
+                                    <strong style="font-size:0.82rem; color:var(--primary-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">${escapeHtml(dName)}</strong>
+                                    ${regBadge}
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.3rem; font-size:0.7rem; color:var(--secondary-text);">
+                                    <span>${(a.millesimi || 0).toFixed(2)} ‰${unitText}</span>
+                                    ${attendeeProxies.length > 0 ? `<span style="color:var(--accent-color); font-weight:700;">• +${attendeeProxies.length} deleghe</span>` : ''}
+                                </div>
                             </div>
-                            <select class="form-select" style="font-size:0.75rem; padding:0.25rem 0.4rem; max-width:140px;" onchange="submitPresidentVoteForAttendee('${assemblyId}', '${a.uid}', this.value); this.value='';">
-                                <option value="" disabled selected>Vota per conto...</option>
+                            <select class="form-select" style="font-size:0.75rem; padding:0.25rem 0.4rem; max-width:110px; flex-shrink:0;" onchange="window.submitPresidentVoteForAttendee('${assemblyId}', '${escapeJsAttr(aIdentifier)}', this.value); this.value='';">
+                                <option value="" disabled selected>Vota...</option>
                                 ${optionsCand}
                             </select>
                         </div>
                     `;
                 }).join('');
 
-                manualSectionHtml = `
-                    <div style="margin-top:0.75rem; border-top:1px dashed var(--surface-color-light); padding-top:0.6rem;">
-                        <div style="font-size:0.78rem; font-weight:800; color:var(--warning); text-transform:uppercase; margin-bottom:0.35rem;">
-                            ${THEME_ICONS.hourglass(12, 2)} In attesa di voto (${pendingAttendees.length}):
+                fullscreenPendingRows = pendingAttendees.map(a => {
+                    const aIdentifier = a.uid || a.id || a.qrUid || a.nome || '';
+                    const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
+                    const allowedCandidates = candidates.filter(c => !isCandidateSelf(c, a));
+                    const optionsCand = allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                    const isManual = isManualAttendee(a);
+                    const regBadge = isManual
+                        ? `<span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.12rem 0.4rem; border-radius:5px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGreen ? THEME_ICONS.circleGreen(10) : '●'} Manuale</span>`
+                        : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.68rem; padding:0.12rem 0.4rem; border-radius:5px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.smartphone ? THEME_ICONS.smartphone(11) : '📱'} App/QR</span>`;
+                    const unitText = a.unitaImmobiliare ? ` • Int. ${escapeHtml(a.unitaImmobiliare)}` : '';
+                    const attendeeProxies = (activeProxies || []).filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id || (a.uid && p.delegateId === a.uid)));
+                    const proxySearchText = attendeeProxies.map(p => p.delegatorName || '').join(' ');
+                    const searchText = `${dName} ${proxySearchText} ${a.unitaImmobiliare || ''} ${(a.millesimi || 0).toFixed(2)} ${isManual ? 'manuale' : 'app'}`.toLowerCase();
+
+                    let proxiesBadgeHtml = '';
+                    if (attendeeProxies.length > 0) {
+                        const delegators = attendeeProxies.map(p => {
+                            const dp = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
+                            return `${escapeHtml(dp)} (${(p.millesimi || 0).toFixed(2)} ‰)`;
+                        }).join(', ');
+                        proxiesBadgeHtml = `
+                            <div style="font-size:0.71rem; color:var(--accent-color); margin-top:0.2rem; display:flex; align-items:center; gap:0.25rem; flex-wrap:wrap;">
+                                ${THEME_ICONS.scroll(11)} <strong>+${attendeeProxies.length} deleghe:</strong> <span style="color:var(--secondary-text);">${delegators}</span>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="president-nonvoter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-color); border:1px solid var(--surface-color-light); border-radius:8px; padding:0.5rem 0.65rem; gap:0.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                            <div style="flex:1; min-width:0;">
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-bottom:0.2rem;">
+                                    <span style="color:#F59E0B; display:inline-flex; align-items:center; flex-shrink:0;">${THEME_ICONS.user(14)}</span>
+                                    <strong style="font-size:0.88rem; color:var(--primary-text); word-break:break-word;">${escapeHtml(dName)}</strong>
+                                    ${regBadge}
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; color:var(--secondary-text); font-weight:600;">
+                                    <strong style="color:#10B981;">${(a.millesimi || 0).toFixed(2)} ‰</strong>
+                                    ${unitText ? `<span>${unitText}</span>` : ''}
+                                </div>
+                                ${proxiesBadgeHtml}
+                            </div>
+                            <div style="flex-shrink:0;">
+                                <select class="form-select" style="font-size:0.78rem; padding:0.3rem 0.5rem; max-width:125px; border-radius:6px;" onchange="window.submitPresidentVoteForAttendee('${assemblyId}', '${escapeJsAttr(aIdentifier)}', this.value); this.value='';">
+                                    <option value="" disabled selected>Vota...</option>
+                                    ${optionsCand}
+                                </select>
+                            </div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:0.3rem; max-height:120px; overflow-y:auto;">
+                    `;
+                }).join('');
+
+                manualSectionHtml = `
+                    <div style="margin-top:0.5rem; border-top:1px dashed var(--surface-color-light); padding-top:0.45rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem; gap:0.4rem;">
+                            <div style="font-size:0.76rem; font-weight:800; color:var(--warning); text-transform:uppercase; display:inline-flex; align-items:center; gap:0.25rem; min-width:0;">
+                                ${THEME_ICONS.hourglass(12, 2)} Senza voto (${pendingAttendees.length}) • ${pendingMil.toFixed(2)} ‰
+                            </div>
+                            <button type="button" onclick="window.openPresidentFullscreenView('pending')" class="btn" style="padding:0.18rem 0.45rem; font-size:0.72rem; font-weight:800; color:#F59E0B; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.2rem; flex-shrink:0;" title="Espandi a tutto schermo">
+                                Espandi ↗
+                            </button>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.25rem;">
                             ${pendingRows}
                         </div>
                     </div>
                 `;
             }
 
-            const modalContent = `
-                <div style="text-align:left !important; padding:0.15rem 0;">
-                    <div style="text-align:center; margin-bottom:0.75rem;">
-                        <span class="badge" style="background:#1DB954; color:black; font-weight:800; font-size:0.72rem; padding:0.2rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.3rem;">
-                            ${THEME_ICONS.circleGreen(10)} VOTAZIONE IN CORSO
-                        </span>
-                        <h3 style="margin:0.35rem 0 0.15rem 0; font-size:1.1rem; font-weight:800; color:var(--primary-text);">Elezione Presidente</h3>
-                        <p style="font-size:0.8rem; color:var(--secondary-text); margin:0;">
-                            Voti registrati: <strong>${votes.length}</strong> su <strong>${activeAttendees.length}</strong> condòmini (${totalVotedMil.toFixed(2)} su ${totalRoomMil.toFixed(2)} ‰)
-                        </p>
-                    </div>
+            let modalContent = '';
+            let currentModalTitle = 'Votazione Presidente in corso';
 
-                    <div style="display:flex; flex-direction:column; gap:0.25rem;">
-                        ${tallyCardsHtml}
-                    </div>
+            if (window._presidentFullscreenView === 'pending') {
+                currentModalTitle = `Senza Voto (${pendingAttendees.length})`;
+                modalContent = `
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.4rem;">
+                        <!-- HEADER CON PULSANTE TORNA AL RIEPILOGO -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0 0.45rem 0; border-bottom:1px solid var(--surface-color-light); flex-shrink:0;">
+                            <button type="button" onclick="window.closePresidentFullscreenView()" class="btn" style="padding:0.35rem 0.65rem; font-size:0.8rem; font-weight:700; background:rgba(255,255,255,0.08); color:var(--primary-text); border:1px solid var(--surface-color-light); border-radius:7px; display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                ← Riepilogo
+                            </button>
+                            <span style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; padding:0.18rem 0.55rem; border-radius:6px; font-size:0.76rem; font-weight:800; display:inline-flex; align-items:center; gap:0.3rem;">
+                                ${THEME_ICONS.hourglass(12, 2.2)} Senza voto (${pendingAttendees.length}) • ${pendingMil.toFixed(2)} ‰
+                            </span>
+                        </div>
 
-                    ${manualSectionHtml}
+                        <!-- BARRA DI RICERCA RAPIDA -->
+                        <div style="position:relative; margin:0.15rem 0; flex-shrink:0;">
+                            <div style="position:absolute; left:0.65rem; top:50%; transform:translateY(-50%); color:var(--secondary-text); pointer-events:none; display:flex; align-items:center;">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
+                            <input type="text" id="input-search-president-nonvoters" placeholder="Cerca tra i non votanti o deleghe..." oninput="window.filterPresidentNonVoters(this.value)" class="form-input" style="width:100%; box-sizing:border-box; padding:0.4rem 2rem 0.4rem 2.1rem; font-size:0.82rem; border-radius:7px;" autocomplete="off">
+                            <button type="button" id="btn-clear-search-president-nonvoters" onclick="document.getElementById('input-search-president-nonvoters').value = ''; window.filterPresidentNonVoters(''); this.style.display = 'none';" style="display:none; position:absolute; right:0.6rem; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--secondary-text); cursor:pointer; padding:0.2rem; font-size:0.9rem; line-height:1;" title="Cancella ricerca">✕</button>
+                        </div>
 
-                    <div style="display:flex; flex-direction:column; gap:0.45rem; margin-top:1rem; padding-top:0.6rem; border-top:1px solid var(--surface-color-light);">
-                        <button type="button" onclick="closePresidentVotingAndElect('${assemblyId}')" class="btn" style="width:100%; height:44px; font-weight:800; font-size:0.88rem; background:#10B981; color:white; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer; box-shadow:0 3px 10px rgba(16, 185, 129, 0.35);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span>Chiudi Votazione ed Elegge</span>
-                        </button>
-                        <button type="button" onclick="cancelPresidentVoting('${assemblyId}')" class="btn btn-secondary" style="width:100%; font-size:0.8rem; padding:0.4rem; color:var(--danger);">
-                            Annulla Votazione
-                        </button>
+                        <!-- LISTA DETTAGLIATA SCROLLABILE A TUTTO SCHERMO -->
+                        <div id="president-fullscreen-nonvoters-list" style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem; -webkit-overflow-scrolling:touch;">
+                            ${fullscreenPendingRows}
+                        </div>
+                        <p id="president-nonvoters-no-results" class="hidden" style="color:var(--secondary-text); font-size:0.85rem; text-align:center; padding:1.2rem 0; margin:0;">Nessun condòmino non votante trovato con i criteri di ricerca.</p>
+
+                        <!-- BARRA BOTTOM FISSA -->
+                        <div style="padding-top:0.45rem; padding-bottom:max(0.2rem, env(safe-area-inset-bottom)); border-top:1px solid var(--surface-color-light); width:100%; flex-shrink:0; margin-top:auto;">
+                            <button type="button" onclick="window.closePresidentFullscreenView()" class="btn btn-primary" style="width:100%; padding:0.65rem; font-weight:800; font-size:0.88rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                <span>✓ Chiudi</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `;
-            showModal('Votazione Presidente in corso', modalContent, true);
+                `;
+            } else {
+                // Controllo maggioranza per abilitare il pulsante di elezione
+                const totalRoomPresences = activeAttendees.length + activeProxies.length;
+                const topCandidate = candidateScores.length > 0 ? candidateScores[0] : null;
+                const isAbsoluteMajority = topCandidate && (
+                    (totalRoomMil > 0 && topCandidate.millesimi > (totalRoomMil / 2)) ||
+                    (totalRoomPresences > 0 && topCandidate.heads > (totalRoomPresences / 2))
+                );
+                const hasCompletedAllVotes = pendingAttendees.length === 0 && votes.length > 0;
+                const hasMajority = topCandidate && topCandidate.millesimi > 0 && (isAbsoluteMajority || hasCompletedAllVotes);
+
+                let actionButtonsHtml = '';
+                if (hasMajority) {
+                    actionButtonsHtml = `
+                        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                            <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-align:center; display:flex; align-items:center; justify-content:center; gap:0.25rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ${THEME_ICONS.userCheck(12)} Maggioranza per ${escapeHtml(topCandidate.name)}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <button type="button" onclick="cancelPresidentVoting('${assemblyId}')" class="btn btn-secondary" style="flex:1; height:40px; font-size:0.85rem; font-weight:700; color:var(--danger); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                    <span>Annulla</span>
+                                </button>
+                                <button type="button" onclick="closePresidentVotingAndElect('${assemblyId}')" class="btn" style="flex:1.2; height:40px; font-weight:800; font-size:0.9rem; background:#10B981; color:white; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; cursor:pointer; box-shadow:0 3px 10px rgba(16, 185, 129, 0.35);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <span>Eleggi</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    actionButtonsHtml = `
+                        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                            <div style="font-size:0.74rem; font-weight:600; color:var(--secondary-text); text-align:center; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                                ${THEME_ICONS.hourglass(12)} In attesa della maggioranza
+                            </div>
+                            <button type="button" onclick="cancelPresidentVoting('${assemblyId}')" class="btn btn-secondary" style="width:100%; height:40px; font-size:0.85rem; font-weight:700; color:var(--danger); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                <span>Annulla</span>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                modalContent = `
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.35rem;">
+                        <!-- SEZIONE SCROLLABILE CENTRALE -->
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
+                            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                ${tallyCardsHtml}
+                            </div>
+
+                            ${manualSectionHtml}
+                        </div>
+
+                        <!-- BARRA FISSA IN BASSO CON I PULSANTI CONFERMA / ANNULLA SEMPRE VISIBILI -->
+                        <div style="padding-top: 0.45rem; padding-bottom: max(0.15rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; margin-top: auto;">
+                            ${actionButtonsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            showModal(currentModalTitle, modalContent, true);
         };
 
         window.closePresidentVotingAndElect = async (assemblyId) => {
@@ -23224,6 +23599,8 @@ ${renderBottomNavigation()}
                 await logAssemblyEvent(assemblyId, 'ELEZIONE_PRESIDENTE', `Eletto Presidente dell'Assemblea a seguito di votazione: ${winner.name} con ${(winner.millesimi || 0).toFixed(2)} ‰ e ${winner.heads || 0} teste.`);
 
                 window.isPresidentVotingModalOpen = false;
+                window._hasInitializedPresidentVoterExpansion = false;
+                if (window._expandedPresidentVoterCards) window._expandedPresidentVoterCards.clear();
                 hideModal();
                 await customAlert(`${winner.name} è stato eletto Presidente dell'Assemblea!`);
 
