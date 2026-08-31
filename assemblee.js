@@ -399,7 +399,7 @@ window.AssembleeModule = {
     getProxyLimitConfig: function (assembly, totalCondoCount = 20) {
         const config = assembly?.proxyLimitConfig;
         if (!config || !config.type) {
-            const heads = Math.ceil(totalCondoCount / 5);
+            const heads = Math.floor(totalCondoCount / 5);
             return {
                 type: 'legge_oltre_20',
                 maxHeads: heads > 0 ? heads : 1,
@@ -408,7 +408,7 @@ window.AssembleeModule = {
         }
         if (config.type === 'legge_oltre_20') {
             const heads = totalCondoCount
-                ? Math.ceil(totalCondoCount / 5)
+                ? Math.floor(totalCondoCount / 5)
                 : (config.maxHeads !== undefined && config.maxHeads !== null ? config.maxHeads : 1);
             return {
                 type: 'legge_oltre_20',
@@ -432,7 +432,7 @@ window.AssembleeModule = {
         }
         return {
             type: 'legge_oltre_20',
-            maxHeads: Math.ceil(totalCondoCount / 5) || 1,
+            maxHeads: Math.floor(totalCondoCount / 5) || 1,
             maxMillesimi: 200.00
         };
     },
@@ -458,7 +458,7 @@ window.AssembleeModule = {
             return `Regolamento${limits}`;
         }
         // Fallback e default: legge_oltre_20 (Art. 67 disp. att. c.c.)
-        const heads = config.maxHeads !== null && config.maxHeads !== undefined ? config.maxHeads : (totalCondoCount ? Math.ceil(totalCondoCount / 5) : 0);
+        const heads = config.maxHeads !== null && config.maxHeads !== undefined ? config.maxHeads : (totalCondoCount ? Math.floor(totalCondoCount / 5) : 0);
         const headsPart = heads > 0 ? ` - Max ${heads} ${heads === 1 ? 'testa' : 'teste'} / 200.00 ‰` : ' - Max 200.00 ‰';
         return `Legge (Max 1/5 teste e 1/5 millesimi - Art. 67 disp. att. c.c.${headsPart})`;
     },
@@ -471,12 +471,6 @@ window.AssembleeModule = {
 
         // Conteggio delle deleghe: deleghe già attive/accettate + nuove deleghe da assegnare (esclusa la presenza personale del delegato)
         const totalProxies = (existingHeldProxies ? existingHeldProxies.length : 0) + (newDelegators ? newDelegators.length : 0);
-
-        // Millesimi delegato
-        let delegateMillesimi = parseFloat(delegate?.millesimiTotali) || 0;
-        if (delegateMillesimi <= 0 && Array.isArray(delegate?.proprieta)) {
-            delegateMillesimi = delegate.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
-        }
 
         // Millesimi deleghe già detenute
         let heldProxiesMillesimi = 0;
@@ -494,14 +488,14 @@ window.AssembleeModule = {
             newDelegatorsMillesimi += dMil;
         });
 
-        // Totale millesimi: millesimi del delegato + millesimi di tutte le deleghe
-        const totalMillesimi = delegateMillesimi + heldProxiesMillesimi + newDelegatorsMillesimi;
+        // Totale millesimi rappresentati per delega (il limite si applica al valore rappresentato, non alla proprietà personale del delegato)
+        const totalDelegatedMillesimi = heldProxiesMillesimi + newDelegatorsMillesimi;
 
         const maxHeads = config.maxHeads;
         const maxMillesimi = config.maxMillesimi;
 
         const headsExceeded = maxHeads !== null && maxHeads !== undefined && totalProxies > maxHeads;
-        const millesimiExceeded = maxMillesimi !== null && maxMillesimi !== undefined && totalMillesimi > (maxMillesimi + 0.001);
+        const millesimiExceeded = maxMillesimi !== null && maxMillesimi !== undefined && totalDelegatedMillesimi > (maxMillesimi + 0.001);
 
         if (headsExceeded || millesimiExceeded) {
             const headsLimitStr = maxHeads !== null ? `${maxHeads} ${maxHeads === 1 ? 'delega' : 'deleghe'}` : 'Nessun limite';
@@ -511,10 +505,11 @@ window.AssembleeModule = {
                 valid: false,
                 totalProxies,
                 totalHeads: totalProxies,
-                totalMillesimi,
+                totalMillesimi: totalDelegatedMillesimi,
+                totalDelegatedMillesimi,
                 maxHeads,
                 maxMillesimi,
-                errorMessage: `Impossibile assegnare la delega: per questo delegato verrebbe superato il limite massimo consentito (Limite: ${headsLimitStr} / ${millesimiLimitStr}. Carico con questa operazione: ${proxiesStr} / ${totalMillesimi.toFixed(2)} ‰).`
+                errorMessage: `Impossibile assegnare la delega: per questo delegato verrebbe superato il limite massimo consentito di deleghe rappresentate (Limite: ${headsLimitStr} / ${millesimiLimitStr}. Deleghe rappresentate con questa operazione: ${proxiesStr} / ${totalDelegatedMillesimi.toFixed(2)} ‰).`
             };
         }
 
@@ -522,7 +517,8 @@ window.AssembleeModule = {
             valid: true,
             totalProxies,
             totalHeads: totalProxies,
-            totalMillesimi,
+            totalMillesimi: totalDelegatedMillesimi,
+            totalDelegatedMillesimi,
             maxHeads,
             maxMillesimi
         };
