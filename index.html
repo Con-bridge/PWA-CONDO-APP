@@ -3821,7 +3821,7 @@
             const q = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"));
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun periodo amministrativo creato.</p>';
+                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun periodo amministrativo creato.</p></div>';
                     return;
                 }
                 listContainer.innerHTML = snapshot.docs.map(docSnap => {
@@ -5993,7 +5993,7 @@ ${renderBottomNavigation()}
                 if (mode === 'anagrafica') {
                     html = `<h2 class="section-title">Riepilogo Anagrafica Utenti Registrati</h2>`;
                     if (usersSnapshot.empty) {
-                        html += `<div class="card"><p>Nessun utente registrato.</p></div>`;
+                        html += `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente registrato.</p></div>`;
                     } else {
                         html += `<div class="card" style="padding:0;"><div class="data-table-container"><table class="data-table">
                                     <thead><tr><th>Cognome e Nome</th><th>Email</th><th>Proprietà</th><th style="text-align:right;">Millesimi Tot.</th></tr></thead>
@@ -6155,7 +6155,7 @@ ${renderBottomNavigation()}
                     });
 
                     if (filteredData.length === 0) {
-                        container.innerHTML = '<p style="color:var(--secondary-text);">Nessun risultato trovato per i filtri applicati.</p>';
+                        container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun risultato trovato per i filtri applicati.</p></div>';
                         return;
                     }
 
@@ -7188,7 +7188,7 @@ ${renderBottomNavigation()}
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty && !loadMore) {
-                    container.innerHTML = '<p style="color:var(--secondary-text);">Nessuna attività trovata con i filtri applicati.</p>';
+                    container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna attività trovata con i filtri applicati.</p></div>';
                     loadMoreBtn.classList.add('hidden');
                     return;
                 }
@@ -7211,7 +7211,7 @@ ${renderBottomNavigation()}
                 if (loadMore) {
                     container.innerHTML += newHtml;
                 } else {
-                    container.innerHTML = newHtml.length > 0 ? newHtml : '<p style="color:var(--secondary-text);">Nessuna attività corrisponde ai filtri.</p>';
+                    container.innerHTML = newHtml.length > 0 ? newHtml : '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna attività corrisponde ai filtri.</p></div>';
                 }
 
                 lastVisibleDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
@@ -7296,7 +7296,7 @@ ${renderBottomNavigation()}
                 };
 
                 if (usersSnapshot.empty) {
-                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun utente a cui assegnare i permessi.</p>';
+                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente a cui assegnare i permessi.</p></div>';
                     return;
                 }
 
@@ -7484,7 +7484,7 @@ ${renderBottomNavigation()}
             const q = query(collection(db, "reportCategories"), orderBy("name", "asc"));
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessuna categoria creata.</p>';
+                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna categoria creata.</p></div>';
                     return;
                 }
                 listContainer.innerHTML = snapshot.docs.map(docSnap => {
@@ -7604,7 +7604,7 @@ ${renderBottomNavigation()}
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    listContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun elemento trovato in questa categoria.</p>`;
+                    listContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun elemento trovato in questa categoria.</p></div>`;
                     return;
                 }
 
@@ -8533,7 +8533,7 @@ ${renderBottomNavigation()}
                     .sort();
 
                 if (filteredNames.length === 0) {
-                    optionsContainer.innerHTML = `<div class="custom-dropdown-item" style="cursor:default;">Nessun risultato</div>`;
+                    optionsContainer.innerHTML = `<div class="custom-dropdown-item" style="cursor:default;">Nessun risultato trovato.</div>`;
                 } else {
                     optionsContainer.innerHTML = filteredNames.map(name =>
                         `<div class="custom-dropdown-item" data-value="${escapeHtml(name)}">${escapeHtml(name)}</div>`
@@ -9889,7 +9889,7 @@ ${renderBottomNavigation()}
                     if (pdfBtn) pdfBtn.style.display = 'flex';
                     millesimiFileName = docData.fileName || 'dati_esistenti.xlsx';
                 } else {
-                    tableContainerMillesimi.innerHTML = '<p style="color:var(--secondary-text);">Nessun dato anagrafico ancora importato.</p>';
+                    tableContainerMillesimi.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun dato anagrafico ancora importato.</p></div>';
                     saveBtnContainerMillesimi.classList.add('hidden');
                 }
             };
@@ -10038,7 +10038,7 @@ ${renderBottomNavigation()}
                         if (pdfBtn) pdfBtn.style.display = 'flex';
                     }
                 } else {
-                    tableContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>';
+                    tableContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun orario custode ancora importato.</p></div>';
                 }
             });
         };
@@ -10198,7 +10198,7 @@ ${renderBottomNavigation()}
                         if (pdfBtn) pdfBtn.style.display = 'flex';
                     }
                 } else {
-                    tableContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun dato amministratore importato.</p>';
+                    tableContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun dato amministratore importato.</p></div>';
                 }
             });
         };
@@ -10630,7 +10630,7 @@ ${renderBottomNavigation()}
                 const filteredNames = Object.keys(groupedProperties).filter(name => name.toLowerCase().includes(lowerFilter)).sort();
                 optionsContainer.innerHTML = filteredNames.length > 0
                     ? filteredNames.map(name => `<div class="custom-dropdown-item" data-value="${escapeHtml(name)}">${escapeHtml(name)}</div>`).join('')
-                    : `<div class="custom-dropdown-item" style="cursor:default;">Nessun risultato</div>`;
+                    : `<div class="custom-dropdown-item" style="cursor:default;">Nessun risultato trovato.</div>`;
                 optionsContainer.classList.remove('hidden');
             };
 
@@ -10768,7 +10768,7 @@ ${renderBottomNavigation()}
             const q = query(collection(db, "partialCondos"), orderBy("name"));
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    listEl.innerHTML = `<p style="color:var(--secondary-text); padding: 1rem 0;">Nessun gruppo creato.</p>`;
+                    listEl.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun gruppo creato.</p></div>`;
                     return;
                 }
                 listEl.innerHTML = snapshot.docs.map(docSnap => {
@@ -11028,7 +11028,7 @@ ${renderBottomNavigation()}
             if (groupRulesUnsubscribe) groupRulesUnsubscribe();
             groupRulesUnsubscribe = onSnapshot(rulesQuery, (snapshot) => {
                 if (snapshot.empty) {
-                    listEl.innerHTML = `<div class="card"><p style="color:var(--secondary-text);">Nessuna regola di classificazione definita.</p></div>`;
+                    listEl.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna regola di classificazione definita.</p></div>`;
                     return;
                 }
                 listEl.innerHTML = snapshot.docs.map(docSnap => {
@@ -11641,7 +11641,7 @@ ${renderBottomNavigation()}
                 const qImported = query(collection(db, "importedPhoneNumbers"), orderBy("uploadedAt", "desc"), limit(1));
                 onSnapshot(qImported, (snapshot) => {
                     if (snapshot.empty) {
-                        importedContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun contatto importato trovato.</p>`;
+                        importedContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun contatto importato trovato.</p></div>`;
                         return;
                     }
                     const data = snapshot.docs[0].data().tableData;
@@ -11714,7 +11714,7 @@ ${renderBottomNavigation()}
                 const qManual = query(collection(db, "usefulNumbers"), orderBy("createdAt", "desc"));
                 onSnapshot(qManual, (snapshot) => {
                     if (snapshot.empty) {
-                        manualContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun contatto manuale.</p>`;
+                        manualContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun contatto manuale.</p></div>`;
                         return;
                     }
 
@@ -11832,7 +11832,7 @@ ${renderBottomNavigation()}
             const qSchedule = query(collection(db, "importedCustodeSchedule"), orderBy("uploadedAt", "desc"), limit(1));
             onSnapshot(qSchedule, (snapshot) => {
                 if (snapshot.empty) {
-                    scheduleContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>`;
+                    scheduleContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun orario custode ancora importato.</p></div>`;
                     return;
                 }
 
@@ -11887,7 +11887,7 @@ ${renderBottomNavigation()}
                     const pdfBtn = document.getElementById('custode-schedule-pdf-btn');
                     if (pdfBtn) pdfBtn.style.display = 'flex';
                 } else {
-                    scheduleContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>`;
+                    scheduleContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun orario custode ancora importato.</p></div>`;
                 }
             }, (error) => {
                 console.error("Errore nel caricamento degli orari del custode:", error);
@@ -12199,8 +12199,8 @@ ${renderBottomNavigation()}
                 }
 
                 if (filteredDocs.length === 0) {
-                    const message = searchTerm ? 'Nessuna comunicazione trovata con i criteri di ricerca.' : 'Nessuna comunicazione per te.';
-                    listEl.innerHTML = `<p style="color:var(--secondary-text); padding: 1rem 0;">${message}</p>`;
+                    const message = searchTerm ? 'Nessuna comunicazione trovata con i criteri di ricerca.' : 'Nessuna comunicazione.';
+                    listEl.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${message}</p></div>`;
                 } else {
                     listEl.innerHTML = filteredDocs.map(docSnap => {
                         const comm = docSnap.data();
@@ -12387,7 +12387,7 @@ ${renderBottomNavigation()}
                         } else if (status === 'closed') {
                             message = 'Nessun sondaggio disponibile.';
                         }
-                        container.innerHTML = `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">${message}</p></div>`;
+                        container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${message}</p></div>`;
                         return;
                     }
 
@@ -12470,7 +12470,7 @@ ${renderBottomNavigation()}
                         } else if (status === 'closed') {
                             message = 'Nessun sondaggio concluso trovato.';
                         }
-                        container.innerHTML = `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">${message}</p></div>`;
+                        container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${message}</p></div>`;
                         return;
                     }
 
@@ -13147,7 +13147,7 @@ ${renderBottomNavigation()}
 
             const renderAndSort = (docs, emptyMessage) => {
                 if (!docs || docs.length === 0) {
-                    mainContainer.innerHTML = `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">${emptyMessage}</p></div>`;
+                    mainContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${emptyMessage}</p></div>`;
                     return;
                 }
                 const sortedDocs = docs.sort((a, b) => {
@@ -13254,7 +13254,7 @@ ${renderBottomNavigation()}
 
                 mainContainer.innerHTML = sortedDocs.length > 0
                     ? sortedDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                    : `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">Nessuna segnalazione trovata per: ${filterType}.</p></div>`;
+                    : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna segnalazione trovata per: ${filterType}.</p></div>`;
             };
 
             // Esegui il primo rendering
@@ -13315,9 +13315,16 @@ ${renderBottomNavigation()}
                     return timeB - timeA;
                 });
 
+                let emptyMessage = `Nessuna segnalazione trovata per: ${filterType}.`;
+                if (filterType === 'solleciti ricevuti' || filterType === 'solleciti urgenti') {
+                    emptyMessage = 'Nessun sollecito ricevuto trovato.';
+                } else if (filterType === 'solleciti inviati') {
+                    emptyMessage = 'Nessun sollecito inviato trovato.';
+                }
+
                 mainContainer.innerHTML = sortedDocs.length > 0
                     ? sortedDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                    : `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">Nessuna segnalazione trovata per: ${filterType}.</p></div>`;
+                    : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${emptyMessage}</p></div>`;
             };
 
             // Esegui il primo rendering
@@ -13453,15 +13460,15 @@ ${renderBottomNavigation()}
 
                     activeContainer.innerHTML = activeTickets.length > 0
                         ? activeTickets.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                        : `<div class="card"><p style="color:var(--secondary-text);">Nessun ticket attivo trovato.</p></div>`;
+                        : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket attivo trovato.</p></div>`;
 
                     closedContainer.innerHTML = closedTickets.length > 0
                         ? closedTickets.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                        : `<div class="card"><p style="color:var(--secondary-text);">Nessun ticket chiuso trovato.</p></div>`;
+                        : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket chiuso trovato.</p></div>`;
                 } else {
                     mainContainer.innerHTML = filteredDocs.length > 0
                         ? filteredDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                        : `<div class="card"><p style="color:var(--secondary-text);">Nessuna segnalazione ricevuta.</p></div>`;
+                        : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna segnalazione ricevuta.</p></div>`;
                 }
             };
 
@@ -13578,7 +13585,7 @@ ${renderBottomNavigation()}
                     </div>
                 </div>
                 <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
-                    Elenco delle segnalazioni per cui è stato inviato un sollecito.
+                    Elenco delle segnalazioni sollecitate ricevute.
                 </p>
                 <div id="reports-main-container" class="list-container"></div>
             </main>
@@ -13615,6 +13622,7 @@ ${renderBottomNavigation()}
         const loadSollecitiInviati = () => {
             const container = document.getElementById('user-solleciti-list');
             if (!container) return;
+
             // Reset notifiche per i solleciti inviati
             localStorage.setItem(`lastSeenSollecitiInviati_${currentUser.uid}`, Date.now());
             updateNotificationUI('solleciti-inviati', 0);
@@ -13623,7 +13631,18 @@ ${renderBottomNavigation()}
             const statusFilter = document.getElementById('report-status-filter');
 
             const renderFiltered = (docs) => {
-                let filteredDocs = docs;
+                let filteredDocs = docs.filter(doc => {
+                    const data = doc.data();
+                    return data.wasEverUrgent === true || data.isUrgent === true || data.priority === 'alta' || data.priority === 'richiesta-intervento-danno' || (Array.isArray(data.reminders) && data.reminders.length > 0);
+                });
+
+                // Ordina per data di creazione decrescente
+                filteredDocs.sort((a, b) => {
+                    const tA = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : (a.data().createdAt ? new Date(a.data().createdAt).getTime() : 0);
+                    const tB = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : (b.data().createdAt ? new Date(b.data().createdAt).getTime() : 0);
+                    return tB - tA;
+                });
+
                 const searchTerm = searchInput?.value.toLowerCase().trim() || '';
                 const status = statusFilter?.value || 'all';
 
@@ -13631,7 +13650,7 @@ ${renderBottomNavigation()}
                     filteredDocs = filteredDocs.filter(doc => {
                         const data = doc.data();
                         const reportNum = data.reportNumber || '';
-                        return `${reportNum} ${data.title} ${data.description}`.toLowerCase().includes(searchTerm);
+                        return `${reportNum} ${data.title || ''} ${data.description || ''}`.toLowerCase().includes(searchTerm);
                     });
                 }
                 if (status !== 'all') {
@@ -13639,7 +13658,7 @@ ${renderBottomNavigation()}
                 }
 
                 if (filteredDocs.length === 0) {
-                    container.innerHTML = `<div class="card"><p style="color:var(--secondary-text);">Nessun sollecito inviato trovato.</p></div>`;
+                    container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun sollecito inviato trovato.</p></div>`;
                 } else {
                     container.innerHTML = filteredDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("");
                 }
@@ -13647,16 +13666,17 @@ ${renderBottomNavigation()}
 
             const q = query(
                 collection(db, "reports"),
-                where("createdById", "==", currentUser.uid),
-                where("wasEverUrgent", "==", true),
-                orderBy("createdAt", "desc")
+                where("createdById", "==", currentUser.uid)
             );
 
-            const unsubscribe = onSnapshot(q, (snapshot) => {
+            onSnapshot(q, (snapshot) => {
                 renderFiltered(snapshot.docs);
 
                 if (searchInput) searchInput.oninput = () => renderFiltered(snapshot.docs);
                 if (statusFilter) statusFilter.onchange = () => renderFiltered(snapshot.docs);
+            }, (error) => {
+                console.error("Errore nel caricamento dei solleciti inviati:", error);
+                container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun sollecito inviato trovato.</p></div>`;
             });
         };
         const loadUrgentReports = () => {
@@ -13664,28 +13684,27 @@ ${renderBottomNavigation()}
             if (!mainContainer) return;
 
             // Marca i solleciti come visti
-            const q = query(
+            const qSeen = query(
                 collection(db, "reports"),
                 where("priority", "in", ["alta", "richiesta-intervento-danno"]),
                 where("status", "in", ["aperta", "in-corso"]),
                 orderBy("updatedAt", "desc"),
                 limit(1)
             );
-            getDocs(q).then(snapshot => {
+            getDocs(qSeen).then(snapshot => {
                 if (!snapshot.empty) {
                     localStorage.setItem(`lastSeenSolleciti_${currentUser.uid}`, snapshot.docs[0].data().updatedAt.toMillis());
                     updateNotificationUI('solleciti', 0);
                 }
-            });
+            }).catch(() => { });
 
             const userRole = userProfile?.tipoUtente;
 
-            // Query per i solleciti urgenti che l'utente può gestire
-            const urgentQuery = query(collection(db, "reports"), where("isUrgent", "==", true), orderBy("createdAt", "desc"));
-
-            onSnapshot(urgentQuery, (snapshot) => {
-                const relevantDocs = snapshot.docs.filter(doc => {
+            const renderDocs = (allDocs) => {
+                const relevantDocs = allDocs.filter(doc => {
                     const data = doc.data();
+                    const isUrgentReport = data.isUrgent === true || data.wasEverUrgent === true || data.priority === 'alta' || data.priority === 'richiesta-intervento-danno' || (Array.isArray(data.reminders) && data.reminders.length > 0);
+                    if (!isUrgentReport) return false;
 
                     // Se c'è un destinatario specifico, solo lui può vederlo
                     if (data.specificRecipientId) {
@@ -13696,16 +13715,13 @@ ${renderBottomNavigation()}
                     if (userRole === 'supervisore') {
                         return data.recipientType === 'supervisore';
                     }
-                    // MODIFICA: L'account ADM vede solo i solleciti relativi a segnalazioni a lui destinate.
                     if (userRole === 'adm') {
                         return data.recipientType === 'adm';
                     }
                     if (userRole === 'amministratore') {
-                        // Amministratore with supervisor functions can also see supervisor's urgent tickets
                         if (userProfile?.canAccessSupervisorFunctions === true) {
                             return data.recipientType === 'amministratore' || data.recipientType === 'supervisore';
                         }
-                        // Otherwise, only see their own
                         return data.recipientType === 'amministratore';
                     }
                     if (userRole === 'custode') {
@@ -13715,11 +13731,9 @@ ${renderBottomNavigation()}
                         return data.recipientType === userRole;
                     }
                     if (userRole === 'consigliere') {
-                        // Un consigliere con permessi speciali vede anche quelle del supervisore
                         if (userProfile.canAccessSupervisorFunctions === true) {
                             return data.recipientType === 'consigliere' || data.recipientType === 'supervisore';
                         }
-                        // Un consigliere normale vede solo le sue
                         return data.recipientType === 'consigliere';
                     }
                     if (userRole === 'condomino') {
@@ -13728,7 +13742,16 @@ ${renderBottomNavigation()}
                     return false;
                 });
 
-                handleFilteredReports(relevantDocs, 'solleciti urgenti');
+                handleFilteredReports(relevantDocs, 'solleciti ricevuti');
+            };
+
+            const q = query(collection(db, "reports"));
+
+            onSnapshot(q, (snapshot) => {
+                renderDocs(snapshot.docs);
+            }, (error) => {
+                console.error("Errore nel caricamento dei solleciti ricevuti:", error);
+                mainContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun sollecito ricevuto trovato.</p></div>`;
             });
         };
 
@@ -14089,13 +14112,13 @@ ${renderBottomNavigation()}
 
                 // Renderizza i risultati
                 if (activeTickets.length === 0) {
-                    activeContainer.innerHTML = `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">Nessun ticket attivo trovato.</p></div>`;
+                    activeContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket attivo trovato.</p></div>`;
                 } else {
                     activeContainer.innerHTML = activeTickets.map((t, index) => renderReportCardHTML(t.data, t.id, index + 1)).join("");
                 }
 
                 if (closedTickets.length === 0) {
-                    closedContainer.innerHTML = `<div class="card"><p style="color:var(--secondary-text); padding: 1rem 0;">Nessun ticket chiuso trovato.</p></div>`;
+                    closedContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket chiuso trovato.</p></div>`;
                 } else {
                     closedContainer.innerHTML = closedTickets.map((t, index) => renderReportCardHTML(t.data, t.id, index + 1)).join("");
                 }
@@ -14306,14 +14329,14 @@ ${renderBottomNavigation()}
                 });
 
                 if (filteredUsers.length === 0) {
-                    container.innerHTML = '<p>Nessun utente trovato con i criteri di ricerca.</p>';
+                    container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente trovato con i criteri di ricerca.</p></div>';
                 } else {
                     container.innerHTML = filteredUsers.map(docSnap => {
                         const user = docSnap.data();
                         const userId = docSnap.id;
                         const propertiesHtml = user.proprieta && user.proprieta.length > 0
                             ? user.proprieta.map(p => `<li>${p.interno}: Piano ${p.piano ?? 'N/A'}, ${(p.millesimi || 0).toFixed(2)} ‰ ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')
-                            : '<li>Nessuna proprietà</li>';
+                            : '<li>Nessuna proprietà.</li>';
 
                         const userObjectString = JSON.stringify({ id: userId, ...user }).replace(/'/g, "&apos;");
 
@@ -14368,7 +14391,7 @@ ${renderBottomNavigation()}
                 });
 
                 if (filteredUsers.length === 0) {
-                    container.innerHTML = '<p>Nessun utente trovato con i criteri di ricerca.</p>';
+                    container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente trovato con i criteri di ricerca.</p></div>';
                     return;
                 }
 
@@ -14559,7 +14582,7 @@ ${renderBottomNavigation()}
                 const qImported = query(collection(db, "importedPhoneNumbers"), orderBy("uploadedAt", "desc"), limit(1));
                 onSnapshot(qImported, (snapshot) => {
                     if (snapshot.empty) {
-                        importedTableContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun contatto importato trovato.</p>`;
+                        importedTableContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun contatto importato trovato.</p></div>`;
                         return;
                     }
                     const data = snapshot.docs[0].data().tableData;
@@ -15215,7 +15238,7 @@ ${renderBottomNavigation()}
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun condomino registrato.</p>';
+                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun condomino registrato.</p></div>';
                     return;
                 }
 
@@ -16142,7 +16165,7 @@ ${renderBottomNavigation()}
                         });
 
                         if (foldersHtml === '') {
-                            folderList.innerHTML = `<p style="color:var(--secondary-text);">Nessuna sottocartella disponibile.</p>`;
+                            folderList.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna sottocartella disponibile.</p></div>`;
                         } else {
                             folderList.innerHTML = foldersHtml;
                         }
@@ -16829,7 +16852,7 @@ ${renderBottomNavigation()}
 
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    container.innerHTML = `<div class="card" style="text-align: center; padding: 2rem;"><p style="color: var(--secondary-text); margin: 0; font-weight: 500;">Nessuna assemblea trovata</p></div>`;
+                    container.innerHTML = `<div class="card" style="text-align: center; padding: 2rem;"><p style="color: var(--secondary-text); margin: 0; font-weight: 500;">Nessuna assemblea trovata.</p></div>`;
                     return;
                 }
 
@@ -17018,7 +17041,7 @@ ${renderBottomNavigation()}
                 }).join('');
             }, (error) => {
                 console.error("Errore nel caricamento delle assemblee:", error);
-                container.innerHTML = `<div class="card" style="text-align: center; padding: 2rem;"><p style="color: var(--secondary-text); margin: 0; font-weight: 500;">Nessuna assemblea trovata</p></div>`;
+                container.innerHTML = `<div class="card" style="text-align: center; padding: 2rem;"><p style="color: var(--secondary-text); margin: 0; font-weight: 500;">Nessuna assemblea trovata.</p></div>`;
             });
         };
 
@@ -17088,7 +17111,7 @@ ${renderBottomNavigation()}
                     const attendeesList = document.getElementById("attendees-list");
                     if (attendeesList) {
                         if (attendees.length === 0) {
-                            attendeesList.innerHTML = '<p style="color:var(--secondary-text);">Nessun condomino registrato.</p>';
+                            attendeesList.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun condòmino registrato.</p></div>';
                         } else {
                             attendeesList.innerHTML = attendees.map(a => `
                                 <div class="list-item" style="background: var(--surface-color-light);">
@@ -17833,7 +17856,7 @@ ${renderBottomNavigation()}
                     ${votes.length === 0 ? `
                         <div style="padding: 2rem 1rem; text-align: center; background: rgba(245, 158, 11, 0.08); border: 1.5px dashed #F59E0B; border-radius: 10px;">
                             <div style="color: var(--warning); margin-bottom: 0.5rem;">${THEME_ICONS.hourglass(30, 2)}</div>
-                            <strong style="color: var(--warning); font-size: 1rem; display: block; margin-bottom: 0.3rem;">Nessun voto ancora registrato</strong>
+                            <strong style="color: var(--warning); font-size: 1rem; display: block; margin-bottom: 0.3rem;">Nessun voto ancora registrato.</strong>
                             <p style="color: var(--secondary-text); font-size: 0.85rem; margin: 0;">I condòmini non hanno ancora espresso voti per questo punto.</p>
                         </div>
                     ` : `
@@ -18389,7 +18412,7 @@ ${renderBottomNavigation()}
                                                 <div style="display: flex; align-items: center; gap: 0.35rem;">
                                                     ${THEME_ICONS.users(15)} <span>Condòmini presenti (0)</span>
                                                 </div>
-                                                <span style="font-size: 0.7rem; color: var(--secondary-text); font-style: italic;">Nessun presente</span>
+                                                <span style="font-size: 0.7rem; color: var(--secondary-text); font-style: italic;">Nessun presente.</span>
                                             </div>
                                         </div>
                                     `;
@@ -18924,7 +18947,7 @@ ${renderBottomNavigation()}
                                 <div id="room-section-presenti-list">
                                     ${presentiHtml}
                                 </div>
-                                <p id="room-presenti-no-match" class="hidden" style="color:var(--secondary-text); font-size:0.8rem; text-align:center; padding:0.4rem 0; margin:0;">Nessun condomino presente trovato</p>
+                                <p id="room-presenti-no-match" class="hidden" style="color:var(--secondary-text); font-size:0.8rem; text-align:center; padding:0.4rem 0; margin:0;">Nessun condòmino presente trovato.</p>
                             </div>
 
                             <!-- SEZIONE B: Condòmini Rappresentati per Delega -->
@@ -18937,7 +18960,7 @@ ${renderBottomNavigation()}
                                 <div id="room-section-delegati-list">
                                     ${delegatiHtml}
                                 </div>
-                                <p id="room-delegati-no-match" class="hidden" style="color:var(--secondary-text); font-size:0.8rem; text-align:center; padding:0.4rem 0; margin:0;">Nessuna delega trovata</p>
+                                <p id="room-delegati-no-match" class="hidden" style="color:var(--secondary-text); font-size:0.8rem; text-align:center; padding:0.4rem 0; margin:0;">Nessuna delega trovata.</p>
                             </div>
                         `;
 
@@ -20399,11 +20422,97 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.openProxyFullscreenView = (sectionName) => {
+            if (sectionName === 'delegator') {
+                const overlay = document.getElementById('proxy-fullscreen-delegators-view');
+                const listEl = document.getElementById('container-proxy-delegators-list');
+                const mount = document.getElementById('proxy-fullscreen-delegators-list-mount');
+                const inputNormal = document.getElementById('input-search-proxy-delegator');
+                const inputFs = document.getElementById('input-search-fullscreen-proxy-delegator');
+
+                if (overlay && listEl && mount) {
+                    mount.appendChild(listEl);
+                    listEl.style.maxHeight = 'none';
+                    listEl.style.flex = '1 1 0%';
+                    if (inputFs && inputNormal) {
+                        inputFs.value = inputNormal.value;
+                    }
+                    overlay.classList.remove('hidden');
+                    overlay.style.display = 'flex';
+                    if (inputFs) {
+                        setTimeout(() => inputFs.focus(), 60);
+                    }
+                }
+            } else if (sectionName === 'delegate') {
+                const overlay = document.getElementById('proxy-fullscreen-delegates-view');
+                const listEl = document.getElementById('container-proxy-delegates-list');
+                const mount = document.getElementById('proxy-fullscreen-delegates-list-mount');
+                const inputNormal = document.getElementById('input-search-proxy-delegate');
+                const inputFs = document.getElementById('input-search-fullscreen-proxy-delegate');
+
+                if (overlay && listEl && mount) {
+                    mount.appendChild(listEl);
+                    listEl.style.maxHeight = 'none';
+                    listEl.style.flex = '1 1 0%';
+                    if (inputFs && inputNormal) {
+                        inputFs.value = inputNormal.value;
+                    }
+                    overlay.classList.remove('hidden');
+                    overlay.style.display = 'flex';
+                    if (inputFs) {
+                        setTimeout(() => inputFs.focus(), 60);
+                    }
+                }
+            }
+        };
+
+        window.closeProxyFullscreenView = (sectionName) => {
+            if (sectionName === 'delegator') {
+                const overlay = document.getElementById('proxy-fullscreen-delegators-view');
+                const listEl = document.getElementById('container-proxy-delegators-list');
+                const mount = document.getElementById('proxy-delegator-list-mount');
+                const inputNormal = document.getElementById('input-search-proxy-delegator');
+                const inputFs = document.getElementById('input-search-fullscreen-proxy-delegator');
+
+                if (overlay && listEl && mount) {
+                    mount.appendChild(listEl);
+                    listEl.style.maxHeight = '180px';
+                    listEl.style.flex = '';
+                    if (inputNormal && inputFs) {
+                        inputNormal.value = inputFs.value;
+                    }
+                    overlay.classList.add('hidden');
+                    overlay.style.display = 'none';
+                    window.filterProxyDelegatorsList(inputNormal?.value || '');
+                }
+            } else if (sectionName === 'delegate') {
+                const overlay = document.getElementById('proxy-fullscreen-delegates-view');
+                const listEl = document.getElementById('container-proxy-delegates-list');
+                const mount = document.getElementById('proxy-delegate-list-mount');
+                const inputNormal = document.getElementById('input-search-proxy-delegate');
+                const inputFs = document.getElementById('input-search-fullscreen-proxy-delegate');
+
+                if (overlay && listEl && mount) {
+                    mount.appendChild(listEl);
+                    listEl.style.maxHeight = '180px';
+                    listEl.style.flex = '';
+                    if (inputNormal && inputFs) {
+                        inputNormal.value = inputFs.value;
+                    }
+                    overlay.classList.add('hidden');
+                    overlay.style.display = 'none';
+                    window.filterProxyDelegatesList(inputNormal?.value || '');
+                }
+            }
+        };
+
         window.toggleProxySection = (sectionName) => {
             const delegatorBody = document.getElementById('proxy-delegator-body');
             const delegateBody = document.getElementById('proxy-delegate-body');
             const delegatorChevron = document.getElementById('proxy-delegator-chevron');
             const delegateChevron = document.getElementById('proxy-delegate-chevron');
+            const delegatorToggleText = document.getElementById('proxy-delegator-toggle-text');
+            const delegateToggleText = document.getElementById('proxy-delegate-toggle-text');
 
             if (sectionName === 'delegator') {
                 if (!delegatorBody) return;
@@ -20411,9 +20520,11 @@ ${renderBottomNavigation()}
                 if (isHidden) {
                     delegatorBody.classList.remove('hidden');
                     if (delegatorChevron) delegatorChevron.style.transform = 'rotate(180deg)';
+                    if (delegatorToggleText) delegatorToggleText.textContent = 'Comprimi ▲';
                 } else {
                     delegatorBody.classList.add('hidden');
                     if (delegatorChevron) delegatorChevron.style.transform = 'rotate(0deg)';
+                    if (delegatorToggleText) delegatorToggleText.textContent = 'Espandi ▼';
                 }
             } else if (sectionName === 'delegate') {
                 if (!delegateBody) return;
@@ -20421,9 +20532,11 @@ ${renderBottomNavigation()}
                 if (isHidden) {
                     delegateBody.classList.remove('hidden');
                     if (delegateChevron) delegateChevron.style.transform = 'rotate(180deg)';
+                    if (delegateToggleText) delegateToggleText.textContent = 'Comprimi ▲';
                 } else {
                     delegateBody.classList.add('hidden');
                     if (delegateChevron) delegateChevron.style.transform = 'rotate(0deg)';
+                    if (delegateToggleText) delegateToggleText.textContent = 'Espandi ▼';
                 }
             }
         };
@@ -20541,6 +20654,20 @@ ${renderBottomNavigation()}
                 submitBtn.textContent = checkedCbs.length > 1 ? `Registra Deleghe (${checkedCbs.length})` : 'Registra Delega';
             }
 
+            const fsBtnText = document.getElementById('btn-confirm-fullscreen-delegators-text');
+            if (fsBtnText) {
+                fsBtnText.textContent = checkedCbs.length > 0 ? `Conferma Selezione (${checkedCbs.length} deleganti - ${totalMil.toFixed(2)} ‰)` : 'Conferma Selezione Deleganti';
+            }
+            const fsHeaderBadge = document.getElementById('proxy-fullscreen-delegators-header-badge');
+            if (fsHeaderBadge) {
+                if (checkedCbs.length > 0) {
+                    fsHeaderBadge.style.display = 'inline-flex';
+                    fsHeaderBadge.textContent = `${checkedCbs.length} sel. (${totalMil.toFixed(2)} ‰)`;
+                } else {
+                    fsHeaderBadge.style.display = 'none';
+                }
+            }
+
             // Apri automaticamente la sezione 2 (Delegato) se chiusa
             const delegateBody = document.getElementById('proxy-delegate-body');
             const delegateChevron = document.getElementById('proxy-delegate-chevron');
@@ -20570,6 +20697,15 @@ ${renderBottomNavigation()}
                     <span style="color:#10B981; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:0.5rem;">${THEME_ICONS.check(13, 2.4)} ${escapeHtml(nameStr)}</span>
                     <strong style="color:var(--warning); font-size:0.8rem; white-space:nowrap;">${millStr}</strong>
                 `;
+            }
+            const fsHeaderBadge = document.getElementById('proxy-fullscreen-delegate-header-badge');
+            if (fsHeaderBadge && nameStr) {
+                fsHeaderBadge.style.display = 'inline-flex';
+                fsHeaderBadge.textContent = `${nameStr} (${millStr})`;
+            }
+            const fsBtnText = document.getElementById('btn-confirm-fullscreen-delegate-text');
+            if (fsBtnText && nameStr) {
+                fsBtnText.textContent = `Conferma Delegato: ${nameStr} (${millStr})`;
             }
         };
 
@@ -20690,6 +20826,69 @@ ${renderBottomNavigation()}
 
                 const modalContent = `
                     <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                        <!-- VISTA OVERLAY FULLSCREEN DELEGANTI -->
+                        <div id="proxy-fullscreen-delegators-view" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 60; background: var(--bg-color, var(--surface-color)); display: none; flex-direction: column; padding: 0.5rem 0.4rem 0 0.4rem; box-sizing: border-box;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.2rem 0.2rem 0.5rem 0.2rem; border-bottom: 1px solid var(--surface-color-light);">
+                                <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0; flex: 1;">
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); border: 1.5px solid var(--accent-color); display: flex; align-items: center; justify-content: center; color: var(--accent-color); flex-shrink: 0;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    </div>
+                                    <div style="min-width: 0;">
+                                        <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">1. Condòmini Deleganti</h4>
+                                        <span id="proxy-fullscreen-delegators-header-badge" style="font-size: 0.72rem; font-weight: 700; color: #10B981; display: none;"></span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeProxyFullscreenView('delegator')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 6px; font-weight: 700; flex-shrink: 0;">
+                                    ✕ Chiudi
+                                </button>
+                            </div>
+
+                            <div style="position: relative; margin: 0.5rem 0.2rem 0.35rem 0.2rem;">
+                                <input type="text" id="input-search-fullscreen-proxy-delegator" placeholder="Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autocomplete="off">
+                            </div>
+
+                            <div id="proxy-fullscreen-delegators-list-mount" style="flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.2rem;"></div>
+
+                            <div style="padding: 0.5rem 0.2rem max(0.4rem, env(safe-area-inset-bottom)) 0.2rem; border-top: 1px solid var(--surface-color-light); margin-top: auto;">
+                                <button type="button" onclick="closeProxyFullscreenView('delegator')" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.9rem; font-weight: 800; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <span id="btn-confirm-fullscreen-delegators-text">Conferma Selezione Deleganti</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- VISTA OVERLAY FULLSCREEN DELEGATO -->
+                        <div id="proxy-fullscreen-delegates-view" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 60; background: var(--bg-color, var(--surface-color)); display: none; flex-direction: column; padding: 0.5rem 0.4rem 0 0.4rem; box-sizing: border-box;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.2rem 0.2rem 0.5rem 0.2rem; border-bottom: 1px solid var(--surface-color-light);">
+                                <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0; flex: 1;">
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; display: flex; align-items: center; justify-content: center; color: #10B981; flex-shrink: 0;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    </div>
+                                    <div style="min-width: 0;">
+                                        <h4 style="margin: 0; font-size: 0.92rem; font-weight: 800; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">2. Delegato in Aula</h4>
+                                        <span id="proxy-fullscreen-delegate-header-badge" style="font-size: 0.72rem; font-weight: 700; color: #10B981; display: none;"></span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeProxyFullscreenView('delegate')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; border-radius: 6px; font-weight: 700; flex-shrink: 0;">
+                                    ✕ Chiudi
+                                </button>
+                            </div>
+
+                            <div style="position: relative; margin: 0.5rem 0.2rem 0.35rem 0.2rem;">
+                                <input type="text" id="input-search-fullscreen-proxy-delegate" placeholder="Cerca delegato..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autocomplete="off">
+                            </div>
+
+                            <div id="proxy-fullscreen-delegates-list-mount" style="flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.2rem;"></div>
+
+                            <div style="padding: 0.5rem 0.2rem max(0.4rem, env(safe-area-inset-bottom)) 0.2rem; border-top: 1px solid var(--surface-color-light); margin-top: auto;">
+                                <button type="button" onclick="closeProxyFullscreenView('delegate')" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.9rem; font-weight: 800; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); background: #10B981;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <span id="btn-confirm-fullscreen-delegate-text">Conferma Delegato</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- MODULO PRINCIPALE -->
                         <form onsubmit="saveManualProxy(event, '${assemblyId}')" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left; min-height: 0; height: 100%; overflow: hidden; gap: 0.4rem;">
                             <!-- BOX AVVISO REGOLA DELEGHE -->
                             <div style="background: rgba(59, 130, 246, 0.08); padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.25); flex-shrink: 0; display: flex; align-items: flex-start; gap: 0.45rem; font-size: 0.76rem; line-height: 1.35;">
@@ -20711,34 +20910,46 @@ ${renderBottomNavigation()}
                             <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.45rem; -webkit-overflow-scrolling: touch;">
                                 <!-- SEZIONE 1: DELEGANTE -->
                                 <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color); flex-shrink: 0;">
-                                    <div onclick="toggleProxySection('delegator')" style="padding: 0.6rem 0.75rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
+                                    <div onclick="toggleProxySection('delegator')" style="padding: 0.6rem 0.75rem; cursor: pointer; background: var(--surface-color-light); user-select: none; display: flex; align-items: center; justify-content: space-between;">
+                                        <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">1. Delegante (Anagrafica)</span>
+                                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                            <button type="button" onclick="event.stopPropagation(); openProxyFullscreenView('delegator')" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;" title="Espandi a tutto schermo">
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                                                <span>Espandi</span>
+                                            </button>
                                             <svg id="proxy-delegator-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div id="selected-delegator-badge" onclick="event.stopPropagation();" style="margin-top: 0.35rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.55rem; display: none; flex-direction: column;"></div>
                                     </div>
+                                    <div id="selected-delegator-badge" onclick="event.stopPropagation();" style="margin: 0.35rem 0.65rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.3rem 0.55rem; display: none; flex-direction: column;"></div>
                                     <div id="proxy-delegator-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                                        <input type="text" id="input-search-proxy-delegator" placeholder="Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autofocus autocomplete="off">
-                                        <div id="container-proxy-delegators-list" style="max-height: 180px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                                            ${delegatorCardsHtml}
+                                        <div id="proxy-delegator-list-mount" style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                            <input type="text" id="input-search-proxy-delegator" placeholder="Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autofocus autocomplete="off">
+                                            <div id="container-proxy-delegators-list" style="max-height: 180px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                                ${delegatorCardsHtml}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- SEZIONE 2: DELEGATO -->
                                 <div class="card" style="margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--surface-color-light); background: var(--surface-color); flex-shrink: 0;">
-                                    <div onclick="toggleProxySection('delegate')" style="padding: 0.6rem 0.75rem; cursor: pointer; background: var(--surface-color-light); user-select: none;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">2. Delegato in aula</span>
+                                    <div onclick="toggleProxySection('delegate')" style="padding: 0.6rem 0.75rem; cursor: pointer; background: var(--surface-color-light); user-select: none; display: flex; align-items: center; justify-content: space-between;">
+                                        <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-color);">2. Delegato in aula</span>
+                                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                            <button type="button" onclick="event.stopPropagation(); openProxyFullscreenView('delegate')" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem;" title="Espandi a tutto schermo">
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                                                <span>Espandi</span>
+                                            </button>
                                             <svg id="proxy-delegate-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease; transform: rotate(180deg); color: var(--secondary-text); flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                         </div>
-                                        <div id="selected-delegate-badge" style="margin-top: 0.3rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: none; align-items: center; justify-content: space-between;"></div>
                                     </div>
+                                    <div id="selected-delegate-badge" style="margin: 0.35rem 0.65rem; font-size: 0.78rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 0.25rem 0.5rem; display: none; align-items: center; justify-content: space-between;"></div>
                                     <div id="proxy-delegate-body" style="padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                                        <input type="text" id="input-search-proxy-delegate" placeholder="Cerca delegato..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autocomplete="off">
-                                        <div id="container-proxy-delegates-list" style="max-height: 180px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                                            ${delegateCardsHtml}
+                                        <div id="proxy-delegate-list-mount" style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                            <input type="text" id="input-search-proxy-delegate" placeholder="Cerca delegato..." oninput="filterProxyDelegatesList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.85rem; padding: 0.4rem 0.6rem; border-radius: 8px;" autocomplete="off">
+                                            <div id="container-proxy-delegates-list" style="max-height: 180px; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                                                ${delegateCardsHtml}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -22562,7 +22773,7 @@ ${renderBottomNavigation()}
             });
 
             if (matches.length === 0) {
-                dropdown.innerHTML = `<div style="padding: 0.5rem 0.65rem; font-size: 0.8rem; color: var(--secondary-text); text-align: center;">Nessun condòmino corrispondente nei presenti</div>`;
+                dropdown.innerHTML = `<div style="padding: 0.5rem 0.65rem; font-size: 0.8rem; color: var(--secondary-text); text-align: center;">Nessun condòmino corrispondente nei presenti.</div>`;
                 dropdown.classList.remove('hidden');
                 return;
             }
@@ -22612,7 +22823,7 @@ ${renderBottomNavigation()}
             });
 
             if (matches.length === 0) {
-                dropdown.innerHTML = `<div style="padding: 0.5rem 0.65rem; font-size: 0.8rem; color: var(--secondary-text); text-align: center;">Nessun condòmino corrispondente nei presenti</div>`;
+                dropdown.innerHTML = `<div style="padding: 0.5rem 0.65rem; font-size: 0.8rem; color: var(--secondary-text); text-align: center;">Nessun condòmino corrispondente nei presenti.</div>`;
                 dropdown.classList.remove('hidden');
                 return;
             }
@@ -26814,7 +27025,7 @@ ${renderBottomNavigation()}
                 const properties = user.properties || [];
                 const propertiesList = properties.length > 0
                     ? properties.map(p => `<li>${escapeHtml(p.name)} - Gruppo: ${escapeHtml(p.group || 'N/D')} - Piano: ${escapeHtml(p.plan || 'N/D')}</li>`).join('')
-                    : '<li>Nessuna proprietà selezionata</li>';
+                    : '<li>Nessuna proprietà selezionata.</li>';
 
                 const detailsHtml = `
                     <div id="user-details-modal" class="modal-overlay" style="z-index: 3500;">
