@@ -25553,7 +25553,7 @@ ${renderBottomNavigation()}
                         }
                         if (totalCondoCount === 0) totalCondoCount = 20;
 
-                        proxyLimitConfig.maxHeads = Math.floor(totalCondoCount / 5);
+                        proxyLimitConfig.maxHeads = Math.ceil(totalCondoCount / 5);
                         proxyLimitConfig.maxMillesimi = 200.00;
                     } else if (proxyLimitType === 'regolamento') {
                         const headsVal = parseInt(document.getElementById('modal-proxy-max-heads')?.value, 10);
