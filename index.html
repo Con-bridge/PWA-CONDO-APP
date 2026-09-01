@@ -23525,6 +23525,9 @@ ${renderBottomNavigation()}
             const rawCandidates = assembly.presidentVoting?.candidates || [];
             const candidates = rawCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
 
+            const isContrarioSelected = myVote && (myVote.candidate === 'Contrario' || myVote.candidate?.toLowerCase() === 'contrario');
+            const isAstenutoSelected = myVote && (myVote.candidate === 'Astenuto' || myVote.candidate?.toLowerCase() === 'astenuto');
+
             const candidatesHtml = candidates.length > 0 ? candidates.map(cand => {
                 const isSelected = myVote && (myVote.candidate === cand || (window.cleanCandidateName && window.cleanCandidateName(myVote.candidate) === cand));
                 return `
@@ -23541,19 +23544,68 @@ ${renderBottomNavigation()}
                     </div>
                 `;
             }).join('') : `
-                <div style="text-align:center; padding:1rem 0.5rem; color:var(--secondary-text); font-size:0.85rem; background:var(--surface-color-light); border-radius:8px; margin-bottom:0.4rem;">
-                    Nessun candidato disponibile per la votazione.
+                <div style="text-align:center; padding:0.8rem 0.5rem; color:var(--secondary-text); font-size:0.85rem; background:var(--surface-color-light); border-radius:8px; margin-bottom:0.4rem;">
+                    Nessun candidato presente.
                 </div>
             `;
 
+            const extraOptionsHtml = `
+                <div style="margin-top:0.35rem; padding-top:0.35rem; border-top:1px dashed rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:0.35rem;">
+                    <div style="background:${isContrarioSelected ? 'rgba(239, 68, 68, 0.15)' : 'var(--surface-color-light)'}; border:1.5px solid ${isContrarioSelected ? 'var(--danger, #EF4444)' : 'rgba(255,255,255,0.08)'}; border-radius:8px; padding:0.65rem 0.85rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem; min-width:0;">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:${isContrarioSelected ? 'var(--danger, #EF4444)' : 'var(--surface-color)'}; color:${isContrarioSelected ? 'white' : 'var(--danger, #EF4444)'}; font-size:0.8rem; font-weight:800; flex-shrink:0;">
+                                ${isContrarioSelected ? '✕' : THEME_ICONS.thumbsDown(13)}
+                            </span>
+                            <strong style="font-size:0.92rem; color:${isContrarioSelected ? 'var(--danger, #EF4444)' : 'var(--primary-text)'};">Contrario</strong>
+                        </div>
+                        <button type="button" onclick="submitPresidentVote('${assemblyId}', 'Contrario')" class="btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; font-weight:800; background:${isContrarioSelected ? 'var(--danger, #EF4444)' : 'var(--surface-color)'}; color:${isContrarioSelected ? 'white' : 'var(--danger, #EF4444)'}; border:1px solid ${isContrarioSelected ? 'var(--danger, #EF4444)' : 'rgba(239, 68, 68, 0.4)'}; border-radius:6px; cursor:pointer; flex-shrink:0;">
+                            ${isContrarioSelected ? 'Votato ✓' : 'Contrario'}
+                        </button>
+                    </div>
+
+                    <div style="background:${isAstenutoSelected ? 'rgba(245, 158, 11, 0.15)' : 'var(--surface-color-light)'}; border:1.5px solid ${isAstenutoSelected ? '#F59E0B' : 'rgba(255,255,255,0.08)'}; border-radius:8px; padding:0.65rem 0.85rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem; min-width:0;">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:${isAstenutoSelected ? '#F59E0B' : 'var(--surface-color)'}; color:${isAstenutoSelected ? 'white' : 'var(--warning)'}; font-size:0.8rem; font-weight:800; flex-shrink:0;">
+                                ${isAstenutoSelected ? '—' : THEME_ICONS.hourglass(13, 2)}
+                            </span>
+                            <strong style="font-size:0.92rem; color:${isAstenutoSelected ? '#F59E0B' : 'var(--primary-text)'};">Astenuto</strong>
+                        </div>
+                        <button type="button" onclick="submitPresidentVote('${assemblyId}', 'Astenuto')" class="btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; font-weight:800; background:${isAstenutoSelected ? '#F59E0B' : 'var(--surface-color)'}; color:${isAstenutoSelected ? 'white' : 'var(--warning)'}; border:1px solid ${isAstenutoSelected ? '#F59E0B' : 'rgba(245, 158, 11, 0.4)'}; border-radius:6px; cursor:pointer; flex-shrink:0;">
+                            ${isAstenutoSelected ? 'Votato ✓' : 'Astenuto'}
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            let voteLabel = '';
+            let voteColor = '#10B981';
+            let voteBg = 'rgba(16, 185, 129, 0.12)';
+            let voteBorder = 'rgba(16, 185, 129, 0.3)';
+            if (myVote) {
+                const candVal = window.cleanCandidateName ? window.cleanCandidateName(myVote.candidate) : myVote.candidate;
+                if ((candVal || '').toLowerCase() === 'contrario') {
+                    voteLabel = 'Contrario';
+                    voteColor = 'var(--danger, #EF4444)';
+                    voteBg = 'rgba(239, 68, 68, 0.12)';
+                    voteBorder = 'rgba(239, 68, 68, 0.3)';
+                } else if ((candVal || '').toLowerCase() === 'astenuto') {
+                    voteLabel = 'Astenuto';
+                    voteColor = 'var(--warning, #F59E0B)';
+                    voteBg = 'rgba(245, 158, 11, 0.12)';
+                    voteBorder = 'rgba(245, 158, 11, 0.3)';
+                } else {
+                    voteLabel = candVal;
+                }
+            }
+
             const statusHtml = myVote ? `
-                <div style="padding:0.5rem 0.75rem; background:rgba(16, 185, 129, 0.12); border:1px solid rgba(16, 185, 129, 0.3); border-radius:6px; font-size:0.8rem; color:#10B981; margin-top:0.6rem; text-align:center;">
-                    ${THEME_ICONS.check(13, 2.5)} Hai votato per: <strong>${escapeHtml(window.cleanCandidateName ? window.cleanCandidateName(myVote.candidate) : myVote.candidate)}</strong>
-                    <div style="font-size:0.72rem; color:var(--secondary-text); margin-top:0.15rem;">Puoi modificare il voto selezionando un altro candidato finché la votazione è aperta.</div>
+                <div style="padding:0.5rem 0.75rem; background:${voteBg}; border:1px solid ${voteBorder}; border-radius:6px; font-size:0.8rem; color:${voteColor}; margin-top:0.6rem; text-align:center;">
+                    ${THEME_ICONS.check(13, 2.5)} Hai votato: <strong>${escapeHtml(voteLabel)}</strong>
+                    <div style="font-size:0.72rem; color:var(--secondary-text); margin-top:0.15rem;">Puoi modificare il tuo voto selezionando un'altra opzione finché la votazione è aperta.</div>
                 </div>
             ` : `
                 <div style="padding:0.45rem 0.75rem; background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.3); border-radius:6px; font-size:0.78rem; color:var(--warning); margin-top:0.6rem; text-align:center;">
-                    ${THEME_ICONS.hourglass(13, 2)} Seleziona il candidato da eleggere come Presidente.
+                    ${THEME_ICONS.hourglass(13, 2)} Seleziona il candidato da eleggere oppure esprimi voto Contrario o Astenuto.
                 </div>
             `;
 
@@ -23571,6 +23623,7 @@ ${renderBottomNavigation()}
 
                     <div style="display:flex; flex-direction:column; gap:0.2rem; margin-bottom:0.4rem;">
                         ${candidatesHtml}
+                        ${extraOptionsHtml}
                     </div>
 
                     ${statusHtml}
@@ -23677,6 +23730,74 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.modifyPresidentVote = async (assemblyId, voterId, newChoice) => {
+            try {
+                if (!newChoice) return;
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                if (!assembly.presidentVoting || assembly.presidentVoting.status !== 'voting') {
+                    await customAlert("La votazione per il Presidente non è attiva.");
+                    return;
+                }
+
+                const existingVotes = assembly.presidentVoting.votes || [];
+                const oldVote = existingVotes.find(v => v.voterId === voterId || (v.voterId && voterId && String(v.voterId) === String(voterId)));
+                const voterName = oldVote?.voterName || 'Condòmino';
+
+                if (newChoice === '__RESET__') {
+                    const confirmReset = await customConfirm(
+                        `Sei sicuro di voler annullare il voto di "${voterName}" e riportarlo tra i senza voto?`,
+                        "Annulla Voto",
+                        "Indietro"
+                    );
+                    if (!confirmReset) return;
+
+                    const updatedVotes = existingVotes.filter(v => v.voterId !== voterId && String(v.voterId) !== String(voterId));
+                    await updateDoc(assemblyRef, {
+                        'presidentVoting.votes': updatedVotes
+                    });
+                    await logAssemblyEvent(assemblyId, 'MODIFICA_VOTO_PRESIDENTE', `Voto per il Presidente annullato per ${voterName} dall'amministratore (riportato tra i senza voto)`);
+                    return;
+                }
+
+                newChoice = window.cleanCandidateName ? window.cleanCandidateName(newChoice) : (newChoice || '').trim();
+
+                const attendees = assembly.attendees || [];
+                const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+                const attendee = activeAttendees.find(a => (a.uid && a.uid === voterId) || (a.id && a.id === voterId) || (a.qrUid && a.qrUid === voterId) || (a.nome && a.nome === voterId));
+
+                const userMillesimi = oldVote?.millesimi !== undefined ? oldVote.millesimi : (attendee?.millesimi || 0);
+                const userHeads = oldVote?.heads !== undefined ? oldVote.heads : 1;
+                const userProxiesCount = oldVote?.proxiesCount !== undefined ? oldVote.proxiesCount : 0;
+
+                const updatedVote = {
+                    ...(oldVote || {}),
+                    voterId: voterId,
+                    voterName: voterName,
+                    candidate: newChoice,
+                    millesimi: userMillesimi,
+                    heads: userHeads,
+                    proxiesCount: userProxiesCount,
+                    recordedByAdmin: true,
+                    modifiedAt: Date.now()
+                };
+
+                const updatedVotes = existingVotes.filter(v => v.voterId !== voterId && String(v.voterId) !== String(voterId));
+                updatedVotes.push(updatedVote);
+
+                await updateDoc(assemblyRef, {
+                    'presidentVoting.votes': updatedVotes
+                });
+
+                await logAssemblyEvent(assemblyId, 'MODIFICA_VOTO_PRESIDENTE', `Voto per il Presidente modificato per ${voterName} in: ${newChoice} (${userMillesimi.toFixed(2)} ‰)`);
+            } catch (err) {
+                console.error("Errore modifica voto presidente:", err);
+                await customAlert("Errore durante la modifica del voto: " + (err?.message || err));
+            }
+        };
+
         window._expandedPresidentVoterCards = window._expandedPresidentVoterCards || new Set();
         window._hasInitializedPresidentVoterExpansion = window._hasInitializedPresidentVoterExpansion || false;
         window._presidentFullscreenView = null;
@@ -23759,8 +23880,8 @@ ${renderBottomNavigation()}
             if (totalRoomMil <= 0) totalRoomMil = 1000.00;
 
             if (!window._hasInitializedPresidentVoterExpansion) {
-                candidates.forEach(c => {
-                    const cVotes = votes.filter(v => v.candidate === c);
+                [...candidates, 'Contrario', 'Astenuto'].forEach(c => {
+                    const cVotes = votes.filter(v => (v.candidate || '').toLowerCase() === c.toLowerCase());
                     if (cVotes.length > 0) {
                         window._expandedPresidentVoterCards.add(c);
                     }
@@ -23797,7 +23918,19 @@ ${renderBottomNavigation()}
 
                 let votersListHtml = '';
                 if (cVotes.length > 0) {
-                    const voterItems = cVotes.map(v => {
+                    const sortedCVotes = [...cVotes].sort((a, b) => {
+                        const nameA = (a.voterName || '').trim().toLowerCase();
+                        const nameB = (b.voterName || '').trim().toLowerCase();
+                        return nameA.localeCompare(nameB, 'it', { sensitivity: 'base' });
+                    });
+
+                    const changeOptionsCandidate = [
+                        ...candidates.map(candName => `<option value="${escapeHtml(candName)}">${escapeHtml(candName)}</option>`),
+                        `<option value="Contrario">Contrario</option>`,
+                        `<option value="Astenuto">Astenuto</option>`
+                    ].join('');
+
+                    const voterItems = sortedCVotes.map(v => {
                         const isManual = v.recordedByAdmin === true;
                         const attendeeData = activeAttendees.find(a => (a.uid && a.uid === v.voterId) || (a.id && a.id === v.voterId) || (a.nome && a.nome === v.voterName));
                         const attendeeProxies = (activeProxies || []).filter(p => (p.delegateId === v.voterId || (attendeeData?.uid && p.delegateId === attendeeData.uid) || (attendeeData?.id && p.delegateId === attendeeData.id)));
@@ -23844,6 +23977,16 @@ ${renderBottomNavigation()}
                                     </div>
                                 </div>
                                 ${proxiesBadge}
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.35rem; margin-top:0.3rem; padding-top:0.25rem; border-top:1px dashed rgba(255,255,255,0.06);">
+                                    <span style="font-size:0.68rem; color:var(--secondary-text); display:inline-flex; align-items:center; gap:0.2rem;">
+                                        ${THEME_ICONS.edit ? THEME_ICONS.edit(11) : '✏️'} Modifica:
+                                    </span>
+                                    <select class="form-select" style="font-size:0.72rem; padding:0.15rem 0.35rem; max-width:125px; height:24px; line-height:1; border-radius:4px; border:1px solid var(--surface-color-light); background:var(--surface-color);" onchange="window.modifyPresidentVote('${assemblyId}', '${escapeJsAttr(v.voterId)}', this.value); this.value='';">
+                                        <option value="" disabled selected>Cambia voto...</option>
+                                        ${changeOptionsCandidate}
+                                        <option value="__RESET__" style="color:var(--danger); font-weight:700;">✕ Annulla voto</option>
+                                    </select>
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -23893,6 +24036,140 @@ ${renderBottomNavigation()}
                 `;
             }).join('');
 
+            // Tally per opzioni Contrario e Astenuto
+            const renderSpecialTallyCard = (optName, optColor, optIcon) => {
+                const optVotes = votes.filter(v => (v.candidate || '').toLowerCase() === optName.toLowerCase());
+                let optMil = 0, optHeads = 0;
+                optVotes.forEach(v => {
+                    optMil += (v.millesimi || 0);
+                    optHeads += (v.heads || 1);
+                });
+                const percent = totalRoomMil > 0 ? ((optMil / totalRoomMil) * 100).toFixed(1) : '0.0';
+                const isExpanded = window._expandedPresidentVoterCards.has(optName);
+                const safeId = 'cand_voters_' + encodeURIComponent(optName).replace(/[^a-zA-Z0-9]/g, '_');
+
+                let votersListHtml = '';
+                if (optVotes.length > 0) {
+                    const sortedOptVotes = [...optVotes].sort((a, b) => {
+                        const nameA = (a.voterName || '').trim().toLowerCase();
+                        const nameB = (b.voterName || '').trim().toLowerCase();
+                        return nameA.localeCompare(nameB, 'it', { sensitivity: 'base' });
+                    });
+
+                    const changeOptionsSpecial = [
+                        ...candidates.map(candName => `<option value="${escapeHtml(candName)}">${escapeHtml(candName)}</option>`),
+                        `<option value="Contrario">Contrario</option>`,
+                        `<option value="Astenuto">Astenuto</option>`
+                    ].join('');
+
+                    const voterItems = sortedOptVotes.map(v => {
+                        const isManual = v.recordedByAdmin === true;
+                        const attendeeData = activeAttendees.find(a => (a.uid && a.uid === v.voterId) || (a.id && a.id === v.voterId) || (a.nome && a.nome === v.voterName));
+                        const attendeeProxies = (activeProxies || []).filter(p => (p.delegateId === v.voterId || (attendeeData?.uid && p.delegateId === attendeeData.uid) || (attendeeData?.id && p.delegateId === attendeeData.id)));
+
+                        let proxiesBadge = '';
+                        if (attendeeProxies.length > 0) {
+                            const delegatorRows = attendeeProxies.map(p => {
+                                const dName = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
+                                const dMil = (p.millesimi || 0).toFixed(2);
+                                return `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--secondary-text); padding:0.15rem 0; border-top:1px dashed rgba(255,255,255,0.07);">
+                                        <span style="display:inline-flex; align-items:center; gap:0.3rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                            <span style="color:var(--accent-color); font-weight:700; flex-shrink:0;">↳</span>
+                                            <span style="color:var(--primary-text); font-weight:600; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(dName)}</span>
+                                        </span>
+                                        <span style="color:var(--accent-color); font-weight:700; flex-shrink:0; margin-left:0.35rem;">${dMil} ‰</span>
+                                    </div>
+                                `;
+                            }).join('');
+                            proxiesBadge = `
+                                <div style="margin-top:0.25rem; padding:0.2rem 0.4rem; background:rgba(0,0,0,0.15); border-radius:5px;">
+                                    <div style="font-size:0.68rem; color:var(--accent-color); font-weight:700; display:flex; align-items:center; gap:0.25rem; margin-bottom:0.1rem;">
+                                        ${THEME_ICONS.scroll(11)} +${attendeeProxies.length} ${attendeeProxies.length === 1 ? 'delega' : 'deleghe'}:
+                                    </div>
+                                    <div style="display:flex; flex-direction:column;">
+                                        ${delegatorRows}
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        return `
+                            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:0.35rem 0.5rem; margin-bottom:0.25rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; min-width:0;">
+                                        <strong style="font-size:0.8rem; color:var(--primary-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                            ${escapeHtml(v.voterName)}
+                                        </strong>
+                                        ${isManual ? '<span style="font-size:0.62rem; background:rgba(245,158,11,0.2); color:var(--warning); padding:0.1rem 0.35rem; border-radius:4px; font-weight:700;">Manuale</span>' : ''}
+                                    </div>
+                                    <div style="text-align:right; flex-shrink:0;">
+                                        <span style="font-size:0.78rem; font-weight:800; color:${optColor};">${(v.millesimi || 0).toFixed(2)} ‰</span>
+                                        <span style="font-size:0.65rem; color:var(--secondary-text); display:block;">${v.heads || 1} ${(v.heads || 1) === 1 ? 'testa' : 'teste'}</span>
+                                    </div>
+                                </div>
+                                ${proxiesBadge}
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.35rem; margin-top:0.3rem; padding-top:0.25rem; border-top:1px dashed rgba(255,255,255,0.06);">
+                                    <span style="font-size:0.68rem; color:var(--secondary-text); display:inline-flex; align-items:center; gap:0.2rem;">
+                                        ${THEME_ICONS.edit ? THEME_ICONS.edit(11) : '✏️'} Modifica:
+                                    </span>
+                                    <select class="form-select" style="font-size:0.72rem; padding:0.15rem 0.35rem; max-width:125px; height:24px; line-height:1; border-radius:4px; border:1px solid var(--surface-color-light); background:var(--surface-color);" onchange="window.modifyPresidentVote('${assemblyId}', '${escapeJsAttr(v.voterId)}', this.value); this.value='';">
+                                        <option value="" disabled selected>Cambia voto...</option>
+                                        ${changeOptionsSpecial}
+                                        <option value="__RESET__" style="color:var(--danger); font-weight:700;">✕ Annulla voto</option>
+                                    </select>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    votersListHtml = `
+                        <div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:0.3rem; margin-top:0.3rem;">
+                            <div onclick="window.togglePresidentCandidateVoters('${escapeJsAttr(optName)}')" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; user-select:none; padding:0.15rem 0.1rem; margin-bottom:0.25rem;">
+                                <span style="font-size:0.74rem; font-weight:700; color:var(--secondary-text); display:inline-flex; align-items:center; gap:0.25rem;">
+                                    ${THEME_ICONS.userCheck(12)} Votanti (${optVotes.length})
+                                </span>
+                                <span id="president-voters-btn-${safeId}" data-count="${optVotes.length}" style="font-size:0.72rem; color:${optColor}; font-weight:700;">
+                                    ${isExpanded ? 'Chiudi ▲' : 'Dettagli ▼'}
+                                </span>
+                            </div>
+                            <div id="president-voters-${safeId}" style="display:${isExpanded ? 'flex' : 'none'}; flex-direction:column; gap:0.25rem; max-height:160px; overflow-y:auto; padding-right:0.1rem;">
+                                ${voterItems}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div style="background:var(--surface-color); border:1.5px solid var(--surface-color-light); border-left:3.5px solid ${optColor}; border-radius:8px; padding:0.6rem 0.75rem; margin-bottom:0.35rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.3rem; gap:0.4rem;">
+                            <div style="min-width:0; flex:1;">
+                                <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                    <strong style="font-size:0.9rem; color:var(--primary-text);">${optIcon} ${escapeHtml(optName)}</strong>
+                                </div>
+                            </div>
+                            <div style="text-align:right; flex-shrink:0;">
+                                <span style="font-size:0.92rem; font-weight:800; color:${optColor};">${optMil.toFixed(2)} ‰</span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:var(--secondary-text); margin-bottom:0.25rem;">
+                            <span><strong>${optHeads}</strong> ${optHeads === 1 ? 'testa' : 'teste'} (${optVotes.length} ${optVotes.length === 1 ? 'voto' : 'voti'})</span>
+                            <span><strong>${totalRoomPresences}</strong> ${totalRoomPresences === 1 ? 'presente' : 'presenti'}</span>
+                        </div>
+
+                        <div style="background:rgba(255,255,255,0.08); border-radius:10px; height:5px; overflow:hidden;">
+                            <div style="background:${optColor}; height:100%; width:${Math.min(100, Math.max(0, parseFloat(percent)))}%; transition:width 0.3s ease;"></div>
+                        </div>
+
+                        ${votersListHtml}
+                    </div>
+                `;
+            };
+
+            const contrarioCardHtml = renderSpecialTallyCard('Contrario', 'var(--danger, #EF4444)', THEME_ICONS.thumbsDown(13));
+            const astenutoCardHtml = renderSpecialTallyCard('Astenuto', 'var(--warning, #F59E0B)', THEME_ICONS.hourglass(13, 2));
+
             // Votanti in attesa (manuali o non votati)
             const votedUids = new Set(votes.map(v => v.voterId));
             const pendingAttendees = activeAttendees.filter(a => {
@@ -23901,6 +24178,22 @@ ${renderBottomNavigation()}
             });
 
             const isManualAttendee = (a) => a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || a.registeredVia === 'manual' || (!a.scannedAt && !!a.joinedAt);
+
+            // Ordinamento senza voto: 1. App o Manuale (App prima, poi Manuale); 2. Ordine alfabetico
+            pendingAttendees.sort((a, b) => {
+                const typeA = isManualAttendee(a) ? 1 : 0; // 0: App/QR, 1: Manuale
+                const typeB = isManualAttendee(b) ? 1 : 0;
+                if (typeA !== typeB) {
+                    return typeA - typeB;
+                }
+                const dNameA = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.cognome ? a.cognome + ' ' : ''}${a.nome || ''}`.trim() || 'Condòmino');
+                const cleanA = (window.formatVoterDisplayName ? window.formatVoterDisplayName(dNameA) : dNameA).replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim().toLowerCase();
+
+                const dNameB = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(b) : (`${b.cognome ? b.cognome + ' ' : ''}${b.nome || ''}`.trim() || 'Condòmino');
+                const cleanB = (window.formatVoterDisplayName ? window.formatVoterDisplayName(dNameB) : dNameB).replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim().toLowerCase();
+
+                return cleanA.localeCompare(cleanB, 'it', { sensitivity: 'base' });
+            });
 
             let pendingMil = 0;
             pendingAttendees.forEach(a => pendingMil += (a.millesimi || 0));
@@ -23913,7 +24206,11 @@ ${renderBottomNavigation()}
                     const aIdentifier = a.uid || a.id || a.qrUid || a.nome || '';
                     const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
                     const allowedCandidates = candidates;
-                    const optionsCand = allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                    const optionsCand = [
+                        ...allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`),
+                        `<option value="Contrario">Contrario</option>`,
+                        `<option value="Astenuto">Astenuto</option>`
+                    ].join('');
                     const isManual = isManualAttendee(a);
                     const regBadge = isManual
                         ? `<span class="badge" style="background:#10B981; color:white; font-size:0.65rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.circleGreen ? THEME_ICONS.circleGreen(9) : '●'} Manuale</span>`
@@ -23945,7 +24242,11 @@ ${renderBottomNavigation()}
                     const aIdentifier = a.uid || a.id || a.qrUid || a.nome || '';
                     const dName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (`${a.nome || ''} ${a.cognome || ''}`.trim() || 'Condòmino');
                     const allowedCandidates = candidates;
-                    const optionsCand = allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                    const optionsCand = [
+                        ...allowedCandidates.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`),
+                        `<option value="Contrario">Contrario</option>`,
+                        `<option value="Astenuto">Astenuto</option>`
+                    ].join('');
                     const isManual = isManualAttendee(a);
                     const regBadge = isManual
                         ? `<span class="badge" style="background:#10B981; color:white; font-size:0.68rem; font-weight:800; padding:0.12rem 0.4rem; border-radius:5px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGreen ? THEME_ICONS.circleGreen(10) : '●'} Manuale</span>`
@@ -24111,6 +24412,8 @@ ${renderBottomNavigation()}
                         <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
                             <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                                 ${tallyCardsHtml}
+                                ${contrarioCardHtml}
+                                ${astenutoCardHtml}
                             </div>
 
                             ${manualSectionHtml}
