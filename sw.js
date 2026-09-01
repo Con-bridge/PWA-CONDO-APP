@@ -1,5 +1,5 @@
-// Definiamo nuovo nome per la cache (BUMP v44)
-const CACHE_NAME = 'condo-app-pwa-cache-v44';
+// Definiamo nuovo nome per la cache (BUMP v47)
+const CACHE_NAME = 'condo-app-pwa-cache-v47';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
