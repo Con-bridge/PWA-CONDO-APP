@@ -723,46 +723,22 @@ window.AssembleeModule = {
     getOfficialImportNominativo: function (entity, userObj = null, tableData = null, allCondomini = null) {
         if (!entity) return '';
 
-        // 1. Cerca nella lista unificata allCondomini (cache in memoria)
-        const condominiList = (allCondomini && allCondomini.length > 0)
-            ? allCondomini
-            : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []) : []);
+        const cleanUnit = (u) => (u || '').toString().trim().toLowerCase().replace(/\s+/g, '');
+        const cleanName = (n) => (n || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
 
-        const targetId = entity.uid || entity.id || entity.delegatorId;
-        const rawRawName = (entity.delegatorName || entity.nome || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || '');
-        const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
-
-        if (condominiList.length > 0) {
-            if (targetId) {
-                const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
-                if (matchById && matchById.nominativo) {
-                    return matchById.nominativo.trim();
-                }
-            }
-
-            if (targetName) {
-                const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                const matchByName = condominiList.find(c => {
-                    const cNom = (c.nominativo || '').toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                    if (cNom && (cNom === normTarget || cNom.includes(normTarget) || normTarget.includes(cNom))) return true;
-                    const cFull = `${c.cognome || ''} ${c.nome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                    if (cFull && (cFull === normTarget || cFull.includes(normTarget) || normTarget.includes(cFull))) return true;
-                    const cReverse = `${c.nome || ''} ${c.cognome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                    if (cReverse && (cReverse === normTarget || cReverse.includes(normTarget) || normTarget.includes(cReverse))) return true;
-                    return false;
-                });
-                if (matchByName && matchByName.nominativo) {
-                    return matchByName.nominativo.trim();
-                }
-            }
-        }
-
-        // 2. Cerca direttamente nelle righe del file/dataset importato (tableData)
+        // 1. Cerca direttamente nelle righe del file/dataset importato (tableData)
         const tData = (tableData && tableData.length > 0)
             ? tableData
             : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.tableData || window._currentTableData || []) : []);
 
-        if (tData.length > 0) {
+        const condominiList = (allCondomini && allCondomini.length > 0)
+            ? allCondomini
+            : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []) : []);
+
+        // Priority 1: Se l'entità specifica una singola unità immobiliare (interno / unita / appartamento)
+        const singleUnit = entity.interno || entity.unitaImmobiliare || entity.unita || entity.apartment || (typeof entity === 'string' ? entity : null);
+
+        if (singleUnit && typeof singleUnit === 'string' && tData.length > 0) {
             const headers = Object.keys(tData[0] || {});
             const cleanH = (h) => (h || '').toString().trim().toLowerCase();
             const findH = (keys) => {
@@ -770,49 +746,77 @@ window.AssembleeModule = {
                 if (found) return found;
                 return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
             };
-
             const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
             const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
 
-            if (nomH) {
-                let props = (entity.proprieta && entity.proprieta.length > 0) ? entity.proprieta : (userObj?.proprieta || []);
-                if (props.length === 0 && entity.unitaImmobiliare) {
-                    const uArr = Array.isArray(entity.unitaImmobiliare) ? entity.unitaImmobiliare : [entity.unitaImmobiliare];
-                    props = uArr.map(u => ({ interno: u }));
-                }
-
-                if (props.length > 0 && unitH) {
-                    const targetInterni = props.map(p => (p.interno || '').toString().trim().toLowerCase()).filter(Boolean);
-                    const matchedRow = tData.find(r => {
-                        const rUnit = (r[unitH] || '').toString().trim().toLowerCase();
-                        return rUnit && targetInterni.some(ti => ti === rUnit || ti.includes(rUnit) || rUnit.includes(ti));
-                    });
-                    if (matchedRow && matchedRow[nomH]) {
-                        return matchedRow[nomH].toString().trim();
-                    }
-                }
-
-                if (targetName) {
-                    const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                    const matchedRow = tData.find(r => {
-                        const rNom = (r[nomH] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                        if (!rNom) return false;
-                        if (rNom === normTarget || rNom.includes(normTarget) || normTarget.includes(rNom)) return true;
-                        const targetWords = normTarget.split(' ').filter(w => w.length > 2);
-                        if (targetWords.length > 0 && targetWords.every(w => rNom.includes(w))) return true;
-                        return false;
-                    });
-                    if (matchedRow && matchedRow[nomH]) {
-                        return matchedRow[nomH].toString().trim();
-                    }
+            if (unitH && nomH) {
+                const targetU = cleanUnit(singleUnit);
+                // Match ESATTO sull'unità
+                const matchedRow = tData.find(r => cleanUnit(r[unitH]) === targetU);
+                if (matchedRow && matchedRow[nomH]) {
+                    return matchedRow[nomH].toString().trim();
                 }
             }
         }
 
-        // 3. Fallback
+        // Priority 2: Cerca per ID utente registrato nella cache unificata allCondomini
+        const targetId = entity.uid || entity.id || entity.delegatorId;
+        if (targetId && condominiList.length > 0) {
+            const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
+            if (matchById && matchById.nominativo) {
+                return matchById.nominativo.trim();
+            }
+        }
+
+        // Priority 3: Cerca per Nome/Cognome in tableData
+        const rawRawName = (entity.delegatorName || entity.nominativo || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || entity.nome || '');
+        const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+        const normTarget = cleanName(targetName);
+        const targetWords = normTarget.split(' ').filter(w => w.length >= 2);
+
+        if (tData.length > 0 && targetWords.length > 0) {
+            const headers = Object.keys(tData[0] || {});
+            const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+            const findH = (keys) => {
+                let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                if (found) return found;
+                return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
+            };
+            const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+
+            if (nomH) {
+                // Match esatto stringa nome
+                const exactRow = tData.find(r => cleanName(r[nomH]) === normTarget);
+                if (exactRow && exactRow[nomH]) return exactRow[nomH].toString().trim();
+
+                // Match tutte le parole significative del nome
+                const allWordsRow = tData.find(r => {
+                    const rNom = cleanName(r[nomH]);
+                    return rNom && targetWords.every(w => rNom.includes(w));
+                });
+                if (allWordsRow && allWordsRow[nomH]) return allWordsRow[nomH].toString().trim();
+            }
+        }
+
+        // Priority 4: Cerca per Nome in condominiList
+        if (condominiList.length > 0 && targetWords.length > 0) {
+            const matchByName = condominiList.find(c => {
+                const cNom = cleanName(c.nominativo);
+                if (cNom && (cNom === normTarget || targetWords.every(w => cNom.includes(w)))) return true;
+                const cFull = cleanName(`${c.cognome || ''} ${c.nome || ''}`);
+                if (cFull && (cFull === normTarget || targetWords.every(w => cFull.includes(w)))) return true;
+                return false;
+            });
+            if (matchByName && matchByName.nominativo) {
+                return matchByName.nominativo.trim();
+            }
+        }
+
+        // Priority 5: Fallback
         if (entity.delegatorName) return entity.delegatorName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
-        if (entity.nome) return entity.nome.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+        if (entity.nominativo) return entity.nominativo.trim();
         if (userObj) return `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome || 'Condòmino';
+        if (entity.cognome || entity.nome) return `${entity.cognome || ''} ${entity.nome || ''}`.trim() || 'Condòmino';
         return 'Condòmino';
     }
 };
