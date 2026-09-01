@@ -23339,7 +23339,7 @@ ${renderBottomNavigation()}
             if (!container) return;
 
             if (window._tempPresidentCandidates.length === 0) {
-                container.innerHTML = `<p style="font-size:0.78rem; color:var(--secondary-text); margin:0.3rem 0; text-align:center;">Nessun candidato aggiunto (min. 2).</p>`;
+                container.innerHTML = `<p style="font-size:0.78rem; color:var(--secondary-text); margin:0.3rem 0; text-align:center;">Nessun candidato aggiunto.</p>`;
             } else {
                 container.innerHTML = window._tempPresidentCandidates.map((c, idx) => {
                     const cClean = window.cleanCandidateName ? window.cleanCandidateName(c) : c;
@@ -23354,12 +23354,12 @@ ${renderBottomNavigation()}
 
             const count = window._tempPresidentCandidates.length;
             if (countBadge) {
-                countBadge.innerHTML = `Candidati inseriti: <strong>${count}</strong> ${count >= 2 ? '<span style="color:#10B981;">(Pronto ✓)</span>' : '<span style="color:var(--warning);">(Minimo 2)</span>'}`;
+                countBadge.innerHTML = `Candidati inseriti: <strong>${count}</strong> ${count >= 1 ? '<span style="color:#10B981;">(Pronto ✓)</span>' : ''}`;
             }
             if (btnStart) {
-                btnStart.disabled = count < 2;
-                btnStart.style.opacity = count < 2 ? '0.6' : '1';
-                btnStart.style.cursor = count < 2 ? 'not-allowed' : 'pointer';
+                btnStart.disabled = count < 1;
+                btnStart.style.opacity = count < 1 ? '0.6' : '1';
+                btnStart.style.cursor = count < 1 ? 'not-allowed' : 'pointer';
             }
         };
 
@@ -23427,8 +23427,8 @@ ${renderBottomNavigation()}
         };
 
         window.startPresidentVoting = async (assemblyId) => {
-            if (window._tempPresidentCandidates.length < 2) {
-                await customAlert("È obbligatorio inserire almeno 2 candidati per avviare la votazione.");
+            if (window._tempPresidentCandidates.length < 1) {
+                await customAlert("È necessario inserire almeno 1 candidato per avviare la votazione.");
                 return;
             }
 
@@ -23744,6 +23744,7 @@ ${renderBottomNavigation()}
             assembly = assembly || {};
             activeAttendees = Array.isArray(activeAttendees) ? activeAttendees : ((assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated));
             activeProxies = Array.isArray(activeProxies) ? activeProxies : ((assembly.proxies || []).filter(p => p.status !== 'rejected'));
+            const totalRoomPresences = activeAttendees.length + activeProxies.length;
 
             const rawCandidates = assembly.presidentVoting?.candidates || [];
             const candidates = rawCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
@@ -23880,7 +23881,7 @@ ${renderBottomNavigation()}
 
                         <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:var(--secondary-text); margin-bottom:0.25rem;">
                             <span><strong>${c.heads}</strong> ${c.heads === 1 ? 'testa' : 'teste'} (${c.count} ${c.count === 1 ? 'voto' : 'voti'})</span>
-                            <span><strong>${percent}%</strong> dei presenti</span>
+                            <span><strong>${totalRoomPresences}</strong> ${totalRoomPresences === 1 ? 'presente' : 'presenti'}</span>
                         </div>
 
                         <div style="background:rgba(255,255,255,0.08); border-radius:10px; height:5px; overflow:hidden;">
@@ -24065,7 +24066,6 @@ ${renderBottomNavigation()}
                 `;
             } else {
                 // Controllo maggioranza per abilitare il pulsante di elezione
-                const totalRoomPresences = activeAttendees.length + activeProxies.length;
                 const topCandidate = candidateScores.length > 0 ? candidateScores[0] : null;
                 const isAbsoluteMajority = topCandidate && (
                     (totalRoomMil > 0 && topCandidate.millesimi > (totalRoomMil / 2)) ||
@@ -24230,8 +24230,8 @@ ${renderBottomNavigation()}
                             <label class="card" style="margin: 0 !important; padding: 0.65rem 0.8rem; cursor: pointer; display: flex; align-items: flex-start; gap: 0.55rem; background: var(--surface-color-light); border: 1.5px solid var(--surface-color-light); border-radius: 8px;">
                                 <input type="radio" name="president-election-mode" value="votazione" onchange="togglePresidentElectionMode('votazione')" style="accent-color: var(--accent-color); width: 17px; height: 17px; margin-top: 0.15rem; flex-shrink: 0; cursor: pointer;">
                                 <div>
-                                    <strong style="font-size: 0.88rem; color: var(--primary-text); display: block;">2. Con votazione (più candidati)</strong>
-                                    <span style="font-size: 0.77rem; color: var(--secondary-text); line-height: 1.3; display: block;">Votazione a scrutinio con più candidati.</span>
+                                    <strong style="font-size: 0.88rem; color: var(--primary-text); display: block;">2. Con votazione</strong>
+                                    <span style="font-size: 0.77rem; color: var(--secondary-text); line-height: 1.3; display: block;">Votazione a scrutinio.</span>
                                 </div>
                             </label>
                         </div>
@@ -24248,7 +24248,7 @@ ${renderBottomNavigation()}
                         <!-- SEZIONE 2: VOTAZIONE CON CANDIDATI -->
                         <div id="section-president-voting" class="hidden" style="display: flex; flex-direction: column; gap: 0.6rem;">
                             <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">
-                                Inserisci almeno 2 candidati:
+                                Inserisci candidato/i:
                             </p>
                             
                             <!-- A) INPUT CANDIDATO CON DROPDOWN ANTEPRIMA -->
@@ -24260,7 +24260,7 @@ ${renderBottomNavigation()}
 
                             <!-- B) LISTA CANDIDATI INSERITI -->
                             <div id="container-president-candidates-list" style="background: var(--surface-color-light); border: 1px solid var(--surface-color-light); border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; max-height: 140px; overflow-y: auto;">
-                                <p style="font-size: 0.78rem; color: var(--secondary-text); margin: 0.3rem 0; text-align: center;">Nessun candidato aggiunto (min. 2).</p>
+                                <p style="font-size: 0.78rem; color: var(--secondary-text); margin: 0.3rem 0; text-align: center;">Nessun candidato aggiunto.</p>
                             </div>
 
                             <!-- C) PULSANTE + AGGIUNGI CANDIDATO -->
@@ -24271,7 +24271,7 @@ ${renderBottomNavigation()}
 
                             <!-- D) BADGE CONTATORE -->
                             <div id="president-candidates-count-badge" style="font-size: 0.75rem; color: var(--secondary-text);">
-                                Candidati inseriti: <strong>0</strong> <span style="color: var(--warning);">(Minimo 2)</span>
+                                Candidati inseriti: <strong>0</strong>
                             </div>
                         </div>
                     </div>
