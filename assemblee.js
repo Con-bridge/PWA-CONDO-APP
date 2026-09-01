@@ -528,11 +528,72 @@ window.AssembleeModule = {
         if (!targetGroup) return true;
         if (targetGroup === 'Tutte le scale' || targetGroup === 'Intero Condominio' || targetGroup === 'Intero condominio') return true;
         if (!propGroup) return false;
+        const pNorm = propGroup.trim().toLowerCase();
         const allowed = targetGroup.split(',').map(s => s.trim().toLowerCase());
-        return allowed.includes(propGroup.trim().toLowerCase());
+        if (allowed.includes(pNorm)) return true;
+        return allowed.some(a => {
+            const aClean = a.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
+            const pClean = pNorm.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
+            if (aClean === pClean) return true;
+
+            const aWords = aClean.split(/\s+/);
+            const pWords = pClean.split(/\s+/);
+
+            if (aWords.length >= 2) {
+                const aInitial = aWords[0][0];
+                const aNum = aWords.slice(1).join('');
+                if (`${aInitial}${aNum}` === pWords.join('')) return true;
+            }
+            if (pWords.length >= 2) {
+                const pInitial = pWords[0][0];
+                const pNum = pWords.slice(1).join('');
+                if (`${pInitial}${pNum}` === aWords.join('')) return true;
+            }
+            return false;
+        });
     },
 
-    getEffectiveUnitMillesimi: function (userOrAttendee, targetGroup, allUsers = null) {
+    extractPropsFromTableData: function (tableData, nominativoOrId, rawNom) {
+        if (!tableData || !Array.isArray(tableData) || tableData.length === 0) return [];
+        const headers = Object.keys(tableData[0] || {});
+        const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
+        const findH = (keys) => {
+            let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
+            if (found) return found;
+            return headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase()))) || null;
+        };
+
+        const nomHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome']);
+        const unitHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
+        const milHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+        const grpHHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
+
+        if (!nomHeader) return [];
+
+        const cleanTarget = (rawNom || nominativoOrId || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+        if (!cleanTarget) return [];
+
+        const matchedRows = tableData.filter(row => {
+            const rNom = (row[nomHeader] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+            if (!rNom) return false;
+            if (rNom === cleanTarget) return true;
+            const rWords = rNom.split(' ').filter(w => w.length > 2);
+            const tWords = cleanTarget.split(' ').filter(w => w.length > 2);
+            return (rWords.length > 0 && rWords.every(w => cleanTarget.includes(w))) ||
+                   (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
+        });
+
+        return matchedRows.map(row => {
+            const rawMil = milHeader && row[milHeader] ? row[milHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
+            return {
+                interno: unitHeader && row[unitHeader] ? row[unitHeader].toString().trim() : '',
+                millesimi: parseFloat(rawMil) || 0,
+                gruppo: grpHHeader && row[grpHHeader] ? row[grpHHeader].toString().trim() : ''
+            };
+        });
+    },
+
+    getEffectiveUnitMillesimi: function (userOrAttendee, targetGroup, allUsers = null, tableData = null) {
         if (!userOrAttendee) return 0;
         
         const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
@@ -571,6 +632,25 @@ window.AssembleeModule = {
             }
         }
 
+        if (props.length === 0 && typeof window !== 'undefined' && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
+            const uId = userOrAttendee.uid || userOrAttendee.id;
+            const uName = userOrAttendee.nome || userOrAttendee.nominativo;
+            const cachedUser = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c =>
+                (uId && c.id === uId) ||
+                (uName && c.nominativo && c.nominativo.trim().toLowerCase() === uName.trim().toLowerCase())
+            );
+            if (cachedUser && Array.isArray(cachedUser.proprieta) && cachedUser.proprieta.length > 0) {
+                props = cachedUser.proprieta;
+            }
+        }
+
+        if (props.length === 0 && typeof window !== 'undefined') {
+            const tData = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
+            if (tData && tData.length > 0) {
+                props = AssembleeModule.extractPropsFromTableData(tData, userOrAttendee.uid || userOrAttendee.id, userOrAttendee.nome || userOrAttendee.nominativo);
+            }
+        }
+
         if (props.length > 0) {
             const matchingProps = props.filter(p => checkGroup(p.gruppo, targetGroup));
             return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
@@ -585,7 +665,7 @@ window.AssembleeModule = {
         return 0;
     },
 
-    getEffectiveProxyMillesimi: function (proxy, targetGroup, allUsers = null) {
+    getEffectiveProxyMillesimi: function (proxy, targetGroup, allUsers = null, tableData = null) {
         if (!proxy || proxy.status === 'rejected') return 0;
         
         const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
@@ -609,6 +689,25 @@ window.AssembleeModule = {
             }
         }
 
+        if (delegatorProps.length === 0 && typeof window !== 'undefined' && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
+            const dId = proxy.delegatorId || proxy.id;
+            const dName = proxy.delegatorName;
+            const cached = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c =>
+                (dId && c.id === dId) ||
+                (dName && c.nominativo && c.nominativo.trim().toLowerCase() === dName.trim().toLowerCase())
+            );
+            if (cached && Array.isArray(cached.proprieta) && cached.proprieta.length > 0) {
+                delegatorProps = cached.proprieta;
+            }
+        }
+
+        if (delegatorProps.length === 0 && typeof window !== 'undefined') {
+            const tData = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
+            if (tData && tData.length > 0) {
+                delegatorProps = AssembleeModule.extractPropsFromTableData(tData, proxy.delegatorId || proxy.id, proxy.delegatorName);
+            }
+        }
+
         if (delegatorProps.length > 0) {
             const matchingProps = delegatorProps.filter(p => checkGroup(p.gruppo, targetGroup));
             return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
@@ -619,12 +718,112 @@ window.AssembleeModule = {
         }
 
         return 0;
+    },
+
+    getOfficialImportNominativo: function (entity, userObj = null, tableData = null, allCondomini = null) {
+        if (!entity) return '';
+
+        // 1. Cerca nella lista unificata allCondomini (cache in memoria)
+        const condominiList = (allCondomini && allCondomini.length > 0)
+            ? allCondomini
+            : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []) : []);
+
+        const targetId = entity.uid || entity.id || entity.delegatorId;
+        const rawRawName = (entity.delegatorName || entity.nome || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || '');
+        const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+
+        if (condominiList.length > 0) {
+            if (targetId) {
+                const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
+                if (matchById && matchById.nominativo) {
+                    return matchById.nominativo.trim();
+                }
+            }
+
+            if (targetName) {
+                const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                const matchByName = condominiList.find(c => {
+                    const cNom = (c.nominativo || '').toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                    if (cNom && (cNom === normTarget || cNom.includes(normTarget) || normTarget.includes(cNom))) return true;
+                    const cFull = `${c.cognome || ''} ${c.nome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                    if (cFull && (cFull === normTarget || cFull.includes(normTarget) || normTarget.includes(cFull))) return true;
+                    const cReverse = `${c.nome || ''} ${c.cognome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                    if (cReverse && (cReverse === normTarget || cReverse.includes(normTarget) || normTarget.includes(cReverse))) return true;
+                    return false;
+                });
+                if (matchByName && matchByName.nominativo) {
+                    return matchByName.nominativo.trim();
+                }
+            }
+        }
+
+        // 2. Cerca direttamente nelle righe del file/dataset importato (tableData)
+        const tData = (tableData && tableData.length > 0)
+            ? tableData
+            : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.tableData || window._currentTableData || []) : []);
+
+        if (tData.length > 0) {
+            const headers = Object.keys(tData[0] || {});
+            const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+            const findH = (keys) => {
+                let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                if (found) return found;
+                return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
+            };
+
+            const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+            const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
+
+            if (nomH) {
+                let props = (entity.proprieta && entity.proprieta.length > 0) ? entity.proprieta : (userObj?.proprieta || []);
+                if (props.length === 0 && entity.unitaImmobiliare) {
+                    const uArr = Array.isArray(entity.unitaImmobiliare) ? entity.unitaImmobiliare : [entity.unitaImmobiliare];
+                    props = uArr.map(u => ({ interno: u }));
+                }
+
+                if (props.length > 0 && unitH) {
+                    const targetInterni = props.map(p => (p.interno || '').toString().trim().toLowerCase()).filter(Boolean);
+                    const matchedRow = tData.find(r => {
+                        const rUnit = (r[unitH] || '').toString().trim().toLowerCase();
+                        return rUnit && targetInterni.some(ti => ti === rUnit || ti.includes(rUnit) || rUnit.includes(ti));
+                    });
+                    if (matchedRow && matchedRow[nomH]) {
+                        return matchedRow[nomH].toString().trim();
+                    }
+                }
+
+                if (targetName) {
+                    const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                    const matchedRow = tData.find(r => {
+                        const rNom = (r[nomH] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        if (!rNom) return false;
+                        if (rNom === normTarget || rNom.includes(normTarget) || normTarget.includes(rNom)) return true;
+                        const targetWords = normTarget.split(' ').filter(w => w.length > 2);
+                        if (targetWords.length > 0 && targetWords.every(w => rNom.includes(w))) return true;
+                        return false;
+                    });
+                    if (matchedRow && matchedRow[nomH]) {
+                        return matchedRow[nomH].toString().trim();
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback
+        if (entity.delegatorName) return entity.delegatorName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+        if (entity.nome) return entity.nome.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+        if (userObj) return `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome || 'Condòmino';
+        return 'Condòmino';
     }
 };
 
 window.isScaleInTargetGroup = window.AssembleeModule.isScaleInTargetGroup.bind(window.AssembleeModule);
+window.extractPropsFromTableData = window.AssembleeModule.extractPropsFromTableData.bind(window.AssembleeModule);
 window.getEffectiveUnitMillesimi = window.AssembleeModule.getEffectiveUnitMillesimi.bind(window.AssembleeModule);
 window.getEffectiveProxyMillesimi = window.AssembleeModule.getEffectiveProxyMillesimi.bind(window.AssembleeModule);
+window.getOfficialImportNominativo = window.AssembleeModule.getOfficialImportNominativo.bind(window.AssembleeModule);
 window.getProxyLimitConfig = window.AssembleeModule.getProxyLimitConfig.bind(window.AssembleeModule);
 window.getProxyLimitDescription = window.AssembleeModule.getProxyLimitDescription.bind(window.AssembleeModule);
 window.validateProxyLimit = window.AssembleeModule.validateProxyLimit.bind(window.AssembleeModule);
+
+
