@@ -6119,19 +6119,26 @@ ${renderBottomNavigation()}
                         html += `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente registrato.</p></div>`;
                     } else {
                         html += `<div class="card" style="padding:0;"><div class="data-table-container"><table class="data-table">
-                                    <thead><tr><th>Cognome e Nome</th><th>Email</th><th>Proprietà</th><th style="text-align:right;">Millesimi Tot.</th></tr></thead>
+                                    <thead><tr><th>Nominativo Anagrafica</th><th>Cognome e Nome</th><th>Email</th><th>Proprietà</th><th style="text-align:right;">Millesimi Tot.</th></tr></thead>
                                     <tbody>`;
                         usersSnapshot.docs.forEach(doc => {
                             const user = doc.data();
+                            const userId = doc.id;
+                            let officialNom = '';
+                            if (typeof window.getOfficialImportNominativo === 'function') {
+                                officialNom = window.getOfficialImportNominativo({ id: userId, ...user }, user, allProperties);
+                            }
+                            const finalOfficialNom = (officialNom && officialNom !== 'Condòmino') ? officialNom : `${user.cognome} ${user.nome}`;
                             const propertiesHtml = user.proprieta && user.proprieta.length > 0
                                 ? user.proprieta.map(p => `<div>${escapeHtml(p.interno)} (Piano: ${escapeHtml(p.piano ?? 'N/A')}, ${(p.millesimi || 0).toFixed(2)} ‰)</div>`).join('')
                                 : 'N/D';
                             html += `
                                 <tr>
+                                    <td data-label="Nominativo Anagrafica" style="font-weight:600; color:var(--accent-color);">${escapeHtml(finalOfficialNom)}</td>
                                     <td data-label="Cognome e Nome">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</td>
                                     <td data-label="Email">${escapeHtml(user.email)}</td>
                                     <td data-label="Proprietà">${propertiesHtml}</td>
-                                    <td data-label="Millesimi Tot." style="text-align:right;">${(user.millesimiTotali || 0).toFixed(2).replace('.', ',')}</td>
+                                    <td data-label="Millesimi Tot." style="text-align:right; font-weight:600;">${(user.millesimiTotali || 0).toFixed(2).replace('.', ',')}</td>
                                 </tr>
                             `;
                         });
@@ -6219,16 +6226,29 @@ ${renderBottomNavigation()}
             container.innerHTML = '<p style="color:var(--secondary-text);">Caricamento dati...</p>';
 
             try {
-                const usersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "==", "condomino")));
+                const [usersSnapshot, importedDataSnapshot] = await Promise.all([
+                    getDocs(query(collection(db, "users"), where("tipoUtente", "==", "condomino"))),
+                    getDocs(query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1)))
+                ]);
+
+                const tableData = !importedDataSnapshot.empty ? importedDataSnapshot.docs[0].data().tableData : [];
 
                 let allProperties = [];
                 usersSnapshot.forEach(doc => {
                     const user = doc.data();
+                    const userId = doc.id;
                     if (user.proprieta && user.proprieta.length > 0) {
                         user.proprieta.forEach(prop => {
+                            let officialNom = '';
+                            if (typeof window.getOfficialImportNominativo === 'function') {
+                                officialNom = window.getOfficialImportNominativo(prop, user, tableData);
+                            }
+                            const finalOfficialNom = (officialNom && officialNom !== 'Condòmino') ? officialNom : (prop.nominativo || `${user.cognome} ${user.nome}`);
                             allProperties.push({
+                                id: userId,
                                 nome: user.nome,
                                 cognome: user.cognome,
+                                officialNominativo: finalOfficialNom,
                                 telefono: user.telefono || 'N/D',
                                 email: user.email,
                                 ...prop
@@ -6271,7 +6291,7 @@ ${renderBottomNavigation()}
 
                     const filteredData = allProperties.filter(item => {
                         const propMatch = !propFilter || (item.interno || '') === propFilter;
-                        const cognomeMatch = !cognomeFilter || (item.cognome || '') === cognomeFilter;
+                        const cognomeMatch = !cognomeFilter || (item.cognome || '') === cognomeFilter || (item.officialNominativo || '').toLowerCase().includes(cognomeFilter.toLowerCase());
                         const gruppoMatch = !gruppoFilter || (item.gruppo || '') === gruppoFilter;
                         const pianoMatch = !pianoFilter || (item.piano != null && item.piano.toString() === pianoFilter);
                         return propMatch && cognomeMatch && gruppoMatch && pianoMatch;
@@ -6286,10 +6306,12 @@ ${renderBottomNavigation()}
                         <thead>
                             <tr>
                                 <th>Proprietà</th>
+                                <th>Nominativo Anagrafica</th>
                                 <th>Cognome</th>
                                 <th>Nome</th>
                                 <th>Raggruppamento</th>
                                 <th>Piano</th>
+                                <th style="text-align:right;">Millesimi</th>
                                 <th>Telefono</th>
                                 <th>Email</th>
                             </tr>
@@ -6297,12 +6319,17 @@ ${renderBottomNavigation()}
                         <tbody>`;
 
                     filteredData.forEach(item => {
+                        const milVal = (item.millesimi !== undefined && item.millesimi !== null && item.millesimi !== '') 
+                            ? (parseFloat(item.millesimi) || 0).toFixed(2).replace('.', ',') + ' ‰' 
+                            : 'N/D';
                         tableHtml += `<tr>
-                            <td data-label="Proprietà">${escapeHtml(item.interno || 'N/D')}</td>
+                            <td data-label="Proprietà" style="font-weight: 600;">${escapeHtml(item.interno || 'N/D')}</td>
+                            <td data-label="Nominativo Anagrafica" style="font-weight: 600; color: var(--accent-color);">${escapeHtml(item.officialNominativo || 'N/D')}</td>
                             <td data-label="Cognome">${escapeHtml(item.cognome || 'N/D')}</td>
                             <td data-label="Nome">${escapeHtml(item.nome || 'N/D')}</td>
                             <td data-label="Raggruppamento">${escapeHtml(item.gruppo || 'N/D')}</td>
                             <td data-label="Piano">${escapeHtml(item.piano ?? 'N/A')}</td>
+                            <td data-label="Millesimi" style="text-align:right; font-weight: 600;">${milVal}</td>
                             <td data-label="Telefono">${escapeHtml(item.telefono)}</td>
                             <td data-label="Email">${escapeHtml(item.email)}</td>
                         </tr>`;
@@ -10900,17 +10927,23 @@ ${renderBottomNavigation()}
                 listEl.innerHTML = snapshot.docs.map(docSnap => {
                     const condo = docSnap.data();
                     return `
-                    <div class="list-item">
-                        <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 14h-2v2h2v-2m4-4h-2v2h2V10m0-4h-2v2h2V6M12 2L2 7v13h20V7L12 2z"/></svg></div>
-                        <div class="list-item-content">
-                            <div class="title">${escapeHtml(condo.name)}</div>
-                            <div class="subtitle">Piani: ${condo.startPlan ?? 'N/D'} a ${condo.endPlan ?? 'N/D'}</div>
+                    <div class="list-item" style="background-color: var(--surface-color); flex-direction: column; align-items: stretch; gap: 0.75rem; padding: 0.85rem; cursor: default; margin-bottom: 0.75rem; border-radius: var(--radius-md);">
+                        <div class="flex items-center gap-3" style="width: 100%;">
+                            <div class="list-item-icon" style="flex-shrink: 0;"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 14h-2v2h2v-2m4-4h-2v2h2V10m0-4h-2v2h2V6M12 2L2 7v13h20V7L12 2z"/></svg></div>
+                            <div class="list-item-content" style="flex: 1;">
+                                <div class="title" style="font-weight: 600; font-size: 1rem; color: var(--primary-text); line-height: 1.3;">${escapeHtml(condo.name)}</div>
+                                <div class="subtitle" style="font-size: 0.85rem; color: var(--secondary-text); margin-top: 0.15rem;">Piani: ${condo.startPlan ?? 'N/D'} a ${condo.endPlan ?? 'N/D'}</div>
+                            </div>
                         </div>
-                        <div class="list-item-action flex gap-2">
-                            <button onclick="openGroupEditModal('${docSnap.id}', ${JSON.stringify(condo).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica Gruppo">
+                        <div class="flex gap-2" style="width: 100%; margin-top: 0.25rem;">
+                            <button onclick="openGroupEditModal('${docSnap.id}', ${JSON.stringify(condo).replace(/"/g, '&quot;')})" class="btn btn-secondary" style="flex: 1; padding: 0.55rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 500;" title="Modifica Gruppo">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                <span>Modifica</span>
                             </button>
-                            <button onclick="deletePartialCondo('${docSnap.id}')" class="btn" style="background:var(--danger); color:white; padding: 0.4rem 0.8rem; font-size:0.8rem;">Elimina</button>
+                            <button onclick="deletePartialCondo('${docSnap.id}')" class="btn" style="flex: 1; padding: 0.55rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); background: var(--danger); color: white; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 500;" title="Elimina Gruppo">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                <span>Elimina</span>
+                            </button>
                         </div>
                     </div>
                     `;
@@ -17866,46 +17899,22 @@ ${renderBottomNavigation()}
         window.getOfficialImportNominativo = (entity, userObj = null, tableData = null, allCondomini = null) => {
             if (!entity) return '';
 
-            // 1. Cerca nella lista unificata allCondomini (cache in memoria)
-            const condominiList = (allCondomini && allCondomini.length > 0)
-                ? allCondomini
-                : (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []);
+            const cleanUnit = (u) => (u || '').toString().trim().toLowerCase().replace(/\s+/g, '');
+            const cleanName = (n) => (n || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
 
-            const targetId = entity.uid || entity.id || entity.delegatorId;
-            const rawRawName = (entity.delegatorName || entity.nome || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || '');
-            const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
-
-            if (condominiList.length > 0) {
-                if (targetId) {
-                    const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
-                    if (matchById && matchById.nominativo) {
-                        return matchById.nominativo.trim();
-                    }
-                }
-
-                if (targetName) {
-                    const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                    const matchByName = condominiList.find(c => {
-                        const cNom = (c.nominativo || '').toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                        if (cNom && (cNom === normTarget || cNom.includes(normTarget) || normTarget.includes(cNom))) return true;
-                        const cFull = `${c.cognome || ''} ${c.nome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                        if (cFull && (cFull === normTarget || cFull.includes(normTarget) || normTarget.includes(cFull))) return true;
-                        const cReverse = `${c.nome || ''} ${c.cognome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                        if (cReverse && (cReverse === normTarget || cReverse.includes(normTarget) || normTarget.includes(cReverse))) return true;
-                        return false;
-                    });
-                    if (matchByName && matchByName.nominativo) {
-                        return matchByName.nominativo.trim();
-                    }
-                }
-            }
-
-            // 2. Cerca direttamente nelle righe del file/dataset importato (tableData)
+            // 1. Cerca direttamente nelle righe del file/dataset importato (tableData)
             const tData = (tableData && tableData.length > 0)
                 ? tableData
                 : (window._liveAssemblyStaticCache?.tableData || window._currentTableData || []);
 
-            if (tData.length > 0) {
+            const condominiList = (allCondomini && allCondomini.length > 0)
+                ? allCondomini
+                : (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []);
+
+            // Priority 1: Se l'entità specifica una singola unità immobiliare (interno / unita / appartamento)
+            const singleUnit = entity.interno || entity.unitaImmobiliare || entity.unita || entity.apartment || (typeof entity === 'string' ? entity : null);
+
+            if (singleUnit && typeof singleUnit === 'string' && tData.length > 0) {
                 const headers = Object.keys(tData[0] || {});
                 const cleanH = (h) => (h || '').toString().trim().toLowerCase();
                 const findH = (keys) => {
@@ -17913,49 +17922,77 @@ ${renderBottomNavigation()}
                     if (found) return found;
                     return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
                 };
-
                 const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
                 const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
 
-                if (nomH) {
-                    let props = (entity.proprieta && entity.proprieta.length > 0) ? entity.proprieta : (userObj?.proprieta || []);
-                    if (props.length === 0 && entity.unitaImmobiliare) {
-                        const uArr = Array.isArray(entity.unitaImmobiliare) ? entity.unitaImmobiliare : [entity.unitaImmobiliare];
-                        props = uArr.map(u => ({ interno: u }));
-                    }
-
-                    if (props.length > 0 && unitH) {
-                        const targetInterni = props.map(p => (p.interno || '').toString().trim().toLowerCase()).filter(Boolean);
-                        const matchedRow = tData.find(r => {
-                            const rUnit = (r[unitH] || '').toString().trim().toLowerCase();
-                            return rUnit && targetInterni.some(ti => ti === rUnit || ti.includes(rUnit) || rUnit.includes(ti));
-                        });
-                        if (matchedRow && matchedRow[nomH]) {
-                            return matchedRow[nomH].toString().trim();
-                        }
-                    }
-
-                    if (targetName) {
-                        const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                        const matchedRow = tData.find(r => {
-                            const rNom = (r[nomH] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
-                            if (!rNom) return false;
-                            if (rNom === normTarget || rNom.includes(normTarget) || normTarget.includes(rNom)) return true;
-                            const targetWords = normTarget.split(' ').filter(w => w.length > 2);
-                            if (targetWords.length > 0 && targetWords.every(w => rNom.includes(w))) return true;
-                            return false;
-                        });
-                        if (matchedRow && matchedRow[nomH]) {
-                            return matchedRow[nomH].toString().trim();
-                        }
+                if (unitH && nomH) {
+                    const targetU = cleanUnit(singleUnit);
+                    // Match ESATTO sull'unità
+                    const matchedRow = tData.find(r => cleanUnit(r[unitH]) === targetU);
+                    if (matchedRow && matchedRow[nomH]) {
+                        return matchedRow[nomH].toString().trim();
                     }
                 }
             }
 
-            // 3. Fallback
+            // Priority 2: Cerca per ID utente registrato nella cache unificata allCondomini
+            const targetId = entity.uid || entity.id || entity.delegatorId;
+            if (targetId && condominiList.length > 0) {
+                const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
+                if (matchById && matchById.nominativo) {
+                    return matchById.nominativo.trim();
+                }
+            }
+
+            // Priority 3: Cerca per Nome/Cognome in tableData
+            const rawRawName = (entity.delegatorName || entity.nominativo || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || entity.nome || '');
+            const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+            const normTarget = cleanName(targetName);
+            const targetWords = normTarget.split(' ').filter(w => w.length >= 2);
+
+            if (tData.length > 0 && targetWords.length > 0) {
+                const headers = Object.keys(tData[0] || {});
+                const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+                const findH = (keys) => {
+                    let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                    if (found) return found;
+                    return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
+                };
+                const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+
+                if (nomH) {
+                    // Match esatto stringa nome
+                    const exactRow = tData.find(r => cleanName(r[nomH]) === normTarget);
+                    if (exactRow && exactRow[nomH]) return exactRow[nomH].toString().trim();
+
+                    // Match tutte le parole significative del nome
+                    const allWordsRow = tData.find(r => {
+                        const rNom = cleanName(r[nomH]);
+                        return rNom && targetWords.every(w => rNom.includes(w));
+                    });
+                    if (allWordsRow && allWordsRow[nomH]) return allWordsRow[nomH].toString().trim();
+                }
+            }
+
+            // Priority 4: Cerca per Nome in condominiList
+            if (condominiList.length > 0 && targetWords.length > 0) {
+                const matchByName = condominiList.find(c => {
+                    const cNom = cleanName(c.nominativo);
+                    if (cNom && (cNom === normTarget || targetWords.every(w => cNom.includes(w)))) return true;
+                    const cFull = cleanName(`${c.cognome || ''} ${c.nome || ''}`);
+                    if (cFull && (cFull === normTarget || targetWords.every(w => cFull.includes(w)))) return true;
+                    return false;
+                });
+                if (matchByName && matchByName.nominativo) {
+                    return matchByName.nominativo.trim();
+                }
+            }
+
+            // Priority 5: Fallback
             if (entity.delegatorName) return entity.delegatorName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
-            if (entity.nome) return entity.nome.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+            if (entity.nominativo) return entity.nominativo.trim();
             if (userObj) return `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome || 'Condòmino';
+            if (entity.cognome || entity.nome) return `${entity.cognome || ''} ${entity.nome || ''}`.trim() || 'Condòmino';
             return 'Condòmino';
         };
 
