@@ -462,7 +462,7 @@
         .form-textarea {
             width: 100%;
             background: var(--surface-color-light);
-            border: 1px solid var(--surface-color-light);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: var(--radius-sm);
             padding: 0.8rem 1rem;
             font-family: 'Poppins', sans-serif;
@@ -558,6 +558,42 @@
             border-color: var(--accent-color, #10B981) !important;
             box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
             background: var(--surface-color-light) !important;
+        }
+
+        /* Bordi celle evidenziati per il form di creazione/modifica regole */
+        #rule-editor-card .form-input,
+        #rule-editor-card .form-select {
+            background-color: var(--surface-color, #1c1c1c) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 8px !important;
+            color: var(--primary-text) !important;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+        }
+
+        #rule-editor-card .form-input:focus,
+        #rule-editor-card .form-select:focus {
+            border-color: var(--accent-color, #1DB954) !important;
+            box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.25), inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+            outline: none !important;
+        }
+
+        #rule-editor-card .form-input:hover,
+        #rule-editor-card .form-select:hover {
+            border-color: rgba(255, 255, 255, 0.5) !important;
+        }
+
+        :root[data-theme="light"] #rule-editor-card .form-input,
+        :root[data-theme="light"] #rule-editor-card .form-select {
+            background-color: #ffffff !important;
+            border: 1.5px solid #94a3b8 !important;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        :root[data-theme="light"] #rule-editor-card .form-input:focus,
+        :root[data-theme="light"] #rule-editor-card .form-select:focus {
+            border-color: var(--accent-color, #1DB954) !important;
+            box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.2) !important;
         }
 
         /* --- STILI ADATTIVI TEMA (DARK / LIGHT) PER SEZIONE E MODALE SENZA VOTO --- */
@@ -5455,16 +5491,82 @@
         };
 
         // --- FUNZIONI MODALI DEL PROFILO ---
-        const openEditPersonalDataModal = () => {
+        const openEditPersonalDataModal = async () => {
+            let officialNom = '';
+            try {
+                if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                    await window.getUnifiedCondominiumRegistry();
+                }
+                const userForNom = { id: currentUser?.uid, ...userProfile };
+                officialNom = window.getOfficialImportNominativo(userForNom, userForNom);
+            } catch (e) { }
+
             const modalContent = `
                 <form id="edit-profile-personal-form" class="space-y-4" onsubmit="savePersonalData(event)">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="form-label">Nome</label><input type="text" id="profile-nome" value="${escapeHtml(userProfile?.nome || '')}" required class="form-input"></div>
-                        <div><label class="form-label">Cognome</label><input type="text" id="profile-cognome" value="${escapeHtml(userProfile?.cognome || '')}" required class="form-input"></div>
+                    <!-- GUIDA DI MODIFICA -->
+                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.22); border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.8rem; line-height: 1.4; color: var(--secondary-text); margin-bottom: 0.5rem;">
+                        <div style="color: var(--accent-color); display: flex; align-items: center; gap: 0.35rem; font-weight: 700; margin-bottom: 0.25rem;">
+                            ${THEME_ICONS.info(15, 2.2)}
+                            <span>Indicazione Campi</span>
+                        </div>
+                        <div>I campi con badge <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem; vertical-align:middle;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span> possono essere aggiornati. I campi con <span class="badge" style="font-size:0.65rem; background:rgba(255,255,255,0.08); color:var(--secondary-text); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem; vertical-align:middle;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span> sono gestiti dall'amministrazione.</div>
                     </div>
-                    <div><label class="form-label">Email</label><input type="email" id="profile-email" value="${escapeHtml(currentUser?.email || '')}" required class="form-input"></div>
-                    <div><label class="form-label">Telefono</label><input type="tel" id="profile-telefono" value="${escapeHtml(userProfile?.telefono || '')}" placeholder="Es. 3401234567" class="form-input"></div>
-                    <div><label class="form-label">Ruolo</label><input type="text" value="${escapeHtml(userProfile?.tipoUtente || '')}" class="form-input" disabled style="opacity:0.7;"></div>
+
+                    <!-- RUOLO (PRIMA INFO) -->
+                    <div>
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.shield(13, 2)} Ruolo</span>
+                            <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--secondary-text); font-size: 0.68rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span>
+                        </label>
+                        <input type="text" value="${escapeHtml(userProfile?.tipoUtente || '')}" class="form-input" disabled style="opacity:0.75; cursor:not-allowed; background:rgba(255,255,255,0.04);">
+                    </div>
+
+                    <!-- ANAGRAFICA (DA IMPORTAZIONE EXCEL) -->
+                    <div class="form-group" style="margin-bottom: 0.85rem;">
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom: 0.35rem;">
+                            <span style="font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">${THEME_ICONS.scroll(14, 2)} Anagrafica</span>
+                            <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--secondary-text); font-size: 0.68rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span>
+                        </label>
+                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0.6rem 0.85rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 700; color: var(--primary-text); font-size: 0.95rem;">${escapeHtml(officialNom && officialNom !== 'Condòmino' ? officialNom : 'Nessuna corrispondenza')}</div>
+                                <div style="font-size: 0.75rem; color: var(--secondary-text); margin-top: 0.15rem;">Dati da importazione Excel / anagrafica</div>
+                            </div>
+                            <span class="badge" style="background: var(--surface-color-light); color: var(--secondary-text); font-size: 0.7rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.fileText(12, 2)} Excel</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.user(13, 2)} Nome</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                        </label>
+                        <input type="text" id="profile-nome" value="${escapeHtml(userProfile?.nome || '')}" required class="form-input">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.user(13, 2)} Cognome</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                        </label>
+                        <input type="text" id="profile-cognome" value="${escapeHtml(userProfile?.cognome || '')}" required class="form-input">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.mail(13, 2)} Email</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                        </label>
+                        <input type="email" id="profile-email" value="${escapeHtml(currentUser?.email || '')}" required class="form-input">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.phone(13, 2)} Telefono</span>
+                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                        </label>
+                        <input type="tel" id="profile-telefono" value="${escapeHtml(userProfile?.telefono || '')}" placeholder="Es. 3401234567" class="form-input">
+                    </div>
                     
                     <div class="flex justify-end gap-4 pt-4">
                         <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
@@ -6233,18 +6335,20 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="margin-bottom: 1.25rem; color: var(--secondary-text);">
                         Carica il file Excel contenente i dati anagrafici dei proprietari, le unità immobiliari e i relativi millesimi. Questo file è <strong>fondamentale</strong> per la registrazione degli utenti e per i report.
                     </p>
-                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: 8px;">
-                        <div>
-                            <strong style="font-size: 0.9rem;">${THEME_ICONS.fileText(16)} Template Excel Anagrafica e Millesimi</strong>
-                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato con le colonne corrette.</p>
+                    <div style="margin-bottom: 1.25rem; background: var(--surface-color-light); padding: 1rem; border-radius: 8px;">
+                        <div style="margin-bottom: 0.85rem;">
+                            <strong style="font-size: 0.9rem; display: flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.fileText(16)} Gestione File Excel</strong>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0.15rem 0 0 0;">Scarica il modello precompilato o seleziona il file Excel (.xlsx, .xls) da importare.</p>
                         </div>
-                        <button type="button" onclick="downloadImportTemplate('anagrafica')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            ${THEME_ICONS.download(14)} Template
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Carica Nuovo File Anagrafica (.xlsx, .xls)</label>
-                        <input type="file" id="excel-file-input-millesimi" class="form-input" accept=".xlsx, .xls">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <button type="button" onclick="downloadImportTemplate('anagrafica')" class="btn btn-secondary" style="font-size: 0.88rem; padding: 0.65rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%;">
+                                ${THEME_ICONS.download(15)} Template
+                            </button>
+                            <label for="excel-file-input-millesimi" class="btn btn-primary" style="font-size: 0.88rem; padding: 0.65rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; cursor: pointer; margin: 0; text-align: center; box-sizing: border-box;">
+                                ${THEME_ICONS.upload(15)} Importa
+                            </label>
+                        </div>
+                        <input type="file" id="excel-file-input-millesimi" class="form-input" accept=".xlsx, .xls" style="display: none;">
                     </div>
                     <div id="message-import-millesimi" class="message-box"></div>
                     <div id="save-button-container-millesimi" class="hidden mt-4">
@@ -6369,21 +6473,20 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="margin-bottom: 1.25rem; color: var(--secondary-text);">
                         Carica un file Excel per sostituire tutti i dati degli orari esistenti. Questa azione è irreversibile.
                     </p>
-                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: 8px;">
-                        <div>
-                            <strong style="font-size: 0.9rem;">${THEME_ICONS.fileText(16)} Template Excel Orari Custode</strong>
-                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato per la gestione orari.</p>
+                    <div style="margin-bottom: 1.25rem; background: var(--surface-color-light); padding: 1rem; border-radius: 8px;">
+                        <div style="margin-bottom: 0.85rem;">
+                            <strong style="font-size: 0.9rem; display: flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.fileText(16)} Gestione File Orari</strong>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0.15rem 0 0 0;">Scarica il modello precompilato o seleziona il file Excel (.xlsx, .xls) da importare.</p>
                         </div>
-                        <button type="button" onclick="downloadImportTemplate('orari_custode')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            ${THEME_ICONS.download(14)} Template
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Carica File Orari Custode (.xlsx, .xls)</label>
-                        <input type="file" id="excel-file-input-orari-custode" class="form-input" accept=".xlsx, .xls">
-                        <small style="color: var(--secondary-text); font-size: 0.85rem; margin-top: 0.25rem; display: block;">
-                            Dimensione massima: 10MB. Il file deve contenere almeno una colonna con dati.
-                        </small>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <button type="button" onclick="downloadImportTemplate('orari_custode')" class="btn btn-secondary" style="font-size: 0.88rem; padding: 0.65rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%;">
+                                ${THEME_ICONS.download(15)} Template
+                            </button>
+                            <label for="excel-file-input-orari-custode" class="btn btn-primary" style="font-size: 0.88rem; padding: 0.65rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; cursor: pointer; margin: 0; text-align: center; box-sizing: border-box;">
+                                ${THEME_ICONS.upload(15)} Importa
+                            </label>
+                        </div>
+                        <input type="file" id="excel-file-input-orari-custode" class="form-input" accept=".xlsx, .xls" style="display: none;">
                     </div>
                     <div id="message-import-orari-custode" class="message-box"></div>
                     <div id="save-button-container-orari-custode" class="hidden mt-4">
@@ -6540,18 +6643,20 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="margin-bottom: 1.25rem; color: var(--secondary-text);">
                         Carica un file Excel per sostituire tutti i dati dell'amministratore. Questa azione è irreversibile.
                     </p>
-                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: 8px;">
-                        <div>
-                            <strong style="font-size: 0.9rem; display:inline-flex; align-items:center; gap:0.35rem;">${THEME_ICONS.fileText(16)} Template Dati Amministratore</strong>
-                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0;">Scarica il modello precompilato con i dati dello studio.</p>
+                    <div style="margin-bottom: 1.25rem; background: var(--surface-color-light); padding: 1rem; border-radius: 8px;">
+                        <div style="margin-bottom: 0.85rem;">
+                            <strong style="font-size: 0.9rem; display: flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.fileText(16)} Gestione File Amministratore</strong>
+                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0.15rem 0 0 0;">Scarica il modello precompilato o seleziona il file Excel (.xlsx, .xls) da importare.</p>
                         </div>
-                        <button type="button" onclick="downloadImportTemplate('dati_amministratore')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.45rem 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            ${THEME_ICONS.download(14)} Template
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Carica File Dati Amministratore (.xlsx, .xls)</label>
-                        <input type="file" id="file-input-admin-data" class="form-input" accept=".xlsx, .xls">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <button type="button" onclick="downloadImportTemplate('dati_amministratore')" class="btn btn-secondary" style="font-size: 0.88rem; padding: 0.65rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%;">
+                                ${THEME_ICONS.download(15)} Template
+                            </button>
+                            <label for="file-input-admin-data" class="btn btn-primary" style="font-size: 0.88rem; padding: 0.65rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%; cursor: pointer; margin: 0; text-align: center; box-sizing: border-box;">
+                                ${THEME_ICONS.upload(15)} Importa
+                            </label>
+                        </div>
+                        <input type="file" id="file-input-admin-data" class="form-input" accept=".xlsx, .xls" style="display: none;">
                     </div>
                     <div id="message-import-admin-data" class="message-box"></div>
                     <div id="save-button-container-admin-data" class="hidden mt-4">
@@ -6783,7 +6888,7 @@ ${renderBottomNavigation()}
                         <div class="space-y-4">
                             <div class="form-group"><label for="rule-name" class="form-label">Nome Regola</label><input type="text" id="rule-name" class="form-input" required placeholder="Es. Assegnazione automatica Box"></div>
                             <div class="form-group"><label for="rule-type" class="form-label">Tipo di Condizione</label><select id="rule-type" class="form-select" required><option value="row_range_classification">Intervallo di Righe</option><option value="text_contains_classification">Testo Contiene</option></select></div>
-                            <div id="params-row-range" class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="form-group"><label for="rule-start-row" class="form-label">Da Riga (inclusa)</label><input type="number" id="rule-start-row" class="form-input" min="1"></div><div class="form-group"><label for="rule-end-row" class="form-label">A Riga (inclusa)</label><input type="number" id="rule-end-row" class="form-input" min="1"></div></div></div>
+                            <div id="params-row-range" class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="form-group"><label for="rule-start-row" class="form-label">Da Riga (inclusa)</label><input type="number" id="rule-start-row" class="form-input" min="1" placeholder="Es. 1"></div><div class="form-group"><label for="rule-end-row" class="form-label">A Riga (inclusa)</label><input type="number" id="rule-end-row" class="form-input" min="1" placeholder="Es. 50"></div></div></div>
                             <div id="params-text-contains" class="hidden space-y-4"><div class="form-group"><label for="rule-target-column" class="form-label">Nella Colonna</label><select id="rule-target-column" class="form-select"><option value="">Caricamento colonne...</option></select></div><div class="form-group"><label for="rule-search-text" class="form-label">Testo da Cercare</label><input type="text" id="rule-search-text" class="form-input" placeholder="Es. BOX, Giardino"></div></div>
                             <hr style="border-color: var(--surface-color); margin: 1rem 0;">
                             <div class="form-group"><label for="rule-classification" class="form-label">Azione: Assegna al Gruppo</label><select id="rule-classification" class="form-select" required><option value="">Caricamento gruppi...</option></select></div>
@@ -14256,6 +14361,14 @@ ${renderBottomNavigation()}
                 return `<option value="${role}" ${user.tipoUtente === role ? 'selected' : ''}>${capitalizedRole}</option>`
             }).join('');
 
+            let officialNom = '';
+            try {
+                if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                    await window.getUnifiedCondominiumRegistry();
+                }
+                officialNom = window.getOfficialImportNominativo(user, user);
+            } catch (e) { }
+
             const isSupervisor = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
             const propertiesHtml = (user.proprieta || []).map((prop, index) => {
                 const groupOptionsHtml = availableGroups.map(group =>
@@ -14286,6 +14399,18 @@ ${renderBottomNavigation()}
                     <input type="hidden" id="edit-user-id" value="${user.id}">
                     <div id="edit-user-message" class="message-box"></div>
                     <div class="form-group"><label class="form-label">Email</label><input type="email" value="${escapeHtml(user.email || '')}" class="form-input" disabled></div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>Nominativo Anagrafica Ufficiale (Millesimi)</span>
+                            <span style="font-size:0.75rem; color:var(--secondary-text); font-weight:normal;">Sola lettura da importazione</span>
+                        </label>
+                        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0.55rem 0.75rem; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-weight: 700; color: var(--accent-color); font-size: 0.9rem;">${escapeHtml(officialNom && officialNom !== 'Condòmino' ? officialNom : 'Nessuna corrispondenza')}</span>
+                            <span class="badge" style="background: var(--surface-color-light); color: var(--secondary-text); font-size: 0.7rem;">Importazione Excel</span>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div class="form-group"><label for="edit-nome" class="form-label">Nome</label><input id="edit-nome" type="text" required class="form-input" value="${escapeHtml(user.nome || '')}"></div>
                         <div class="form-group"><label for="edit-cognome" class="form-label">Cognome</label><input id="edit-cognome" type="text" required class="form-input" value="${escapeHtml(user.cognome || '')}"></div>
@@ -14339,6 +14464,11 @@ ${renderBottomNavigation()}
                 return;
             }
             try {
+                if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                    await window.getUnifiedCondominiumRegistry();
+                }
+            } catch (e) { }
+            try {
                 const searchTerm = document.getElementById('user-edit-search')?.value.toLowerCase().trim() || '';
                 const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("cognome")));
 
@@ -14355,6 +14485,7 @@ ${renderBottomNavigation()}
                     container.innerHTML = filteredUsers.map(docSnap => {
                         const user = docSnap.data();
                         const userId = docSnap.id;
+                        const officialNom = window.getOfficialImportNominativo({ id: userId, ...user }, user);
                         const propertiesHtml = user.proprieta && user.proprieta.length > 0
                             ? user.proprieta.map(p => `<li>${p.interno}: Piano ${p.piano ?? 'N/A'}, ${(p.millesimi || 0).toFixed(2)} ‰ ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')
                             : '<li>Nessuna proprietà.</li>';
@@ -14368,6 +14499,10 @@ ${renderBottomNavigation()}
                                 <div class="list-item-content" style="padding-top: 0.5rem;">
                                     <div class="title">${escapeHtml(user.nome)} ${escapeHtml(user.cognome)}</div>
                                     <div class="subtitle">${escapeHtml(user.email)} - ${escapeHtml(user.tipoUtente)}</div>
+                                    ${officialNom && officialNom !== 'Condòmino' ? `
+                                    <div style="font-size: 0.75rem; color: var(--accent-color); font-weight: 700; margin-top: 0.2rem; display: flex; align-items: center; gap: 0.3rem;">
+                                        <span>Anagrafica: <strong>${escapeHtml(officialNom)}</strong></span>
+                                    </div>` : ''}
                                 </div>
                                 <div class="list-item-action flex gap-2" style="padding-top: 0.5rem;">
                                     <button class="user-action-btn" onclick='openUserEditModal(${userObjectString})' title="Modifica Utente">
@@ -14401,6 +14536,11 @@ ${renderBottomNavigation()}
             const container = document.getElementById('user-summary-table-container');
             if (!container) return;
             try {
+                if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                    await window.getUnifiedCondominiumRegistry();
+                }
+            } catch (e) { }
+            try {
                 const searchTerm = document.getElementById('user-list-search')?.value.toLowerCase().trim() || '';
                 const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("cognome")));
 
@@ -14416,10 +14556,11 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                let tableHtml = `<table class="data-table"><thead><tr><th>Ruolo</th><th>Nome</th><th>Cognome</th><th>Email</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
+                let tableHtml = `<table class="data-table"><thead><tr><th>Ruolo</th><th>Nome</th><th>Cognome</th><th>Nominativo Anagrafica</th><th>Email</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
 
                 filteredUsers.forEach(docSnap => {
                     const user = docSnap.data();
+                    const officialNom = window.getOfficialImportNominativo({ id: docSnap.id, ...user }, user);
                     const userObjectString = JSON.stringify({ id: docSnap.id, ...user }).replace(/'/g, "&apos;");
                     const editIconHtml = `<button class="inline-edit-btn" onclick='openUserEditModal(${userObjectString})' title="Modifica utente"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18.17,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z"/></svg></button>`;
                     const createCell = (content) => `<div class="cell-content-wrapper"><span>${escapeHtml(content)}</span>${editIconHtml}</div>`;
@@ -14427,7 +14568,9 @@ ${renderBottomNavigation()}
                     if (user.proprieta && user.proprieta.length > 0) {
                         user.proprieta.forEach((prop, index) => {
                             tableHtml += `<tr>
-                            <td data-label="Ruolo">${createCell(user.tipoUtente)}</td><td data-label="Nome">${createCell(user.nome)}</td><td data-label="Cognome">${createCell(user.cognome)}</td><td data-label="Email">${createCell(user.email)}</td>
+                            <td data-label="Ruolo">${createCell(user.tipoUtente)}</td><td data-label="Nome">${createCell(user.nome)}</td><td data-label="Cognome">${createCell(user.cognome)}</td>
+                            <td data-label="Nominativo Anagrafica">${createCell(officialNom && officialNom !== 'Condòmino' ? officialNom : '-')}</td>
+                            <td data-label="Email">${createCell(user.email)}</td>
                             <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
                             <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
                             <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
@@ -14439,6 +14582,7 @@ ${renderBottomNavigation()}
                         <td data-label="Ruolo">${createCell(user.tipoUtente)}</td>
                         <td data-label="Nome">${createCell(user.nome)}</td>
                         <td data-label="Cognome">${createCell(user.cognome)}</td>
+                        <td data-label="Nominativo Anagrafica">${createCell(officialNom && officialNom !== 'Condòmino' ? officialNom : '-')}</td>
                         <td data-label="Email">${createCell(user.email)}</td>
                         <td data-label="Proprietà">${createCell('Nessuna')}</td>
                         <td data-label="Piano">${createCell('N/A')}</td>
@@ -15263,9 +15407,16 @@ ${renderBottomNavigation()}
                     return;
                 }
 
+                try {
+                    if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                        await window.getUnifiedCondominiumRegistry();
+                    }
+                } catch (e) { }
+
                 listContainer.innerHTML = snapshot.docs.map(doc => {
                     const user = doc.data();
                     const userId = doc.id;
+                    const officialNom = window.getOfficialImportNominativo({ id: userId, ...user }, user);
                     const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('it-IT') : 'N/D';
 
                     return `
@@ -15275,6 +15426,10 @@ ${renderBottomNavigation()}
                             <div class="list-item-content" style="min-width: 0;">
                                 <div class="title">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</div>
                                 <div class="subtitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(user.email)}</div>
+                                ${officialNom && officialNom !== 'Condòmino' ? `
+                                <div style="font-size: 0.75rem; color: var(--accent-color); font-weight: 700; margin-top: 0.15rem; display: flex; align-items: center; gap: 0.3rem;">
+                                    <span>Anagrafica: <strong>${escapeHtml(officialNom)}</strong></span>
+                                </div>` : ''}
                             </div>
                         </label>
                         <button onclick="showUserDetails('${userId}')" class="btn-icon" style="flex-shrink: 0;" title="Visualizza dettagli">
@@ -17494,11 +17649,72 @@ ${renderBottomNavigation()}
             if (!targetGroup) return true;
             if (targetGroup === 'Tutte le scale' || targetGroup === 'Intero Condominio' || targetGroup === 'Intero condominio') return true;
             if (!propGroup) return false;
+            const pNorm = propGroup.trim().toLowerCase();
             const allowed = targetGroup.split(',').map(s => s.trim().toLowerCase());
-            return allowed.includes(propGroup.trim().toLowerCase());
+            if (allowed.includes(pNorm)) return true;
+            return allowed.some(a => {
+                const aClean = a.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
+                const pClean = pNorm.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
+                if (aClean === pClean) return true;
+
+                const aWords = aClean.split(/\s+/);
+                const pWords = pClean.split(/\s+/);
+
+                if (aWords.length >= 2) {
+                    const aInitial = aWords[0][0];
+                    const aNum = aWords.slice(1).join('');
+                    if (`${aInitial}${aNum}` === pWords.join('')) return true;
+                }
+                if (pWords.length >= 2) {
+                    const pInitial = pWords[0][0];
+                    const pNum = pWords.slice(1).join('');
+                    if (`${pInitial}${pNum}` === aWords.join('')) return true;
+                }
+                return false;
+            });
         };
 
-        window.getEffectiveUnitMillesimi = (userOrAttendee, targetGroup, allUsers = null) => {
+        window.extractPropsFromTableData = (tableData, nominativoOrId, rawNom) => {
+            if (!tableData || !Array.isArray(tableData) || tableData.length === 0) return [];
+            const headers = Object.keys(tableData[0] || {});
+            const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
+            const findH = (keys) => {
+                let found = headers.find(h => keys.some(k => cleanHeader(h) === k.toLowerCase()));
+                if (found) return found;
+                return headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase()))) || null;
+            };
+
+            const nomHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome']);
+            const unitHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
+            const milHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+            const grpHHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
+
+            if (!nomHeader) return [];
+
+            const cleanTarget = (rawNom || nominativoOrId || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+            if (!cleanTarget) return [];
+
+            const matchedRows = tableData.filter(row => {
+                const rNom = (row[nomHeader] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                if (!rNom) return false;
+                if (rNom === cleanTarget) return true;
+                const rWords = rNom.split(' ').filter(w => w.length > 2);
+                const tWords = cleanTarget.split(' ').filter(w => w.length > 2);
+                return (rWords.length > 0 && rWords.every(w => cleanTarget.includes(w))) ||
+                       (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
+            });
+
+            return matchedRows.map(row => {
+                const rawMil = milHeader && row[milHeader] ? row[milHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
+                return {
+                    interno: unitHeader && row[unitHeader] ? row[unitHeader].toString().trim() : '',
+                    millesimi: parseFloat(rawMil) || 0,
+                    gruppo: grpHHeader && row[grpHHeader] ? row[grpHHeader].toString().trim() : ''
+                };
+            });
+        };
+
+        window.getEffectiveUnitMillesimi = (userOrAttendee, targetGroup, allUsers = null, tableData = null) => {
             if (!userOrAttendee) return 0;
 
             const isGlobal = !targetGroup ||
@@ -17536,6 +17752,37 @@ ${renderBottomNavigation()}
                 }
             }
 
+            if (props.length === 0 && window._liveAssemblyStaticCache?.allCondomini) {
+                const uId = userOrAttendee.uid || userOrAttendee.id;
+                const uName = userOrAttendee.nome || userOrAttendee.nominativo;
+                const cachedUser = window._liveAssemblyStaticCache.allCondomini.find(c =>
+                    (uId && c.id === uId) ||
+                    (uName && c.nominativo && c.nominativo.trim().toLowerCase() === uName.trim().toLowerCase())
+                );
+                if (cachedUser && Array.isArray(cachedUser.proprieta) && cachedUser.proprieta.length > 0) {
+                    props = cachedUser.proprieta;
+                }
+            }
+
+            if (props.length === 0 && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
+                const uId = userOrAttendee.uid || userOrAttendee.id;
+                const uName = userOrAttendee.nome || userOrAttendee.nominativo;
+                const cachedUser = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c =>
+                    (uId && c.id === uId) ||
+                    (uName && c.nominativo && c.nominativo.trim().toLowerCase() === uName.trim().toLowerCase())
+                );
+                if (cachedUser && Array.isArray(cachedUser.proprieta) && cachedUser.proprieta.length > 0) {
+                    props = cachedUser.proprieta;
+                }
+            }
+
+            if (props.length === 0) {
+                const tData = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
+                if (tData && tData.length > 0) {
+                    props = window.extractPropsFromTableData(tData, userOrAttendee.uid || userOrAttendee.id, userOrAttendee.nome || userOrAttendee.nominativo);
+                }
+            }
+
             if (props.length > 0) {
                 const matchingProps = props.filter(p => window.isScaleInTargetGroup(p.gruppo, targetGroup));
                 return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
@@ -17550,7 +17797,7 @@ ${renderBottomNavigation()}
             return 0;
         };
 
-        window.getEffectiveProxyMillesimi = (proxy, targetGroup, allUsers = null) => {
+        window.getEffectiveProxyMillesimi = (proxy, targetGroup, allUsers = null, tableData = null) => {
             if (!proxy || proxy.status === 'rejected') return 0;
 
             const isGlobal = !targetGroup ||
@@ -17573,6 +17820,37 @@ ${renderBottomNavigation()}
                 }
             }
 
+            if (delegatorProps.length === 0 && window._liveAssemblyStaticCache?.allCondomini) {
+                const dId = proxy.delegatorId || proxy.id;
+                const dName = proxy.delegatorName;
+                const cached = window._liveAssemblyStaticCache.allCondomini.find(c =>
+                    (dId && c.id === dId) ||
+                    (dName && c.nominativo && c.nominativo.trim().toLowerCase() === dName.trim().toLowerCase())
+                );
+                if (cached && Array.isArray(cached.proprieta) && cached.proprieta.length > 0) {
+                    delegatorProps = cached.proprieta;
+                }
+            }
+
+            if (delegatorProps.length === 0 && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
+                const dId = proxy.delegatorId || proxy.id;
+                const dName = proxy.delegatorName;
+                const cached = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c =>
+                    (dId && c.id === dId) ||
+                    (dName && c.nominativo && c.nominativo.trim().toLowerCase() === dName.trim().toLowerCase())
+                );
+                if (cached && Array.isArray(cached.proprieta) && cached.proprieta.length > 0) {
+                    delegatorProps = cached.proprieta;
+                }
+            }
+
+            if (delegatorProps.length === 0) {
+                const tData = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
+                if (tData && tData.length > 0) {
+                    delegatorProps = window.extractPropsFromTableData(tData, proxy.delegatorId || proxy.id, proxy.delegatorName);
+                }
+            }
+
             if (delegatorProps.length > 0) {
                 const matchingProps = delegatorProps.filter(p => window.isScaleInTargetGroup(p.gruppo, targetGroup));
                 return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
@@ -17583,6 +17861,102 @@ ${renderBottomNavigation()}
             }
 
             return 0;
+        };
+
+        window.getOfficialImportNominativo = (entity, userObj = null, tableData = null, allCondomini = null) => {
+            if (!entity) return '';
+
+            // 1. Cerca nella lista unificata allCondomini (cache in memoria)
+            const condominiList = (allCondomini && allCondomini.length > 0)
+                ? allCondomini
+                : (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []);
+
+            const targetId = entity.uid || entity.id || entity.delegatorId;
+            const rawRawName = (entity.delegatorName || entity.nome || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || '');
+            const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+
+            if (condominiList.length > 0) {
+                if (targetId) {
+                    const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
+                    if (matchById && matchById.nominativo) {
+                        return matchById.nominativo.trim();
+                    }
+                }
+
+                if (targetName) {
+                    const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                    const matchByName = condominiList.find(c => {
+                        const cNom = (c.nominativo || '').toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        if (cNom && (cNom === normTarget || cNom.includes(normTarget) || normTarget.includes(cNom))) return true;
+                        const cFull = `${c.cognome || ''} ${c.nome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        if (cFull && (cFull === normTarget || cFull.includes(normTarget) || normTarget.includes(cFull))) return true;
+                        const cReverse = `${c.nome || ''} ${c.cognome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        if (cReverse && (cReverse === normTarget || cReverse.includes(normTarget) || normTarget.includes(cReverse))) return true;
+                        return false;
+                    });
+                    if (matchByName && matchByName.nominativo) {
+                        return matchByName.nominativo.trim();
+                    }
+                }
+            }
+
+            // 2. Cerca direttamente nelle righe del file/dataset importato (tableData)
+            const tData = (tableData && tableData.length > 0)
+                ? tableData
+                : (window._liveAssemblyStaticCache?.tableData || window._currentTableData || []);
+
+            if (tData.length > 0) {
+                const headers = Object.keys(tData[0] || {});
+                const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+                const findH = (keys) => {
+                    let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                    if (found) return found;
+                    return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
+                };
+
+                const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+                const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
+
+                if (nomH) {
+                    let props = (entity.proprieta && entity.proprieta.length > 0) ? entity.proprieta : (userObj?.proprieta || []);
+                    if (props.length === 0 && entity.unitaImmobiliare) {
+                        const uArr = Array.isArray(entity.unitaImmobiliare) ? entity.unitaImmobiliare : [entity.unitaImmobiliare];
+                        props = uArr.map(u => ({ interno: u }));
+                    }
+
+                    if (props.length > 0 && unitH) {
+                        const targetInterni = props.map(p => (p.interno || '').toString().trim().toLowerCase()).filter(Boolean);
+                        const matchedRow = tData.find(r => {
+                            const rUnit = (r[unitH] || '').toString().trim().toLowerCase();
+                            return rUnit && targetInterni.some(ti => ti === rUnit || ti.includes(rUnit) || rUnit.includes(ti));
+                        });
+                        if (matchedRow && matchedRow[nomH]) {
+                            return matchedRow[nomH].toString().trim();
+                        }
+                    }
+
+                    if (targetName) {
+                        const normTarget = targetName.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        const matchedRow = tData.find(r => {
+                            const rNom = (r[nomH] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                            if (!rNom) return false;
+                            if (rNom === normTarget || rNom.includes(normTarget) || normTarget.includes(rNom)) return true;
+                            const targetWords = normTarget.split(' ').filter(w => w.length > 2);
+                            if (targetWords.length > 0 && targetWords.every(w => rNom.includes(w))) return true;
+                            return false;
+                        });
+                        if (matchedRow && matchedRow[nomH]) {
+                            return matchedRow[nomH].toString().trim();
+                        }
+                    }
+                }
+            }
+
+            // 3. Fallback
+            if (entity.delegatorName) return entity.delegatorName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+            if (entity.nome) return entity.nome.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+            if (userObj) return `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome || 'Condòmino';
+            return 'Condòmino';
         };
 
         window._openScalePoints = window._openScalePoints || new Set();
@@ -18055,10 +18429,11 @@ ${renderBottomNavigation()}
 
             window._liveAssemblyStaticPromise = (async () => {
                 try {
-                    const [importedSnap, usersSnap, partialCondosSnap] = await Promise.all([
+                    const [importedSnap, usersSnap, partialCondosSnap, registryData] = await Promise.all([
                         getDocs(collection(db, "importedData")),
                         getDocs(collection(db, "users")),
-                        getDocs(collection(db, "partialCondos"))
+                        getDocs(collection(db, "partialCondos")),
+                        (typeof window.getUnifiedCondominiumRegistry === 'function' ? window.getUnifiedCondominiumRegistry(forceRefresh) : Promise.resolve({ allCondomini: [] }))
                     ]);
 
                     let tableData = [];
@@ -18080,6 +18455,7 @@ ${renderBottomNavigation()}
                         tableData,
                         allUsers,
                         partialCondosList,
+                        allCondomini: registryData?.allCondomini || [],
                         loadedAt: Date.now()
                     };
                     return window._liveAssemblyStaticCache;
@@ -18105,12 +18481,18 @@ ${renderBottomNavigation()}
             navigateTo('assemblea_room');
         };
 
+        let _lastLiveRenderQuorum = null;
+
         const setupStanzaLiveHandlers = () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
             if (!assemblyId) return;
 
             // Pre-fetch e caching dei dati statici all'ingresso nella stanza live (fuori dal listener onSnapshot)
-            window.fetchLiveAssemblyStaticData().catch(err => {
+            window.fetchLiveAssemblyStaticData().then(staticData => {
+                if (typeof _lastLiveRenderQuorum === 'function') {
+                    _lastLiveRenderQuorum(staticData);
+                }
+            }).catch(err => {
                 console.error("Errore pre-fetch dati statici assemblea:", err);
             });
 
@@ -18225,6 +18607,7 @@ ${renderBottomNavigation()}
 
                 // Calcolo anagrafica generale e quorum gruppi parziali tramite cache in memoria
                 const renderQuorumCalculation = (staticData) => {
+                    _lastLiveRenderQuorum = renderQuorumCalculation;
                     if (staticData) {
                         if (staticData.tableData) tableData = staticData.tableData;
                         if (staticData.allUsers) allUsers = staticData.allUsers;
@@ -18378,17 +18761,29 @@ ${renderBottomNavigation()}
 
                                 activeAttendees.forEach(a => {
                                     const u = allUsers.find(usr => usr.id === a.uid);
-                                    const mil = window.getEffectiveUnitMillesimi(a, groupName, allUsers);
+                                    const mil = window.getEffectiveUnitMillesimi(a, groupName, allUsers, tableData);
                                     if (mil > 0) {
                                         presentGroupHeadsSet.add(a.uid);
                                         presentGroupMil += mil;
-                                        const props = (a.proprieta && a.proprieta.length > 0) ? a.proprieta : (u?.proprieta || []);
+                                        let props = (a.proprieta && a.proprieta.length > 0) ? a.proprieta : (u?.proprieta || []);
+                                        if (props.length === 0 && window._liveAssemblyStaticCache?.allCondomini) {
+                                            const cached = window._liveAssemblyStaticCache.allCondomini.find(c => (a.uid && c.id === a.uid) || (a.nome && c.nominativo && c.nominativo.trim().toLowerCase() === a.nome.trim().toLowerCase()));
+                                            if (cached && Array.isArray(cached.proprieta)) props = cached.proprieta;
+                                        }
+                                        if (props.length === 0 && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
+                                            const cached = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c => (a.uid && c.id === a.uid) || (a.nome && c.nominativo && c.nominativo.trim().toLowerCase() === a.nome.trim().toLowerCase()));
+                                            if (cached && Array.isArray(cached.proprieta)) props = cached.proprieta;
+                                        }
+                                        if (props.length === 0 && (tableData || window._liveAssemblyStaticCache?.tableData)) {
+                                            const tData = (tableData && tableData.length > 0) ? tableData : window._liveAssemblyStaticCache?.tableData;
+                                            props = window.extractPropsFromTableData(tData, a.uid, a.nome);
+                                        }
                                         const groupProps = props.filter(p => window.isScaleInTargetGroup(p.gruppo, groupName));
-                                        const units = groupProps.map(p => p.interno).filter(Boolean).join(', ');
-                                        const cleanName = (a.nome || `${u?.cognome || ''} ${u?.nome || ''}` || 'Condòmino').replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
+                                        const units = groupProps.map(p => p.interno).filter(Boolean).join(', ') || a.unitaImmobiliare || a.units || '';
+                                        const officialName = window.getOfficialImportNominativo(a, u, tableData, window._liveAssemblyStaticCache?.allCondomini);
                                         groupAttendeesList.push({
                                             uid: a.uid,
-                                            name: cleanName,
+                                            name: officialName,
                                             millesimi: mil,
                                             units: units,
                                             isManual: !!a.isManual,
@@ -18398,24 +18793,66 @@ ${renderBottomNavigation()}
                                 });
 
                                 activeProxies.forEach(p => {
-                                    const proxyMil = window.getEffectiveProxyMillesimi(p, groupName, allUsers);
+                                    const proxyMil = window.getEffectiveProxyMillesimi(p, groupName, allUsers, tableData);
                                     if (proxyMil > 0) {
                                         presentGroupHeadsSet.add(p.delegatorId || p.id);
                                         presentGroupMil += proxyMil;
+
+                                        let proxyProps = [];
+                                        if (Array.isArray(p.proprieta) && p.proprieta.length > 0) {
+                                            proxyProps = p.proprieta;
+                                        } else if (allUsers && p.delegatorId) {
+                                            const delegatorUser = allUsers.find(u => u.id === p.delegatorId || u.uid === p.delegatorId);
+                                            if (delegatorUser && Array.isArray(delegatorUser.proprieta) && delegatorUser.proprieta.length > 0) {
+                                                proxyProps = delegatorUser.proprieta;
+                                            }
+                                        }
+                                        if (proxyProps.length === 0 && window._liveAssemblyStaticCache?.allCondomini) {
+                                            const dId = p.delegatorId || p.id;
+                                            const dName = p.delegatorName;
+                                            const cached = window._liveAssemblyStaticCache.allCondomini.find(c =>
+                                                (dId && c.id === dId) ||
+                                                (dName && c.nominativo && c.nominativo.trim().toLowerCase() === dName.trim().toLowerCase())
+                                            );
+                                            if (cached && Array.isArray(cached.proprieta)) proxyProps = cached.proprieta;
+                                        }
+                                        if (proxyProps.length === 0 && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
+                                            const dId = p.delegatorId || p.id;
+                                            const dName = p.delegatorName;
+                                            const cached = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c =>
+                                                (dId && c.id === dId) ||
+                                                (dName && c.nominativo && c.nominativo.trim().toLowerCase() === dName.trim().toLowerCase())
+                                            );
+                                            if (cached && Array.isArray(cached.proprieta)) proxyProps = cached.proprieta;
+                                        }
+                                        if (proxyProps.length === 0 && (tableData || window._liveAssemblyStaticCache?.tableData)) {
+                                            const tData = (tableData && tableData.length > 0) ? tableData : window._liveAssemblyStaticCache?.tableData;
+                                            proxyProps = window.extractPropsFromTableData(tData, p.delegatorId || p.id, p.delegatorName);
+                                        }
+                                        const matchingProps = proxyProps.filter(pr => window.isScaleInTargetGroup(pr.gruppo, groupName));
+                                        const proxyUnits = matchingProps.length > 0
+                                            ? matchingProps.map(pr => pr.interno).filter(Boolean).join(', ')
+                                            : (p.delegatorUnita || p.delegatorUnit || '');
+
+                                        const delegatorUser = allUsers.find(u => u.id === p.delegatorId || u.uid === p.delegatorId);
+                                        const officialProxyDelegatorName = window.getOfficialImportNominativo({ id: p.delegatorId, nome: p.delegatorName, delegatorName: p.delegatorName, proprieta: proxyProps }, delegatorUser, tableData, window._liveAssemblyStaticCache?.allCondomini);
+                                        const delegateUser = allUsers.find(u => u.id === p.delegateId || u.uid === p.delegateId);
+                                        const officialDelegateName = window.getOfficialImportNominativo({ id: p.delegateId, nome: p.delegateName }, delegateUser, tableData, window._liveAssemblyStaticCache?.allCondomini);
+
                                         groupAttendeesList.push({
                                             uid: p.delegatorId || p.id,
-                                            name: p.delegatorName || 'Condòmino in delega',
+                                            name: officialProxyDelegatorName,
                                             millesimi: proxyMil,
-                                            units: p.delegatorUnita || p.delegatorUnit || '',
-                                            delegateName: p.delegateName || '',
+                                            units: proxyUnits,
+                                            delegateName: officialDelegateName || p.delegateName || '',
                                             isManual: true,
                                             isProxy: true
                                         });
                                     }
                                 });
 
-                                // Ordina per millesimi decrescenti, poi per nome
-                                groupAttendeesList.sort((x, y) => y.millesimi - x.millesimi || x.name.localeCompare(y.name));
+                                // Ordina alfabeticamente per nominativo A-Z
+                                groupAttendeesList.sort((x, y) => (x.name || '').localeCompare((y.name || ''), 'it', { sensitivity: 'base' }));
 
                                 const presentHeadsCount = presentGroupHeadsSet.size;
                                 const requiredHeads = Math.ceil(totalGroupHeads / 3);
@@ -18507,12 +18944,12 @@ ${renderBottomNavigation()}
                                             </div>
                                             <div id="points-collapsible-${scaleSafeId}" class="${isPointsOpen ? '' : 'hidden'}" style="margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.35rem;">
                                                 ${matchedPoints.map(({ item, index }) => `
-                                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.35rem 0.6rem; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                                                        <div style="display: flex; align-items: center; gap: 0.45rem; flex: 1; min-width: 0;">
-                                                            <span class="badge" style="background: var(--accent-color); color: black; font-weight: 800; font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: 4px; flex-shrink: 0;">Punto ${index}</span>
-                                                            <strong style="color: var(--primary-text); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(item.title || '')}">${escapeHtml(item.title || '')}</strong>
+                                                    <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.45rem 0.6rem; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                                        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; flex: 1; min-width: 0;">
+                                                            <span class="badge" style="background: var(--accent-color); color: black; font-weight: 800; font-size: 0.68rem; padding: 0.12rem 0.45rem; border-radius: 4px; flex-shrink: 0;">Punto ${index}</span>
+                                                            <strong style="color: var(--primary-text); font-size: 0.82rem; word-break: break-word; line-height: 1.25; font-weight: 700;" title="${escapeHtml(item.title || '')}">${escapeHtml(item.title || '')}</strong>
                                                         </div>
-                                                        <span style="font-size: 0.72rem; color: var(--primary-text); font-weight: 800; flex-shrink: 0; background: rgba(255, 255, 255, 0.08); padding: 0.12rem 0.45rem; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.15);">${(item.status === 'closed' ? (THEME_ICONS.flag(12) + ' Concluso') : (item.status === 'voting' ? (THEME_ICONS.circleRed(11) + ' In Voto') : (THEME_ICONS.circleOutline(11) + ' In Attesa')))}</span>
+                                                        <span style="font-size: 0.72rem; color: var(--primary-text); font-weight: 800; flex-shrink: 0; background: rgba(255, 255, 255, 0.08); padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.15); display: inline-flex; align-items: center; gap: 0.25rem;">${(item.status === 'closed' ? (THEME_ICONS.flag(12) + ' Concluso') : (item.status === 'voting' ? (THEME_ICONS.circleRed(11) + ' In Voto') : (THEME_ICONS.circleOutline(11) + ' In Attesa')))}</span>
                                                     </div>
                                                 `).join('')}
                                             </div>
@@ -21084,6 +21521,7 @@ ${renderBottomNavigation()}
                         delegatorMillesimi: parseFloat(d.millesimiTotali) || 0,
                         delegatorUnita: d.unitaStr || (Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')),
                         delegatorGroup: d.gruppo || '',
+                        proprieta: d.proprieta || [],
                         delegateId: delegateId,
                         delegateName: delegateFullName,
                         isDigital: false,
@@ -21662,6 +22100,9 @@ ${renderBottomNavigation()}
                     delegatorId: currentUser.uid,
                     delegatorName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim() || 'Condomino',
                     delegatorMillesimi: userProfile.millesimiTotali || 0,
+                    delegatorGroup: userProfile.gruppo || '',
+                    delegatorUnita: (userProfile.unitaImmobiliare ? (Array.isArray(userProfile.unitaImmobiliare) ? userProfile.unitaImmobiliare.join(', ') : userProfile.unitaImmobiliare) : (userProfile.proprieta ? userProfile.proprieta.map(p => p.interno).join(', ') : '')),
+                    proprieta: userProfile.proprieta || [],
                     delegateId: delegateId,
                     delegateName: delegateName,
                     isDigital: true,
@@ -22421,6 +22862,12 @@ ${renderBottomNavigation()}
 
         window.getAttendeeDisplayName = (attendee) => {
             if (!attendee) return '';
+            if (typeof window.getOfficialImportNominativo === 'function') {
+                const offNom = window.getOfficialImportNominativo(attendee);
+                if (offNom && offNom !== 'Condòmino') {
+                    return window.formatVoterDisplayName(offNom);
+                }
+            }
             let rawNome = (attendee.nome || '').trim();
             const rawCognome = (attendee.cognome || '').trim();
             const baseNome = window.cleanCandidateName(rawNome);
@@ -27358,6 +27805,14 @@ ${renderBottomNavigation()}
                     minute: '2-digit'
                 }) : 'N/D';
 
+                let officialNom = '';
+                try {
+                    if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                        await window.getUnifiedCondominiumRegistry();
+                    }
+                    officialNom = window.getOfficialImportNominativo({ id: userId, ...user }, user);
+                } catch (e) { }
+
                 const properties = user.properties || [];
                 const propertiesList = properties.length > 0
                     ? properties.map(p => `<li>${escapeHtml(p.name)} - Gruppo: ${escapeHtml(p.group || 'N/D')} - Piano: ${escapeHtml(p.plan || 'N/D')}</li>`).join('')
@@ -27379,8 +27834,13 @@ ${renderBottomNavigation()}
                                 ` : ''}
                                 <div style="margin-bottom: 1.5rem;">
                                     <div style="margin-bottom: 1rem;">
-                                        <strong style="color: var(--primary-text);">Nome Completo:</strong><br>
+                                        <strong style="color: var(--primary-text);">Nome Completo (Account):</strong><br>
                                         <span style="color: var(--secondary-text);">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</span>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong style="color: var(--primary-text);">Nominativo Anagrafica Ufficiale (Millesimi):</strong><br>
+                                        <span style="color: var(--accent-color); font-weight: 700;">${escapeHtml(officialNom && officialNom !== 'Condòmino' ? officialNom : 'Nessuna corrispondenza')}</span>
+                                        <span style="font-size: 0.75rem; color: var(--secondary-text); margin-left: 0.35rem;">(da importazione Excel)</span>
                                     </div>
                                     <div style="margin-bottom: 1rem;">
                                         <strong style="color: var(--primary-text);">Email:</strong><br>
@@ -27836,8 +28296,15 @@ ${renderBottomNavigation()}
         // Funzione per generare PDF dalle tabelle
         const generateTablePDF = async (tableElement, filename, title) => {
             try {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    throw new Error("Libreria jsPDF non disponibile");
+                }
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
 
                 // Aggiungi titolo
                 doc.setFontSize(16);
@@ -27865,7 +28332,24 @@ ${renderBottomNavigation()}
                     const rowData = [];
                     const cells = row.querySelectorAll('td');
                     cells.forEach(cell => {
-                        rowData.push(cell.textContent.trim());
+                        let cellValue = '';
+                        const select = cell.querySelector('select');
+                        if (select) {
+                            if (select.selectedIndex >= 0 && select.options && select.options[select.selectedIndex]) {
+                                cellValue = select.options[select.selectedIndex].text.trim();
+                            } else {
+                                cellValue = (select.value || '').trim();
+                            }
+                        } else if (cell.querySelector('input[type="checkbox"], input[type="radio"]')) {
+                            cellValue = cell.querySelector('input').checked ? 'Sì' : 'No';
+                        } else if (cell.querySelector('input, textarea')) {
+                            cellValue = (cell.querySelector('input, textarea').value || '').trim();
+                        } else {
+                            const clone = cell.cloneNode(true);
+                            clone.querySelectorAll('button, .btn, script, style, .no-print').forEach(el => el.remove());
+                            cellValue = clone.textContent.replace(/\s+/g, ' ').trim();
+                        }
+                        rowData.push(cellValue);
                     });
                     if (rowData.length > 0) {
                         rows.push(rowData);
