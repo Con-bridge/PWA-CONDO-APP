@@ -162,6 +162,18 @@
             createSvg('<rect x="4" y="4" width="16" height="16" rx="2"></rect>', size, stroke, extraClass, extraStyle),
 
         undo: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
-            createSvg('<polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>', size, stroke, extraClass, extraStyle)
+            createSvg('<polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>', size, stroke, extraClass, extraStyle),
+
+        info: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
+            createSvg('<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>', size, stroke, extraClass, extraStyle),
+
+        mail: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
+            createSvg('<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', size, stroke, extraClass, extraStyle),
+
+        shield: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
+            createSvg('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>', size, stroke, extraClass, extraStyle),
+
+        edit: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
+            createSvg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>', size, stroke, extraClass, extraStyle)
     };
 })();
