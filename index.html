@@ -18424,12 +18424,19 @@ ${renderBottomNavigation()}
 
             window._openNonVotersModalIndex = pointIndex;
 
+            // Salva lo stato corrente dei checkbox a video per preservare le selezioni dell'utente
+            document.querySelectorAll('input[type="checkbox"][id*="-cb-"]').forEach(cb => {
+                window._groupCheckboxSelections[cb.id] = cb.checked;
+            });
+
             const prevSearchInput = document.getElementById('input-search-fullscreen-nonvoters');
             const prevSearchVal = isLiveRefresh && prevSearchInput ? prevSearchInput.value : '';
             const wasFocused = isLiveRefresh && document.activeElement && document.activeElement.id === 'input-search-fullscreen-nonvoters';
 
             const modalTitle = `Non Votanti - Punto ${data.pointIndex}`;
             const nonVoters = data.nonVoters || [];
+            const voteOpts = data.voteOptions || ["Favorevole", "Contrario", "Astenuto"];
+            const formatLongName = (str) => escapeHtml(str || '').replace(/\s*\/\s*/g, ' / ');
 
             const modalContent = `
                 <div style="display: flex; flex-direction: column; height: 100%;">
@@ -18472,67 +18479,179 @@ ${renderBottomNavigation()}
                         <!-- Lista dettagliata dei non votanti -->
                         <div id="fullscreen-nonvoters-list" style="display: flex; flex-direction: column; gap: 0.55rem; overflow-y: auto; padding-right: 0.15rem; flex: 1 1 auto; -webkit-overflow-scrolling: touch;">
                             ${nonVoters.map((nv) => {
-                const heldProxies = nv.heldProxies || [];
-                const proxySearchText = heldProxies.map(p => `${p.name} ${p.unit}`).join(' ');
-                const searchText = `${nv.name} ${proxySearchText} ${nv.units} ${nv.millesimi.toFixed(2)} ${nv.isManual ? 'manuale' : 'app'}`.toLowerCase();
+                                const heldProxies = nv.heldProxies || [];
+                                const proxySearchText = heldProxies.map(p => `${p.name} ${p.unit}`).join(' ');
+                                const searchText = `${nv.cleanName || nv.name} ${proxySearchText} ${nv.units || ''} ${nv.millesimi.toFixed(2)} ${nv.isManual ? 'manuale' : 'app'}`.toLowerCase();
+                                const methodBadge = nv.isManual
+                                    ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
+                                    : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
 
-                return `
-                                    <div class="fullscreen-nonvoter-card" data-search-text="${escapeHtml(searchText)}">
-                                        <!-- Riga 1: Nome e Millesimi -->
-                                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
-                                            <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 1;">
-                                                <span style="color: #F59E0B; display: inline-flex; align-items: center; flex-shrink: 0;">${THEME_ICONS.user(15)}</span>
-                                                <strong style="color: var(--primary-text); font-size: 0.9rem; word-break: break-word;" title="${escapeHtml(nv.name)}">${escapeHtml(nv.name)}</strong>
+                                if (heldProxies.length === 0) {
+                                    // CASO 1: Condòmino singolo senza deleghe
+                                    return `
+                                        <div class="fullscreen-nonvoter-card card" data-search-text="${escapeHtml(searchText)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #F59E0B; border-radius:8px; padding:0.55rem 0.7rem; margin:0 !important; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                                            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.15rem;">
+                                                <div style="font-weight:700; font-size:0.88rem; color:var(--primary-text); line-height:1.25; word-break:break-word;">
+                                                    ${formatLongName(nv.cleanName || nv.name)}
+                                                </div>
+                                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; flex-wrap:wrap;">
+                                                    ${methodBadge}
+                                                    <strong style="color:var(--warning); font-size:0.8rem;">${nv.millesimi.toFixed(2)} ‰</strong>
+                                                </div>
+                                                ${nv.units ? `
+                                                    <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; word-break:break-word;">
+                                                        Unità: ${escapeHtml(nv.units)}
+                                                    </div>
+                                                ` : ''}
                                             </div>
-                                            <div style="text-align: right; flex-shrink: 0;">
-                                                <strong class="fullscreen-nv-mil">${nv.millesimi.toFixed(2)} ‰</strong>
+                                            ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                                <div style="flex-shrink:0;">
+                                                    <select class="form-select manual-vote-select" style="font-size:0.78rem; padding:0.2rem 0.25rem; width:120px; height:32px; border-radius:6px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitVoteFromNonVoters('${data.assemblyId}', '${data.itemId}', '${escapeJsAttr(nv.uid)}', this.value, 'self', null, null, '${escapeJsAttr(nv.cleanName || nv.name)}', ${nv.millesimi}, ${pointIndex});">
+                                                        <option value="" disabled selected>Vota...</option>
+                                                        ${voteOpts.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }
+
+                                // CASO 2: Delegato con deleghe ricevute
+                                const isMasterChecked = window.isGroupCheckboxChecked(`nv-fs-master-cb-${nv.uid}`, true);
+
+                                return `
+                                    <div class="fullscreen-nonvoter-card manual-delegate-group card" data-search-text="${escapeHtml(searchText)}" style="background:var(--surface-color); border:1.5px solid rgba(59, 130, 246, 0.35); border-radius:10px; padding:0.55rem 0.7rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; width:100%; box-sizing:border-box;">
+                                        <!-- HEADER DELEGATO -->
+                                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:0.35rem; border-bottom:1px solid rgba(255,255,255,0.08); gap:0.5rem; width:100%; box-sizing:border-box;">
+                                            <div style="flex:1; min-width:0;">
+                                                <div style="font-size:0.72rem; font-weight:800; color:var(--accent-color); text-transform:uppercase; letter-spacing:0.3px; display:flex; align-items:center; gap:0.25rem; margin-bottom:0.1rem;">
+                                                    ${THEME_ICONS.scroll(12)} DELEGATO (+${heldProxies.length} ${heldProxies.length === 1 ? 'delega' : 'deleghe'}):
+                                                </div>
+                                                <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word;">
+                                                    ${formatLongName(nv.cleanName || nv.name)}
+                                                </div>
+                                            </div>
+                                            <div style="flex-shrink:0; text-align:right;">
+                                                <strong style="font-size:0.85rem; font-weight:800; color:#10B981;">${nv.millesimi.toFixed(2)} ‰ Tot.</strong>
                                             </div>
                                         </div>
 
-                                        <!-- Riga 2: Tipologia di registrazione e Unità -->
-                                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: ${heldProxies.length > 0 ? '0.4rem' : '0'};">
-                                            ${nv.isManual ? `
-                                                <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: var(--secondary-text); font-size: 0.68rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 4px;">${THEME_ICONS.pen(13)} Manuale</span>
-                                            ` : `
-                                                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.68rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 4px;">${THEME_ICONS.smartphone(13)} App/QR</span>
-                                            `}
-                                            ${nv.units ? `<span style="font-size: 0.72rem; color: var(--secondary-text);">• Unità: ${escapeHtml(nv.units)}</span>` : ''}
-                                            ${heldProxies.length > 0 ? (() => {
-                                                const selfMVal = (nv.selfMillesimi !== undefined ? nv.selfMillesimi : Math.max(0, nv.millesimi - heldProxies.reduce((sum, p) => sum + p.millesimi, 0)));
-                                                const isFuori = data.isGroupScope && selfMVal <= 0;
-                                                return `<span style="font-size: 0.72rem; color: ${isFuori ? 'var(--secondary-text)' : '#10B981'}; font-weight: 700;">• Quota pers.${isFuori ? ` (Fuori scala ${escapeHtml(data.itemGroup || '')})` : ''}: ${selfMVal.toFixed(2)} ‰</span>`;
-                                            })() : ''}
-                                        </div>
+                                        ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                            <!-- MASTER FLAG: QUOTA GRUPPO -->
+                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%; box-sizing:border-box;">
+                                                <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:7px; padding:0.3rem 0.5rem; flex:1; min-width:0; height:32px; box-sizing:border-box;">
+                                                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; font-size:0.82rem; font-weight:700; color:var(--accent-color); user-select:none; flex:1; min-width:0;">
+                                                        <input type="checkbox" id="nv-fs-master-cb-${nv.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('nv-fs', '${escapeJsAttr(nv.uid)}', this.checked);" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0; margin:0;">
+                                                        <span>Quota gruppo</span>
+                                                    </label>
+                                                </div>
+                                                <div style="flex-shrink:0;">
+                                                    <select id="nv-fs-vote-select-${nv.uid}" class="form-select manual-vote-select" style="font-size:0.78rem; padding:0.2rem 0.25rem; width:120px; height:32px; border-radius:6px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitGroupVoteFromNonVoters('${data.assemblyId}', '${data.itemId}', '${escapeJsAttr(nv.uid)}', this.value, ${pointIndex}, 'nv-fs');">
+                                                        <option value="" disabled selected>Vota tutti...</option>
+                                                        ${voteOpts.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        ` : ''}
 
-                                        <!-- Riga 3: Dettaglio Quota Personale e Deleghe Ricevute -->
-                                        ${heldProxies.length > 0 ? (() => {
-                                            const selfMVal = (nv.selfMillesimi !== undefined ? nv.selfMillesimi : Math.max(0, nv.millesimi - heldProxies.reduce((sum, p) => sum + p.millesimi, 0)));
-                                            const isFuori = data.isGroupScope && selfMVal <= 0;
-                                            return `
-                                            <div class="fullscreen-nv-proxies">
-                                                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.35rem; margin-bottom: 0.35rem; border-bottom: 1px dashed rgba(59, 130, 246, 0.25);">
-                                                    <span style="font-size: 0.74rem; font-weight: 800; color: ${isFuori ? 'var(--secondary-text)' : '#10B981'}; display: flex; align-items: center; gap: 0.35rem;">
-                                                        ${THEME_ICONS.user(13)} Quota personale${isFuori ? ` (Fuori scala ${escapeHtml(data.itemGroup || '')})` : ''}:
-                                                    </span>
-                                                    <strong style="color: ${isFuori ? 'var(--secondary-text)' : '#10B981'}; font-size: 0.8rem; font-variant-numeric: tabular-nums;">${selfMVal.toFixed(2)} ‰</strong>
-                                                </div>
-                                                <div class="fullscreen-nv-proxies-title">
-                                                    ${THEME_ICONS.scroll(13)} Deleghe ricevute (${heldProxies.length}):
-                                                </div>
-                                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                                                    ${heldProxies.map(p => `
-                                                        <div class="fullscreen-nv-proxy-row">
-                                                            <span>${escapeHtml(p.name)}${p.unit ? ` <span style="color: var(--secondary-text); font-size: 0.7rem;">(Unità: ${escapeHtml(p.unit)})</span>` : ''}</span>
-                                                            <strong class="fullscreen-nv-proxy-mil">${p.millesimi.toFixed(2)} ‰</strong>
+                                        <!-- QUOTA PERSONALE DEL DELEGATO -->
+                                        ${(() => {
+                                            const selfMil = nv.selfMillesimi;
+                                            const isFuori = data.isGroupScope && selfMil <= 0;
+                                            if (isFuori) {
+                                                return `
+                                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0; border-top:1px solid rgba(255,255,255,0.08); gap:0.5rem; width:100%; box-sizing:border-box; opacity:0.75;">
+                                                        <div style="display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0;">
+                                                            ${data.isAdmin ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#10B981; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : ''}
+                                                            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.12rem;">
+                                                                <div style="font-size:0.84rem; font-weight:700; color:var(--primary-text); word-break:break-word;">
+                                                                    ${formatLongName(nv.cleanName || nv.name)}
+                                                                </div>
+                                                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; flex-wrap:wrap;">
+                                                                    <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.04rem 0.25rem; border-radius:3px; font-weight:700;">Fuori scala</span>
+                                                                    <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); padding:0.04rem 0.25rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                                                    <strong style="color:var(--secondary-text); font-size:0.78rem;">0.00 ‰</strong>
+                                                                </div>
+                                                                ${nv.units ? `<div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; word-break:break-word;">Unità: ${escapeHtml(nv.units)}</div>` : ''}
+                                                            </div>
                                                         </div>
-                                                    `).join('')}
+                                                        <div style="flex-shrink:0;">
+                                                            <span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.74rem; font-weight:700; padding:0.25rem 0.5rem; border-radius:5px; border:1px solid rgba(255,255,255,0.1);">0.00 ‰</span>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }
+
+                                            const isSelfChecked = window.isGroupCheckboxChecked(`nv-fs-self-cb-${nv.uid}`, true);
+                                            const isSelfVoted = nv.hasSelfVoted && nv.selfVote;
+                                            return `
+                                                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0; border-top:1px solid rgba(255,255,255,0.08); gap:0.5rem; width:100%; box-sizing:border-box;">
+                                                    <div style="display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0;">
+                                                        ${data.isAdmin ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" class="nv-fs-member-${nv.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:#10B981; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
+                                                        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.12rem;">
+                                                            <div style="font-size:0.84rem; font-weight:700; color:var(--primary-text); word-break:break-word;">
+                                                                ${formatLongName(nv.cleanName || nv.name)}
+                                                            </div>
+                                                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; flex-wrap:wrap;">
+                                                                ${nv.isManual ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.25rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>` : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.25rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`}
+                                                                <span class="badge" style="font-size:0.62rem; color:#10B981; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); padding:0.04rem 0.25rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                                                <strong style="color:#10B981; font-size:0.78rem;">${selfMil.toFixed(2)} ‰</strong>
+                                                            </div>
+                                                            ${nv.units ? `<div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; word-break:break-word;">Unità: ${escapeHtml(nv.units)}</div>` : ''}
+                                                        </div>
+                                                    </div>
+                                                    ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                                        <div style="flex-shrink:0;">
+                                                            <select class="form-select manual-vote-select" style="font-size:0.78rem; padding:0.2rem 0.25rem; width:120px; height:32px; border-radius:6px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitVoteFromNonVoters('${data.assemblyId}', '${data.itemId}', '${escapeJsAttr(nv.uid)}', this.value, 'self', null, null, '${escapeJsAttr(nv.cleanName || nv.name)}', ${selfMil}, ${pointIndex});">
+                                                                <option value="" disabled ${!isSelfVoted ? 'selected' : ''}>Vota...</option>
+                                                                ${voteOpts.map(opt => `<option value="${escapeHtml(opt)}" ${isSelfVoted && nv.selfVote.choice === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                                                                ${isSelfVoted ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
+                                                            </select>
+                                                        </div>
+                                                    ` : ''}
                                                 </div>
+                                            `;
+                                        })()}
+
+                                        <!-- SINGOLE DELEGHE RICEVUTE -->
+                                        <div style="display:flex; flex-direction:column; gap:0.2rem; border-top:1px solid rgba(59, 130, 246, 0.25); padding-top:0.25rem; width:100%; box-sizing:border-box;">
+                                            <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-bottom:0.1rem;">
+                                                ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                             </div>
-                                        `;
-                                        })() : ''}
+                                            ${heldProxies.map(p => {
+                                                const pDelId = p.delegatorId;
+                                                const isProxyChecked = window.isGroupCheckboxChecked(`nv-fs-proxy-cb-${pDelId}`, true);
+                                                return `
+                                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0; border-top:1px solid rgba(59, 130, 246, 0.12); gap:0.5rem; width:100%; box-sizing:border-box;">
+                                                        <div style="display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0;">
+                                                            ${data.isAdmin ? `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" class="nv-fs-member-${nv.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
+                                                            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.1rem;">
+                                                                <div style="font-size:0.83rem; font-weight:700; color:var(--primary-text); line-height:1.2; word-break:break-word;">
+                                                                    <span style="color:var(--accent-color); font-weight:700;">↳</span> ${escapeHtml(p.name)}
+                                                                </div>
+                                                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem;">
+                                                                    <span class="badge" style="font-size:0.6rem; color:var(--accent-color); background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); padding:0.05rem 0.25rem; border-radius:3px; font-weight:700;">Delega</span>
+                                                                    <strong style="color:var(--accent-color); font-size:0.78rem;">${p.millesimi.toFixed(2)} ‰</strong>
+                                                                </div>
+                                                                ${p.unit ? `<div style="font-size:0.71rem; color:var(--secondary-text); font-weight:500; word-break:break-word;">Unità: ${escapeHtml(p.unit)}</div>` : ''}
+                                                            </div>
+                                                        </div>
+                                                        ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                                            <div style="flex-shrink:0;">
+                                                                <select class="form-select manual-vote-select" style="font-size:0.78rem; padding:0.2rem 0.25rem; width:120px; height:32px; border-radius:6px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitVoteFromNonVoters('${data.assemblyId}', '${data.itemId}', '${escapeJsAttr(pDelId)}', this.value, 'proxy', '${escapeJsAttr(nv.uid)}', '${escapeJsAttr(p.id || '')}', '${escapeJsAttr(p.name)}', ${p.millesimi}, ${pointIndex});">
+                                                                    <option value="" disabled ${!p.hasVoted ? 'selected' : ''}>Vota...</option>
+                                                                    ${voteOpts.map(opt => `<option value="${escapeHtml(opt)}" ${p.hasVoted && p.vote.choice === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                                                                    ${p.hasVoted ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
+                                                                </select>
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
                                     </div>
                                 `;
-            }).join('')}
+                            }).join('')}
                         </div>
                         <p id="fullscreen-nonvoters-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 1rem 0; margin: 0;">Nessun condòmino non votante trovato con i criteri di ricerca.</p>
                     `}
@@ -18853,6 +18972,187 @@ ${renderBottomNavigation()}
             } catch (err) {
                 console.error("Errore modifica voto gruppo:", err);
                 await customAlert("Errore durante la modifica del voto del gruppo: " + (err?.message || err));
+            }
+        };
+
+        window.submitVoteFromNonVoters = async (assemblyId, itemId, voterId, choice, voterType = 'self', delegateId = null, proxyId = null, voterName = 'Condòmino', voterMil = 0, pointIndex = null) => {
+            try {
+                if (!choice) return;
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx < 0) return;
+                const item = agenda[targetIdx];
+                const existingVotes = item.votes || [];
+
+                let updatedVotes = [];
+                if (choice === '__RESET__') {
+                    updatedVotes = existingVotes.filter(v => v.voterId !== voterId && !(proxyId && v.proxyId === proxyId));
+                    await logAssemblyEvent(assemblyId, 'VOTO_MANUALE_ANNULLATO', `Voto per ${voterName} annullato dall'amministratore da pannello Non Votanti.`);
+                } else {
+                    const newVote = {
+                        voterId: voterId,
+                        voterName: `${voterName} (Admin)`,
+                        choice: choice,
+                        millesimi: parseFloat(voterMil) || 0,
+                        heads: 1,
+                        isManualAdminVote: true,
+                        isProxyVote: voterType === 'proxy',
+                        delegateId: delegateId,
+                        proxyId: proxyId,
+                        recordedAt: Date.now()
+                    };
+                    const filteredVotes = existingVotes.filter(v => v.voterId !== voterId && !(proxyId && v.proxyId === proxyId));
+                    updatedVotes = [...filteredVotes, newVote];
+                    await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato voto per ${voterName} da pannello Non Votanti: ${choice} (${(parseFloat(voterMil) || 0).toFixed(2)} ‰)`);
+                }
+
+                const updatedAgenda = agenda.map((agItem, idx) => {
+                    if (idx === targetIdx) {
+                        return { ...agItem, votes: updatedVotes };
+                    }
+                    return agItem;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+            } catch (err) {
+                console.error("Errore salvataggio voto da pannello non votanti:", err);
+                await customAlert("Errore durante il salvataggio del voto: " + (err?.message || err));
+            }
+        };
+
+        window.submitGroupVoteFromNonVoters = async (assemblyId, itemId, delegateUid, choice, pointIndex = null, prefHint = 'nv-fs') => {
+            try {
+                if (!choice) return;
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx < 0) return;
+                const item = agenda[targetIdx];
+                const existingVotes = item.votes || [];
+
+                const attendee = (assembly.attendees || []).find(a => a.uid === delegateUid || a.id === delegateUid);
+                if (!attendee) return;
+
+                let allUsers = [];
+                try {
+                    const uSnap = await getDocs(query(collection(db, "users")));
+                    allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch (e) {
+                    allUsers = (window._cachedUnifiedCondominiumRegistry && window._cachedUnifiedCondominiumRegistry.users) || [];
+                }
+
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio' && targetGroup !== 'Intero Condominio' && targetGroup !== 'Tutte le scale';
+
+                let proxies = (assembly.proxies || []).filter(p =>
+                    (p.delegateId === delegateUid || p.delegateId === attendee.id || (attendee.registeredUid && p.delegateId === attendee.registeredUid)) &&
+                    p.status !== 'rejected'
+                );
+                if (isGroupScope) {
+                    proxies = proxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
+                }
+
+                const selfMil = (window.getAttendeePersonalMillesimi ? window.getAttendeePersonalMillesimi(attendee, proxies, targetGroup, allUsers, isGroupScope) : (parseFloat(attendee.millesimi) || 0));
+
+                const activePrefix = document.getElementById(`${prefHint}-master-cb-${delegateUid}`)
+                    ? prefHint
+                    : (document.getElementById(`nv-fs-master-cb-${delegateUid}`) ? 'nv-fs' : `nv-inline-${pointIndex}`);
+
+                const selfCb = document.getElementById(`${activePrefix}-self-cb-${delegateUid}`);
+                const isSelfSelected = (selfCb ? selfCb.checked : false) && (selfMil > 0 || !isGroupScope);
+
+                const selectedProxies = proxies.filter(p => {
+                    const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                    const pCb = document.getElementById(`${activePrefix}-proxy-cb-${pDelId}`);
+                    return pCb ? pCb.checked : false;
+                });
+
+                if (!isSelfSelected && selectedProxies.length === 0) {
+                    await customAlert("Seleziona almeno una quota (quota personale o delega) da votare per questo gruppo.");
+                    const selectEl = document.getElementById(`${activePrefix}-vote-select-${delegateUid}`);
+                    if (selectEl) selectEl.value = "";
+                    return;
+                }
+
+                const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(attendee) : ((attendee.cognome ? attendee.cognome + ' ' : '') + (attendee.nome || ''));
+                const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(displayName) : displayName;
+
+                const newVotes = [];
+                const processedVoterIds = [];
+                const processedProxyIds = [];
+
+                if (isSelfSelected && (selfMil > 0 || !isGroupScope)) {
+                    processedVoterIds.push(attendee.uid);
+                    if (choice !== '__RESET__') {
+                        newVotes.push({
+                            voterId: attendee.uid,
+                            voterName: `${cleanName} (Admin)`,
+                            choice: choice,
+                            millesimi: selfMil,
+                            heads: 1,
+                            isManualAdminVote: true,
+                            isProxyVote: false,
+                            delegateId: null,
+                            proxyId: null,
+                            recordedAt: Date.now()
+                        });
+                    }
+                }
+
+                selectedProxies.forEach(p => {
+                    const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                    const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                    const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+
+                    if (!isGroupScope || pMil > 0) {
+                        processedVoterIds.push(pDelId);
+                        if (p.id) processedProxyIds.push(p.id);
+
+                        if (choice !== '__RESET__') {
+                            newVotes.push({
+                                voterId: pDelId,
+                                voterName: `${pDelName} (Admin)`,
+                                choice: choice,
+                                millesimi: pMil,
+                                heads: 1,
+                                isManualAdminVote: true,
+                                isProxyVote: true,
+                                delegateId: attendee.uid,
+                                proxyId: p.id || null,
+                                recordedAt: Date.now()
+                            });
+                        }
+                    }
+                });
+
+                const filteredExisting = existingVotes.filter(v =>
+                    !processedVoterIds.includes(v.voterId) &&
+                    !(v.delegateId === attendee.uid && v.proxyId && processedProxyIds.includes(v.proxyId))
+                );
+                const updatedVotes = [...filteredExisting, ...newVotes];
+
+                const updatedAgenda = agenda.map((agItem, idx) => {
+                    if (idx === targetIdx) {
+                        return { ...agItem, votes: updatedVotes };
+                    }
+                    return agItem;
+                });
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE_GRUPPO', `Registrati ${newVotes.length} voti individuali (${choice}) da pannello Non Votanti per le quote selezionate del gruppo delegato ${cleanName}.`);
+            } catch (err) {
+                console.error("Errore salvataggio voto gruppo da pannello non votanti:", err);
+                await customAlert("Errore durante il salvataggio del voto di gruppo: " + (err?.message || err));
             }
         };
 
@@ -20908,35 +21208,53 @@ ${renderBottomNavigation()}
                         window._currentNonVotersByPoint[idx] = {
                             title: item.title || '',
                             pointIndex: pointDisplayNum,
+                            pointIdx: idx,
+                            assemblyId: assemblyId,
+                            itemId: item.id,
+                            isAdmin: isAdmin,
+                            voteOptions: (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"],
                             itemGroup: itemGroup || '',
                             isGroupScope: isGroupScope,
                             nonVotersMilSum: nonVotersMilSum,
                             nonVoters: pointNonVoters.map(a => {
-                                let heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                                let heldProxies = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
                                 if (isGroupScope) {
                                     heldProxies = heldProxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
                                 }
                                 const units = window.getVoterUnitString ? window.getVoterUnitString(a, allUsers, itemGroup) : (a.unitaImmobiliare || a.units || '');
                                 const name = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || 'Condòmino');
+                                const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(name) : name;
                                 const mil = getAttendeeGroupMilForPoint(a);
                                 const selfMil = (typeof window.getAttendeePersonalMillesimi === 'function')
                                     ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
                                     : Math.max(0, mil - heldProxies.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0));
                                 const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+                                const selfVote = votesList.find(v => v.voterId === a.uid || v.userId === a.uid);
                                 return {
                                     uid: a.uid,
                                     name: name,
+                                    cleanName: cleanName,
                                     millesimi: mil,
                                     selfMillesimi: selfMil,
+                                    selfVote: selfVote || null,
+                                    hasSelfVoted: (selfMil > 0 || !isGroupScope) ? !!selfVote : true,
                                     units: units,
                                     isManual: isManual,
-                                    heldProxies: heldProxies.map(p => ({
-                                        name: p.delegatorName || 'Delegante',
-                                        millesimi: isGroupScope && window.getEffectiveProxyMillesimi
-                                            ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers)
-                                            : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0),
-                                        unit: window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnit || p.delegatorUnita || '')
-                                    }))
+                                    heldProxies: heldProxies.map(p => {
+                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                        const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                        return {
+                                            id: p.id || '',
+                                            delegatorId: pDelId,
+                                            name: p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante',
+                                            millesimi: isGroupScope && window.getEffectiveProxyMillesimi
+                                                ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers)
+                                                : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0),
+                                            unit: window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnit || p.delegatorUnita || ''),
+                                            vote: pVote || null,
+                                            hasVoted: !!pVote
+                                        };
+                                    })
                                 };
                             })
                         };
@@ -20950,57 +21268,153 @@ ${renderBottomNavigation()}
                                 </div>
                             `;
                         } else {
+                            const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
                             const nonVotersItemsHtml = pointNonVoters.map(a => {
                                 const rawName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || 'Condòmino');
                                 const cleanName = (rawName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
                                 const aUnitStr = window.getVoterUnitString ? window.getVoterUnitString(a, allUsers, itemGroup) : '';
                                 const milVal = getAttendeeGroupMilForPoint(a);
-                                let heldProxies = (assembly.proxies || []).filter(p => p.delegateId === a.uid && p.status !== 'rejected');
+                                let heldProxies = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
                                 if (isGroupScope) {
                                     heldProxies = heldProxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
                                 }
 
-                                let proxyDetailText = '';
-                                if (heldProxies.length > 0) {
-                                    const selfMilVal = (typeof window.getAttendeePersonalMillesimi === 'function')
-                                        ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
-                                        : Math.max(0, milVal - heldProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0));
-                                    proxyDetailText = `
-                                        <div style="font-size:0.72rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem; display:flex; flex-direction:column; gap:0.15rem; line-height:1.2;">
-                                            <div style="display:flex; align-items:center; gap:0.25rem; color:#10B981;">
-                                                ${THEME_ICONS.user(12)} <span>Quota personale: <strong>${selfMilVal.toFixed(2)} ‰</strong></span>
-                                            </div>
-                                            <div style="display:flex; align-items:center; gap:0.25rem;">
-                                                ${THEME_ICONS.scroll(12)} <span>(Inclusa delega di: ${heldProxies.map(p => {
-                                        const pM = isGroupScope ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0);
-                                        const pU = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnita || '');
-                                        return `${escapeHtml(p.delegatorName || '')}${pU ? ` [Unità: ${escapeHtml(pU)}]` : ''} [${pM.toFixed(2)} ‰]`;
-                                    }).join(', ')})</span>
-                                            </div>
-                                        </div>
-                                    `;
-                                }
+                                const selfMilVal = (typeof window.getAttendeePersonalMillesimi === 'function')
+                                    ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
+                                    : Math.max(0, milVal - heldProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0));
 
                                 const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
                                 const methodBadge = isManual
                                     ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
                                     : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
 
+                                if (heldProxies.length === 0) {
+                                    return `
+                                        <div style="padding:0.45rem 0.65rem; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #F59E0B; border-radius:6px; font-size:0.8rem; margin-bottom:0.35rem; display:flex; align-items:center; justify-content:space-between; gap:0.4rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                                            <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.1rem;">
+                                                <span style="font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(cleanName)}">${escapeHtml(cleanName)}</span>
+                                                <div style="display:flex; align-items:center; gap:0.3rem; font-size:0.72rem; flex-wrap:wrap;">
+                                                    ${methodBadge}
+                                                    <strong style="color:var(--warning); font-size:0.78rem;">${milVal.toFixed(2)} ‰</strong>
+                                                </div>
+                                                ${aUnitStr ? `
+                                                    <div style="font-size:0.71rem; color:var(--secondary-text); font-weight:500; word-break:break-word;">
+                                                        Unità: ${escapeHtml(aUnitStr)}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                            ${isAdmin ? `
+                                                <div style="flex-shrink:0;">
+                                                    <select class="form-select manual-vote-select" style="font-size:0.75rem; padding:0.15rem 0.25rem; width:115px; height:28px; border-radius:5px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitVoteFromNonVoters('${assemblyId}', '${item.id}', '${escapeJsAttr(a.uid)}', this.value, 'self', null, null, '${escapeJsAttr(cleanName)}', ${milVal}, ${idx});">
+                                                        <option value="" disabled selected>Vota...</option>
+                                                        ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }
+
+                                // Delegato con deleghe ricevute inline
+                                const isMasterChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-master-cb-${a.uid}`, true);
+                                const isSelfChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-self-cb-${a.uid}`, true);
+                                const selfVote = votesList.find(v => v.voterId === a.uid || v.userId === a.uid);
+                                const isFuori = isGroupScope && selfMilVal <= 0;
+
                                 return `
-                                    <div style="padding:0.45rem 0.65rem; background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #F59E0B; border-radius:6px; font-size:0.8rem; margin-bottom:0.35rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                                            <span style="font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;">${escapeHtml(cleanName)}</span>
-                                            <span style="color:var(--warning); font-weight:800; white-space:nowrap; font-size:0.82rem; flex-shrink:0;">${milVal.toFixed(2)} ‰</span>
+                                    <div class="manual-delegate-group card" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-radius:8px; padding:0.5rem 0.65rem; margin-bottom:0.35rem; display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                                        <!-- Header delegato -->
+                                        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:0.25rem; border-bottom:1px solid rgba(255,255,255,0.08); gap:0.4rem;">
+                                            <div style="flex:1; min-width:0;">
+                                                <div style="font-size:0.7rem; font-weight:800; color:var(--accent-color); text-transform:uppercase; display:flex; align-items:center; gap:0.2rem;">
+                                                    ${THEME_ICONS.scroll(11)} DELEGATO (+${heldProxies.length}):
+                                                </div>
+                                                <div style="font-size:0.84rem; font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                                    ${escapeHtml(cleanName)}
+                                                </div>
+                                            </div>
+                                            <div style="text-align:right; flex-shrink:0;">
+                                                <strong style="font-size:0.8rem; font-weight:800; color:#10B981;">${milVal.toFixed(2)} ‰ Tot.</strong>
+                                            </div>
                                         </div>
-                                        <div style="margin-top:0.15rem; display:flex; align-items:center; gap:0.35rem;">
-                                            ${methodBadge}
-                                        </div>
-                                        ${aUnitStr ? `
-                                            <div style="font-size:0.71rem; color:var(--secondary-text); font-weight:500; margin-top:0.1rem;">
-                                                Unità: ${escapeHtml(aUnitStr)}
+
+                                        ${isAdmin ? `
+                                            <!-- Master group row -->
+                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;">
+                                                <label style="display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer; font-size:0.78rem; font-weight:700; color:var(--accent-color); user-select:none; margin:0; flex:1; min-width:0;">
+                                                    <input type="checkbox" id="nv-inline-${idx}-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('nv-inline-${idx}', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">
+                                                    <span>Quota gruppo</span>
+                                                </label>
+                                                <select id="nv-inline-${idx}-vote-select-${a.uid}" class="form-select manual-vote-select" style="font-size:0.75rem; padding:0.15rem 0.25rem; width:115px; height:28px; border-radius:5px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitGroupVoteFromNonVoters('${assemblyId}', '${item.id}', '${escapeJsAttr(a.uid)}', this.value, ${idx}, 'nv-inline-${idx}');">
+                                                    <option value="" disabled selected>Vota tutti...</option>
+                                                    ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                                                </select>
                                             </div>
                                         ` : ''}
-                                        ${proxyDetailText}
+
+                                        <!-- Quota personale row -->
+                                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; border-top:1px solid rgba(255,255,255,0.08); gap:0.4rem;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem; flex:1; min-width:0;">
+                                                ${isAdmin ? (isFuori ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#10B981; width:15px; height:15px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" class="nv-inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:15px; height:15px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
+                                                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.05rem;">
+                                                    <div style="font-size:0.8rem; font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                                        ${escapeHtml(cleanName)}
+                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:0.25rem; font-size:0.7rem; flex-wrap:wrap;">
+                                                        ${isFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700;">Fuori scala</span>` : ''}
+                                                        <span style="color:var(--secondary-text); font-weight:600;">Quota personale</span>
+                                                        <strong style="color:${isFuori ? 'var(--secondary-text)' : '#10B981'}; font-size:0.75rem;">${isFuori ? '0.00' : selfMilVal.toFixed(2)} ‰</strong>
+                                                    </div>
+                                                    ${aUnitStr ? `<div style="font-size:0.68rem; color:var(--secondary-text); font-weight:500;">Unità: ${escapeHtml(aUnitStr)}</div>` : ''}
+                                                </div>
+                                            </div>
+                                            ${isAdmin ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : `
+                                                <div style="flex-shrink:0;">
+                                                    <select class="form-select manual-vote-select" style="font-size:0.75rem; padding:0.15rem 0.25rem; width:115px; height:28px; border-radius:5px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitVoteFromNonVoters('${assemblyId}', '${item.id}', '${escapeJsAttr(a.uid)}', this.value, 'self', null, null, '${escapeJsAttr(cleanName)}', ${selfMilVal}, ${idx});">
+                                                        <option value="" disabled ${!selfVote ? 'selected' : ''}>Vota...</option>
+                                                        ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}" ${selfVote && selfVote.choice === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                                                        ${selfVote ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
+                                                    </select>
+                                                </div>
+                                            `) : ''}
+                                        </div>
+
+                                        <!-- Deleghe ricevute -->
+                                        ${heldProxies.map(p => {
+                                            const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                            const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                                            const pMil = isGroupScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                                            const pUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnit || p.delegatorUnita || '');
+                                            const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                            const isProxyChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-proxy-cb-${pDelId}`, true);
+
+                                            return `
+                                                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; border-top:1px solid rgba(59, 130, 246, 0.15); gap:0.4rem;">
+                                                    <div style="display:flex; align-items:center; gap:0.35rem; flex:1; min-width:0;">
+                                                        ${isAdmin ? `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" class="nv-inline-${idx}-member-${a.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:var(--accent-color); width:15px; height:15px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
+                                                        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:0.05rem;">
+                                                            <div style="font-size:0.79rem; font-weight:700; color:var(--primary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                                                <span style="color:var(--accent-color); font-weight:700;">↳</span> ${escapeHtml(pDelName)}
+                                                            </div>
+                                                            <div style="display:flex; align-items:center; gap:0.25rem; font-size:0.7rem;">
+                                                                <span class="badge" style="font-size:0.58rem; color:var(--accent-color); background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700;">Delega</span>
+                                                                <strong style="color:var(--accent-color); font-size:0.75rem;">${pMil.toFixed(2)} ‰</strong>
+                                                            </div>
+                                                            ${pUnit ? `<div style="font-size:0.68rem; color:var(--secondary-text); font-weight:500;">Unità: ${escapeHtml(pUnit)}</div>` : ''}
+                                                        </div>
+                                                    </div>
+                                                    ${isAdmin ? `
+                                                        <div style="flex-shrink:0;">
+                                                            <select class="form-select manual-vote-select" style="font-size:0.75rem; padding:0.15rem 0.25rem; width:115px; height:28px; border-radius:5px; font-weight:700; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.15); color:var(--primary-text); cursor:pointer; box-sizing:border-box; flex-shrink:0;" onchange="window.submitVoteFromNonVoters('${assemblyId}', '${item.id}', '${escapeJsAttr(pDelId)}', this.value, 'proxy', '${escapeJsAttr(a.uid)}', '${escapeJsAttr(p.id || '')}', '${escapeJsAttr(pDelName)}', ${pMil}, ${idx});">
+                                                                <option value="" disabled ${!pVote ? 'selected' : ''}>Vota...</option>
+                                                                ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}" ${pVote && pVote.choice === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                                                                ${pVote ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
+                                                            </select>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            `;
+                                        }).join('')}
                                     </div>
                                 `;
                             }).join('');
@@ -29641,10 +30055,10 @@ ${renderBottomNavigation()}
         window.submitAdminManualVoteSingle = submitAdminManualVoteSingle;
         window.submitAdminManualVoteSelected = submitAdminManualVoteSelected;
         window.toggleSelectAllInDelegateGroup = toggleSelectAllInDelegateGroup;
-        window.toggleSelectAllNonVoters = toggleSelectAllNonVoters;
-        window.updateManualVotersSelectedCount = updateManualVotersSelectedCount;
         window.submitAdminManualVote = submitAdminManualVote;
         window.formatVoterDisplayName = formatVoterDisplayName;
+        window.submitVoteFromNonVoters = submitVoteFromNonVoters;
+        window.submitGroupVoteFromNonVoters = submitGroupVoteFromNonVoters;
 
         // --- FINE FUNZIONI ASSEMBLEE ---
 
