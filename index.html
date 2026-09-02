@@ -18461,10 +18461,16 @@ ${renderBottomNavigation()}
                     </div>
 
                     ${nonVoters.length === 0 ? `
-                        <div style="padding: 2rem 1rem; text-align: center; background: rgba(16, 185, 129, 0.08); border: 1.5px solid #10B981; border-radius: 10px;">
-                            <div style="color: #10B981; margin-bottom: 0.5rem;">${THEME_ICONS.checkSuccess(32)}</div>
-                            <strong style="color: #10B981; font-size: 1rem; display: block; margin-bottom: 0.3rem;">Tutti i condòmini hanno votato!</strong>
-                            <p style="color: var(--secondary-text); font-size: 0.85rem; margin: 0;">Tutti i condòmini aventi diritto hanno espresso il loro voto per questo punto.</p>
+                        <div style="padding: 2.2rem 1.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center !important; background: rgba(16, 185, 129, 0.08); border: 1.5px solid #10B981; border-radius: 10px; width: 100%; box-sizing: border-box;">
+                            <div style="color: #10B981; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: center; width: 100%; text-align: center !important;">
+                                ${THEME_ICONS.checkSuccess(36)}
+                            </div>
+                            <strong style="color: #10B981; font-size: 1.05rem; display: block; width: 100%; text-align: center !important; margin-bottom: 0.4rem; font-weight: 800;">
+                                Tutti i condòmini hanno votato!
+                            </strong>
+                            <p style="color: var(--secondary-text); font-size: 0.85rem; margin: 0; width: 100%; text-align: center !important; line-height: 1.45;">
+                                Tutti i condòmini aventi diritto hanno espresso il loro voto per questo punto.
+                            </p>
                         </div>
                     ` : `
                         <!-- Barra di ricerca rapida non votanti -->
