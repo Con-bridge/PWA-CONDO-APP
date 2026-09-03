@@ -18421,6 +18421,35 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.toggleRoomOdgCollapsible = () => {
+            const el = document.getElementById('room-odg-collapsible');
+            const toggleIcon = document.getElementById('room-odg-toggle-text');
+            if (!el) return;
+            const isHidden = el.classList.toggle('hidden');
+            if (toggleIcon) {
+                toggleIcon.textContent = isHidden ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';
+            }
+        };
+
+        window._openOdgPointCards = window._openOdgPointCards || new Set();
+
+        window.toggleSingleOdgCard = (cardItemId) => {
+            window._openOdgPointCards = window._openOdgPointCards || new Set();
+            const bodyEl = document.getElementById(`odg-body-${cardItemId}`);
+            const toggleText = document.getElementById(`odg-toggle-text-${cardItemId}`);
+            if (!bodyEl) return;
+
+            const isHidden = bodyEl.classList.toggle('hidden');
+            if (isHidden) {
+                window._openOdgPointCards.delete(cardItemId);
+            } else {
+                window._openOdgPointCards.add(cardItemId);
+            }
+            if (toggleText) {
+                toggleText.textContent = isHidden ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';
+            }
+        };
+
         window.filterRoomAttendeesList = (queryVal) => {
             const searchInput = document.getElementById('input-search-room-attendees');
             const clearBtn = document.getElementById('btn-clear-search-room-attendees');
@@ -21686,37 +21715,50 @@ ${renderBottomNavigation()}
                         const isPointHighlighted = (window._currentlyHighlightedPointId === cardItemId);
                         const highlightClass = isPointHighlighted ? ' odg-card-highlighted' : '';
 
+                        const isPointOpen = window._openOdgPointCards.has(cardItemId);
+
                         return `
-                            <div id="odg-card-${escapeHtml(cardItemId)}" class="card odg-point-card${highlightClass}" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 1.25rem; margin-bottom: 1rem; ${item.isScopeModification ? 'border-left: 3.5px solid #3B82F6;' : ''}">
-                                <div style="display:flex; flex-direction:column; gap:0.45rem; margin-bottom: 0.75rem; width:100%;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; width:100%;">
-                                        <h4 style="font-size: 1.05rem; font-weight: 700; margin:0; line-height: 1.3; flex:1; min-width:140px;">Punto ${pointDisplayNum}${exPointText}: ${escapeHtml(window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title)}${scopeModBadge}</h4>
+                            <div id="odg-card-${escapeHtml(cardItemId)}" class="card odg-point-card${highlightClass}" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 0.85rem 1rem; margin-bottom: 0.65rem; ${item.isScopeModification ? 'border-left: 3.5px solid #3B82F6;' : ''}">
+                                <!-- RIGA UNICA VISIBILE DA CHIUSO: SOLO Titolo a sinistra e Mostra/Nascondi al posto del LIVE a destra -->
+                                <div style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;" onclick="window.toggleSingleOdgCard('${escapeJsAttr(cardItemId)}')">
+                                    <h4 style="font-size: 0.95rem; font-weight: 700; margin: 0; line-height: 1.3; flex: 1; min-width: 0; color: var(--primary-text); overflow: hidden; text-overflow: ellipsis;">
+                                        Punto ${pointDisplayNum}${exPointText}: ${escapeHtml(window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title)}${scopeModBadge}
+                                    </h4>
+                                    <span id="odg-toggle-text-${escapeHtml(cardItemId)}" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 600; white-space: nowrap; flex-shrink: 0;">
+                                        ${isPointOpen ? 'Mostra/Nascondi ▲' : 'Mostra/Nascondi ▼'}
+                                    </span>
+                                </div>
+
+                                <!-- TUTTO IL RESTO (Ambito, Badge LIVE, Quorum, Voti) È DENTRO QUESTO CONTENITORE E APPARE SOLO SE APERTO -->
+                                <div id="odg-body-${escapeHtml(cardItemId)}" class="${isPointOpen ? '' : 'hidden'}" style="margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px dashed var(--surface-color-light);">
+                                    <!-- Ambito e Badge LIVE/Stato spostati qui dentro -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.65rem;">
                                         <div>
+                                            ${scopeBadge}
+                                        </div>
+                                        <div style="flex-shrink: 0;">
                                             ${itemBadge}
                                         </div>
                                     </div>
-                                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:0.4rem; width:100%;">
-                                        ${scopeBadge}
+
+                                    <!-- BOX QUORUM COND. PARZIALE SUL PUNTO -->
+                                    ${groupQuorumBoxHtml}
+
+                                    ${adminActionHtml}
+
+                                    ${voteButtonsHtml}
+
+                                    <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO -->
+                                    <div style="margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--surface-color-light);">
+                                        <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.35rem;">${THEME_ICONS.chart(15)} <span>Votazioni ${isGroupScope ? `(${escapeHtml(itemGroup)})` : ''}</span></div>
+                                        ${optionsProgressHtml}
                                     </div>
+
+                                    <!-- ELENCO NON VOTANTI QUESTO PUNTO (VISIBILE A TUTTI) -->
+                                    ${nonVotersHtml}
+
+                                    ${votersDetailHtml}
                                 </div>
-
-                                <!-- BOX QUORUM COND. PARZIALE SUL PUNTO -->
-                                ${groupQuorumBoxHtml}
-
-                                ${adminActionHtml}
-
-                                ${voteButtonsHtml}
-
-                                <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO -->
-                                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--surface-color-light);">
-                                    <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.35rem;">${THEME_ICONS.chart(15)} <span>Votazioni ${isGroupScope ? `(${escapeHtml(itemGroup)})` : ''}</span></div>
-                                    ${optionsProgressHtml}
-                                </div>
-
-                                <!-- ELENCO NON VOTANTI QUESTO PUNTO (VISIBILE A TUTTI) -->
-                                ${nonVotersHtml}
-
-                                ${votersDetailHtml}
                             </div>
                         `;
                     }).join('');
@@ -24008,6 +24050,22 @@ ${renderBottomNavigation()}
             window._currentlyHighlightedPointId = itemId;
 
             const performScrollAndHighlight = () => {
+                // Se la sezione OdG principale o la singola scheda sono collassate, aprile automaticamente
+                const odgCollapsible = document.getElementById('room-odg-collapsible');
+                const odgToggleText = document.getElementById('room-odg-toggle-text');
+                if (odgCollapsible && odgCollapsible.classList.contains('hidden')) {
+                    odgCollapsible.classList.remove('hidden');
+                    if (odgToggleText) odgToggleText.textContent = 'Mostra/Nascondi ▲';
+                }
+
+                const singleBody = document.getElementById(`odg-body-${itemId}`);
+                const singleToggleText = document.getElementById(`odg-toggle-text-${itemId}`);
+                if (singleBody && singleBody.classList.contains('hidden')) {
+                    singleBody.classList.remove('hidden');
+                    if (window._openOdgPointCards) window._openOdgPointCards.add(itemId);
+                    if (singleToggleText) singleToggleText.textContent = 'Mostra/Nascondi ▲';
+                }
+
                 const cardEl = document.getElementById(`odg-card-${itemId}`);
                 if (cardEl) {
                     cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
