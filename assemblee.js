@@ -194,18 +194,21 @@ window.AssembleeModule = {
                         <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
                     </div>
 
-                    <!-- BADGE PRESIDENTE ELETTTO -->
-                    <div id="room-president-badge-container" class="hidden" style="margin-bottom: 1rem; padding: 0.65rem 0.85rem; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0;">
-                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #2563EB; color: white; flex-shrink: 0;">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
-                            </span>
-                            <div style="min-width: 0;">
-                                <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; display: block; line-height: 1.1;">Presidente dell'Assemblea</span>
-                                <strong id="room-president-name" style="font-size: 0.88rem; color: var(--primary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; margin-top: 0.1rem;">-</strong>
-                            </div>
-                        </div>
-                        <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; font-weight: 700; white-space: nowrap;">-</span>
+                    <!-- BADGE PRESIDENTE ELETTO -->
+                    <div id="room-president-badge-container" class="hidden" style="margin-bottom: 1rem; padding: 0.9rem 1rem; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.35rem; width: 100%; box-sizing: border-box;">
+                        <!-- 1. Stella centrata in alto -->
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2563EB; color: white; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); margin-bottom: 0.1rem;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
+                        </span>
+
+                        <!-- 2. Scritta Presidente dell'Assemblea -->
+                        <span style="font-size: 0.74rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2;">Presidente dell'Assemblea</span>
+
+                        <!-- 3. Nome del Presidente Eletto -->
+                        <strong id="room-president-name" style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); line-height: 1.3; word-break: break-word; max-width: 100%; margin-bottom: 0.2rem;">-</strong>
+
+                        <!-- 4. Badge Modalità di Elezione -->
+                        <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap; display: inline-block;">-</span>
                     </div>
 
                     <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
@@ -580,7 +583,7 @@ window.AssembleeModule = {
             const rWords = rNom.split(' ').filter(w => w.length > 2);
             const tWords = cleanTarget.split(' ').filter(w => w.length > 2);
             return (rWords.length > 0 && rWords.every(w => cleanTarget.includes(w))) ||
-                   (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
+                (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
         });
 
         return matchedRows.map(row => {
@@ -595,12 +598,12 @@ window.AssembleeModule = {
 
     getEffectiveUnitMillesimi: function (userOrAttendee, targetGroup, allUsers = null, tableData = null) {
         if (!userOrAttendee) return 0;
-        
+
         const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
-        const isGlobal = !targetGroup || 
-            targetGroup === 'Tutte le scale' || 
-            targetGroup === 'Intero Condominio' || 
-            targetGroup === 'Intero condominio' || 
+        const isGlobal = !targetGroup ||
+            targetGroup === 'Tutte le scale' ||
+            targetGroup === 'Intero Condominio' ||
+            targetGroup === 'Intero condominio' ||
             targetGroup.trim().toLowerCase() === 'intero';
 
         if (isGlobal) {
@@ -667,12 +670,12 @@ window.AssembleeModule = {
 
     getEffectiveProxyMillesimi: function (proxy, targetGroup, allUsers = null, tableData = null) {
         if (!proxy || proxy.status === 'rejected') return 0;
-        
+
         const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
-        const isGlobal = !targetGroup || 
-            targetGroup === 'Tutte le scale' || 
-            targetGroup === 'Intero Condominio' || 
-            targetGroup === 'Intero condominio' || 
+        const isGlobal = !targetGroup ||
+            targetGroup === 'Tutte le scale' ||
+            targetGroup === 'Intero Condominio' ||
+            targetGroup === 'Intero condominio' ||
             targetGroup.trim().toLowerCase() === 'intero';
 
         if (isGlobal) {
