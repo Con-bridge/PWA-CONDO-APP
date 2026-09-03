@@ -127,234 +127,272 @@ window.AssembleeModule = {
     },
 
     // LA STANZA LIVE UNIFICATA (Con Controlli Avanzati per gli Admin e Votazioni per Questione Stile Sondaggi)
-    renderStanzaLive: function (renderHeader, renderBottomNavigation) {
+    renderStanzaLive: function (renderHeader, renderBottomNavigation, userProfile) {
+        const profile = userProfile || (typeof window !== 'undefined' ? window.userProfile : null);
+        const isAdmin = ['amministratore', 'adm'].includes(profile?.tipoUtente);
+
         return `
             ${renderHeader('Assemblea Live')}
             <main style="padding-bottom: 2rem;">
-                <!-- STRUMENTI ADMIN NELLA STANZA LIVE -->
-                <div id="room-admin-bar" class="card hidden" style="margin-bottom: 1rem; padding: 1rem;">
-                    <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">Strumenti Amministratore</h4>
-                    <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                        <button id="btn-toggle-room-scanner" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
-                        <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
+                <!-- SCHERMATA QR CODE ACCREDITAMENTO (VISIBILE ESCLUSIVAMENTE SE NON ANCORA ACCREDITATO) -->
+                <div id="room-qr-accreditation" class="card ${!isAdmin ? '' : 'hidden'}" style="${!isAdmin ? 'display: block;' : 'display: none;'} text-align: center; margin: 1rem auto 2rem auto; padding: 2rem 1.25rem; max-width: 440px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); border: 1px solid var(--surface-color-light);">
+                    <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: var(--warning); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
                     </div>
-                    <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                        <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
-                        <button id="btn-room-start" onclick="startLiveAssemblySession()" class="btn" style="background-color: #10B981; color: white; font-weight: 800; font-size:0.8rem; padding:0.6rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
-                        </button>
-                    </div>
-                    <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta esito per quorum costitutivo
-                    </button>
-
-                    <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
-                    <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
-                        <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
-                            <!-- PULSANTE RAPIDO X NELL'ANGOLO IN ALTO A DESTRA -->
-                            <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
-
-                            <div id="reader" style="width: 100%; min-height: 250px;"></div>
-                            <!-- FEEDBACK POPUP IN OVERLAY SOVRIMPRESSO AL QUADRANTE SCANNER -->
-                            <div id="scanner-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box;"></div>
-                        </div>
-
-                        <!-- MICRO-COPY ED ISTRUZIONI ESPLICITE DI CHIUSURA SOTTO IL FRAME -->
-                        <div style="margin-top: 0.65rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
-                            <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path></svg>
-                                <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
-                            </p>
-                            <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
-                                <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi Fotocamera</span>
-                            </button>
-                        </div>
-
-                        <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
-                    </div>
-                </div>
-
-                <!-- BANNER DI ALLARME SCIOGLIMENTO QUORUM (SE SOTTO 333.33 ‰) -->
-                <div id="room-quorum-warning-banner" class="hidden card" style="background:rgba(239,68,68,0.15); border:2px solid var(--danger); padding:1rem; margin-bottom:1rem; text-align:center;">
-                    <h4 style="color:var(--danger); font-weight:800; margin:0 0 0.25rem 0; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-                        SCIOGLIMENTO ASSEMBLEA - QUORUM COSTITUTIVO DECADUTO
-                    </h4>
-                    <p id="room-quorum-warning-text" style="color:var(--primary-text); font-size:0.85rem; margin:0;">A seguito dell'allontanamento di condòmini, i presenti sono scesi sotto la soglia legale di 1/3 (333.33 ‰). L'assemblea non è più idonea a deliberare e deve essere dichiarata sciolta.</p>
-                </div>
-
-                <!-- BANNER DI STATO LIVE -->
-                <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--surface-color-light);">
-                        <div>
-                            <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text); display:flex; align-items:center; gap:0.4rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg> Quorum</h3>
-                        </div>
-                        <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
-                    </div>
-
-                    <!-- BADGE PRESIDENTE ELETTO -->
-                    <div id="room-president-badge-container" class="hidden" style="margin-bottom: 1rem; padding: 0.9rem 1rem; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.35rem; width: 100%; box-sizing: border-box;">
-                        <!-- 1. Stella centrata in alto -->
-                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2563EB; color: white; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); margin-bottom: 0.1rem;">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
-                        </span>
-
-                        <!-- 2. Scritta Presidente dell'Assemblea -->
-                        <span style="font-size: 0.74rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2;">Presidente dell'Assemblea</span>
-
-                        <!-- 3. Nome del Presidente Eletto -->
-                        <strong id="room-president-name" style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); line-height: 1.3; word-break: break-word; max-width: 100%; margin-bottom: 0.2rem;">-</strong>
-
-                        <!-- 4. Badge Modalità di Elezione -->
-                        <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap; display: inline-block;">-</span>
-                    </div>
-
-                    <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
-                    <div id="room-general-quorum-section" style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid var(--surface-color-light); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
-                        <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="12"></line><line x1="15" y1="22" x2="15" y2="12"></line><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="7" x2="9.01" y2="7"></line><line x1="15" y1="7" x2="15.01" y2="7"></line></svg><span>Quorum Intero Condominio</span>
-                        </div>
-                        <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px; align-items: start;">
-                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
-                                <span id="room-label-tot-teste" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Condomini pres.:</span>
-                                <strong id="room-tot-teste" style="display: block; font-size: 0.98rem; color: var(--accent-color); margin-top: 0.2rem; word-break: break-word;">0 Teste</strong>
-                            </div>
-                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
-                                <span id="room-label-tot-millesimi" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Millesimi pres.:</span>
-                                <strong id="room-tot-millesimi" style="display: block; font-size: 0.98rem; color: var(--warning); margin-top: 0.2rem; word-break: break-word;">0.00 ‰</strong>
-                            </div>
-                        </div>
-                        <!-- BADGE REGOLA LIMITE DELEGHE -->
-                        <div id="room-proxy-limit-badge" style="margin-top: 0.6rem; padding: 0.45rem 0.65rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; display: flex; align-items: center; gap: 0.45rem; font-size: 0.76rem; line-height: 1.35;">
-                            <span style="color: var(--accent-color); display: inline-flex; align-items: center; flex-shrink: 0;">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            </span>
-                            <span style="color: var(--primary-text); min-width: 0; word-break: break-word;">
-                                <strong style="color: var(--accent-color); font-weight: 700;">Regola Deleghe:</strong> <span id="room-proxy-limit-text">Caricamento regola...</span>
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- SEZIONE 2: CONTENITORE QUORUM CONDOMINIO PARZIALE (SCALE / GRUPPI) -->
-                    <div id="room-partial-quorum-section" class="hidden" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1.5px dashed var(--surface-color-light);">
-                        <div style="cursor: pointer; user-select: none; margin-bottom: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0.6rem 0.75rem; transition: background 0.2s;" onclick="window.togglePartialQuorumCollapsible()">
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                                <div style="font-size: 0.84rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.35rem;">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg><span>Condominio Parziale</span>
-                                </div>
-                                <span id="room-partial-toggle-btn" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 800; flex-shrink: 0;">Nascondi ▲</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.45rem; flex-wrap: wrap;">
-                                <span id="room-partial-groups-count" class="badge" style="background: #1E293B; color: #FFFFFF; border: 1px solid #475569; font-size: 0.72rem; padding: 0.18rem 0.5rem; border-radius: 4px; font-weight: 800;">0 Scale</span>
-                                <span id="room-partial-status-summary" class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; display: none;"></span>
-                            </div>
-                        </div>
-                        <div id="room-partial-quorum-container" style="display: flex; flex-direction: column; gap: 0.85rem;"></div>
-                    </div>
-                </div>
-
-                <!-- Presenti -->
-                <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <!-- Intestazione cliccabile per Mostra/Nascondi -->
-                    <div style="cursor: pointer;" onclick="window.toggleRoomAttendeesCollapsible ? window.toggleRoomAttendeesCollapsible() : (function(){ const el = document.getElementById('room-attendees-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-attendees-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
-                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                <span>Elenco Presenti</span>
-                            </h3>
-                            <span id="room-attendees-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
-                        </div>
-                    </div>
-
-                    <!-- Contenitore collassabile (include sia i due contatori che la lista e la ricerca) -->
-                    <div id="room-attendees-collapsible" class="hidden space-y-2" style="margin-top: 0.75rem;">
-                        <!-- Due badge contatori (In Aula e Deleghe) -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-bottom: 0.65rem;">
-                            <div class="badge" style="background: rgba(29, 185, 84, 0.15); color: #1DB954; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(29, 185, 84, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span id="room-badge-in-aula">0</span> in aula
-                            </div>
-                            <div class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-color); font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span id="room-badge-deleghe">0</span> deleghe
-                            </div>
-                        </div>
-
-                        <!-- Barra di ricerca Elenco Presenti -->
-                        <div style="position: relative; margin-bottom: 0.65rem;">
-                            <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            </div>
-                            <input type="text" id="input-search-room-attendees" placeholder="Cerca presente o delega..." oninput="window.filterRoomAttendeesList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.42rem 1.8rem 0.42rem 2.05rem; font-size: 0.82rem; border-radius: 8px;" autocomplete="off">
-                            <button type="button" id="btn-clear-search-room-attendees" onclick="document.getElementById('input-search-room-attendees').value = ''; window.filterRoomAttendeesList(''); this.style.display = 'none';" style="display: none; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
-                        </div>
-                        <div id="room-attendees-list">
-                            <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento presenti...</p>
-                        </div>
-                        <p id="room-attendees-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 0.6rem 0; margin: 0;">Nessun condòmino presente trovato con i criteri di ricerca.</p>
-                    </div>
-                </div>
-
-                <!-- QR CODE ACCREDITO COMPATTO (VISIBILE SOLO SE NON SCANSIONATO) -->
-                <div id="room-qr-accreditation" class="card hidden" style="text-align: center; margin-bottom: 1rem; padding: 1rem;">
-                    <h4 style="color: var(--warning); margin-bottom: 0.25rem; font-size: 0.95rem; font-weight: 700;">Accredito Ingresso Richiesto</h4>
-                    <p style="font-size: 0.8rem; color: var(--secondary-text); margin-bottom: 0.75rem;">
-                        Mostra questo QR Code all'Amministratore per essere accreditato ed abilitare il voto.
+                    
+                    <h3 style="color: var(--primary-text); margin-bottom: 0.4rem; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.2px;">Accredito Ingresso Richiesto</h3>
+                    <p style="font-size: 0.86rem; color: var(--secondary-text); margin-bottom: 1.5rem; line-height: 1.45; max-width: 340px; margin-left: auto; margin-right: auto;">
+                        Mostra questo QR Code all'Amministratore per essere accreditato.<br>Non appena convalidata la presenza, verrai ammesso automaticamente alla schermata dell'assemblea.
                     </p>
-                    <div style="background: white; padding: 0.75rem; border-radius: 8px; display: inline-block; margin-bottom: 0.25rem;">
+                    
+                    <div style="background: white; padding: 1.25rem; border-radius: 14px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-bottom: 0.85rem; border: 2px solid var(--accent-color);">
                         <div id="room-qrcode-container"></div>
                     </div>
-                    <p id="room-qr-timer" style="margin: 0; font-weight: 700; color: var(--accent-color); font-size: 0.85rem;">
-                        Aggiornamento tra: 30s
-                    </p>
-                </div>
-
-                <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
-                <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <!-- Intestazione cliccabile per Mostra/Nascondi -->
-                    <div style="cursor: pointer;" onclick="window.toggleRoomOdgCollapsible ? window.toggleRoomOdgCollapsible() : (function(){ const el = document.getElementById('room-odg-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-odg-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
-                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                                <span>Punti di discussione</span>
-                            </h3>
-                            <span id="room-odg-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
-                        </div>
+                    
+                    <div style="margin-bottom: 1.25rem;">
+                        <span id="room-qr-timer" style="font-weight: 700; color: var(--accent-color); font-size: 0.9rem; letter-spacing: 0.3px;">
+                            Aggiornamento tra: 30s
+                        </span>
                     </div>
 
-                    <!-- Contenitore collassabile dei punti di discussione OdG -->
-                    <div id="room-odg-collapsible" class="hidden space-y-4" style="margin-top: 0.75rem;">
-                        <div id="room-odg-poll-list" class="space-y-4">
-                            <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
-                        </div>
+                    <!-- BADGE STATO ATTESA -->
+                    <div style="display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.45rem 1rem; border-radius: 99px; background: rgba(245, 158, 11, 0.12); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.8rem; font-weight: 700; margin-bottom: 1.5rem;">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; display: inline-block; animation: pulse 1.5s infinite;"></span>
+                        <span>In attesa di convalida presenza...</span>
+                    </div>
+
+                    <!-- PULSANTE ESCI -->
+                    <div>
+                        <button type="button" onclick="navigateTo('assemblea_lista')" class="btn btn-secondary" style="font-size: 0.84rem; padding: 0.55rem 1.2rem; border-radius: 8px; width: 100%; max-width: 260px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            <span>Esci dall'Assemblea</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Log Assemblea -->
-                <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-event-log-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
-                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                <span>Log Assemblea</span>
-                            </h3>
-                            <span id="room-event-log-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                <!-- CONTENUTO NORMALE DELL'ASSEMBLEA (VISIBILE SOLO SE ACCREDITATO O ADMIN) -->
+                <div id="room-normal-content" class="${!isAdmin ? 'hidden' : ''}" style="${!isAdmin ? 'display: none;' : 'display: block;'}">
+                    <!-- BANNER DI CONFERMA AVVENUTO ACCREDITO (TEMPORANEO) -->
+                    <div id="room-welcome-accredited-banner" class="card" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; padding: 0.85rem 1rem; margin-bottom: 1rem; border-radius: 10px; align-items: center; gap: 0.5rem;">
+                        <span style="color: #10B981; display: inline-flex;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <div style="font-size: 0.88rem; color: var(--primary-text); font-weight: 700;">
+                            Presenza convalidata con successo! Benvenuto in assemblea.
                         </div>
                     </div>
-                    <div id="room-event-log-collapsible" class="hidden space-y-2" style="margin-top: 0.75rem;">
-                        <div id="room-event-log-list">
-                            <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento registro eventi...</p>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- PULSANTE CONCLUDI ASSEMBLEA (POSIZIONATO IN FONDO ALLA SCHERMATA) -->
-                <div id="room-admin-conclude-bottom" class="hidden card" style="padding: 1rem; text-align: center; background: rgba(239,68,68,0.08); border: 1px dashed var(--danger);">
-                    <p style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.75rem;">Al termine di tutte le discussioni e votazioni, concludi ufficialmente l'assemblea.</p>
-                    <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 800; font-size:0.9rem; padding:0.75rem 1.5rem; width:100%; max-width:340px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-                        Concludi Assemblea
-                    </button>
+                    <!-- STRUMENTI ADMIN NELLA STANZA LIVE -->
+                    <div id="room-admin-bar" class="card hidden" style="margin-bottom: 1rem; padding: 1rem;">
+                        <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">Strumenti Amministratore</h4>
+                        <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
+                            <button id="btn-toggle-room-scanner" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
+                            <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
+                            <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
+                            <button id="btn-room-start" onclick="startLiveAssemblySession()" class="btn" style="background-color: #10B981; color: white; font-weight: 800; font-size:0.8rem; padding:0.6rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
+                            </button>
+                        </div>
+                        <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta esito per quorum costitutivo
+                        </button>
+
+                        <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
+                        <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
+                            <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
+                                <!-- PULSANTE RAPIDO X NELL'ANGOLO IN ALTO A DESTRA -->
+                                <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+
+                                <div id="reader" style="width: 100%; min-height: 250px;"></div>
+                                <!-- FEEDBACK POPUP IN OVERLAY SOVRIMPRESSO AL QUADRANTE SCANNER -->
+                                <div id="scanner-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box;"></div>
+                            </div>
+
+                            <!-- MICRO-COPY ED ISTRUZIONI ESPLICITE DI CHIUSURA SOTTO IL FRAME -->
+                            <div style="margin-top: 0.65rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
+                                <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path></svg>
+                                    <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
+                                </p>
+                                <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
+                                    <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi Fotocamera</span>
+                                </button>
+                            </div>
+
+                            <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- BANNER DI ALLARME SCIOGLIMENTO QUORUM (SE SOTTO 333.33 ‰) -->
+                    <div id="room-quorum-warning-banner" class="hidden card" style="background:rgba(239,68,68,0.15); border:2px solid var(--danger); padding:1rem; margin-bottom:1rem; text-align:center;">
+                        <h4 style="color:var(--danger); font-weight:800; margin:0 0 0.25rem 0; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            SCIOGLIMENTO ASSEMBLEA - QUORUM COSTITUTIVO DECADUTO
+                        </h4>
+                        <p id="room-quorum-warning-text" style="color:var(--primary-text); font-size:0.85rem; margin:0;">A seguito dell'allontanamento di condòmini, i presenti sono scesi sotto la soglia legale di 1/3 (333.33 ‰). L'assemblea non è più idonea a deliberare e deve essere dichiarata sciolta.</p>
+                    </div>
+
+                    <!-- BANNER DI STATO LIVE -->
+                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--surface-color-light);">
+                            <div>
+                                <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text); display:flex; align-items:center; gap:0.4rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg> Quorum</h3>
+                            </div>
+                            <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
+                        </div>
+
+                        <!-- BADGE PRESIDENTE ELETTO -->
+                        <div id="room-president-badge-container" class="hidden" style="margin-bottom: 1rem; padding: 0.9rem 1rem; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.35rem; width: 100%; box-sizing: border-box;">
+                            <!-- 1. Stella centrata in alto -->
+                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2563EB; color: white; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); margin-bottom: 0.1rem;">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
+                            </span>
+
+                            <!-- 2. Scritta Presidente dell'Assemblea -->
+                            <span style="font-size: 0.74rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2;">Presidente dell'Assemblea</span>
+
+                            <!-- 3. Nome del Presidente Eletto -->
+                            <strong id="room-president-name" style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); line-height: 1.3; word-break: break-word; max-width: 100%; margin-bottom: 0.2rem;">-</strong>
+
+                            <!-- 4. Badge Modalità di Elezione -->
+                            <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap; display: inline-block;">-</span>
+                        </div>
+
+                        <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
+                        <div id="room-general-quorum-section" style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid var(--surface-color-light); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
+                            <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="12"></line><line x1="15" y1="22" x2="15" y2="12"></line><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="7" x2="9.01" y2="7"></line><line x1="15" y1="7" x2="15.01" y2="7"></line></svg><span>Quorum Intero Condominio</span>
+                            </div>
+                            <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px; align-items: start;">
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
+                                    <span id="room-label-tot-teste" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Condomini pres.:</span>
+                                    <strong id="room-tot-teste" style="display: block; font-size: 0.98rem; color: var(--accent-color); margin-top: 0.2rem; word-break: break-word;">0 Teste</strong>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
+                                    <span id="room-label-tot-millesimi" style="font-size: 0.75rem; color: var(--secondary-text); white-space: nowrap;">Millesimi pres.:</span>
+                                    <strong id="room-tot-millesimi" style="display: block; font-size: 0.98rem; color: var(--warning); margin-top: 0.2rem; word-break: break-word;">0.00 ‰</strong>
+                                </div>
+                            </div>
+                            <!-- BADGE REGOLA LIMITE DELEGHE -->
+                            <div id="room-proxy-limit-badge" style="margin-top: 0.6rem; padding: 0.45rem 0.65rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; display: flex; align-items: center; gap: 0.45rem; font-size: 0.76rem; line-height: 1.35;">
+                                <span style="color: var(--accent-color); display: inline-flex; align-items: center; flex-shrink: 0;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                </span>
+                                <span style="color: var(--primary-text); min-width: 0; word-break: break-word;">
+                                    <strong style="color: var(--accent-color); font-weight: 700;">Regola Deleghe:</strong> <span id="room-proxy-limit-text">Caricamento regola...</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- SEZIONE 2: CONTENITORE QUORUM CONDOMINIO PARZIALE (SCALE / GRUPPI) -->
+                        <div id="room-partial-quorum-section" class="hidden" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1.5px dashed var(--surface-color-light);">
+                            <div style="cursor: pointer; user-select: none; margin-bottom: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0.6rem 0.75rem; transition: background 0.2s;" onclick="window.togglePartialQuorumCollapsible()">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                                    <div style="font-size: 0.84rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.35rem;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg><span>Condominio Parziale</span>
+                                    </div>
+                                    <span id="room-partial-toggle-btn" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 800; flex-shrink: 0;">Nascondi ▲</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.45rem; flex-wrap: wrap;">
+                                    <span id="room-partial-groups-count" class="badge" style="background: #1E293B; color: #FFFFFF; border: 1px solid #475569; font-size: 0.72rem; padding: 0.18rem 0.5rem; border-radius: 4px; font-weight: 800;">0 Scale</span>
+                                    <span id="room-partial-status-summary" class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; display: none;"></span>
+                                </div>
+                            </div>
+                            <div id="room-partial-quorum-container" style="display: flex; flex-direction: column; gap: 0.85rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Presenti -->
+                    <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+                        <!-- Intestazione cliccabile per Mostra/Nascondi -->
+                        <div style="cursor: pointer;" onclick="window.toggleRoomAttendeesCollapsible ? window.toggleRoomAttendeesCollapsible() : (function(){ const el = document.getElementById('room-attendees-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-attendees-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                                <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    <span>Elenco Presenti</span>
+                                </h3>
+                                <span id="room-attendees-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                            </div>
+                        </div>
+
+                        <!-- Contenitore collassabile (include sia i due contatori che la lista e la ricerca) -->
+                        <div id="room-attendees-collapsible" class="hidden space-y-2" style="margin-top: 0.75rem;">
+                            <!-- Due badge contatori (In Aula e Deleghe) -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-bottom: 0.65rem;">
+                                <div class="badge" style="background: rgba(29, 185, 84, 0.15); color: #1DB954; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(29, 185, 84, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span id="room-badge-in-aula">0</span> in aula
+                                </div>
+                                <div class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent-color); font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg><span id="room-badge-deleghe">0</span> deleghe
+                                </div>
+                            </div>
+
+                            <!-- Barra di ricerca Elenco Presenti -->
+                            <div style="position: relative; margin-bottom: 0.65rem;">
+                                <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </div>
+                                <input type="text" id="input-search-room-attendees" placeholder="Cerca presente o delega..." oninput="window.filterRoomAttendeesList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.42rem 1.8rem 0.42rem 2.05rem; font-size: 0.82rem; border-radius: 8px;" autocomplete="off">
+                                <button type="button" id="btn-clear-search-room-attendees" onclick="document.getElementById('input-search-room-attendees').value = ''; window.filterRoomAttendeesList(''); this.style.display = 'none';" style="display: none; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                            </div>
+                            <div id="room-attendees-list">
+                                <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento presenti...</p>
+                            </div>
+                            <p id="room-attendees-no-results" class="hidden" style="color: var(--secondary-text); font-size: 0.85rem; text-align: center; padding: 0.6rem 0; margin: 0;">Nessun condòmino presente trovato con i criteri di ricerca.</p>
+                        </div>
+                    </div>
+
+                    <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
+                    <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+                        <!-- Intestazione cliccabile per Mostra/Nascondi -->
+                        <div style="cursor: pointer;" onclick="window.toggleRoomOdgCollapsible ? window.toggleRoomOdgCollapsible() : (function(){ const el = document.getElementById('room-odg-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-odg-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                                <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                    <span>Punti di discussione</span>
+                                </h3>
+                                <span id="room-odg-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                            </div>
+                        </div>
+
+                        <!-- Contenitore collassabile dei punti di discussione OdG -->
+                        <div id="room-odg-collapsible" class="hidden space-y-4" style="margin-top: 0.75rem;">
+                            <div id="room-odg-poll-list" class="space-y-4">
+                                <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Log Assemblea -->
+                    <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+                        <div style="cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-event-log-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                                <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                    <span>Log Assemblea</span>
+                                </h3>
+                                <span id="room-event-log-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                            </div>
+                        </div>
+                        <div id="room-event-log-collapsible" class="hidden space-y-2" style="margin-top: 0.75rem;">
+                            <div id="room-event-log-list">
+                                <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento registro eventi...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PULSANTE CONCLUDI ASSEMBLEA (POSIZIONATO IN FONDO ALLA SCHERMATA) -->
+                    <div id="room-admin-conclude-bottom" class="hidden card" style="padding: 1rem; text-align: center; background: rgba(239,68,68,0.08); border: 1px dashed var(--danger);">
+                        <p style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.75rem;">Al termine di tutte le discussioni e votazioni, concludi ufficialmente l'assemblea.</p>
+                        <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 800; font-size:0.9rem; padding:0.75rem 1.5rem; width:100%; max-width:340px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                            Concludi Assemblea
+                        </button>
+                    </div>
                 </div>
             </main>
             ${renderBottomNavigation()}
