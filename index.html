@@ -18641,23 +18641,20 @@ ${renderBottomNavigation()}
                         return `
                                                 <!-- 1. Quota personale delegato (3 righe) -->
                                                 <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
-                                                    <!-- Riga 1: Nome su una riga -->
-                                                    <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                        ${canAdminVotePoint ? (isFuori ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (isSelfVoted ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" class="nv-fs-member-${nv.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:#10B981; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`)) : ''}
-                                                        <div style="font-size:0.92rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                            ${formatLongName(nv.cleanName || nv.name)}
-                                                        </div>
+                                                    <!-- Riga 1: Nome -->
+                                                    <div style="font-size:0.92rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                        ${formatLongName(nv.cleanName || nv.name)}
                                                     </div>
 
-                                                    <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                                    <!-- Riga 2: Unità immobiliare -->
                                                     ${cleanNvUnits ? `
-                                                        <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; padding-left:1.6rem; line-height:1.25; word-break:break-word;">
+                                                        <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
                                                             ${escapeHtml(cleanNvUnits)}
                                                         </div>
                                                     ` : ''}
 
                                                     <!-- Riga 3: Quota personale con millesimi a sinistra, icona voto a destra -->
-                                                    <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.6rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                    <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                             ${isFuori ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.04rem 0.25rem; border-radius:3px; font-weight:700;">Fuori scala</span>` : (nv.isManual ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.25rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>` : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.25rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`)}
                                                             <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
@@ -18687,58 +18684,32 @@ ${renderBottomNavigation()}
                                             `;
                     })()}
 
-                                        ${canAdminVotePoint ? `
-                                            <!-- MASTER FLAG: QUOTA GRUPPO -->
-                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
-                                                <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; flex:1; min-width:0;">
-                                                    <input type="checkbox" id="nv-fs-master-cb-${nv.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('nv-fs', '${escapeJsAttr(nv.uid)}', this.checked);" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0; margin:0;">
-                                                    <span>Quota gruppo</span>
-                                                </label>
-                                                <div style="flex-shrink:0;">
-                                                    <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:rgba(59, 130, 246, 0.15); border:1.5px solid rgba(59, 130, 246, 0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Clicca per votare tutti i selezionati">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                        </svg>
-                                                        <select id="nv-fs-vote-select-${nv.uid}" class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitGroupVoteFromNonVoters('${data.assemblyId}', '${data.itemId}', '${escapeJsAttr(nv.uid)}', this.value, ${pointIndex}, 'nv-fs');">
-                                                            <option value="" disabled selected>Vota tutti...</option>
-                                                            ${voteOpts.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ` : ''}
-
-                                        <!-- SINGOLE DELEGHE RICEVUTE (3 righe) -->
+                                        <!-- SINGOLE DELEGHE RICEVUTE (Votazione 1 a 1: 3 righe) -->
                                         <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                             <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
                                                 ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                             </div>
                                             ${heldProxies.map(p => {
                         const pDelId = p.delegatorId;
-                        const isProxyChecked = window.isGroupCheckboxChecked(`nv-fs-proxy-cb-${pDelId}`, true);
                         const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(p.unit) : p.unit;
                         const hasVoted = p.hasVoted && p.vote;
 
                         return `
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
-                                                        <!-- Riga 1: Nome Delegante su una riga intera -->
-                                                        <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                            ${canAdminVotePoint ? (hasVoted ? `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" class="nv-fs-member-${nv.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
-                                                            <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                                <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${escapeHtml(p.name)}
-                                                            </div>
+                                                        <!-- Riga 1: Nome Delegante -->
+                                                        <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                            <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${escapeHtml(p.name)}
                                                         </div>
 
-                                                        <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                                        <!-- Riga 2: Unità pulita -->
                                                         ${cleanPUnit ? `
-                                                            <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:1.6rem; line-height:1.25; word-break:break-word;">
+                                                            <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
                                                                 ${escapeHtml(cleanPUnit)}
                                                             </div>
                                                         ` : ''}
 
                                                         <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.6rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                                 <span class="badge" style="font-size:0.6rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Delega</span>
                                                                 ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
@@ -19445,22 +19416,19 @@ ${renderBottomNavigation()}
                             return `
                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                         <!-- Riga 1: Nome su una riga intera -->
-                                        <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                            ${canAdminVotePoint ? (isSelfFuori ? `<input type="checkbox" id="fs-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="fs-self-cb-${a.uid}" class="fs-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('fs', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
-                                            <div style="font-size:0.92rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                ${formatLongName(cleanName)}
-                                            </div>
+                                        <div style="font-size:0.92rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                            ${formatLongName(cleanName)}
                                         </div>
 
-                                        <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                        <!-- Riga 2: Unità immobiliare -->
                                         ${cleanSelfUnits ? `
-                                            <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; padding-left:1.6rem; line-height:1.25; word-break:break-word;">
+                                            <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
                                                 ${escapeHtml(cleanSelfUnits)}
                                             </div>
                                         ` : ''}
 
                                         <!-- Riga 3: Quota personale con millesimi a sinistra, icona voto a destra -->
-                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.6rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                 ${isSelfVoted ? selfMethodBadge : ''}
                                                 <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
@@ -19479,26 +19447,12 @@ ${renderBottomNavigation()}
                                 `;
                         })()}
 
-                            <!-- 2. Master group row -->
-                            ${canAdminVotePoint ? `
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
-                                <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; flex:1; min-width:0;">
-                                    <input type="checkbox" id="fs-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('fs', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0; margin:0;">
-                                    <span>Quota gruppo</span>
-                                </label>
-                                <div style="flex-shrink:0;">
-                                    ${renderChoiceDropdown(null, null, true, a.uid, 'fs')}
-                                </div>
-                            </div>
-                            ` : ''}
-
-                            <!-- 3. Singole deleghe votate (3 righe) -->
+                            <!-- 2. Singole deleghe votate (Votazione 1 a 1: 3 righe) -->
                             <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                 <div style="font-size:0.72rem; font-weight:700; color:var(--secondary-text); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
                                     ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                 </div>
                                 ${proxyVotesInfo.map(item => {
-                            const isProxyChecked = window.isGroupCheckboxChecked(`fs-proxy-cb-${item.pDelId}`, true);
                             const proxyModeBadge = item.proxy.isDigital
                                 ? `<span class="badge badge-proxy" style="font-size:0.62rem; padding:0.04rem 0.25rem;">${THEME_ICONS.smartphone(9)} App</span>`
                                 : `<span class="badge badge-proxy" style="font-size:0.62rem; padding:0.04rem 0.25rem;">${THEME_ICONS.pen(10)} Cartacea</span>`;
@@ -19508,22 +19462,19 @@ ${renderBottomNavigation()}
                             return `
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome Delegante su una riga intera -->
-                                            <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                ${canAdminVotePoint ? `<input type="checkbox" id="fs-proxy-cb-${item.pDelId}" class="fs-member-${a.uid}" data-del-id="${escapeHtml(item.pDelId)}" data-proxy-id="${escapeHtml(item.proxy.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('fs', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
-                                                <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                    <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
-                                                </div>
+                                            <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                                <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
                                             </div>
 
-                                            <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                            <!-- Riga 2: Unità pulita -->
                                             ${cleanPUnit ? `
-                                                <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:1.6rem; line-height:1.25; word-break:break-word;">
+                                                <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
                                                     ${escapeHtml(cleanPUnit)}
                                                 </div>
                                             ` : ''}
 
                                             <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.6rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                 <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                     ${proxyModeBadge}
                                                     <span class="badge" style="font-size:0.6rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Delega</span>
@@ -21145,14 +21096,16 @@ ${renderBottomNavigation()}
                         const isAccreditedCondominoAttendee = activeAttendees.some(a => a.uid === currentUid);
 
                         let voteButtonsHtml = '';
-                        if (isOdgApproved && itemStatus === 'voting' && !isClosedOrCancelled) {
+                        if (!isAdmin && isAttendee) {
+                            voteButtonsHtml = window.renderCondoVotingSection ? window.renderCondoVotingSection(assemblyId, item, currentUser, userProfile, assembly, allUsers) : '';
+                        } else if (isOdgApproved && itemStatus === 'voting' && !isClosedOrCancelled) {
                             if (isAdmin && !isAccreditedCondominoAttendee) {
                                 voteButtonsHtml = `
                                     <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left; display:flex; align-items:center; gap:0.4rem;">
                                         ${THEME_ICONS.alertCircle(16, 2, '', 'color:var(--accent-color); flex-shrink:0;')} <div><strong>Modalità Amministratore:</strong> Utilizza il pulsante <strong>Voto Manuale</strong> per registrare i voti dei condòmini presenti</div>
                                     </div>
                                 `;
-                            } else if (isAttendee || isAdmin) {
+                            } else if (isAdmin && isAccreditedCondominoAttendee) {
                                 voteButtonsHtml = window.renderCondoVotingSection ? window.renderCondoVotingSection(assemblyId, item, currentUser, userProfile, assembly, allUsers) : '';
                             }
                         }
@@ -21248,8 +21201,7 @@ ${renderBottomNavigation()}
                                         ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers)
                                         : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
                                     const pUnit = p.delegatorUnita || p.delegatorUnit || (Array.isArray(p.proprieta) ? p.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || p.unitaImmobiliare || '';
-
-                                    const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
                                     if (pVote) {
                                         groupHasAnyVote = true;
                                         totalGroupMil += (pVote.millesimi !== undefined ? pVote.millesimi : pMil);
@@ -21265,9 +21217,6 @@ ${renderBottomNavigation()}
                                         processedInlineVoterIds.add(item.pDelId);
                                         if (item.proxy.id) processedInlineVoterIds.add(item.proxy.id);
                                     });
-
-                                    const isMasterChecked = window.isGroupCheckboxChecked(`inline-${idx}-master-cb-${a.uid}`, true);
-                                    const isSelfChecked = window.isGroupCheckboxChecked(`inline-${idx}-self-cb-${a.uid}`, true);
 
                                     inlineCardsHtml.push(`
                                         <div class="manual-delegate-group card" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin-bottom:0.4rem; display:flex; flex-direction:column; gap:0.4rem; width:100%; box-sizing:border-box; text-align:left;">
@@ -21285,22 +21234,19 @@ ${renderBottomNavigation()}
                                             return `
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome su una riga intera -->
-                                                        <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                            ${(isAdmin && itemStatus === 'voting') ? (isSelfFuori ? `<input type="checkbox" id="inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#10B981; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="inline-${idx}-self-cb-${a.uid}" class="inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
-                                                            <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                                ${formatLongName(cleanName)}
-                                                            </div>
+                                                        <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                                            ${formatLongName(cleanName)}
                                                         </div>
 
-                                                        <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                                        <!-- Riga 2: Unità immobiliare -->
                                                         ${cleanSelfUnits ? `
-                                                            <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; padding-left:1.55rem; line-height:1.25; word-break:break-word;">
+                                                            <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
                                                                 ${escapeHtml(cleanSelfUnits)}
                                                             </div>
                                                         ` : ''}
 
                                                         <!-- Riga 3: Quota personale o mill. con icona voto di fianco -->
-                                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.55rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                                 ${selfVote ? selfMethodBadge : ''}
                                                                 <span class="badge" style="font-size:0.62rem; color:#10B981; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
@@ -21318,20 +21264,7 @@ ${renderBottomNavigation()}
                                                 `;
                                         })()}
 
-                                            <!-- 2. Master group row -->
-                                            ${(isAdmin && itemStatus === 'voting') ? `
-                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
-                                                <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; margin:0; flex:1; min-width:0;">
-                                                    <input type="checkbox" id="inline-${idx}-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('inline-${idx}', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">
-                                                    <span>Quota gruppo</span>
-                                                </label>
-                                                <div style="flex-shrink:0;">
-                                                    ${renderInlineChoiceDropdown(null, null, true, a.uid)}
-                                                </div>
-                                            </div>
-                                            ` : ''}
-
-                                            <!-- 3. Deleghe ricevute votate (3 righe) -->
+                                            <!-- 2. Deleghe ricevute votate (Votazione 1 a 1: 3 righe) -->
                                             <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                                 <div style="font-size:0.72rem; font-weight:700; color:var(--secondary-text); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
                                                     ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
@@ -21342,27 +21275,23 @@ ${renderBottomNavigation()}
                                                 : `<span class="badge badge-proxy" style="font-size:0.6rem; padding:0.02rem 0.22rem;">${THEME_ICONS.pen(10)} Cartacea</span>`;
                                             const rawPUnit = item.pUnit || item.proxy.delegatorUnita || item.proxy.delegatorUnit || (Array.isArray(item.proxy.proprieta) ? item.proxy.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || '';
                                             const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                            const isProxyChecked = window.isGroupCheckboxChecked(`inline-${idx}-proxy-cb-${item.pDelId}`, true);
 
                                             return `
                                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                             <!-- Riga 1: Nome Delegante su una riga intera -->
-                                                            <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                                ${(isAdmin && itemStatus === 'voting') ? `<input type="checkbox" id="inline-${idx}-proxy-cb-${item.pDelId}" class="inline-${idx}-member-${a.uid}" data-del-id="${escapeHtml(item.pDelId)}" data-proxy-id="${escapeHtml(item.proxy.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
-                                                                <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                                    <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
-                                                                </div>
+                                                            <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                                                <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
                                                             </div>
 
-                                                            <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                                            <!-- Riga 2: Unità pulita -->
                                                             ${cleanPUnit ? `
-                                                                <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:1.5rem; line-height:1.25; word-break:break-word;">
+                                                                <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
                                                                     ${escapeHtml(cleanPUnit)}
                                                                 </div>
                                                             ` : ''}
 
                                                             <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.5rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                                 <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                                     ${proxyModeBadge}
                                                                     <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
@@ -21591,8 +21520,6 @@ ${renderBottomNavigation()}
                                 }
 
                                 // Delegato con deleghe ricevute inline
-                                const isMasterChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-master-cb-${a.uid}`, true);
-                                const isSelfChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-self-cb-${a.uid}`, true);
                                 const selfVote = votesList.find(v => v.voterId === a.uid || v.userId === a.uid);
                                 const isFuori = isGroupScope && selfMilVal <= 0;
                                 const rawAUnit = window.getVoterUnitString ? window.getVoterUnitString(a, allUsers, itemGroup) : '';
@@ -21604,22 +21531,19 @@ ${renderBottomNavigation()}
                                         <!-- 1. Quota personale delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome su una riga intera -->
-                                            <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                ${canAdminVotePoint ? (isFuori ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (selfVote ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" class="nv-inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`)) : ''}
-                                                <div style="font-size:0.9rem; font-weight:700; color:${selfVote ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                    ${escapeHtml(cleanName)}
-                                                </div>
+                                            <div style="font-size:0.9rem; font-weight:700; color:${selfVote ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                ${escapeHtml(cleanName)}
                                             </div>
 
-                                            <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                            <!-- Riga 2: Unità immobiliare -->
                                             ${cleanAUnit ? `
-                                                <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; padding-left:1.55rem; line-height:1.25; word-break:break-word;">
+                                                <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
                                                     ${escapeHtml(cleanAUnit)}
                                                 </div>
                                             ` : ''}
 
                                             <!-- Riga 3: Quota personale o mill. con icona voto di fianco -->
-                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.55rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                 <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                     ${methodBadge}
                                                     <span class="badge" style="font-size:0.62rem; color:${selfVote ? 'var(--secondary-text)' : '#10B981'}; background:${selfVote ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${selfVote ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
@@ -21645,29 +21569,7 @@ ${renderBottomNavigation()}
                                             </div>
                                         </div>
 
-                                        ${canAdminVotePoint ? `
-                                            <!-- Master group row -->
-                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
-                                                <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; margin:0; flex:1; min-width:0;">
-                                                    <input type="checkbox" id="nv-inline-${idx}-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('nv-inline-${idx}', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">
-                                                    <span>Quota gruppo</span>
-                                                </label>
-                                                <div style="flex-shrink:0;">
-                                                    <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:rgba(59, 130, 246, 0.15); border:1.5px solid rgba(59, 130, 246, 0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Clicca per votare tutti i selezionati">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                        </svg>
-                                                        <select id="nv-inline-${idx}-vote-select-${a.uid}" class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitGroupVoteFromNonVoters('${assemblyId}', '${item.id}', '${escapeJsAttr(a.uid)}', this.value, ${idx}, 'nv-inline-${idx}');">
-                                                            <option value="" disabled selected>Vota tutti...</option>
-                                                            ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ` : ''}
-
-                                        <!-- Deleghe ricevute (3 righe: Nome / Unità / Delega+Millesimi+Icona) -->
+                                        <!-- Deleghe ricevute (Votazione 1 a 1: 3 righe per delegante) -->
                                         <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                             <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
                                                 ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
@@ -21679,29 +21581,25 @@ ${renderBottomNavigation()}
                                     const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnit || p.delegatorUnita || '');
                                     const pUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
                                     const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                    const isProxyChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-proxy-cb-${pDelId}`, true);
 
                                     return `
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${pVote ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${pVote ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${pVote ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome Delegante su una riga intera -->
-                                                        <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                            ${canAdminVotePoint ? (pVote ? `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" class="nv-inline-${idx}-member-${a.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
-                                                            <div style="font-size:0.88rem; font-weight:700; color:${pVote ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                                <span style="color:${pVote ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${escapeHtml(pDelName)}
-                                                            </div>
+                                                        <div style="font-size:0.88rem; font-weight:700; color:${pVote ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                            <span style="color:${pVote ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${escapeHtml(pDelName)}
                                                         </div>
 
-                                                        <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                                        <!-- Riga 2: Unità pulita -->
                                                         ${pUnit ? `
-                                                            <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:1.5rem; line-height:1.25; word-break:break-word;">
+                                                            <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
                                                                 ${escapeHtml(pUnit)}
                                                             </div>
                                                         ` : ''}
 
                                                         <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.5rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                                                <span class="badge" style="font-size:0.58rem; color:${pVote ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${pVote ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${pVote ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
+                                                                <span class="badge" style="font-size:0.58rem; color:${pVote ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${pVote ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${pVote ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700;">Delega</span>
                                                                 ${pVote ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                                 <strong style="color:${pVote ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                                     ${pMil.toFixed(2)} ‰
@@ -23878,7 +23776,56 @@ ${renderBottomNavigation()}
         window.renderCondoVotingSection = (assemblyId, item, currentUser, userProfile, assembly, allUsers = []) => {
             if (!currentUser || !item) return '';
             const currentUid = currentUser.uid;
-            const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+            const isOdgApproved = assembly?.odgApproval && assembly.odgApproval.status === 'approved';
+            const agenda = assembly?.agenda || [];
+            const targetIdx = agenda.findIndex(i => i.id === item.id);
+            let prevItemClosed = true;
+            if (targetIdx > 0) {
+                const prevItem = agenda[targetIdx - 1];
+                prevItemClosed = prevItem && (prevItem.status || 'pending') === 'closed';
+            }
+            const itemStatus = item.status || 'pending';
+
+            if (!isOdgApproved) {
+                return `
+                    <div style="margin-top: 0.6rem; width: 100%;">
+                        <button type="button" disabled class="btn" style="width: 100%; height: 38px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; background: #7f8c8d; color: white; font-size: 0.82rem; font-weight: 600; border-radius: 6px; white-space: nowrap; opacity: 0.55; cursor: not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno">
+                            ${THEME_ICONS.lock(14)} <span>Vota</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            if (!prevItemClosed) {
+                return `
+                    <div style="margin-top: 0.6rem; width: 100%;">
+                        <button type="button" disabled class="btn" style="width: 100%; height: 38px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; background: #7f8c8d; color: white; font-size: 0.82rem; font-weight: 600; border-radius: 6px; white-space: nowrap; opacity: 0.55; cursor: not-allowed;" title="Il voto per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">
+                            ${THEME_ICONS.lock(14)} <span>Vota</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            if (itemStatus === 'pending') {
+                return `
+                    <div style="margin-top: 0.6rem; width: 100%;">
+                        <button type="button" disabled class="btn" style="width: 100%; height: 38px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; background: #7f8c8d; color: white; font-size: 0.82rem; font-weight: 600; border-radius: 6px; white-space: nowrap; opacity: 0.55; cursor: not-allowed;" title="La votazione per questo punto non è ancora aperta">
+                            ${THEME_ICONS.lock(14)} <span>Vota</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            if (itemStatus === 'closed') {
+                return `
+                    <div style="margin-top: 0.6rem; width: 100%;">
+                        <button type="button" disabled class="btn" style="width: 100%; height: 38px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; background: #7f8c8d; color: white; font-size: 0.82rem; font-weight: 600; border-radius: 6px; white-space: nowrap; opacity: 0.55; cursor: not-allowed;" title="Votazione conclusa">
+                            ${THEME_ICONS.lock(14)} <span>Vota</span>
+                        </button>
+                    </div>
+                `;
+            }
+
             const itemScope = item.scope || 'intero';
             const targetGroup = item.targetGroup || null;
             const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
@@ -23907,183 +23854,528 @@ ${renderBottomNavigation()}
                 `;
             }
 
-            const userName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim() || 'Condòmino';
             const existingVoteSelf = (item.votes || []).find(v => v.voterId === currentUid);
+            const hasSelfShare = selfMil > 0 || !isGroupScope;
+            const isSelfVoted = !hasSelfShare || !!existingVoteSelf;
+            const areProxiesVoted = validProxies.every(p => {
+                const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                return (item.votes || []).some(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+            });
+            const userHasVotedAll = isSelfVoted && areProxiesVoted;
 
-            // CASO 1: NESSUNA DELEGA VALIDA PER QUESTO AMBITO (Voto personale rapido)
-            if (validProxies.length === 0) {
-                return `
-                    <div style="background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.65rem; margin-top:0.6rem; text-align:left;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem;">
-                            <span style="font-weight:700; font-size:0.85rem; color:var(--primary-text);">${escapeHtml(userName)}</span>
-                            <strong style="color:#10B981; font-size:0.85rem;">${selfMil.toFixed(2)} ‰</strong>
-                        </div>
-                        ${existingVoteSelf ? `<div style="font-size:0.82rem; color:var(--accent-color); font-weight:700; margin-bottom:0.4rem;">${THEME_ICONS.check(13, 2.4)} Voto espresso: <strong>${escapeHtml(existingVoteSelf.choice)}</strong></div>` : ''}
-                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap; width:100%;">
-                            ${voteOptions.map(opt => {
-                    let btnStyle = "background-color: var(--surface-color); color: var(--primary-text);";
-                    let icon = THEME_ICONS.circleOutline(12);
-                    if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) {
-                        btnStyle = "background-color: #1DB954; color: black;";
-                        icon = THEME_ICONS.circleGreen(12);
-                    } else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) {
-                        btnStyle = "background-color: var(--danger); color: white;";
-                        icon = THEME_ICONS.circleRed(12);
-                    } else if (opt.toLowerCase().includes('astenuto')) {
-                        btnStyle = "background-color: #f1c40f; color: black;";
-                        icon = THEME_ICONS.circleGray(12);
-                    }
-                    const isSelected = existingVoteSelf && existingVoteSelf.choice === opt;
-                    const safeOpt = escapeHtml(opt).replace(/'/g, "\\'");
-                    return `
-                                    <button onclick="submitCondominoSingleVote('${assemblyId}', '${item.id}', '${escapeJsAttr(currentUid)}', '${safeOpt}', 'self', null, null, '${escapeJsAttr(userName)}', ${selfMil})" class="btn" style="${btnStyle} font-weight: 700; font-size: 0.8rem; height: 38px; flex: 1; min-width: 90px; padding: 0 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 6px; ${isSelected ? 'border: 2px solid white; box-shadow: 0 0 8px rgba(255,255,255,0.5);' : ''}">
-                                        ${icon} ${escapeHtml(opt)}
-                                    </button>
-                                `;
-                }).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            // CASO 2: CON DELEGHE RICEVUTE (Schema con master e righe separate)
-            const optionsHtml = voteOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('');
-            const rawUserUnits = window.getVoterUnitString ? window.getVoterUnitString(userProfile, allUsers, targetGroup) : '';
-            const userUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawUserUnits) : rawUserUnits;
-            const isSelfFuori = isGroupScope && selfMil <= 0;
+            const totalHeads = (hasSelfShare ? 1 : 0) + validProxies.length;
+            const votedHeads = (existingVoteSelf && hasSelfShare ? 1 : 0) + validProxies.filter(p => {
+                const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                return (item.votes || []).some(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+            }).length;
 
             return `
-                <div class="card condo-delegate-group" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin-top:0.6rem; display:flex; flex-direction:column; gap:0.4rem; width:100%; box-sizing:border-box; text-align:left;">
-                    
-                    <!-- 1. QUOTA PERSONALE DEL DELEGATO (3 righe: Nome / Unità / Badge+Millesimi+Icona) -->
-                    <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
-                        <!-- Riga 1: Nome su una riga intera -->
-                        <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                            <input type="checkbox" id="condo-self-cb-${item.id}" class="condo-member-${item.id}" ${isSelfFuori ? 'disabled' : (window.isGroupCheckboxChecked ? (window.isGroupCheckboxChecked(`condo-self-cb-${item.id}`, true) ? 'checked' : '') : 'checked')} onchange="window.onCondoDelegateMemberChange('${item.id}');" style="accent-color:#10B981; width:17px; height:17px; cursor:${isSelfFuori ? 'not-allowed' : 'pointer'}; flex-shrink:0; margin:0;" ${isSelfFuori ? 'title="Nessun millesimo per questa scala"' : ''}>
-                            <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                ${escapeHtml(userName)}
-                            </div>
+                <div style="margin-top: 0.6rem; width: 100%;">
+                    <button type="button" onclick="window.openCondoVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width: 100%; height: 38px; padding: 0 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.45rem; background: ${userHasVotedAll ? '#10B981' : 'var(--accent-color)'}; color: white; font-size: 0.85rem; font-weight: 700; border-radius: 6px; box-shadow: 0 2px 6px ${userHasVotedAll ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.3)'}; cursor: pointer; transition: all 0.15s ease;" title="${userHasVotedAll ? 'Tutti i voti registrati - Clicca per visualizzare o modificare' : 'Registra il tuo voto e i voti per le deleghe'}">
+                        ${THEME_ICONS.pen(14)} <span>Vota</span>
+                        ${userHasVotedAll ? `<span class="badge" style="background:rgba(255,255,255,0.25); color:white; font-size:0.68rem; font-weight:800; padding:0.08rem 0.35rem; border-radius:4px; margin-left:0.25rem;">Votato (${votedHeads}/${totalHeads})</span>` : (votedHeads > 0 ? `<span class="badge" style="background:rgba(245,158,11,0.9); color:white; font-size:0.68rem; font-weight:800; padding:0.08rem 0.35rem; border-radius:4px; margin-left:0.25rem;">Parziale (${votedHeads}/${totalHeads})</span>` : '')}
+                    </button>
+                </div>
+            `;
+        };
+
+        window._condoVoteActiveTab = window._condoVoteActiveTab || 'vote'; // 'vote' | 'summary'
+
+        window.switchCondoVoteTab = (tab, assemblyId, itemId) => {
+            window._condoVoteActiveTabExplicit = true;
+            window._condoVoteActiveTab = tab;
+            if (assemblyId && itemId) {
+                window.openCondoVoteModal(assemblyId, itemId);
+            }
+        };
+
+        window.filterCondoVotersList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const items = document.querySelectorAll('#condo-voters-list-container .condo-voter-item');
+            const noMatchMsg = document.getElementById('condo-voters-no-match-msg');
+            const clearBtn = document.getElementById('btn-clear-search-condo-voters');
+
+            let visibleCount = 0;
+            items.forEach(item => {
+                const name = (item.getAttribute('data-search-name') || '').toLowerCase();
+                const isMatch = !q || name.includes(q);
+                item.style.display = isMatch ? 'flex' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            if (noMatchMsg) noMatchMsg.classList.toggle('hidden', visibleCount > 0 || !q);
+            if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+        };
+
+        window.filterCondoVotersSummaryList = (queryVal) => {
+            const q = (queryVal || '').toLowerCase().trim();
+            const items = document.querySelectorAll('#condo-voters-summary-list-container .condo-voter-item');
+            const noMatchMsg = document.getElementById('condo-voters-summary-no-match-msg');
+            const clearBtn = document.getElementById('btn-clear-search-condo-voters-summary');
+
+            let visibleCount = 0;
+            items.forEach(item => {
+                const name = (item.getAttribute('data-search-name') || '').toLowerCase();
+                const isMatch = !q || name.includes(q);
+                item.style.display = isMatch ? 'flex' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            if (noMatchMsg) noMatchMsg.classList.toggle('hidden', visibleCount > 0 || !q);
+            if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+        };
+
+        window.openCondoVoteModal = async (assemblyId, itemId) => {
+            try {
+                const user = currentUser || auth.currentUser;
+                if (!user) {
+                    await customAlert("Sessione utente non trovata. Effettua nuovamente l'accesso.");
+                    return;
+                }
+                const currentUid = user.uid;
+
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+
+                const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
+                if (!isOdgApproved) {
+                    await customAlert("Il voto non può essere registrato finché l'Ordine del Giorno non è stato approvato dai presenti.");
+                    return;
+                }
+
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx < 0) return;
+                const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
+
+                let allUsers = [];
+                try {
+                    const uSnap = await getDocs(query(collection(db, "users")));
+                    allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch (e) {
+                    console.warn("Errore lettura users in openCondoVoteModal:", e);
+                }
+
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
+
+                let selfMil = 0;
+                if (isGroupScope) {
+                    selfMil = window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(userProfile, targetGroup, allUsers) : 0;
+                } else {
+                    selfMil = parseFloat(userProfile?.millesimiTotali) || (Array.isArray(userProfile?.proprieta) ? userProfile.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0);
+                }
+
+                const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUid && p.status !== 'rejected');
+                let validProxies = heldProxies;
+                if (isGroupScope) {
+                    validProxies = heldProxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0)) > 0);
+                }
+
+                const totalGroupMil = selfMil + validProxies.reduce((sum, p) => sum + (isGroupScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0)), 0);
+
+                if (isGroupScope && totalGroupMil <= 0) {
+                    await customAlert(`Votazione Riservata: Questo punto è riservato ai condòmini aventi proprietà o deleghe in ${targetGroup}. Non risultano unità di tua pertinenza per queste scale.`);
+                    return;
+                }
+
+                const votes = item.votes || [];
+                const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+                const existingVoteSelf = votes.find(v => v.voterId === currentUid);
+
+                const userName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim() || 'Condòmino';
+                const cleanUserName = window.formatVoterDisplayName ? window.formatVoterDisplayName(userName) : userName;
+                const rawUserUnits = window.getVoterUnitString ? window.getVoterUnitString(userProfile, allUsers, targetGroup) : '';
+                const cleanUserUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawUserUnits) : rawUserUnits;
+
+                const formatLongName = (str) => escapeHtml(str || '').replace(/\s*\/\s*/g, ' / ');
+
+                // Dropdown matitina per voto 1 a 1 del condòmino
+                const renderCondoVoteDropdown = (voterId, currentChoice, vType = 'self', delId = null, pId = null, vName = '', vMil = 0) => {
+                    return `
+                        <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${currentChoice ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${currentChoice ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${currentChoice ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${currentChoice ? `Già votato (${escapeHtml(currentChoice)}) - Clicca per modificare` : 'Registra voto'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            <select class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitCondominoSingleVote('${assemblyId}', '${itemId}', '${escapeJsAttr(voterId)}', this.value, '${vType}', ${delId ? `'${escapeJsAttr(delId)}'` : 'null'}, ${pId ? `'${escapeJsAttr(pId)}'` : 'null'}, '${escapeJsAttr(vName)}', ${vMil});">
+                                <option value="" disabled ${!currentChoice ? 'selected' : ''}>${currentChoice ? 'Modifica voto...' : 'Vota...'}</option>
+                                ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}" ${opt === currentChoice ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                                ${currentChoice ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
+                            </select>
                         </div>
+                    `;
+                };
 
-                        <!-- Riga 2: Unità senza indicazione della parola del raggruppamento -->
-                        ${userUnits ? `
-                            <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; padding-left:1.55rem; line-height:1.25; word-break:break-word;">
-                                ${escapeHtml(userUnits)}
-                            </div>
-                        ` : ''}
+                let unvotedHeadsCount = 0;
+                let votedHeadsCount = 0;
+                let favMil = 0, favHeads = 0;
+                let conMil = 0, conHeads = 0;
+                let astMil = 0, astHeads = 0;
 
-                        <!-- Riga 3: Quota personale o testo mill. con numero e di fianco icona voto -->
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.55rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
-                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                <span class="badge" style="font-size:0.62rem; color:#10B981; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
-                                ${isSelfFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700; flex-shrink:0;">Fuori scala</span>` : ''}
-                                <strong style="font-size:0.84rem; font-weight:800; color:${isSelfFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
-                                    ${isSelfFuori ? '0.00' : selfMil.toFixed(2)} ‰
-                                </strong>
-                                ${existingVoteSelf ? `<span style="font-size:0.72rem; font-weight:700; color:#10B981; white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>` : ''}
-                            </div>
-                            ${!isSelfFuori ? `
-                                <div style="flex-shrink:0;">
-                                    <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${existingVoteSelf ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${existingVoteSelf ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${existingVoteSelf ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${existingVoteSelf ? `Già votato (${escapeHtml(existingVoteSelf.choice)}) - Clicca per modificare` : 'Registra voto'}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
-                                        <select class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitCondominoSingleVote('${assemblyId}', '${item.id}', '${escapeJsAttr(currentUid)}', this.value, 'self', null, null, '${escapeJsAttr(userName)}', ${selfMil});">
-                                            <option value="" disabled ${!existingVoteSelf ? 'selected' : ''}>${existingVoteSelf ? 'Modifica voto...' : 'Vota...'}</option>
-                                            ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}" ${existingVoteSelf && existingVoteSelf.choice === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
-                                            ${existingVoteSelf ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
-                                        </select>
+                const hasSelfShare = selfMil > 0 || !isGroupScope;
+                if (hasSelfShare) {
+                    if (existingVoteSelf) {
+                        votedHeadsCount++;
+                        const ch = existingVoteSelf.choice || '';
+                        if (ch === 'Favorevole') { favMil += selfMil; favHeads++; }
+                        else if (ch === 'Contrario') { conMil += selfMil; conHeads++; }
+                        else if (ch === 'Astenuto') { astMil += selfMil; astHeads++; }
+                    } else {
+                        unvotedHeadsCount++;
+                    }
+                }
+
+                validProxies.forEach(p => {
+                    const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                    const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                    const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                    if (existingVoteProxy) {
+                        votedHeadsCount++;
+                        const chP = existingVoteProxy.choice || '';
+                        if (chP === 'Favorevole') { favMil += pMil; favHeads++; }
+                        else if (chP === 'Contrario') { conMil += pMil; conHeads++; }
+                        else if (chP === 'Astenuto') { astMil += pMil; astHeads++; }
+                    } else {
+                        unvotedHeadsCount++;
+                    }
+                });
+
+                // Creazione righe Da Votare e Riepilogo
+                const pendingVotersRows = [];
+                const alreadyVotedRows = [];
+
+                if (validProxies.length === 0) {
+                    // Solo Quota Personale
+                    const searchName = ((cleanUserName || '') + ' ' + (cleanUserUnits || '')).toLowerCase();
+                    if (!existingVoteSelf && hasSelfShare) {
+                        pendingVotersRows.push(`
+                            <div class="condo-voter-item card" data-search-name="${escapeHtml(searchName)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #10B981; border-radius:8px; padding:0.5rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.25rem; width:100%; box-sizing:border-box; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:left;">
+                                <div style="font-weight:700; font-size:0.88rem; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                    ${formatLongName(cleanUserName)}
+                                </div>
+                                ${cleanUserUnits ? `<div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">${escapeHtml(cleanUserUnits)}</div>` : ''}
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                        <span class="badge" style="font-size:0.62rem; color:#10B981; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                        <strong style="color:var(--warning); font-size:0.84rem; font-weight:800; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
+                                    </div>
+                                    <div style="flex-shrink:0;">
+                                        ${renderCondoVoteDropdown(currentUid, null, 'self', null, null, cleanUserName, selfMil)}
                                     </div>
                                 </div>
-                            ` : `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>`}
-                        </div>
-                    </div>
-
-                    <!-- 2. MASTER GROUP VOTE (Quota Gruppo) -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
-                        <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; flex:1; min-width:0;">
-                            <input type="checkbox" id="condo-master-cb-${item.id}" ${window.isGroupCheckboxChecked ? (window.isGroupCheckboxChecked(`condo-master-cb-${item.id}`, true) ? 'checked' : '') : 'checked'} onchange="window.toggleCondoDelegateGroup('${item.id}', this.checked);" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">
-                            <span style="font-size:0.86rem; font-weight:800; color:var(--accent-color); white-space:nowrap;">Quota gruppo</span>
-                        </label>
-                        <div style="flex-shrink:0;">
-                            <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:rgba(59, 130, 246, 0.15); border:1.5px solid rgba(59, 130, 246, 0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Clicca per votare tutti i selezionati">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                                <select id="condo-group-vote-select-${item.id}" class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitCondominoGroupVote('${assemblyId}', '${item.id}', this.value)">
-                                    <option value="" disabled selected>Vota tutti...</option>
-                                    ${optionsHtml}
-                                </select>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- 3. DELEGHE RICEVUTE DA VOTARE (3 righe: Nome / Unità / Delega+Millesimi+Icona) -->
-                    <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
-                        <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
-                            ${THEME_ICONS.scroll(11)} Deleghe da votare (${validProxies.length}):
-                        </div>
-                        ${validProxies.map(p => {
-                const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() : '') || 'Delegante';
-                const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
-                const pUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                const existingVoteProxy = (item.votes || []).find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
-                return `
-                                <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(59, 130, 246, 0.6); background:rgba(59, 130, 246, 0.03); border-radius:0 7px 7px 0; border-top:1px solid rgba(59, 130, 246, 0.12); width:100%; box-sizing:border-box;">
-                                    <!-- Riga 1: Nome Delegante su una riga intera -->
-                                    <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                        <input type="checkbox" id="condo-proxy-cb-${pDelId}-${item.id}" class="condo-member-${item.id}" data-del-id="${escapeHtml(pDelId)}" data-proxy-id="${escapeHtml(p.id || '')}" ${window.isGroupCheckboxChecked ? (window.isGroupCheckboxChecked(`condo-proxy-cb-${pDelId}-${item.id}`, true) ? 'checked' : '') : 'checked'} onchange="window.onCondoDelegateMemberChange('${item.id}');" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">
-                                        <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                            <span style="color:var(--accent-color); font-weight:800;">↳</span> ${escapeHtml(pDelName)}
-                                        </div>
+                        `);
+                    } else if (existingVoteSelf) {
+                        alreadyVotedRows.push(`
+                            <div class="condo-voter-item card" data-search-name="${escapeHtml(searchName)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #10B981; border-radius:8px; padding:0.5rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.25rem; width:100%; box-sizing:border-box; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:left;">
+                                <div style="font-weight:700; font-size:0.88rem; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                    ${formatLongName(cleanUserName)}
+                                </div>
+                                ${cleanUserUnits ? `<div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">${escapeHtml(cleanUserUnits)}</div>` : ''}
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                        <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                        <span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
+                                        <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
+                                        <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
                                     </div>
+                                    <div style="flex-shrink:0;">
+                                        ${renderCondoVoteDropdown(currentUid, existingVoteSelf.choice, 'self', null, null, cleanUserName, selfMil)}
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                } else {
+                    // Condòmino con deleghe
+                    const delegatorsSearchTerms = [];
+                    validProxies.forEach(p => {
+                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
+                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                        delegatorsSearchTerms.push(`${pDelName} ${cleanPUnit}`);
+                    });
+                    const searchNameWithProxies = ((cleanUserName || '') + ' ' + (cleanUserUnits || '') + ' ' + delegatorsSearchTerms.join(' ') + ' delegato delega').toLowerCase();
 
-                                    <!-- Riga 2: Unità senza indicazione della parola del raggruppamento -->
-                                    ${pUnit ? `
-                                        <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:1.5rem; line-height:1.25; word-break:break-word;">
-                                            ${escapeHtml(pUnit)}
-                                        </div>
-                                    ` : ''}
+                    // Tab Da Votare
+                    const hasUnvotedSelf = !existingVoteSelf && hasSelfShare;
+                    const hasUnvotedProxies = validProxies.some(p => {
+                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                        return !votes.some(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                    });
 
-                                    <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                    <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.5rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                    if (hasUnvotedSelf || hasUnvotedProxies) {
+                        const isSelfFuori = isGroupScope && selfMil <= 0;
+                        const isSelfVoted = !!existingVoteSelf;
+
+                        pendingVotersRows.push(`
+                            <div class="condo-voter-item condo-delegate-group card" data-search-name="${escapeHtml(searchNameWithProxies)}" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; box-sizing:border-box; width:100%;">
+                                <!-- Quota Personale -->
+                                <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
+                                    <div style="font-size:0.9rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                        ${formatLongName(cleanUserName)}
+                                    </div>
+                                    ${cleanUserUnits ? `<div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">${escapeHtml(cleanUserUnits)}</div>` : ''}
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                            <span class="badge" style="font-size:0.58rem; color:var(--accent-color); background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
-                                            <strong style="color:var(--accent-color); font-size:0.84rem; font-weight:800; white-space:nowrap;">
-                                                ${pMil.toFixed(2)} ‰
+                                            <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                            ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>` : ''}
+                                            ${isSelfFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700;">Fuori scala</span>` : ''}
+                                            <strong style="font-size:0.84rem; font-weight:700; color:${isSelfVoted || isSelfFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
+                                                ${isSelfFuori ? '0.00' : selfMil.toFixed(2)} ‰
                                             </strong>
-                                            ${existingVoteProxy ? `<span style="font-size:0.72rem; font-weight:700; color:var(--accent-color); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>` : ''}
+                                            ${isSelfVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>` : ''}
                                         </div>
                                         <div style="flex-shrink:0;">
-                                            <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${existingVoteProxy ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${existingVoteProxy ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${existingVoteProxy ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${existingVoteProxy ? `Già votato (${escapeHtml(existingVoteProxy.choice)}) - Clicca per modificare` : 'Registra voto'}">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                </svg>
-                                                <select class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitCondominoSingleVote('${assemblyId}', '${item.id}', '${escapeJsAttr(pDelId)}', this.value, 'proxy', '${escapeJsAttr(currentUid)}', '${escapeJsAttr(p.id || '')}', '${escapeJsAttr(pDelName)}', ${pMil});">
-                                                    <option value="" disabled ${!existingVoteProxy ? 'selected' : ''}>${existingVoteProxy ? 'Modifica voto...' : 'Vota...'}</option>
-                                                    ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}" ${existingVoteProxy && existingVoteProxy.choice === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
-                                                    ${existingVoteProxy ? `<option value="__RESET__" style="color:var(--danger); font-weight:700;">Annulla voto</option>` : ''}
-                                                </select>
+                                            ${isSelfFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : renderCondoVoteDropdown(currentUid, isSelfVoted ? existingVoteSelf.choice : null, 'self', null, null, cleanUserName, selfMil)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Deleghe a suo nome -->
+                                <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                                    <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
+                                        ${THEME_ICONS.scroll(11)} Deleghe a tuo nome (${validProxies.length}):
+                                    </div>
+                                    ${validProxies.map(p => {
+                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                                        const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
+                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                        const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                        const hasVoted = !!existingVoteProxy;
+
+                                        return `
+                                            <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
+                                                <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                    <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${formatLongName(pDelName)}
+                                                </div>
+                                                ${cleanPUnit ? `<div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">${escapeHtml(cleanPUnit)}</div>` : ''}
+                                                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                                        <span class="badge" style="font-size:0.58rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
+                                                        ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                        <strong style="color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
+                                                            ${pMil.toFixed(2)} ‰
+                                                        </strong>
+                                                        ${hasVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>` : ''}
+                                                    </div>
+                                                    <div style="flex-shrink:0;">
+                                                        ${renderCondoVoteDropdown(pDelId, hasVoted ? existingVoteProxy.choice : null, 'proxy', currentUid, p.id || '', pDelName, pMil)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
+                                        <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
+                                        <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.88rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+
+                    // Tab Riepilogo
+                    const hasVotedSelf = !!existingVoteSelf && hasSelfShare;
+                    const hasVotedProxies = validProxies.some(p => {
+                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                        return votes.some(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                    });
+
+                    if (hasVotedSelf || hasVotedProxies) {
+                        alreadyVotedRows.push(`
+                            <div class="condo-voter-item condo-delegate-group card" data-search-name="${escapeHtml(searchNameWithProxies)}" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.3); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; width:100%; box-sizing:border-box;">
+                                ${existingVoteSelf && hasSelfShare ? `
+                                    <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
+                                        <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word;">
+                                            ${formatLongName(cleanUserName)}
+                                        </div>
+                                        ${cleanUserUnits ? `<div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word;">${escapeHtml(cleanUserUnits)}</div>` : ''}
+                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                                <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                                <span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
+                                                <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
+                                                <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
+                                            </div>
+                                            <div style="flex-shrink:0;">
+                                                ${renderCondoVoteDropdown(currentUid, existingVoteSelf.choice, 'self', null, null, cleanUserName, selfMil)}
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            `;
-            }).join('')}
-                    </div>
+                                ` : ''}
 
-                    <!-- 4. RIGA CON TOTALE CON DELEGHE (ROSSO) -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.8rem;">
-                        <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
-                        <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.92rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
+                                <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                                    ${validProxies.map(p => {
+                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                                        const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
+                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                        const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                        if (!existingVoteProxy) return '';
+
+                                        return `
+                                            <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
+                                                <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                                    <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(pDelName)}
+                                                </div>
+                                                ${cleanPUnit ? `<div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">${escapeHtml(cleanPUnit)}</div>` : ''}
+                                                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                                        <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
+                                                        <span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
+                                                        <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">
+                                                            ${pMil.toFixed(2)} ‰
+                                                        </strong>
+                                                        <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>
+                                                    </div>
+                                                    <div style="flex-shrink:0;">
+                                                        ${renderCondoVoteDropdown(pDelId, existingVoteProxy.choice, 'proxy', currentUid, p.id || '', pDelName, pMil)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
+                                        <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
+                                        <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.88rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                }
+
+                // Determinazione tab attiva predefinita
+                if (!window._condoVoteActiveTabExplicit) {
+                    window._condoVoteActiveTab = (unvotedHeadsCount === 0 && votedHeadsCount > 0) ? 'summary' : 'vote';
+                }
+                const activeTab = window._condoVoteActiveTab || 'vote';
+
+                let pageVoteContent = '';
+                if (unvotedHeadsCount === 0) {
+                    pageVoteContent = `
+                        <div style="padding:1.5rem 1rem; text-align:center; background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.25); border-radius:10px; margin:0.5rem 0;">
+                            <div style="width:44px; height:44px; border-radius:50%; background:rgba(16, 185, 129, 0.15); color:#10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 0.5rem auto;">
+                                ${THEME_ICONS.check(22, 2.5)}
+                            </div>
+                            <strong style="font-size:0.95rem; color:#10B981; display:block; margin-bottom:0.25rem;">Tutti i voti registrati</strong>
+                            <p style="font-size:0.8rem; color:var(--secondary-text); margin:0 0 0.75rem 0;">Hai completato tutti i voti per questo punto.</p>
+                            <button type="button" onclick="window.switchCondoVoteTab('summary', '${assemblyId}', '${itemId}')" class="btn btn-primary" style="height:36px; padding:0 1.1rem; font-weight:700; font-size:0.84rem; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;">
+                                <span>Visualizza Riepilogo Voti</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    pageVoteContent = `
+                        ${validProxies.length > 2 ? `
+                            <div style="position: relative; flex-shrink: 0;">
+                                <div style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </div>
+                                <input type="text" id="input-search-condo-voters" placeholder="Cerca delega..." oninput="window.filterCondoVotersList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.38rem 2rem 0.38rem 2.1rem; font-size: 0.84rem; border-radius: 7px;" autofocus autocomplete="off">
+                                <button type="button" id="btn-clear-search-condo-voters" onclick="document.getElementById('input-search-condo-voters').value = ''; window.filterCondoVotersList(''); this.style.display = 'none';" style="display: none; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                            </div>
+                            <div id="condo-voters-no-match-msg" class="message-box error hidden" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; margin: 0; flex-shrink: 0;">${THEME_ICONS.alertWarning(15)} Nessuna voce trovata.</div>
+                        ` : ''}
+
+                        <div id="condo-voters-list-container" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
+                            ${pendingVotersRows.join('')}
+                        </div>
+                    `;
+                }
+
+                let pageSummaryContent = '';
+                if (votedHeadsCount === 0) {
+                    pageSummaryContent = `
+                        <div style="padding:1.5rem 1rem; text-align:center; background:var(--surface-color); border:1px dashed var(--surface-color-light); border-radius:10px; margin:0.5rem 0;">
+                            <p style="font-size:0.85rem; color:var(--secondary-text); margin:0 0 0.75rem 0;">Nessun voto registrato.</p>
+                            <button type="button" onclick="window.switchCondoVoteTab('vote', '${assemblyId}', '${itemId}')" class="btn btn-primary" style="height:36px; padding:0 1.1rem; font-weight:700; font-size:0.84rem; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;">
+                                <span>Da Votare</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    pageSummaryContent = `
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; flex-shrink: 0;">
+                            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 7px; padding: 0.35rem 0.45rem; text-align: center;">
+                                <div style="font-size: 0.68rem; font-weight: 700; color: #10B981;">Favorevoli</div>
+                                <div style="font-size: 0.88rem; font-weight: 800; color: #10B981;">${favMil.toFixed(2)} ‰</div>
+                                <div style="font-size: 0.68rem; color: var(--secondary-text); font-weight: 600;">${favHeads} ${favHeads === 1 ? 'testa' : 'teste'}</div>
+                            </div>
+                            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 7px; padding: 0.35rem 0.45rem; text-align: center;">
+                                <div style="font-size: 0.68rem; font-weight: 700; color: #EF4444;">Contrari</div>
+                                <div style="font-size: 0.88rem; font-weight: 800; color: #EF4444;">${conMil.toFixed(2)} ‰</div>
+                                <div style="font-size: 0.68rem; color: var(--secondary-text); font-weight: 600;">${conHeads} ${conHeads === 1 ? 'testa' : 'teste'}</div>
+                            </div>
+                            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 7px; padding: 0.35rem 0.45rem; text-align: center;">
+                                <div style="font-size: 0.68rem; font-weight: 700; color: #F59E0B;">Astenuti</div>
+                                <div style="font-size: 0.88rem; font-weight: 800; color: #F59E0B;">${astMil.toFixed(2)} ‰</div>
+                                <div style="font-size: 0.68rem; color: var(--secondary-text); font-weight: 600;">${astHeads} ${astHeads === 1 ? 'testa' : 'teste'}</div>
+                            </div>
+                        </div>
+
+                        ${validProxies.length > 2 ? `
+                            <div style="position: relative; flex-shrink: 0;">
+                                <div style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </div>
+                                <input type="text" id="input-search-condo-voters-summary" placeholder="Cerca tra i voti espressi..." oninput="window.filterCondoVotersSummaryList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.38rem 2rem 0.38rem 2.1rem; font-size: 0.84rem; border-radius: 7px;" autocomplete="off">
+                                <button type="button" id="btn-clear-search-condo-voters-summary" onclick="document.getElementById('input-search-condo-voters-summary').value = ''; window.filterCondoVotersSummaryList(''); this.style.display = 'none';" style="display: none; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                            </div>
+                            <div id="condo-voters-summary-no-match-msg" class="message-box error hidden" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; margin: 0; flex-shrink: 0;">${THEME_ICONS.alertWarning(15)} Nessun voto registrato corrispondente.</div>
+                        ` : ''}
+
+                        <div id="condo-voters-summary-list-container" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
+                            ${alreadyVotedRows.join('')}
+                        </div>
+                    `;
+                }
+
+                const pointNumber = window.getPointDisplayNumber ? window.getPointDisplayNumber(assembly.agenda || [], targetIdx) : (item.number || (targetIdx + 1));
+                const modalContent = `
+                    <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.4rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; background: var(--surface-color); padding: 0.4rem 0.65rem; border-radius: 8px; border: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <span style="font-size: 0.84rem; color: var(--primary-text); font-weight: 700;">
+                                Punto ${pointNumber}: <strong style="color: var(--accent-color);">${escapeHtml(window.cleanPointTitle ? window.cleanPointTitle(item.title || '') : (item.title || ''))}</strong>
+                            </span>
+                            ${isGroupScope ? `<span class="badge" style="background:rgba(243,156,18,0.15); color:var(--warning); font-weight:700; font-size:0.72rem; padding:0.15rem 0.45rem; border-radius:4px; border:1px solid rgba(243,156,18,0.3);">${THEME_ICONS.layers(14)} ${escapeHtml(targetGroup)}</span>` : ''}
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; background: var(--surface-color-light); padding: 0.25rem; border-radius: 8px; flex-shrink: 0;">
+                            <button type="button" onclick="window.switchCondoVoteTab('vote', '${assemblyId}', '${itemId}')" class="btn" style="height: 34px; font-size: 0.82rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s ease; ${activeTab === 'vote' ? 'background: var(--accent-color); color: white; box-shadow: 0 2px 6px rgba(59,130,246,0.35);' : 'background: transparent; color: var(--secondary-text);'}">
+                                <span>1. Da Votare (${unvotedHeadsCount})</span>
+                            </button>
+                            <button type="button" onclick="window.switchCondoVoteTab('summary', '${assemblyId}', '${itemId}')" class="btn" style="height: 34px; font-size: 0.82rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s ease; ${activeTab === 'summary' ? 'background: var(--accent-color); color: white; box-shadow: 0 2px 6px rgba(59,130,246,0.35);' : 'background: transparent; color: var(--secondary-text);'}">
+                                <span>2. Riepilogo (${votedHeadsCount})</span>
+                            </button>
+                        </div>
+
+                        ${activeTab === 'vote' ? pageVoteContent : pageSummaryContent}
+
+                        <div style="padding-top: 0.45rem; padding-bottom: max(0.15rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; margin-top: auto;">
+                            <button type="button" onclick="hideModal()" class="btn btn-secondary" style="width: 100%; height: 40px; font-weight: 700; font-size: 0.88rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                <span>Chiudi</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+                showModal('Voto Punto OdG', modalContent, true);
+            } catch (err) {
+                console.error("Errore apertura modal votazione condòmino:", err);
+                await customAlert("Si è verificato un errore durante l'apertura della schermata di voto.");
+            }
         };
 
         window.scrollToAndHighlightOdgPoint = (itemId) => {
@@ -24336,6 +24628,9 @@ ${renderBottomNavigation()}
                 });
 
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                if (typeof window.openCondoVoteModal === 'function') {
+                    await window.openCondoVoteModal(assemblyId, itemId);
+                }
             } catch (err) {
                 console.error("Errore salvataggio voto condòmino singolo:", err);
                 await customAlert("Errore durante il salvataggio del voto: " + (err?.message || err));
@@ -28365,7 +28660,7 @@ ${renderBottomNavigation()}
 
         window.openAdminManualVoteModal = async (assemblyId, itemId) => {
             try {
-                // Salva lo stato corrente dei checkbox a video per preservare le selezioni/deselezioni
+                window._groupCheckboxSelections = window._groupCheckboxSelections || {};
                 document.querySelectorAll('input[type="checkbox"][id*="-cb-"]').forEach(cb => {
                     window._groupCheckboxSelections[cb.id] = cb.checked;
                 });
@@ -28482,20 +28777,27 @@ ${renderBottomNavigation()}
 
                 const votes = item.votes || [];
 
-                const renderAdminManualVoteDropdown = (voterId, currentChoice, isGroup = false, delegateUid = null, vType = 'self', delId = null, pId = null, vName = '', vMil = 0) => {
-                    if (isGroup) {
-                        return `
-                            <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:rgba(59, 130, 246, 0.15); border:1.5px solid rgba(59, 130, 246, 0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Vota gruppo per i selezionati">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                                <select id="manual-vote-select-${escapeHtml(delegateUid)}" class="form-select manual-vote-select" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; -webkit-appearance:none; appearance:none; z-index:2; min-width:0 !important; max-width:100% !important; overflow:hidden !important; font-size:16px !important;" onchange="window.submitAdminManualVoteGroup('${assemblyId}', '${itemId}', '${escapeJsAttr(delegateUid)}', this.value);">
-                                    <option value="" disabled selected>Vota tutti...</option>
-                                    ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
-                                </select>
-                            </div>
-                        `;
+                const renderAdminManualVoteDropdown = (voterId, currentChoice, arg3 = 'self', arg4 = null, arg5 = null, arg6 = null, arg7 = null, arg8 = '', arg9 = 0) => {
+                    let vType = 'self';
+                    let delId = null;
+                    let pId = null;
+                    let vName = '';
+                    let vMil = 0;
+
+                    if (typeof arg3 === 'boolean') {
+                        // Supporto retroattivo per chiamate con argomenti legacy
+                        vType = arg5 || 'self';
+                        delId = arg6 || null;
+                        pId = arg7 || null;
+                        vName = arg8 || '';
+                        vMil = arg9 || 0;
+                    } else {
+                        // Firma diretta: (voterId, currentChoice, vType, delId, pId, vName, vMil)
+                        vType = arg3 || 'self';
+                        delId = arg4 || null;
+                        pId = arg5 || null;
+                        vName = arg6 || '';
+                        vMil = arg7 || 0;
                     }
 
                     return `
@@ -28577,14 +28879,14 @@ ${renderBottomNavigation()}
                                         </div>
                                     ` : ''}
 
-                                    <!-- Riga 3: Metodo + Millesimi a sinistra, Icona voto a destra (con padding-right 0.25rem per perfetto allineamento) -->
+                                    <!-- Riga 3: Metodo + Millesimi a sinistra, Icona voto a destra -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                             <span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
                                             <strong style="color:var(--warning); font-size:0.84rem; font-weight:800; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
                                         </div>
                                         <div style="flex-shrink:0;">
-                                            ${renderAdminManualVoteDropdown(a.uid, null, false, null, 'self', null, null, cleanName, selfMil)}
+                                            ${renderAdminManualVoteDropdown(a.uid, null, 'self', null, null, cleanName, selfMil)}
                                         </div>
                                     </div>
                                 </div>
@@ -28613,7 +28915,7 @@ ${renderBottomNavigation()}
                                             <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
                                         </div>
                                         <div style="flex-shrink:0;">
-                                            ${renderAdminManualVoteDropdown(a.uid, existingVoteSelf.choice, false, null, 'self', null, null, cleanName, selfMil)}
+                                            ${renderAdminManualVoteDropdown(a.uid, existingVoteSelf.choice, 'self', null, null, cleanName, selfMil)}
                                         </div>
                                     </div>
                                 </div>
@@ -28651,7 +28953,7 @@ ${renderBottomNavigation()}
                     const totalGroupMil = selfMil + proxiesTotalMil;
                     const searchNameWithProxies = ((cleanName || '') + ' ' + (cleanUnitaStr || '') + ' ' + (a.email || '') + ' ' + delegatorsSearchTerms.join(' ') + ' delegato delega').toLowerCase();
 
-                    // 1. Scheda nel Tab "1. Da Votare" se c'è almeno una voce non ancora votata
+                    // 1. Scheda nel Tab "1. Da Votare" se c'è almeno una voce non ancora votata (Votazione 1 a 1 senza Quota gruppo nè checkbox)
                     const hasUnvotedSelf = !existingVoteSelf && (selfMil > 0 || !isGroupScope);
                     const hasUnvotedProxies = attendeeProxies.some(p => {
                         const pDelId = p.delegatorId || p.delegatorUid || p.id;
@@ -28659,35 +28961,30 @@ ${renderBottomNavigation()}
                     });
 
                     if (hasUnvotedSelf || hasUnvotedProxies) {
-                        const isMasterChecked = window.isGroupCheckboxChecked(`manual-master-cb-${a.uid}`, true);
-                        const isSelfChecked = window.isGroupCheckboxChecked(`manual-self-cb-${a.uid}`, true);
                         const isSelfFuori = isGroupScope && selfMil <= 0;
                         const isSelfVoted = !!existingVoteSelf;
 
                         pendingVotersRows.push(`
                             <div class="manual-voter-item manual-delegate-group card" data-search-name="${escapeHtml(searchNameWithProxies)}" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; box-sizing:border-box; width:100%;">
                                 
-                                <!-- 1. Quota personale delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
+                                <!-- 1. Quota personale del delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
                                 ${(() => {
                                 return `
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
-                                            <!-- Riga 1: Nome su una riga intera -->
-                                            <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                ${isSelfFuori ? `<input type="checkbox" id="manual-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (isSelfVoted ? `<input type="checkbox" id="manual-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="manual-self-cb-${a.uid}" class="manual-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('manual', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`)}
-                                                <div style="font-size:0.9rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                    ${formatLongName(cleanName)}
-                                                </div>
+                                            <!-- Riga 1: Nome condòmino delegato -->
+                                            <div style="font-size:0.9rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                ${formatLongName(cleanName)}
                                             </div>
 
-                                            <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                            <!-- Riga 2: Unità immobiliare -->
                                             ${cleanUnitaStr ? `
-                                                <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; padding-left:1.55rem; line-height:1.25; word-break:break-word;">
+                                                <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
                                                     ${escapeHtml(cleanUnitaStr)}
                                                 </div>
                                             ` : ''}
 
-                                            <!-- Riga 3: Quota personale con millesimi a sinistra, icona voto a destra (padding-right: 0.25rem per allineamento) -->
-                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.55rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                            <!-- Riga 3: Quota personale con millesimi a sinistra, icona voto a destra -->
+                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                 <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                     <span class="badge" style="background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : '#10B981'}; color:${isSelfVoted ? 'var(--secondary-text)' : 'white'}; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
                                                     <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
@@ -28699,28 +28996,17 @@ ${renderBottomNavigation()}
                                                     ${isSelfVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>` : ''}
                                                 </div>
                                                 <div style="flex-shrink:0;">
-                                                    ${isSelfFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : renderAdminManualVoteDropdown(a.uid, isSelfVoted ? existingVoteSelf.choice : null, false, null, 'self', null, null, cleanName, selfMil)}
+                                                    ${isSelfFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : renderAdminManualVoteDropdown(a.uid, isSelfVoted ? existingVoteSelf.choice : null, 'self', null, null, cleanName, selfMil)}
                                                 </div>
                                             </div>
                                         </div>
                                     `;
                             })()}
 
-                                <!-- 2. Master group row (padding-right: 0.25rem per allineamento) -->
-                                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
-                                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; margin:0; flex:1; min-width:0;">
-                                        <input type="checkbox" id="manual-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('manual', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">
-                                        <span>Quota gruppo</span>
-                                    </label>
-                                    <div style="flex-shrink:0;">
-                                        ${renderAdminManualVoteDropdown(null, null, true, a.uid)}
-                                    </div>
-                                </div>
-
-                                <!-- 3. Deleghe ricevute (3 righe) -->
+                                <!-- 2. Deleghe a suo nome (Votazione 1 a 1: 3 righe per ciascun delegante con icona matita) -->
                                 <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                     <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
-                                        ${THEME_ICONS.scroll(11)} Deleghe ricevute (${attendeeProxies.length}):
+                                        ${THEME_ICONS.scroll(11)} Deleghe a suo nome (${attendeeProxies.length}):
                                     </div>
                                     ${attendeeProxies.map(p => {
                                 const pDelId = p.delegatorId || p.delegatorUid || p.id;
@@ -28729,28 +29015,24 @@ ${renderBottomNavigation()}
                                 const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
                                 const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
                                 const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                const isProxyChecked = window.isGroupCheckboxChecked(`manual-proxy-cb-${pDelId}`, true);
                                 const hasVoted = !!existingVoteProxy;
 
                                 return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
-                                                <!-- Riga 1: Nome Delegante su una riga intera -->
-                                                <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                    ${hasVoted ? `<input type="checkbox" id="manual-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="manual-proxy-cb-${pDelId}" class="manual-member-${a.uid}" data-del-id="${escapeHtml(pDelId)}" data-proxy-id="${escapeHtml(p.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('manual', '${escapeJsAttr(a.uid)}');" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`}
-                                                    <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
-                                                        <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${formatLongName(pDelName)}
-                                                    </div>
+                                                <!-- Riga 1: Nome Delegante -->
+                                                <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                    <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${formatLongName(pDelName)}
                                                 </div>
 
-                                                <!-- Riga 2: Unità senza prefisso nè raggruppamento -->
+                                                <!-- Riga 2: Unità pulita -->
                                                 ${cleanPUnit ? `
-                                                    <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:1.5rem; line-height:1.25; word-break:break-word;">
+                                                    <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
                                                         ${escapeHtml(cleanPUnit)}
                                                     </div>
                                                 ` : ''}
 
                                                 <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:1.5rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                         <span class="badge" style="font-size:0.58rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
                                                         ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
@@ -28760,7 +29042,7 @@ ${renderBottomNavigation()}
                                                         ${hasVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>` : ''}
                                                     </div>
                                                     <div style="flex-shrink:0;">
-                                                        ${renderAdminManualVoteDropdown(pDelId, hasVoted ? existingVoteProxy.choice : null, false, null, 'proxy', a.uid, p.id || '', pDelName, pMil)}
+                                                        ${renderAdminManualVoteDropdown(pDelId, hasVoted ? existingVoteProxy.choice : null, 'proxy', a.uid, p.id || '', pDelName, pMil)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -28814,7 +29096,7 @@ ${renderBottomNavigation()}
                                                         <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
                                                     </div>
                                                     <div style="flex-shrink:0;">
-                                                        ${renderAdminManualVoteDropdown(a.uid, existingVoteSelf.choice, false, null, 'self', null, null, cleanName, selfMil)}
+                                                        ${renderAdminManualVoteDropdown(a.uid, existingVoteSelf.choice, 'self', null, null, cleanName, selfMil)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -28843,13 +29125,13 @@ ${renderBottomNavigation()}
 
                                                 <!-- Riga 2: Unità pulita -->
                                                 ${cleanPUnit ? `
-                                                    <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word;">
+                                                    <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
                                                         ${escapeHtml(cleanPUnit)}
                                                     </div>
                                                 ` : ''}
 
                                                 <!-- Riga 3: Delega + Già votato + Millesimi + Scelta a sinistra, Icona modifica a destra -->
-                                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                         <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
                                                         <span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
@@ -28857,7 +29139,7 @@ ${renderBottomNavigation()}
                                                         <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>
                                                     </div>
                                                     <div style="flex-shrink:0;">
-                                                        ${renderAdminManualVoteDropdown(pDelId, existingVoteProxy.choice, false, null, 'proxy', a.uid, p.id || '', pDelName, pMil)}
+                                                        ${renderAdminManualVoteDropdown(pDelId, existingVoteProxy.choice, 'proxy', a.uid, p.id || '', pDelName, pMil)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -28986,10 +29268,6 @@ ${renderBottomNavigation()}
                     </div>
                 `;
                 showModal('Registrazione voti manuali', modalContent, true);
-                setTimeout(() => {
-                    if (window.syncAllDelegateGroups) window.syncAllDelegateGroups('manual');
-                }, 50);
-
             } catch (err) {
                 console.error("Errore apertura modal registrazione voti manuali admin:", err);
                 await customAlert("Si è verificato un errore durante l'apertura della schermata.");
@@ -29051,299 +29329,12 @@ ${renderBottomNavigation()}
             }
         };
 
-        window.submitAdminManualVoteGroup = async (assemblyId, itemId, delegateUid, choice) => {
-            try {
-                if (!choice) return;
-                const assemblyRef = doc(db, "assemblies", assemblyId);
-                const docSnap = await getDoc(assemblyRef);
-                if (!docSnap.exists()) return;
-                const assembly = docSnap.data();
-
-                const agenda = assembly.agenda || [];
-                const targetIdx = agenda.findIndex(i => i.id === itemId);
-                if (targetIdx < 0) return;
-                const item = agenda[targetIdx];
-                if (item.status !== 'voting') {
-                    await customAlert("La votazione per questo punto non è ancora aperta. È prima necessario avviare la votazione con il pulsante 'Inizia Voto'.");
-                    return;
-                }
-                const existingVotes = item.votes || [];
-
-                const attendee = (assembly.attendees || []).find(a => a.uid === delegateUid || a.id === delegateUid);
-                if (!attendee) return;
-
-                let allUsers = [];
-                try {
-                    const uSnap = await getDocs(query(collection(db, "users")));
-                    allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                } catch (e) {
-                    allUsers = (window._cachedUnifiedCondominiumRegistry && window._cachedUnifiedCondominiumRegistry.users) || (window._liveAssemblyStaticCache && window._liveAssemblyStaticCache.allCondomini) || [];
-                }
-
-                const itemScope = item.scope || 'intero';
-                const targetGroup = item.targetGroup || null;
-                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio' && targetGroup !== 'Intero Condominio' && targetGroup !== 'Tutte le scale';
-
-                let proxies = (assembly.proxies || []).filter(p =>
-                    (p.delegateId === delegateUid || p.delegateId === attendee.id || (attendee.registeredUid && p.delegateId === attendee.registeredUid)) &&
-                    p.status !== 'rejected'
-                );
-                if (isGroupScope) {
-                    proxies = proxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
-                }
-
-                const selfMil = (window.getAttendeePersonalMillesimi ? window.getAttendeePersonalMillesimi(attendee, proxies, targetGroup, allUsers, isGroupScope) : (parseFloat(attendee.millesimi) || 0));
-
-                // Controlla se la quota personale del delegato è selezionata (solo se ha millesimi > 0 in questo ambito)
-                const selfCb = document.getElementById(`manual-self-cb-${delegateUid}`);
-                const isSelfSelected = (selfCb ? selfCb.checked : false) && (selfMil > 0 || !isGroupScope);
-
-                // Filtra solo le deleghe selezionate tramite checkbox
-                const selectedProxies = proxies.filter(p => {
-                    const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                    const pCb = document.getElementById(`manual-proxy-cb-${pDelId}`);
-                    return pCb ? pCb.checked : false;
-                });
-
-                if (!isSelfSelected && selectedProxies.length === 0) {
-                    await customAlert("Seleziona almeno una quota (quota personale o delega) da votare per questo gruppo.");
-                    const selectEl = document.getElementById(`manual-vote-select-${delegateUid}`);
-                    if (selectEl) selectEl.value = "";
-                    return;
-                }
-
-                const displayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(attendee) : ((attendee.cognome ? attendee.cognome + ' ' : '') + (attendee.nome || ''));
-                const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(displayName) : displayName;
-
-                const newVotes = [];
-                const processedVoterIds = [];
-                const processedProxyIds = [];
-
-                // 1. Quota personale del delegato (solo se selezionata e con millesimi validi in ambito)
-                if (isSelfSelected && (selfMil > 0 || !isGroupScope)) {
-                    processedVoterIds.push(attendee.uid);
-                    newVotes.push({
-                        voterId: attendee.uid,
-                        voterName: `${cleanName} (Admin)`,
-                        choice: choice,
-                        millesimi: selfMil,
-                        heads: 1,
-                        isManualAdminVote: true,
-                        isProxyVote: false,
-                        delegateId: null,
-                        proxyId: null,
-                        recordedAt: Date.now()
-                    });
-                }
-
-                // 2. Ciascun delegante selezionato registrato individualmente con i propri millesimi effettivi dell'ambito
-                selectedProxies.forEach(p => {
-                    const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                    const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
-                    const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-
-                    if (!isGroupScope || pMil > 0) {
-                        processedVoterIds.push(pDelId);
-                        if (p.id) processedProxyIds.push(p.id);
-
-                        newVotes.push({
-                            voterId: pDelId,
-                            voterName: `${pDelName} (Admin)`,
-                            choice: choice,
-                            millesimi: pMil,
-                            heads: 1,
-                            isManualAdminVote: true,
-                            isProxyVote: true,
-                            delegateId: attendee.uid,
-                            proxyId: p.id || null,
-                            recordedAt: Date.now()
-                        });
-                    }
-                });
-
-                if (newVotes.length === 0) return;
-
-                const filteredExisting = existingVotes.filter(v =>
-                    !processedVoterIds.includes(v.voterId) &&
-                    !(v.delegateId === attendee.uid && v.proxyId && processedProxyIds.includes(v.proxyId))
-                );
-                const updatedVotes = [...filteredExisting, ...newVotes];
-
-                const updatedAgenda = agenda.map((agItem, idx) => {
-                    if (idx === targetIdx) {
-                        return { ...agItem, votes: updatedVotes };
-                    }
-                    return agItem;
-                });
-
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
-                await logAssemblyEvent(assemblyId, 'VOTO_MANUALE_GRUPPO', `Registrati ${newVotes.length} voti individuali (${choice}) per le quote selezionate del gruppo delegato ${cleanName}.`);
-                await window.openAdminManualVoteModal(assemblyId, itemId);
-            } catch (err) {
-                console.error("Errore invio voti gruppo manuale:", err);
-                await customAlert("Errore durante il salvataggio dei voti del gruppo: " + (err?.message || err));
-            }
-        };
-
-        window.submitAdminManualVoteSelected = async (assemblyId, itemId) => {
-            const checkedBoxes = Array.from(document.querySelectorAll('.manual-voter-checkbox:checked'));
-            if (checkedBoxes.length === 0) {
-                await customAlert("Seleziona almeno un condòmino o delegante da votare.");
-                return;
-            }
-
-            const choiceSelect = document.getElementById('manual-batch-vote-choice');
-            const choice = choiceSelect ? choiceSelect.value : 'Favorevole';
-
-            let totalSelectedMil = 0;
-            checkedBoxes.forEach(cb => {
-                totalSelectedMil += parseFloat(cb.getAttribute('data-voter-mil')) || 0;
-            });
-
-            try {
-                const assemblyRef = doc(db, "assemblies", assemblyId);
-                const docSnap = await getDoc(assemblyRef);
-                if (!docSnap.exists()) return;
-                const assembly = docSnap.data();
-
-                const agenda = assembly.agenda || [];
-                const targetIdx = agenda.findIndex(i => i.id === itemId);
-                if (targetIdx < 0) return;
-                const item = agenda[targetIdx];
-                if (item.status !== 'voting') {
-                    await customAlert("La votazione per questo punto non è ancora aperta. È prima necessario avviare la votazione con il pulsante 'Inizia Voto'.");
-                    return;
-                }
-                const existingVotes = item.votes || [];
-
-                const newVotes = [];
-                const processedVoterIds = [];
-
-                checkedBoxes.forEach(cb => {
-                    const vType = cb.getAttribute('data-voter-type') || 'self';
-                    const voterId = cb.getAttribute('data-voter-id') || cb.value;
-                    const voterName = cb.getAttribute('data-voter-name') || 'Condòmino';
-                    const voterMil = parseFloat(cb.getAttribute('data-voter-mil')) || 0;
-                    const delegateId = cb.getAttribute('data-delegate-id') || null;
-                    const proxyId = cb.getAttribute('data-proxy-id') || null;
-
-                    processedVoterIds.push(voterId);
-
-                    newVotes.push({
-                        voterId: voterId,
-                        voterName: `${voterName} (Admin)`,
-                        choice: choice,
-                        millesimi: voterMil,
-                        heads: 1,
-                        isManualAdminVote: true,
-                        isProxyVote: vType === 'proxy',
-                        delegateId: delegateId,
-                        proxyId: proxyId,
-                        recordedAt: Date.now()
-                    });
-                });
-
-                const filteredExisting = existingVotes.filter(v => !processedVoterIds.includes(v.voterId) && !(v.proxyId && processedVoterIds.includes(v.proxyId)));
-                const updatedVotes = [...filteredExisting, ...newVotes];
-
-                const updatedAgenda = agenda.map((agItem, idx) => {
-                    if (idx === targetIdx) {
-                        return { ...agItem, votes: updatedVotes };
-                    }
-                    return agItem;
-                });
-
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
-                await logAssemblyEvent(assemblyId, 'VOTI_MANUALI_MASSIVI', `Registrati voti manuali (${choice}) per ${checkedBoxes.length} condòmini/deleghe (${totalSelectedMil.toFixed(2)} ‰).`);
-
-                await window.openAdminManualVoteModal(assemblyId, itemId);
-            } catch (err) {
-                console.error("Errore invio voti selezionati manuali:", err);
-                await customAlert("Errore durante il salvataggio dei voti: " + (err?.message || err));
-            }
-        };
-
-        window.toggleSelectAllInDelegateGroup = (delegateUid, isChecked) => {
-            const checkboxes = document.querySelectorAll(`.manual-voter-checkbox[data-delegate-group="${delegateUid}"]`);
-            checkboxes.forEach(cb => {
-                const item = cb.closest('.manual-voter-item');
-                if (!item || item.style.display !== 'none') {
-                    cb.checked = isChecked;
-                }
-            });
-            window.updateManualVotersSelectedCount();
-        };
-
-        window.toggleSelectAllNonVoters = (isChecked) => {
-            const checkboxes = document.querySelectorAll('.manual-voter-checkbox');
-            checkboxes.forEach(cb => {
-                const item = cb.closest('.manual-voter-item');
-                if (item && item.style.display !== 'none') {
-                    cb.checked = isChecked;
-                }
-            });
-            document.querySelectorAll('.manual-delegate-group-cb').forEach(gcb => {
-                const item = gcb.closest('.manual-voter-item');
-                if (item && item.style.display !== 'none') {
-                    gcb.checked = isChecked;
-                    gcb.indeterminate = false;
-                }
-            });
-            window.updateManualVotersSelectedCount();
-        };
-
-        window.updateManualVotersSelectedCount = () => {
-            const checkedBoxes = document.querySelectorAll('.manual-voter-checkbox:checked');
-            const count = checkedBoxes.length;
-            let totalMil = 0;
-            checkedBoxes.forEach(cb => {
-                totalMil += parseFloat(cb.getAttribute('data-voter-mil') || 0);
-            });
-
-            const batchBar = document.getElementById('manual-batch-action-bar');
-            const badge = document.getElementById('manual-voter-selected-count-badge');
-            const submitBtn = document.getElementById('btn-submit-manual-vote');
-
-            if (batchBar) {
-                batchBar.style.display = count > 0 ? 'flex' : 'none';
-            }
-            if (badge) {
-                badge.textContent = count > 0 ? `${count} sel. • ${totalMil.toFixed(2)} ‰` : '';
-            }
-            if (submitBtn) {
-                submitBtn.innerHTML = count > 0 ? `<span>Salva Voti (${count} sel. • ${totalMil.toFixed(2)} ‰)</span>` : `<span>Salva Voti</span>`;
-            }
-
-            // Allinea le caselle di gruppo per ciascun delegato
-            document.querySelectorAll('.manual-delegate-group').forEach(groupCard => {
-                const groupCb = groupCard.querySelector('.manual-delegate-group-cb');
-                if (groupCb) {
-                    const groupItemCbs = Array.from(groupCard.querySelectorAll('.manual-voter-checkbox')).filter(cb => {
-                        const itm = cb.closest('.manual-voter-item');
-                        return !itm || itm.style.display !== 'none';
-                    });
-                    const groupItemChecked = groupItemCbs.filter(cb => cb.checked);
-                    if (groupItemCbs.length > 0) {
-                        groupCb.checked = groupItemChecked.length === groupItemCbs.length;
-                        groupCb.indeterminate = groupItemChecked.length > 0 && groupItemChecked.length < groupItemCbs.length;
-                    }
-                }
-            });
-
-            // Allinea la casella master Seleziona Tutti
-            const masterCb = document.getElementById('manual-voter-select-all');
-            if (masterCb) {
-                const allVisibleCbs = Array.from(document.querySelectorAll('.manual-voter-checkbox')).filter(cb => {
-                    const itm = cb.closest('.manual-voter-item');
-                    return !itm || itm.style.display !== 'none';
-                });
-                const allVisibleChecked = allVisibleCbs.filter(cb => cb.checked);
-                if (allVisibleCbs.length > 0) {
-                    masterCb.checked = allVisibleChecked.length === allVisibleCbs.length;
-                    masterCb.indeterminate = allVisibleChecked.length > 0 && allVisibleChecked.length < allVisibleCbs.length;
-                }
-            }
-        };
+        // Stub di compatibilità per funzioni di gruppo rimosse
+        window.submitAdminManualVoteGroup = async () => {};
+        window.submitAdminManualVoteSelected = async () => {};
+        window.toggleSelectAllInDelegateGroup = () => {};
+        window.toggleSelectAllNonVoters = () => {};
+        window.updateManualVotersSelectedCount = () => {};
 
         window.filterManualVotersList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
@@ -29355,7 +29346,7 @@ ${renderBottomNavigation()}
             items.forEach(item => {
                 const name = (item.getAttribute('data-search-name') || '').toLowerCase();
                 const isMatch = !q || name.includes(q);
-                item.style.display = isMatch ? (item.classList.contains('manual-delegate-group') ? 'flex' : 'flex') : 'none';
+                item.style.display = isMatch ? 'flex' : 'none';
                 if (isMatch) visibleCount++;
             });
 
@@ -29366,7 +29357,6 @@ ${renderBottomNavigation()}
             if (clearBtn) {
                 clearBtn.style.display = q ? 'block' : 'none';
             }
-            window.updateManualVotersSelectedCount();
         };
 
         window.filterManualVotersSummaryList = (queryVal) => {
@@ -29379,7 +29369,7 @@ ${renderBottomNavigation()}
             items.forEach(item => {
                 const name = (item.getAttribute('data-search-name') || '').toLowerCase();
                 const isMatch = !q || name.includes(q);
-                item.style.display = isMatch ? (item.classList.contains('manual-delegate-group') ? 'flex' : 'flex') : 'none';
+                item.style.display = isMatch ? 'flex' : 'none';
                 if (isMatch) visibleCount++;
             });
 
@@ -29394,7 +29384,6 @@ ${renderBottomNavigation()}
 
         window.submitAdminManualVote = async (e, assemblyId, itemId) => {
             if (e && e.preventDefault) e.preventDefault();
-            await window.submitAdminManualVoteSelected(assemblyId, itemId);
         };
 
         window.showCreateAssemblyModal = async () => {
