@@ -2559,6 +2559,7 @@
             0% {
                 box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35), 0 4px 16px rgba(16, 185, 129, 0.2);
             }
+
             100% {
                 box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.65), 0 10px 30px rgba(16, 185, 129, 0.4);
             }
@@ -18595,13 +18596,13 @@ ${renderBottomNavigation()}
                 return `
                                     <div class="fullscreen-nonvoter-card manual-delegate-group card" data-search-text="${escapeHtml(searchText)}" style="background:var(--surface-color); border:1.5px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.7rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; width:100%; box-sizing:border-box;">
                                         ${(() => {
-                                            const selfMil = nv.selfMillesimi;
-                                            const isFuori = data.isGroupScope && selfMil <= 0;
-                                            const isSelfChecked = window.isGroupCheckboxChecked(`nv-fs-self-cb-${nv.uid}`, true);
-                                            const isSelfVoted = nv.hasSelfVoted && nv.selfVote;
-                                            const cleanNvUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(nv.units) : nv.units;
+                        const selfMil = nv.selfMillesimi;
+                        const isFuori = data.isGroupScope && selfMil <= 0;
+                        const isSelfChecked = window.isGroupCheckboxChecked(`nv-fs-self-cb-${nv.uid}`, true);
+                        const isSelfVoted = nv.hasSelfVoted && nv.selfVote;
+                        const cleanNvUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(nv.units) : nv.units;
 
-                                            return `
+                        return `
                                                 <!-- 1. Quota personale delegato (3 righe) -->
                                                 <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                                     <!-- Riga 1: Nome su una riga -->
@@ -18648,7 +18649,7 @@ ${renderBottomNavigation()}
                                                     </div>
                                                 </div>
                                             `;
-                                        })()}
+                    })()}
 
                                         ${data.isAdmin && data.assemblyId && data.itemId ? `
                                             <!-- MASTER FLAG: QUOTA GRUPPO -->
@@ -18678,12 +18679,12 @@ ${renderBottomNavigation()}
                                                 ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                             </div>
                                             ${heldProxies.map(p => {
-                                                const pDelId = p.delegatorId;
-                                                const isProxyChecked = window.isGroupCheckboxChecked(`nv-fs-proxy-cb-${pDelId}`, true);
-                                                const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(p.unit) : p.unit;
-                                                const hasVoted = p.hasVoted && p.vote;
+                        const pDelId = p.delegatorId;
+                        const isProxyChecked = window.isGroupCheckboxChecked(`nv-fs-proxy-cb-${pDelId}`, true);
+                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(p.unit) : p.unit;
+                        const hasVoted = p.hasVoted && p.vote;
 
-                                                return `
+                        return `
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome Delegante su una riga intera -->
                                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -18728,7 +18729,7 @@ ${renderBottomNavigation()}
                                                         </div>
                                                     </div>
                                                 `;
-                                            }).join('')}
+                    }).join('')}
                                             <!-- Riga con Totale Con Deleghe (rosso) -->
                                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                                 <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
@@ -19377,16 +19378,16 @@ ${renderBottomNavigation()}
                         <div class="fullscreen-voter-card manual-delegate-group card" data-search-text="${escapeHtml(cardSearchText)}" style="background:var(--surface-color); border:1.5px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.7rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; width:100%; box-sizing:border-box;">
                             <!-- 1. Quota personale delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
                             ${(() => {
-                                const isSelfFuori = data.isGroupScope && selfMil <= 0;
-                                const rawSelfUnits = window.getVoterUnitString ? window.getVoterUnitString(a, window._cachedAllUsers || [], data.itemGroup) : ((Array.isArray(a.proprieta) && a.proprieta.length > 0 ? a.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || a.unitaImmobiliare || a.units || '');
-                                const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
-                                const isSelfManual = selfVote ? (selfVote.isManualAdminVote === true || a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt)) : false;
-                                const isSelfVoted = !!selfVote;
-                                const selfMethodBadge = isSelfManual
-                                    ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
-                                    : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
+                            const isSelfFuori = data.isGroupScope && selfMil <= 0;
+                            const rawSelfUnits = window.getVoterUnitString ? window.getVoterUnitString(a, window._cachedAllUsers || [], data.itemGroup) : ((Array.isArray(a.proprieta) && a.proprieta.length > 0 ? a.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || a.unitaImmobiliare || a.units || '');
+                            const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
+                            const isSelfManual = selfVote ? (selfVote.isManualAdminVote === true || a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt)) : false;
+                            const isSelfVoted = !!selfVote;
+                            const selfMethodBadge = isSelfManual
+                                ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
+                                : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
 
-                                return `
+                            return `
                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                         <!-- Riga 1: Nome su una riga intera -->
                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -19421,7 +19422,7 @@ ${renderBottomNavigation()}
                                         </div>
                                     </div>
                                 `;
-                            })()}
+                        })()}
 
                             <!-- 2. Master group row -->
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
@@ -19440,14 +19441,14 @@ ${renderBottomNavigation()}
                                     ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                 </div>
                                 ${proxyVotesInfo.map(item => {
-                                    const isProxyChecked = window.isGroupCheckboxChecked(`fs-proxy-cb-${item.pDelId}`, true);
-                                    const proxyModeBadge = item.proxy.isDigital
-                                        ? `<span class="badge badge-proxy" style="font-size:0.62rem; padding:0.04rem 0.25rem;">${THEME_ICONS.smartphone(9)} App</span>`
-                                        : `<span class="badge badge-proxy" style="font-size:0.62rem; padding:0.04rem 0.25rem;">${THEME_ICONS.pen(10)} Cartacea</span>`;
-                                    const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(item.proxy, window._cachedAllUsers || [], data.itemGroup) : (item.pUnit || item.proxy.delegatorUnita || item.proxy.delegatorUnit || '');
-                                    const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                            const isProxyChecked = window.isGroupCheckboxChecked(`fs-proxy-cb-${item.pDelId}`, true);
+                            const proxyModeBadge = item.proxy.isDigital
+                                ? `<span class="badge badge-proxy" style="font-size:0.62rem; padding:0.04rem 0.25rem;">${THEME_ICONS.smartphone(9)} App</span>`
+                                : `<span class="badge badge-proxy" style="font-size:0.62rem; padding:0.04rem 0.25rem;">${THEME_ICONS.pen(10)} Cartacea</span>`;
+                            const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(item.proxy, window._cachedAllUsers || [], data.itemGroup) : (item.pUnit || item.proxy.delegatorUnita || item.proxy.delegatorUnit || '');
+                            const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
 
-                                    return `
+                            return `
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome Delegante su una riga intera -->
                                             <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -19481,7 +19482,7 @@ ${renderBottomNavigation()}
                                             </div>
                                         </div>
                                     `;
-                                }).join('')}
+                        }).join('')}
                                 <!-- Riga con Totale Con Deleghe (rosso) -->
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                     <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
@@ -20717,7 +20718,7 @@ ${renderBottomNavigation()}
                             <div style="margin-bottom:0.85rem;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.2rem; margin-bottom:0.45rem; padding-bottom:0.25rem; border-bottom:1px solid var(--surface-color-light);">
                                     <div style="font-size:0.78rem; font-weight:800; color:var(--primary-text); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:0.35rem;">
-                                        <span style="color:#1DB954;">●</span> Condòmini Presenti in Aula (${presentiList.length})
+                                        <span style="color:#1DB954;">●</span> Condòmini Presenti in Aula (${activeAttendees.length})
                                     </div>
                                 </div>
                                 <div id="room-section-presenti-list">
@@ -20959,11 +20960,11 @@ ${renderBottomNavigation()}
                             const selfM = (typeof window.getAttendeePersonalMillesimi === 'function')
                                 ? window.getAttendeePersonalMillesimi(a, held, itemGroup, allUsers, isGroupScope)
                                 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0));
-                            
+
                             const hasSelfVoted = (selfM > 0 || !isGroupScope)
                                 ? votesList.some(v => (a.uid && (v.voterId === a.uid || v.userId === a.uid)) || (a.id && (v.voterId === a.id || v.userId === a.id)))
                                 : true;
-                            
+
                             let pending = 0;
                             if (!hasSelfVoted && selfM > 0) {
                                 pending += selfM;
@@ -20985,7 +20986,7 @@ ${renderBottomNavigation()}
 
                         const eligibleAttendees = activeAttendees.filter(a => isAttendeeEligibleForPoint(a));
                         const targetAttendees = isGroupScope ? eligibleAttendees : (eligibleAttendees.length > 0 ? eligibleAttendees : activeAttendees);
-                        
+
                         const pointNonVoters = targetAttendees.filter(a => getAttendeePendingMilForPoint(a) > 0.0001);
                         const nonVotersMilSum = pointNonVoters.reduce((acc, a) => acc + getAttendeePendingMilForPoint(a), 0);
 
@@ -21187,15 +21188,15 @@ ${renderBottomNavigation()}
                                             
                                             <!-- 1. Quota personale delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
                                             ${(() => {
-                                                const isSelfFuori = isGroupScope && selfMil <= 0;
-                                                const rawSelfUnits = window.getVoterUnitString ? window.getVoterUnitString(a, allUsers, itemGroup) : ((Array.isArray(a.proprieta) && a.proprieta.length > 0 ? a.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || a.unitaImmobiliare || a.units || '');
-                                                const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
-                                                const isSelfManual = selfVote ? (selfVote.isManualAdminVote === true || a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt)) : false;
-                                                const selfMethodBadge = isSelfManual
-                                                    ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
-                                                    : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
+                                            const isSelfFuori = isGroupScope && selfMil <= 0;
+                                            const rawSelfUnits = window.getVoterUnitString ? window.getVoterUnitString(a, allUsers, itemGroup) : ((Array.isArray(a.proprieta) && a.proprieta.length > 0 ? a.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || a.unitaImmobiliare || a.units || '');
+                                            const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
+                                            const isSelfManual = selfVote ? (selfVote.isManualAdminVote === true || a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt)) : false;
+                                            const selfMethodBadge = isSelfManual
+                                                ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
+                                                : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
 
-                                                return `
+                                            return `
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome su una riga intera -->
                                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -21229,7 +21230,7 @@ ${renderBottomNavigation()}
                                                         </div>
                                                     </div>
                                                 `;
-                                            })()}
+                                        })()}
 
                                             <!-- 2. Master group row -->
                                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
@@ -21248,14 +21249,14 @@ ${renderBottomNavigation()}
                                                     ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                                 </div>
                                                 ${proxyVotesInfo.map(item => {
-                                                    const proxyModeBadge = item.proxy.isDigital
-                                                        ? `<span class="badge badge-proxy" style="font-size:0.6rem; padding:0.02rem 0.22rem;">${THEME_ICONS.smartphone(9)} App</span>`
-                                                        : `<span class="badge badge-proxy" style="font-size:0.6rem; padding:0.02rem 0.22rem;">${THEME_ICONS.pen(10)} Cartacea</span>`;
-                                                    const rawPUnit = item.pUnit || item.proxy.delegatorUnita || item.proxy.delegatorUnit || (Array.isArray(item.proxy.proprieta) ? item.proxy.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || '';
-                                                    const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                                    const isProxyChecked = window.isGroupCheckboxChecked(`inline-${idx}-proxy-cb-${item.pDelId}`, true);
+                                            const proxyModeBadge = item.proxy.isDigital
+                                                ? `<span class="badge badge-proxy" style="font-size:0.6rem; padding:0.02rem 0.22rem;">${THEME_ICONS.smartphone(9)} App</span>`
+                                                : `<span class="badge badge-proxy" style="font-size:0.6rem; padding:0.02rem 0.22rem;">${THEME_ICONS.pen(10)} Cartacea</span>`;
+                                            const rawPUnit = item.pUnit || item.proxy.delegatorUnita || item.proxy.delegatorUnit || (Array.isArray(item.proxy.proprieta) ? item.proxy.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || '';
+                                            const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                            const isProxyChecked = window.isGroupCheckboxChecked(`inline-${idx}-proxy-cb-${item.pDelId}`, true);
 
-                                                    return `
+                                            return `
                                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                             <!-- Riga 1: Nome Delegante su una riga intera -->
                                                             <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -21289,7 +21290,7 @@ ${renderBottomNavigation()}
                                                             </div>
                                                         </div>
                                                     `;
-                                                }).join('')}
+                                        }).join('')}
                                                 <!-- Riga con Totale Con Deleghe (rosso) -->
                                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                                     <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
@@ -21582,15 +21583,15 @@ ${renderBottomNavigation()}
                                                 ${THEME_ICONS.scroll(11)} Deleghe ricevute (${heldProxies.length}):
                                             </div>
                                             ${heldProxies.map(p => {
-                                                const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                                                const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() : '') || 'Delegante';
-                                                const pMil = isGroupScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                                                const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnit || p.delegatorUnita || '');
-                                                const pUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                                const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                                const isProxyChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-proxy-cb-${pDelId}`, true);
+                                    const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                    const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() : '') || 'Delegante';
+                                    const pMil = isGroupScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                                    const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, itemGroup) : (p.delegatorUnit || p.delegatorUnita || '');
+                                    const pUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                    const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                    const isProxyChecked = window.isGroupCheckboxChecked(`nv-inline-${idx}-proxy-cb-${pDelId}`, true);
 
-                                                return `
+                                    return `
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${pVote ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${pVote ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${pVote ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome Delegante su una riga intera -->
                                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -21632,7 +21633,7 @@ ${renderBottomNavigation()}
                                                         </div>
                                                     </div>
                                                 `;
-                                            }).join('')}
+                                }).join('')}
                                             <!-- Riga con Totale Con Deleghe (rosso) -->
                                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                                 <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
@@ -23922,13 +23923,13 @@ ${renderBottomNavigation()}
                             ${THEME_ICONS.scroll(11)} Deleghe da votare (${validProxies.length}):
                         </div>
                         ${validProxies.map(p => {
-                            const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                            const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() : '') || 'Delegante';
-                            const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                            const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
-                            const pUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                            const existingVoteProxy = (item.votes || []).find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
-                            return `
+                const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() : '') || 'Delegante';
+                const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
+                const pUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                const existingVoteProxy = (item.votes || []).find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                return `
                                 <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(59, 130, 246, 0.6); background:rgba(59, 130, 246, 0.03); border-radius:0 7px 7px 0; border-top:1px solid rgba(59, 130, 246, 0.12); width:100%; box-sizing:border-box;">
                                     <!-- Riga 1: Nome Delegante su una riga intera -->
                                     <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -23970,7 +23971,7 @@ ${renderBottomNavigation()}
                                     </div>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
 
                     <!-- 4. RIGA CON TOTALE CON DELEGHE (ROSSO) -->
@@ -28370,7 +28371,7 @@ ${renderBottomNavigation()}
                         </div>
                     `;
                 };
-let totalEligibleHeads = 0;
+                let totalEligibleHeads = 0;
                 let votedHeadsCount = 0;
                 let unvotedHeadsCount = 0;
                 let pendingMil = 0;
@@ -28527,7 +28528,7 @@ let totalEligibleHeads = 0;
                                 
                                 <!-- 1. Quota personale delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
                                 ${(() => {
-                                    return `
+                                return `
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome su una riga intera -->
                                             <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -28562,7 +28563,7 @@ let totalEligibleHeads = 0;
                                             </div>
                                         </div>
                                     `;
-                                })()}
+                            })()}
 
                                 <!-- 2. Master group row (padding-right: 0.25rem per allineamento) -->
                                 <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
@@ -28581,16 +28582,16 @@ let totalEligibleHeads = 0;
                                         ${THEME_ICONS.scroll(11)} Deleghe ricevute (${attendeeProxies.length}):
                                     </div>
                                     ${attendeeProxies.map(p => {
-                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
-                                        const pMil = isGroupScope ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
-                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                        const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                        const isProxyChecked = window.isGroupCheckboxChecked(`manual-proxy-cb-${pDelId}`, true);
-                                        const hasVoted = !!existingVoteProxy;
+                                const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                                const pMil = isGroupScope ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                                const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
+                                const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                const isProxyChecked = window.isGroupCheckboxChecked(`manual-proxy-cb-${pDelId}`, true);
+                                const hasVoted = !!existingVoteProxy;
 
-                                        return `
+                                return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                 <!-- Riga 1: Nome Delegante su una riga intera -->
                                                 <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
@@ -28623,7 +28624,7 @@ let totalEligibleHeads = 0;
                                                 </div>
                                             </div>
                                         `;
-                                    }).join('')}
+                            }).join('')}
                                     <!-- Riga con Totale Con Deleghe (rosso) -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                         <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
@@ -28647,8 +28648,8 @@ let totalEligibleHeads = 0;
                                 
                                 <!-- 1. Quota personale delegato nel Riepilogo -->
                                 ${(() => {
-                                    if (existingVoteSelf && (selfMil > 0 || !isGroupScope)) {
-                                        return `
+                                if (existingVoteSelf && (selfMil > 0 || !isGroupScope)) {
+                                    return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                                 <!-- Riga 1: Nome -->
                                                 <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word;">
@@ -28677,22 +28678,22 @@ let totalEligibleHeads = 0;
                                                 </div>
                                             </div>
                                         `;
-                                    }
-                                    return '';
-                                })()}
+                                }
+                                return '';
+                            })()}
 
                                 <!-- 2. Deleghe votate nel Riepilogo -->
                                 <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                     ${attendeeProxies.map(p => {
-                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
-                                        const pMil = isGroupScope ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
-                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                        const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                        if (!existingVoteProxy) return '';
+                                const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                                const pMil = isGroupScope ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                                const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
+                                const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                if (!existingVoteProxy) return '';
 
-                                        return `
+                                return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                 <!-- Riga 1: Nome Delegante -->
                                                 <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
@@ -28720,7 +28721,7 @@ let totalEligibleHeads = 0;
                                                 </div>
                                             </div>
                                         `;
-                                    }).join('')}
+                            }).join('')}
                                     <!-- Riga con Totale Con Deleghe (rosso) -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                         <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
