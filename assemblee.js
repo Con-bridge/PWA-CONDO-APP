@@ -257,12 +257,21 @@ window.AssembleeModule = {
 
                 <!-- Presenti -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
-                    <div style="cursor: pointer; margin-bottom: 0.5rem;" onclick="window.toggleRoomAttendeesCollapsible ? window.toggleRoomAttendeesCollapsible() : (function(){ const el = document.getElementById('room-attendees-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-attendees-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
+                    <!-- Intestazione cliccabile per Mostra/Nascondi -->
+                    <div style="cursor: pointer;" onclick="window.toggleRoomAttendeesCollapsible ? window.toggleRoomAttendeesCollapsible() : (function(){ const el = document.getElementById('room-attendees-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-attendees-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
-                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text);">Elenco Presenti</h3>
+                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                <span>Elenco Presenti</span>
+                            </h3>
                             <span id="room-attendees-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-top: 0.6rem;">
+                    </div>
+
+                    <!-- Contenitore collassabile (include sia i due contatori che la lista e la ricerca) -->
+                    <div id="room-attendees-collapsible" class="hidden space-y-2" style="margin-top: 0.75rem;">
+                        <!-- Due badge contatori (In Aula e Deleghe) -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; margin-bottom: 0.65rem;">
                             <div class="badge" style="background: rgba(29, 185, 84, 0.15); color: #1DB954; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid rgba(29, 185, 84, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; box-sizing: border-box; text-align: center;">
                                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span id="room-badge-in-aula">0</span> in aula
                             </div>
@@ -270,8 +279,7 @@ window.AssembleeModule = {
                                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg><span id="room-badge-deleghe">0</span> deleghe
                             </div>
                         </div>
-                    </div>
-                    <div id="room-attendees-collapsible" class="mt-3 hidden space-y-2">
+
                         <!-- Barra di ricerca Elenco Presenti -->
                         <div style="position: relative; margin-bottom: 0.65rem;">
                             <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
@@ -302,25 +310,38 @@ window.AssembleeModule = {
                 </div>
 
                 <!-- LISTA DELLE QUESTIONI ODG (VOTAZIONI IN STILE SONDAGGIO) -->
-                <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                        <h3 class="card-title" style="margin:0; font-size: 1rem;">Punti di discussione</h3>
+                <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+                    <!-- Intestazione cliccabile per Mostra/Nascondi -->
+                    <div style="cursor: pointer;" onclick="window.toggleRoomOdgCollapsible ? window.toggleRoomOdgCollapsible() : (function(){ const el = document.getElementById('room-odg-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-odg-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                <span>Punti di discussione</span>
+                            </h3>
+                            <span id="room-odg-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                        </div>
                     </div>
-                    <div id="room-odg-poll-list" class="space-y-4">
-                        <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
+
+                    <!-- Contenitore collassabile dei punti di discussione OdG -->
+                    <div id="room-odg-collapsible" class="hidden space-y-4" style="margin-top: 0.75rem;">
+                        <div id="room-odg-poll-list" class="space-y-4">
+                            <p style="color:var(--secondary-text); text-align:center;">Caricamento questioni OdG...</p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Log Assemblea -->
-                <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%; cursor: pointer; margin-bottom: 0.5rem;" onclick="const el = document.getElementById('room-event-log-collapsible'); el.classList.toggle('hidden');">
-                        <h3 class="card-title" style="margin: 0; font-size: 0.9rem; line-height: 1.3; display:flex; align-items:center; gap:0.4rem; flex: 1; min-width: 0;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                            <span>Log Assemblea</span>
-                        </h3>
-                        <span style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; margin-left: 0.5rem;">Mostra/Nascondi ▼</span>
+                <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+                    <div style="cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-event-log-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                <span>Log Assemblea</span>
+                            </h3>
+                            <span id="room-event-log-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
+                        </div>
                     </div>
-                    <div id="room-event-log-collapsible" class="mt-3 hidden space-y-2" style="margin-top: 0.75rem;">
+                    <div id="room-event-log-collapsible" class="hidden space-y-2" style="margin-top: 0.75rem;">
                         <div id="room-event-log-list">
                             <p style="color: var(--secondary-text); font-size: 0.85rem;">Caricamento registro eventi...</p>
                         </div>
