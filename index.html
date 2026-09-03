@@ -17208,13 +17208,18 @@ ${renderBottomNavigation()}
                                 `;
                             } else if (pStatus === 'rejected') {
                                 userDelegateBtnHtml = `
-                                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(231,76,60,0.15); border-radius: 8px; font-size: 0.85rem; color: var(--danger);">
-                                        ${THEME_ICONS.alertDanger(15)} Delega RIFIUTATA da <strong>${escapeHtml(existingProxy.delegateName)}</strong>. Puoi votare autonomamente o inviare delega a un altro condomino.
-                                        <div style="margin-top: 0.5rem;">
-                                            <button onclick="openUserDelegateModal('${docSnap.id}')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">${THEME_ICONS.handshake(14)} Delega ad un altro condomino</button>
+                                        <div style="margin-top: 1rem; padding: 1.1rem 1rem; background: rgba(231, 76, 60, 0.12); border: 1.5px solid rgba(231, 76, 60, 0.3); border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+                                            <div>
+                                                <div style="font-size: 0.92rem; font-weight: 800; color: var(--danger); line-height: 1.35; margin-bottom: 0.25rem;">
+                                                    ${THEME_ICONS.alertDanger(16)} Delega rifiutata da <strong>${escapeHtml(existingProxy.delegateName)}</strong>
+                                                </div>
+                                                <div style="font-size: 0.82rem; color: var(--secondary-text); line-height: 1.35;">
+                                                    Puoi delegare un altro condòmino o votare direttamente.
+                                                </div>
+                                            </div>
+                                            <button onclick="openUserDelegateModal('${docSnap.id}')" class="btn btn-primary" style="font-size: 0.88rem; font-weight: 700; width: 100%; height: 42px; justify-content: center; border-radius: 8px;">Delega un altro condòmino</button>
                                         </div>
-                                    </div>
-                                `;
+                                    `;
                             }
                         } else {
                             // Pulsanti "Apri Assemblea" e "Delega Voto" affiancati senza icone per account partecipanti
@@ -21201,7 +21206,7 @@ ${renderBottomNavigation()}
                                         ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers)
                                         : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
                                     const pUnit = p.delegatorUnita || p.delegatorUnit || (Array.isArray(p.proprieta) ? p.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || p.unitaImmobiliare || '';
-                                const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                    const pVote = votesList.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
                                     if (pVote) {
                                         groupHasAnyVote = true;
                                         totalGroupMil += (pVote.millesimi !== undefined ? pVote.millesimi : pMil);
@@ -24146,15 +24151,15 @@ ${renderBottomNavigation()}
                                         ${THEME_ICONS.scroll(11)} Deleghe a tuo nome (${validProxies.length}):
                                     </div>
                                     ${validProxies.map(p => {
-                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
-                                        const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
-                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                        const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                        const hasVoted = !!existingVoteProxy;
+                            const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                            const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                            const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                            const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
+                            const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                            const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                            const hasVoted = !!existingVoteProxy;
 
-                                        return `
+                            return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                 <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
                                                     <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${formatLongName(pDelName)}
@@ -24175,7 +24180,7 @@ ${renderBottomNavigation()}
                                                 </div>
                                             </div>
                                         `;
-                                    }).join('')}
+                        }).join('')}
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                         <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
                                         <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.88rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
@@ -24217,15 +24222,15 @@ ${renderBottomNavigation()}
 
                                 <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
                                     ${validProxies.map(p => {
-                                        const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                                        const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
-                                        const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
-                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                        const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                        if (!existingVoteProxy) return '';
+                            const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                            const pDelName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante';
+                            const pMil = isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                            const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || '');
+                            const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                            const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === currentUid && (v.proxyId === p.id || v.voterId === pDelId)));
+                            if (!existingVoteProxy) return '';
 
-                                        return `
+                            return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                 <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
                                                     <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(pDelName)}
@@ -24246,7 +24251,7 @@ ${renderBottomNavigation()}
                                                 </div>
                                             </div>
                                         `;
-                                    }).join('')}
+                        }).join('')}
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
                                         <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
                                         <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.88rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
@@ -29330,11 +29335,11 @@ ${renderBottomNavigation()}
         };
 
         // Stub di compatibilità per funzioni di gruppo rimosse
-        window.submitAdminManualVoteGroup = async () => {};
-        window.submitAdminManualVoteSelected = async () => {};
-        window.toggleSelectAllInDelegateGroup = () => {};
-        window.toggleSelectAllNonVoters = () => {};
-        window.updateManualVotersSelectedCount = () => {};
+        window.submitAdminManualVoteGroup = async () => { };
+        window.submitAdminManualVoteSelected = async () => { };
+        window.toggleSelectAllInDelegateGroup = () => { };
+        window.toggleSelectAllNonVoters = () => { };
+        window.updateManualVotersSelectedCount = () => { };
 
         window.filterManualVotersList = (queryVal) => {
             const q = (queryVal || '').toLowerCase().trim();
@@ -30257,9 +30262,9 @@ ${renderBottomNavigation()}
                     <p style="color: var(--primary-text); font-size: 0.85rem; background: var(--surface-color-light); padding: 0.75rem; border-radius: 8px;">
                         Vuoi accettare la delega per votare a suo nome o rifiutarla/rimandarla indietro?
                     </p>
-                    <div class="flex flex-col gap-2 pt-2">
-                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'accepted')" class="btn btn-primary" style="font-weight: 700;">${THEME_ICONS.check(16, 2.4)} ACCETTA DELEGA</button>
-                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700;">${THEME_ICONS.cross(16, 2.4)} RIFIUTA / RIMANDA INDIETRO</button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; padding-top: 0.5rem;">
+                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; width: 100%; padding: 0.75rem 0.35rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap;">${THEME_ICONS.cross(16, 2.4)} RIFIUTA</button>
+                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'accepted')" class="btn btn-primary" style="font-weight: 700; width: 100%; padding: 0.75rem 0.35rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap;">${THEME_ICONS.check(16, 2.4)} ACCETTA</button>
                     </div>
                 </div>
             `;
@@ -30363,14 +30368,12 @@ ${renderBottomNavigation()}
                             `;
                         } else if (assembly.status === 'programmata') {
                             sentSectionHtml = `
-                                <div style="background: var(--surface-color-light); padding: 1rem; border-radius: 8px; margin-top: 0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:gap:0.5rem;">
+                                <div style="background: var(--surface-color-light); padding: 1.1rem 1rem; border-radius: 10px; margin-top: 0.75rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.75rem;">
                                     <div>
-                                        <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase;">La Tua Delega:</strong>
-                                        <div style="font-size: 0.9rem; color: var(--secondary-text); margin-top: 0.25rem;">Nessuna delega conferita per questa assemblea.</div>
+                                        <strong style="font-size: 0.85rem; color: var(--secondary-text); text-transform: uppercase; display: block; margin-bottom: 0.25rem;">La Tua Delega:</strong>
+                                        <div style="font-size: 0.92rem; color: var(--secondary-text); line-height: 1.4;">Nessuna delega conferita per questa assemblea.</div>
                                     </div>
-                                    <div>
-                                        <button onclick="openUserDelegateModal('${assemblyId}')" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.45rem 0.9rem;">${THEME_ICONS.handshake(15)} Invia Delega</button>
-                                    </div>
+                                    <button onclick="openUserDelegateModal('${assemblyId}')" class="btn btn-primary" style="font-size: 0.9rem; font-weight: 700; padding: 0.65rem 1.5rem; width: 100%; justify-content: center; border-radius: 8px;">Invia Delega</button>
                                 </div>
                             `;
                         }
@@ -30389,40 +30392,42 @@ ${renderBottomNavigation()}
                             let actionButtons = '';
 
                             if (pStatus === 'pending') {
-                                badge = `<span class="badge" style="background-color: var(--warning); color: black; display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.hourglass(13, 2.2)} In Attesa</span>`;
+                                badge = `<span class="badge" style="background-color: var(--warning); color: black; display:inline-flex; align-items:center; gap:0.3rem; font-weight: 700;">${THEME_ICONS.hourglass(13, 2.2)} In Attesa</span>`;
                                 actionButtons = `
-                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">${THEME_ICONS.check(14, 2.4)} Accetta</button>
-                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.75rem; padding: 0.35rem 0.7rem;">${THEME_ICONS.cross(14, 2.4)} Rifiuta</button>
-                                            `;
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%;">
+                                        <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.cross(14, 2.4)} Rifiuta</button>
+                                        <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta</button>
+                                    </div>
+                                `;
                             } else if (pStatus === 'accepted') {
-                                badge = `<span class="badge status-aperta">${THEME_ICONS.check(14, 2.4)} Accettata (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
+                                badge = `<span class="badge status-aperta" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.check(14, 2.4)} Accettata (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
                                 actionButtons = `
-                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.undo(13, 2)} Rimanda indietro</button>
-                                            `;
+                                    <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; border: none; font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; border-radius: 8px;">${THEME_ICONS.undo(13, 2)} Rimanda indietro</button>
+                                `;
                             } else if (pStatus === 'rejected') {
-                                badge = `<span class="badge status-chiusa">${THEME_ICONS.cross(14, 2.4)} Rifiutata / Rimandata</span>`;
+                                badge = `<span class="badge status-chiusa" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.cross(14, 2.4)} Rifiutata / Rimandata</span>`;
                                 actionButtons = `
-                                                <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">${THEME_ICONS.check(14, 2.4)} Accetta Ora</button>
-                                            `;
+                                    <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta Ora</button>
+                                `;
                             }
 
                             return `
-                                            <div style="background: var(--surface-color-light); padding: 0.75rem; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                                                <div>
-                                                    <strong>${escapeHtml(p.delegatorName)}</strong>
-                                                    <div style="font-size: 0.8rem; color: var(--secondary-text);">${(p.delegatorMillesimi || 0).toFixed(2)} ‰</div>
-                                                    ${delegatorUnitStr ? `
-                                                        <div style="font-size: 0.76rem; color: var(--secondary-text); font-weight: 600; margin-top: 0.1rem;">
-                                                            Unità: <strong style="color: var(--primary-text);">${escapeHtml(delegatorUnitStr)}</strong>
-                                                        </div>
-                                                    ` : ''}
-                                                </div>
-                                                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                                                    ${badge}
-                                                    ${actionButtons}
-                                                </div>
-                                            </div>
-                                        `;
+                                <div style="background: var(--surface-color-light); padding: 1.1rem 1rem; border-radius: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.65rem;">
+                                    <div>
+                                        <strong style="font-size: 1.05rem; color: var(--primary-text); display: block; line-height: 1.3; margin-bottom: 0.25rem;">${escapeHtml(p.delegatorName)}</strong>
+                                        <div style="font-size: 0.85rem; color: var(--secondary-text); font-weight: 600;">
+                                            <span style="color: var(--warning); font-weight: 700;">${(p.delegatorMillesimi || 0).toFixed(2)} ‰</span>
+                                            ${delegatorUnitStr ? ` • Unità: <strong style="color: var(--primary-text);">${escapeHtml(delegatorUnitStr)}</strong>` : ''}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; margin-top: 0.15rem;">
+                                        ${badge}
+                                        <div style="width: 100%; display: flex; justify-content: center;">
+                                            ${actionButtons}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
                         }).join('')}
                                 </div>
                             </div>
