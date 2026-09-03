@@ -18525,6 +18525,7 @@ ${renderBottomNavigation()}
             const nonVoters = data.nonVoters || [];
             const voteOpts = data.voteOptions || ["Favorevole", "Contrario", "Astenuto"];
             const formatLongName = (str) => escapeHtml(str || '').replace(/\s*\/\s*/g, ' / ');
+            const canAdminVotePoint = data.isAdmin && data.assemblyId && data.itemId && data.itemStatus === 'voting';
 
             const modalContent = `
                 <div style="display: flex; flex-direction: column; height: 100%;">
@@ -18543,6 +18544,11 @@ ${renderBottomNavigation()}
                             ${data.isGroupScope ? `
                                 <div class="badge nonvoters-modal-scope-badge">
                                     ${THEME_ICONS.layers(13)} Ambito: ${escapeHtml(data.itemGroup)}
+                                </div>
+                            ` : ''}
+                            ${data.itemStatus !== 'voting' ? `
+                                <div class="badge" style="background:rgba(245,158,11,0.15); color:#F59E0B; border:1px solid rgba(245,158,11,0.35); font-size:0.75rem; font-weight:700; padding:0.25rem 0.5rem; border-radius:5px; margin-top:0.15rem; display:inline-flex; align-items:center; gap:0.35rem;">
+                                    ${THEME_ICONS.lock(13)} Votazione non ancora aperta
                                 </div>
                             ` : ''}
                         </div>
@@ -18603,7 +18609,7 @@ ${renderBottomNavigation()}
                                                     ${methodBadge}
                                                     <strong style="font-size:0.84rem; font-weight:800; color:var(--warning); white-space:nowrap;">${nv.millesimi.toFixed(2)} ‰</strong>
                                                 </div>
-                                                ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                                ${canAdminVotePoint ? `
                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; border-radius:7px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Registra voto">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -18637,7 +18643,7 @@ ${renderBottomNavigation()}
                                                 <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                                     <!-- Riga 1: Nome su una riga -->
                                                     <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                        ${data.isAdmin ? (isFuori ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (isSelfVoted ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" class="nv-fs-member-${nv.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:#10B981; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`)) : ''}
+                                                        ${canAdminVotePoint ? (isFuori ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (isSelfVoted ? `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-fs-self-cb-${nv.uid}" class="nv-fs-member-${nv.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:#10B981; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`)) : ''}
                                                         <div style="font-size:0.92rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                             ${formatLongName(nv.cleanName || nv.name)}
                                                         </div>
@@ -18661,7 +18667,7 @@ ${renderBottomNavigation()}
                                                             </strong>
                                                             ${isSelfVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(nv.selfVote.choice)}</span>` : ''}
                                                         </div>
-                                                        ${data.isAdmin && data.assemblyId && data.itemId ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.74rem; font-weight:700; padding:0.25rem 0.5rem; border-radius:5px; border:1px solid rgba(255,255,255,0.1);">0.00 ‰</span>` : `
+                                                        ${canAdminVotePoint ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.74rem; font-weight:700; padding:0.25rem 0.5rem; border-radius:5px; border:1px solid rgba(255,255,255,0.1);">0.00 ‰</span>` : `
                                                             <div style="flex-shrink:0;">
                                                                 <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${isSelfVoted ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${isSelfVoted ? `Già votato (${escapeHtml(nv.selfVote.choice)}) - Clicca per modificare` : 'Registra voto personale'}">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -18681,7 +18687,7 @@ ${renderBottomNavigation()}
                                             `;
                     })()}
 
-                                        ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                        ${canAdminVotePoint ? `
                                             <!-- MASTER FLAG: QUOTA GRUPPO -->
                                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
                                                 <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; flex:1; min-width:0;">
@@ -18718,7 +18724,7 @@ ${renderBottomNavigation()}
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome Delegante su una riga intera -->
                                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                            ${data.isAdmin ? (hasVoted ? `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" class="nv-fs-member-${nv.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
+                                                            ${canAdminVotePoint ? (hasVoted ? `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-fs-proxy-cb-${pDelId}" class="nv-fs-member-${nv.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-fs', '${escapeJsAttr(nv.uid)}');" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
                                                             <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                                 <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${escapeHtml(p.name)}
                                                             </div>
@@ -18741,7 +18747,7 @@ ${renderBottomNavigation()}
                                                                 </strong>
                                                                 ${hasVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(p.vote.choice)}</span>` : ''}
                                                             </div>
-                                                            ${data.isAdmin && data.assemblyId && data.itemId ? `
+                                                            ${canAdminVotePoint ? `
                                                                 <div style="flex-shrink:0;">
                                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${hasVoted ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${hasVoted ? `Già votato (${escapeHtml(p.vote.choice)}) - Clicca per modificare` : 'Registra voto delega'}">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -18832,8 +18838,13 @@ ${renderBottomNavigation()}
                 const agenda = assembly.agenda || [];
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
+                const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
 
-                const currentVotes = agenda[targetIdx].votes || [];
+                const currentVotes = item.votes || [];
                 let updatedVotes = [];
                 let targetVoterName = '';
 
@@ -18967,6 +18978,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 const attendee = (assembly.attendees || []).find(a => a.uid === delegateUid || a.id === delegateUid);
@@ -19115,6 +19130,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 let updatedVotes = [];
@@ -19165,6 +19184,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 const attendee = (assembly.attendees || []).find(a => a.uid === delegateUid || a.id === delegateUid);
@@ -19309,8 +19332,10 @@ ${renderBottomNavigation()}
             const rawAttendees = data.attendees || [];
             const rawProxies = data.proxies || [];
 
+            const canAdminVotePoint = data.isAdmin && data.assemblyId && data.itemId && data.itemStatus === 'voting';
+
             const renderChoiceDropdown = (voterId, currentChoice, isGroup = false, delegateUid = null, prefix = 'fs') => {
-                if (!data.isAdmin || !data.assemblyId || !data.itemId) return '';
+                if (!canAdminVotePoint) return '';
                 if (isGroup) {
                     return `
                         <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:rgba(59, 130, 246, 0.15); border:1.5px solid rgba(59, 130, 246, 0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Modifica voto gruppo">
@@ -19421,7 +19446,7 @@ ${renderBottomNavigation()}
                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                         <!-- Riga 1: Nome su una riga intera -->
                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                            ${isSelfFuori ? `<input type="checkbox" id="fs-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="fs-self-cb-${a.uid}" class="fs-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('fs', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`}
+                                            ${canAdminVotePoint ? (isSelfFuori ? `<input type="checkbox" id="fs-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:17px; height:17px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="fs-self-cb-${a.uid}" class="fs-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('fs', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
                                             <div style="font-size:0.92rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                 ${formatLongName(cleanName)}
                                             </div>
@@ -19455,6 +19480,7 @@ ${renderBottomNavigation()}
                         })()}
 
                             <!-- 2. Master group row -->
+                            ${canAdminVotePoint ? `
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
                                 <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; flex:1; min-width:0;">
                                     <input type="checkbox" id="fs-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('fs', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:18px; height:18px; cursor:pointer; flex-shrink:0; margin:0;">
@@ -19464,6 +19490,7 @@ ${renderBottomNavigation()}
                                     ${renderChoiceDropdown(null, null, true, a.uid, 'fs')}
                                 </div>
                             </div>
+                            ` : ''}
 
                             <!-- 3. Singole deleghe votate (3 righe) -->
                             <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
@@ -19482,7 +19509,7 @@ ${renderBottomNavigation()}
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome Delegante su una riga intera -->
                                             <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                <input type="checkbox" id="fs-proxy-cb-${item.pDelId}" class="fs-member-${a.uid}" data-del-id="${escapeHtml(item.pDelId)}" data-proxy-id="${escapeHtml(item.proxy.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('fs', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">
+                                                ${canAdminVotePoint ? `<input type="checkbox" id="fs-proxy-cb-${item.pDelId}" class="fs-member-${a.uid}" data-del-id="${escapeHtml(item.pDelId)}" data-proxy-id="${escapeHtml(item.proxy.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('fs', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
                                                 <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                     <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
                                                 </div>
@@ -19594,6 +19621,11 @@ ${renderBottomNavigation()}
                             ${data.isGroupScope ? `
                                 <span class="badge" style="background: rgba(37, 99, 235, 0.15); color: var(--accent-color); font-weight: 700; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px;">
                                     ${THEME_ICONS.layers(12)} Ambito: ${escapeHtml(data.itemGroup)}
+                                </span>
+                            ` : ''}
+                            ${data.itemStatus !== 'voting' ? `
+                                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 800; font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                    ${THEME_ICONS.lock(12)} Votazione non ancora aperta
                                 </span>
                             ` : ''}
                         </div>
@@ -21068,12 +21100,16 @@ ${renderBottomNavigation()}
                             }
 
                             let btnManualVote = '';
-                            if (isOdgApproved && (itemStatus === 'voting' || itemStatus === 'pending')) {
-                                if (!prevItemClosed) {
-                                    btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
-                                } else {
-                                    btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">${THEME_ICONS.pen(14)} <span>Voto Manuale</span></button>`;
-                                }
+                            if (!isOdgApproved) {
+                                btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
+                            } else if (!prevItemClosed) {
+                                btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
+                            } else if (itemStatus === 'pending') {
+                                btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Avvia prima la votazione con 'Inizia Voto' per registrare i voti manuali">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
+                            } else if (itemStatus === 'voting') {
+                                btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">${THEME_ICONS.pen(14)} <span>Voto Manuale</span></button>`;
+                            } else {
+                                btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Votazione conclusa. Riapri la votazione per registrare o modificare voti">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
                             }
 
                             const secondaryBtnRight = btnManualVote || '';
@@ -21129,6 +21165,7 @@ ${renderBottomNavigation()}
                         window._currentVotersByPoint[idx] = {
                             assemblyId: assemblyId,
                             itemId: item.id,
+                            itemStatus: itemStatus,
                             title: item.title || '',
                             pointIndex: pointDisplayNum,
                             itemGroup: itemGroup || '',
@@ -21142,7 +21179,7 @@ ${renderBottomNavigation()}
 
                         if (votesList.length > 0) {
                             const renderInlineChoiceDropdown = (voterId, currentChoice, isGroup = false, delegateUid = null) => {
-                                if (!isAdmin || !assemblyId || !item.id) return '';
+                                if (!isAdmin || !assemblyId || !item.id || itemStatus !== 'voting') return '';
                                 if (isGroup) {
                                     return `
                                         <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:rgba(59, 130, 246, 0.15); border:1.5px solid rgba(59, 130, 246, 0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Modifica voto gruppo">
@@ -21249,7 +21286,7 @@ ${renderBottomNavigation()}
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome su una riga intera -->
                                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                            ${isSelfFuori ? `<input type="checkbox" id="inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#10B981; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="inline-${idx}-self-cb-${a.uid}" class="inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`}
+                                                            ${(isAdmin && itemStatus === 'voting') ? (isSelfFuori ? `<input type="checkbox" id="inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#10B981; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : `<input type="checkbox" id="inline-${idx}-self-cb-${a.uid}" class="inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
                                                             <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                                 ${formatLongName(cleanName)}
                                                             </div>
@@ -21282,6 +21319,7 @@ ${renderBottomNavigation()}
                                         })()}
 
                                             <!-- 2. Master group row -->
+                                            ${(isAdmin && itemStatus === 'voting') ? `
                                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
                                                 <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; margin:0; flex:1; min-width:0;">
                                                     <input type="checkbox" id="inline-${idx}-master-cb-${a.uid}" ${isMasterChecked ? 'checked' : ''} onchange="window.toggleDelegateGroupMembers('inline-${idx}', '${escapeJsAttr(a.uid)}', this.checked);" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0; margin:0;">
@@ -21291,6 +21329,7 @@ ${renderBottomNavigation()}
                                                     ${renderInlineChoiceDropdown(null, null, true, a.uid)}
                                                 </div>
                                             </div>
+                                            ` : ''}
 
                                             <!-- 3. Deleghe ricevute votate (3 righe) -->
                                             <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
@@ -21309,7 +21348,7 @@ ${renderBottomNavigation()}
                                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                             <!-- Riga 1: Nome Delegante su una riga intera -->
                                                             <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                                <input type="checkbox" id="inline-${idx}-proxy-cb-${item.pDelId}" class="inline-${idx}-member-${a.uid}" data-del-id="${escapeHtml(item.pDelId)}" data-proxy-id="${escapeHtml(item.proxy.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">
+                                                                ${(isAdmin && itemStatus === 'voting') ? `<input type="checkbox" id="inline-${idx}-proxy-cb-${item.pDelId}" class="inline-${idx}-member-${a.uid}" data-del-id="${escapeHtml(item.pDelId)}" data-proxy-id="${escapeHtml(item.proxy.id || '')}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#6B7280; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">` : ''}
                                                                 <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                                     <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
                                                                 </div>
@@ -21433,6 +21472,7 @@ ${renderBottomNavigation()}
                             pointIdx: idx,
                             assemblyId: assemblyId,
                             itemId: item.id,
+                            itemStatus: itemStatus,
                             isAdmin: isAdmin,
                             voteOptions: (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"],
                             itemGroup: itemGroup || '',
@@ -21491,6 +21531,7 @@ ${renderBottomNavigation()}
                             `;
                         } else {
                             const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+                            const canAdminVotePoint = isAdmin && itemStatus === 'voting';
                             const nonVotersItemsHtml = pointNonVoters.map(a => {
                                 const rawName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || 'Condòmino');
                                 const cleanName = (rawName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
@@ -21532,7 +21573,7 @@ ${renderBottomNavigation()}
                                                     ${methodBadge}
                                                     <strong style="color:var(--warning); font-size:0.84rem; font-weight:800; white-space:nowrap;">${milVal.toFixed(2)} ‰</strong>
                                                 </div>
-                                                ${isAdmin ? `
+                                                ${canAdminVotePoint ? `
                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; border-radius:7px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Registra voto">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -21564,7 +21605,7 @@ ${renderBottomNavigation()}
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome su una riga intera -->
                                             <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                ${isAdmin ? (isFuori ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (selfVote ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" class="nv-inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`)) : ''}
+                                                ${canAdminVotePoint ? (isFuori ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; flex-shrink:0; margin:0;" title="Nessun millesimo per questa scala">` : (selfVote ? `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-inline-${idx}-self-cb-${a.uid}" class="nv-inline-${idx}-member-${a.uid}" ${isSelfChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:#10B981; width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`)) : ''}
                                                 <div style="font-size:0.9rem; font-weight:700; color:${selfVote ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                     ${escapeHtml(cleanName)}
                                                 </div>
@@ -21589,7 +21630,7 @@ ${renderBottomNavigation()}
                                                     </strong>
                                                     ${selfVote ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(selfVote.choice)}</span>` : ''}
                                                 </div>
-                                                ${isAdmin ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : `
+                                                ${canAdminVotePoint ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : `
                                                     <div style="flex-shrink:0;">
                                                         <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${selfVote ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${selfVote ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="${selfVote ? `Già votato (${escapeHtml(selfVote.choice)}) - Clicca per modificare` : 'Registra voto personale'}">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -21604,7 +21645,7 @@ ${renderBottomNavigation()}
                                             </div>
                                         </div>
 
-                                        ${isAdmin ? `
+                                        ${canAdminVotePoint ? `
                                             <!-- Master group row -->
                                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; background:rgba(59, 130, 246, 0.08); border:1px solid rgba(59, 130, 246, 0.25); border-radius:8px; padding:0.35rem 0.25rem 0.35rem 0.55rem; width:100%; box-sizing:border-box;">
                                                 <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; font-size:0.86rem; font-weight:800; color:var(--accent-color); user-select:none; margin:0; flex:1; min-width:0;">
@@ -21644,7 +21685,7 @@ ${renderBottomNavigation()}
                                                     <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${pVote ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${pVote ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${pVote ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
                                                         <!-- Riga 1: Nome Delegante su una riga intera -->
                                                         <div style="display:flex; align-items:center; gap:0.45rem; width:100%;">
-                                                            ${isAdmin ? (pVote ? `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" class="nv-inline-${idx}-member-${a.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
+                                                            ${canAdminVotePoint ? (pVote ? `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" disabled style="accent-color:#6B7280; width:16px; height:16px; cursor:not-allowed; opacity:0.35; margin:0;" title="Già votato">` : `<input type="checkbox" id="nv-inline-${idx}-proxy-cb-${pDelId}" class="nv-inline-${idx}-member-${a.uid}" ${isProxyChecked ? 'checked' : ''} onchange="window.onDelegateGroupMemberChange('nv-inline-${idx}', '${escapeJsAttr(a.uid)}');" style="accent-color:var(--accent-color); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0;">`) : ''}
                                                             <div style="font-size:0.88rem; font-weight:700; color:${pVote ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; flex:1; min-width:0;">
                                                                 <span style="color:${pVote ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${escapeHtml(pDelName)}
                                                             </div>
@@ -21667,7 +21708,7 @@ ${renderBottomNavigation()}
                                                                 </strong>
                                                                 ${pVote ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(pVote.choice)}</span>` : ''}
                                                             </div>
-                                                            ${isAdmin ? `
+                                                            ${canAdminVotePoint ? `
                                                                 <div style="flex-shrink:0;">
                                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${pVote ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${pVote ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="${pVote ? `Già votato (${escapeHtml(pVote.choice)}) - Clicca per modificare` : 'Registra voto delega'}">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -24260,6 +24301,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 let updatedVotes = [];
@@ -24309,6 +24354,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 let allUsers = [];
@@ -24813,19 +24862,19 @@ ${renderBottomNavigation()}
                     scopeDesc = targetGroup || 'Condominio Parziale';
                 }
 
-                // Formalizza la chiusura del punto precedente per consentire il passaggio alla nuova delibera
+                // Formalizza la chiusura definitiva del punto originario per consentire il passaggio alla nuova delibera
                 const updatedCurrentItem = {
                     ...item,
-                    status: (item.status === 'voting' || hasPreviousVotes) ? 'closed' : item.status
+                    status: 'closed'
                 };
 
-                // Crea una nuova voce deliberativa successiva (Punto X bis, ter, quater...)
+                // Crea la nuova voce deliberativa successiva (Punto X bis, ter, quater...) e aprila direttamente alla votazione
                 const newDeliberationItem = {
                     id: 'scope_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                     title: window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title,
                     scope: scopeType,
                     targetGroup: targetGroup,
-                    status: 'pending',
+                    status: 'voting',
                     votes: [],
                     voteOptions: item.voteOptions && item.voteOptions.length > 0 ? [...item.voteOptions] : ["Favorevole", "Contrario", "Astenuto"],
                     isScopeModification: true,
@@ -24842,10 +24891,19 @@ ${renderBottomNavigation()}
                     ...agenda.slice(targetIdx + 1)
                 ];
 
+                // Chiudi l'espansione del punto precedente e apri la scheda della nuova delibera
+                if (window._openOdgPointCards) {
+                    window._openOdgPointCards.delete(item.id);
+                    window._openOdgPointCards.add(newDeliberationItem.id);
+                }
+
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
-                await logAssemblyEvent(assemblyId, 'MODIFICA_AMBITO', `Creata nuova delibera successiva con Modifica Ambito (${scopeDesc}) per "${item.title}".`);
+                await logAssemblyEvent(assemblyId, 'MODIFICA_AMBITO', `Punto precedente chiuso e avviata votazione per la nuova delibera con Modifica Ambito (${scopeDesc}) per "${item.title}".`);
                 hideModal();
-                await customAlert(`Nuova delibera con Modifica Ambito (${scopeDesc}) creata con successo!`);
+                await customAlert(`Nuova delibera con Modifica Ambito (${scopeDesc}) creata e aperta alla votazione con successo!`);
+                if (window.scrollToAndHighlightOdgPoint) {
+                    window.scrollToAndHighlightOdgPoint(newDeliberationItem.id);
+                }
             } catch (err) {
                 console.error("Errore salvataggio ambito:", err);
                 await customAlert("Errore durante il salvataggio dell'ambito: " + (err?.message || err));
@@ -28336,6 +28394,11 @@ ${renderBottomNavigation()}
                 const item = agenda[targetIdx];
                 if (!item) return;
 
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta. È prima necessario avviare la votazione con il pulsante 'Inizia Voto'.");
+                    return;
+                }
+
                 let allUsers = [];
                 try {
                     const uSnap = await getDocs(query(collection(db, "users")));
@@ -28945,6 +29008,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta. È prima necessario avviare la votazione con il pulsante 'Inizia Voto'.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 let updatedVotes = [];
@@ -28996,6 +29063,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta. È prima necessario avviare la votazione con il pulsante 'Inizia Voto'.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 const attendee = (assembly.attendees || []).find(a => a.uid === delegateUid || a.id === delegateUid);
@@ -29139,6 +29210,10 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+                if (item.status !== 'voting') {
+                    await customAlert("La votazione per questo punto non è ancora aperta. È prima necessario avviare la votazione con il pulsante 'Inizia Voto'.");
+                    return;
+                }
                 const existingVotes = item.votes || [];
 
                 const newVotes = [];
