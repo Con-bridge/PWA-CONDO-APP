@@ -17519,6 +17519,7 @@ ${renderBottomNavigation()}
                         updatedAttendees[existingIndex] = {
                             ...updatedAttendees[existingIndex],
                             status: 'presente',
+                            isDelegated: false,
                             nome: `${userFullName}${proxyNoticeText}`,
                             millesimi: totalMillesimiAccreditati,
                             heldProxiesCount: heldProxies.length,
@@ -20388,13 +20389,32 @@ ${renderBottomNavigation()}
                 }
 
                 const qrAccreditation = document.getElementById('room-qr-accreditation');
-                const isAttendee = activeAttendees.some(a => a.uid === currentUser.uid);
+                const myUid = currentUser?.uid || auth?.currentUser?.uid;
+
+                // Verifica robusta: accreditato in aula (UID, ID anagrafica o registeredUid)
+                const isAlreadyAccredited = (assembly.attendees || []).some(a =>
+                    ((a.uid && a.uid === myUid) || (a.id && a.id === myUid) || (a.registeredUid && a.registeredUid === myUid) || (a.qrUid && a.qrUid === myUid)) &&
+                    a.status !== 'uscito'
+                );
+                // Verifica se ha conferito delega accettata
+                const hasGivenProxy = (assembly.proxies || []).some(p =>
+                    (p.delegatorId === myUid || p.delegatorUid === myUid) &&
+                    p.status !== 'rejected'
+                );
+                const isAttendee = isAlreadyAccredited || activeAttendees.some(a => a.uid === myUid || a.id === myUid || a.registeredUid === myUid);
+                const isAccreditedOrRepresented = isAttendee || hasGivenProxy;
+
                 if (qrAccreditation) {
-                    if (!isAdmin && !isAttendee && !isClosedOrCancelled) {
+                    if (!isAdmin && !isAccreditedOrRepresented && !isClosedOrCancelled) {
                         qrAccreditation.classList.remove('hidden');
+                        qrAccreditation.style.display = 'block';
                         window.AssembleeModule.initQR(currentUser, "room-qrcode-container", "room-qr-timer");
                     } else {
                         qrAccreditation.classList.add('hidden');
+                        qrAccreditation.style.display = 'none';
+                        if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
+                            window.AssembleeModule.cleanup();
+                        }
                     }
                 }
 
