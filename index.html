@@ -17796,11 +17796,33 @@ ${renderBottomNavigation()}
 
         window.isScaleInTargetGroup = (propGroup, targetGroup) => {
             if (!targetGroup) return true;
-            if (targetGroup === 'Tutte le scale' || targetGroup === 'Intero Condominio' || targetGroup === 'Intero condominio' || targetGroup.trim().toLowerCase() === 'intero') return true;
+            const tgNorm = targetGroup.trim().toLowerCase();
+            if (tgNorm === 'tutte le scale' || tgNorm === 'tutte le scale/gruppi' || tgNorm === 'intero condominio' || tgNorm === 'intero') return true;
             if (!propGroup) return false;
             const pNorm = propGroup.trim().toLowerCase();
             const allowed = targetGroup.split(',').map(s => s.trim().toLowerCase());
             if (allowed.includes(pNorm)) return true;
+
+            // Se propGroup è Portineria o parti comuni:
+            // quando il targetGroup include tutte le scale o la totalità dei gruppi del condominio,
+            // la portineria (bene comune di pertinenza di tutte le unità) fa parte dell'ambito.
+            if (pNorm === 'portineria' || pNorm.includes('portineria') || pNorm.includes('parti comuni') || pNorm.includes('custode')) {
+                const scaleCount = allowed.filter(a => a.includes('bellini') || a.includes('mascagni') || a.includes('scala')).length;
+                if (scaleCount >= 4 || allowed.length >= 5) return true;
+                if (allowed.length >= 2 && typeof window !== 'undefined') {
+                    const tData = window._liveAssemblyStaticCache?.tableData || window._currentTableData;
+                    if (tData && tData.length > 0) {
+                        const allGroups = new Set();
+                        tData.forEach(r => {
+                            const g = (r['Raggruppamento'] || r['raggruppamento'] || r['Gruppo'] || r['gruppo'] || r['Scala'] || r['scala'] || '').toString().trim().toLowerCase();
+                            if (g && !g.includes('portineria') && !g.includes('parti comuni') && !g.includes('custode')) allGroups.add(g);
+                        });
+                        if (allGroups.size > 0 && Array.from(allGroups).every(g => allowed.some(a => a === g || a.includes(g) || g.includes(a)))) {
+                            return true;
+                        }
+                    }
+                }
+            }
 
             return allowed.some(a => {
                 const aClean = a.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
@@ -18407,6 +18429,26 @@ ${renderBottomNavigation()}
                 const shouldShowNoResults = (visibleCount === 0 && cards.length > 0 && q.length > 0);
                 noResultsEl.classList.toggle('hidden', !shouldShowNoResults);
                 noResultsEl.style.display = shouldShowNoResults ? 'block' : 'none';
+            }
+        };
+
+        window.toggleRoomAdminToolsCollapsible = () => {
+            const el = document.getElementById('room-admin-tools-collapsible');
+            const toggleIcon = document.getElementById('room-admin-tools-toggle-text');
+            if (!el) return;
+            const isHidden = el.classList.toggle('hidden');
+            if (toggleIcon) {
+                toggleIcon.textContent = isHidden ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';
+            }
+        };
+
+        window.toggleRoomQuorumCollapsible = () => {
+            const el = document.getElementById('room-quorum-collapsible');
+            const toggleIcon = document.getElementById('room-quorum-toggle-text');
+            if (!el) return;
+            const isHidden = el.classList.toggle('hidden');
+            if (toggleIcon) {
+                toggleIcon.textContent = isHidden ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';
             }
         };
 
@@ -19726,11 +19768,14 @@ ${renderBottomNavigation()}
         };
 
         const enterLiveRoom = (assemblyId) => {
+            window._currentLiveAssemblyId = null;
+            window._currentLiveAssemblyPhase = null;
             sessionStorage.setItem('activeLiveAssemblyId', assemblyId);
             navigateTo('assemblea_room');
         };
 
         let _lastLiveRenderQuorum = null;
+        let _lastLiveRenderOdg = null;
 
         const setupStanzaLiveHandlers = () => {
             const assemblyId = sessionStorage.getItem('activeLiveAssemblyId');
@@ -19749,6 +19794,9 @@ ${renderBottomNavigation()}
                 if (typeof _lastLiveRenderQuorum === 'function') {
                     _lastLiveRenderQuorum(staticData);
                 }
+                if (typeof _lastLiveRenderOdg === 'function') {
+                    _lastLiveRenderOdg(staticData);
+                }
             }).catch(err => {
                 console.error("Errore pre-fetch dati statici assemblea:", err);
             });
@@ -19763,6 +19811,24 @@ ${renderBottomNavigation()}
                 let allUsers = currentStaticData.allUsers || [];
                 let tableData = currentStaticData.tableData || [];
                 let partialCondosList = currentStaticData.partialCondosList || [];
+                let renderOdgPollList = null;
+
+                const getTableHeaders = (data) => {
+                    const headers = Object.keys((data && data[0]) || {});
+                    const findH = (keys) => {
+                        let found = headers.find(h => keys.some(k => (h || '').toString().trim().toLowerCase() === k.toLowerCase()));
+                        if (found) return found;
+                        found = headers.find(h => keys.some(k => (h || '').toString().trim().toLowerCase().includes(k.toLowerCase())));
+                        return found || null;
+                    };
+                    return {
+                        nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente']),
+                        millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']),
+                        groupHeader: findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']),
+                        unitaHeader: findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui'])
+                    };
+                };
+                let { nominativoHeader, millesimiHeader, groupHeader, unitaHeader } = getTableHeaders(tableData);
 
                 const headerSubtitleEl = document.getElementById('page-header-subtitle');
                 if (headerSubtitleEl) {
@@ -19869,7 +19935,15 @@ ${renderBottomNavigation()}
                         if (staticData.tableData) tableData = staticData.tableData;
                         if (staticData.allUsers) allUsers = staticData.allUsers;
                         if (staticData.partialCondosList) partialCondosList = staticData.partialCondosList;
+                        const hObj = getTableHeaders(tableData);
+                        nominativoHeader = hObj.nominativoHeader;
+                        millesimiHeader = hObj.millesimiHeader;
+                        groupHeader = hObj.groupHeader;
+                        unitaHeader = hObj.unitaHeader;
                     }
+
+                    totMillesimi = 0;
+                    activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
 
                     // Se 'Tutte le scale' è presente nei punti OdG, includi tutti i gruppi registrati
                     agendaList.forEach(item => {
@@ -19890,17 +19964,11 @@ ${renderBottomNavigation()}
                     }
 
                     // 1. Quorum Generale Edificio
-                    const headers = Object.keys(tableData[0] || {});
-                    const findH = (keys) => {
-                        let found = headers.find(h => keys.some(k => (h || '').toString().trim().toLowerCase() === k.toLowerCase()));
-                        if (found) return found;
-                        found = headers.find(h => keys.some(k => (h || '').toString().trim().toLowerCase().includes(k.toLowerCase())));
-                        return found || null;
-                    };
-                    const nominativoHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente']);
-                    const millesimiHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
-                    const groupHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
-                    const unitaHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
+                    const qHObj = getTableHeaders(tableData);
+                    nominativoHeader = qHObj.nominativoHeader;
+                    millesimiHeader = qHObj.millesimiHeader;
+                    groupHeader = qHObj.groupHeader;
+                    unitaHeader = qHObj.unitaHeader;
 
                     let totalBuildingUsers = 0;
                     let totalBuildingMillesimi = 0;
@@ -20018,7 +20086,10 @@ ${renderBottomNavigation()}
 
                                 activeAttendees.forEach(a => {
                                     const u = allUsers.find(usr => usr.id === a.uid);
-                                    const mil = window.getEffectiveUnitMillesimi(a, groupName, allUsers, tableData);
+                                    let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                                    const mil = (typeof window.getAttendeePersonalMillesimi === 'function')
+                                        ? window.getAttendeePersonalMillesimi(a, held, groupName, allUsers, true)
+                                        : window.getEffectiveUnitMillesimi(a, groupName, allUsers, tableData);
                                     if (mil > 0) {
                                         presentGroupHeadsSet.add(a.uid);
                                         presentGroupMil += mil;
@@ -20222,7 +20293,7 @@ ${renderBottomNavigation()}
                                     <div class="card" style="background: ${isQuorumReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.06)'}; border: 1.5px solid ${isQuorumReached ? '#10B981' : '#F59E0B'}; border-radius: 10px; padding: 0.95rem; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.4rem;">
                                             <div style="font-weight: 800; font-size: 0.95rem; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem;">
-                                                ${THEME_ICONS.building(15)} <span>Scala / Gruppo: <strong style="color: var(--accent-color); font-size: 1rem;">${escapeHtml(groupName)}</strong></span>
+                                                ${THEME_ICONS.building(16)} <strong style="color: var(--accent-color); font-size: 1rem; font-weight: 800;">${escapeHtml(groupName)}</strong>
                                             </div>
                                             <span class="badge" style="${statusBadgeStyle}">
                                                 ${isQuorumReached ? (THEME_ICONS.checkSuccess(14) + " Quorum Raggiunto (≥ 1/3)") : (THEME_ICONS.alertWarning(14) + " Sotto Quorum (Richiesto 1/3)")}
@@ -20358,6 +20429,51 @@ ${renderBottomNavigation()}
                 }
                 if (btnReorder) {
                     btnReorder.classList.toggle('hidden', !isAdmin || isClosedOrCancelled);
+                }
+
+                // Sincronizzazione contestuale automatica dello stato delle sezioni collassabili
+                let currentAssemblyPhase = 'iniziale';
+                if (isClosedOrCancelled) {
+                    currentAssemblyPhase = 'conclusa';
+                } else if (assembly.status === 'in_corso' || assembly.sessionStage === 'active') {
+                    currentAssemblyPhase = 'attiva';
+                } else {
+                    currentAssemblyPhase = 'iniziale';
+                }
+
+                if (window._currentLiveAssemblyId !== assemblyId || window._currentLiveAssemblyPhase !== currentAssemblyPhase) {
+                    window._currentLiveAssemblyId = assemblyId;
+                    window._currentLiveAssemblyPhase = currentAssemblyPhase;
+
+                    const setSectionState = (containerId, textId, expand) => {
+                        const el = document.getElementById(containerId);
+                        const toggleText = document.getElementById(textId);
+                        if (!el) return;
+                        el.classList.toggle('hidden', !expand);
+                        if (toggleText) {
+                            toggleText.textContent = expand ? 'Mostra/Nascondi ▲' : 'Mostra/Nascondi ▼';
+                        }
+                    };
+
+                    if (currentAssemblyPhase === 'iniziale') {
+                        setSectionState('room-admin-tools-collapsible', 'room-admin-tools-toggle-text', true);
+                        setSectionState('room-quorum-collapsible', 'room-quorum-toggle-text', false);
+                        setSectionState('room-attendees-collapsible', 'room-attendees-toggle-text', false);
+                        setSectionState('room-odg-collapsible', 'room-odg-toggle-text', false);
+                        setSectionState('room-event-log-collapsible', 'room-event-log-toggle-text', false);
+                    } else if (currentAssemblyPhase === 'attiva') {
+                        setSectionState('room-admin-tools-collapsible', 'room-admin-tools-toggle-text', false);
+                        setSectionState('room-quorum-collapsible', 'room-quorum-toggle-text', true);
+                        setSectionState('room-attendees-collapsible', 'room-attendees-toggle-text', false);
+                        setSectionState('room-odg-collapsible', 'room-odg-toggle-text', true);
+                        setSectionState('room-event-log-collapsible', 'room-event-log-toggle-text', false);
+                    } else if (currentAssemblyPhase === 'conclusa') {
+                        setSectionState('room-admin-tools-collapsible', 'room-admin-tools-toggle-text', false);
+                        setSectionState('room-quorum-collapsible', 'room-quorum-toggle-text', true);
+                        setSectionState('room-attendees-collapsible', 'room-attendees-toggle-text', false);
+                        setSectionState('room-odg-collapsible', 'room-odg-toggle-text', true);
+                        setSectionState('room-event-log-collapsible', 'room-event-log-toggle-text', false);
+                    }
                 }
 
                 const btnStart = document.getElementById('btn-room-start');
@@ -20866,8 +20982,22 @@ ${renderBottomNavigation()}
                 }
 
                 // RENDERING SONDAGGI-STYLE ODG LIST (#room-odg-poll-list) CON DETTAGLIO VOTANTI E DELEGHE
-                const odgPollContainer = document.getElementById('room-odg-poll-list');
-                if (odgPollContainer && assembly.agenda) {
+                renderOdgPollList = (staticData) => {
+                    if (staticData) {
+                        if (staticData.tableData) tableData = staticData.tableData;
+                        if (staticData.allUsers) allUsers = staticData.allUsers;
+                        if (staticData.partialCondosList) partialCondosList = staticData.partialCondosList;
+                        const hObj = getTableHeaders(tableData);
+                        nominativoHeader = hObj.nominativoHeader;
+                        millesimiHeader = hObj.millesimiHeader;
+                        groupHeader = hObj.groupHeader;
+                        unitaHeader = hObj.unitaHeader;
+                    }
+
+                    totMillesimi = 0;
+                    activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
+                    const odgPollContainer = document.getElementById('room-odg-poll-list');
+                    if (odgPollContainer && assembly.agenda) {
                     const isOdgApproved = assembly.odgApproval && assembly.odgApproval.status === 'approved';
                     const odgLockedBanner = (!isOdgApproved && !isClosedOrCancelled) ? `
                         <div style="padding:0.85rem 1rem; background:rgba(245, 158, 11, 0.08); border:1.5px solid #F59E0B; border-radius:10px; margin-bottom:1rem; text-align:left; font-size:0.85rem; display:flex; flex-direction:column; gap:0.6rem;">
@@ -20922,18 +21052,60 @@ ${renderBottomNavigation()}
                         if (isGroupScope) {
                             scopeBadge = `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; font-weight:800; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left; box-shadow:0 1px 3px rgba(0,0,0,0.15);">${THEME_ICONS.layers(14)} Condominio Parziale: ${escapeHtml(itemGroup)}</span>`;
 
+                            // Calcolo totali anagrafici del sottocondominio (denominatore)
+                            const subcondDistinct = new Set();
+                            let subcondTotalMil = 0;
+                            if (tableData && tableData.length > 0) {
+                                tableData.forEach(row => {
+                                    let rowGroup = groupHeader && row[groupHeader] ? row[groupHeader].toString().trim() : '';
+                                    if (!rowGroup && unitaHeader && row[unitaHeader]) {
+                                        const rowUnit = row[unitaHeader].toString().trim();
+                                        const matchedUser = allUsers.find(u => (u.proprieta || []).some(p => p.interno && p.interno.toString().trim() === rowUnit));
+                                        if (matchedUser) {
+                                            const p = (matchedUser.proprieta || []).find(pr => pr.interno && pr.interno.toString().trim() === rowUnit);
+                                            if (p?.gruppo) rowGroup = p.gruppo;
+                                        }
+                                    }
+                                    if (window.isScaleInTargetGroup(rowGroup, itemGroup)) {
+                                        const nom = nominativoHeader && row[nominativoHeader] ? row[nominativoHeader].toString().trim().toLowerCase() : '';
+                                        if (nom) subcondDistinct.add(nom);
+                                        const rawMil = millesimiHeader && row[millesimiHeader] ? row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
+                                        subcondTotalMil += (parseFloat(rawMil) || 0);
+                                    }
+                                });
+                            }
+                            if (subcondDistinct.size === 0 || subcondTotalMil <= 0) {
+                                subcondTotalMil = 0;
+                                subcondDistinct.clear();
+                                allUsers.forEach(u => {
+                                    const uMil = window.getEffectiveUnitMillesimi(u, itemGroup);
+                                    if (uMil > 0) {
+                                        subcondDistinct.add(u.id);
+                                        subcondTotalMil += uMil;
+                                    }
+                                });
+                            }
+                            const subcondTotalHeads = subcondDistinct.size > 0 ? subcondDistinct.size : 1;
+                            if (subcondTotalMil <= 0) subcondTotalMil = 1000.00;
+
                             // Calcolo aventi diritto presenti per questo gruppo/scala
                             const groupPresentHeadsSet = new Set();
                             activeAttendees.forEach(a => {
-                                const mil = window.getEffectiveUnitMillesimi(a, itemGroup, allUsers);
-                                if (mil > 0) {
+                                let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                                if (isGroupScope) {
+                                    held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
+                                }
+                                const selfM = (typeof window.getAttendeePersonalMillesimi === 'function')
+                                    ? window.getAttendeePersonalMillesimi(a, held, itemGroup, allUsers, isGroupScope)
+                                    : Math.max(0, (parseFloat(a.millesimi) || 0) - held.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0));
+                                if (selfM > 0) {
                                     groupPresentHeadsSet.add(a.uid);
-                                    groupMillesimiPresent += mil;
+                                    groupMillesimiPresent += selfM;
                                 }
                             });
 
                             activeProxies.forEach(p => {
-                                const proxyMil = window.getEffectiveProxyMillesimi(p, itemGroup, allUsers);
+                                const proxyMil = window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0);
                                 if (proxyMil > 0) {
                                     groupPresentHeadsSet.add(p.delegatorId || p.id);
                                     groupMillesimiPresent += proxyMil;
@@ -20943,29 +21115,32 @@ ${renderBottomNavigation()}
                             groupHeadsPresent = groupPresentHeadsSet.size;
                             baseMillesimi = groupMillesimiPresent > 0 ? groupMillesimiPresent : (totalVotesMil || 1000);
 
-                            const minRequiredHeads = Math.ceil(groupHeadsPresent / 2);
-                            const minRequiredMil = baseMillesimi / 3;
-
                             groupQuorumBoxHtml = `
                                 <div style="background: rgba(245, 158, 11, 0.06); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 0.65rem 0.75rem; margin-top: 0.5rem; margin-bottom: 0.65rem; text-align: left;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; flex-wrap: wrap; gap: 0.35rem;">
                                         <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); display: flex; align-items: center; gap: 0.35rem;">
-                                            ${THEME_ICONS.scale(16)} <strong>Quorum Deliberativo</strong>
+                                            ${THEME_ICONS.scale(16)} <strong>Quorum Costitutivo</strong>
                                         </span>
                                         <span class="badge" style="background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; font-weight: 800; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: 6px; max-width: 100%; white-space: normal; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.15);">
                                             ${THEME_ICONS.layers(14)} ${escapeHtml(itemGroup)}
                                         </span>
                                     </div>
-                                    <div class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.55rem 0.4rem; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; text-align: center; background: var(--surface-color); padding: 0.55rem 0.4rem; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
                                         <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
-                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Teste presenti</span>
-                                            <strong style="display: block; font-size: 0.95rem; color: var(--accent-color); font-weight: 800; margin: 0.1rem 0;">${groupHeadsPresent} Teste</strong>
-                                            <span style="font-size: 0.68rem; color: var(--secondary-text);">maggioranza min. ${minRequiredHeads}</span>
+                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Totale sottocond.</span>
+                                            <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 800; margin: 0.1rem 0;">${subcondTotalHeads} teste</strong>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
+                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Millesimi sottocond.</span>
+                                            <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 800; margin: 0.1rem 0;">${subcondTotalMil.toFixed(2)} ‰</strong>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
+                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Totale presenti</span>
+                                            <strong style="display: block; font-size: 0.95rem; color: var(--accent-color); font-weight: 800; margin: 0.1rem 0;">${groupHeadsPresent} teste</strong>
                                         </div>
                                         <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
                                             <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Millesimi presenti</span>
                                             <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 900; margin: 0.1rem 0;">${groupMillesimiPresent.toFixed(2)} ‰</strong>
-                                            <span style="font-size: 0.68rem; color: var(--secondary-text);">min. ${minRequiredMil.toFixed(2)} ‰ (1/3)</span>
                                         </div>
                                     </div>
                                 </div>
@@ -20988,7 +21163,6 @@ ${renderBottomNavigation()}
                                 <div style="margin-top: 0.4rem;">
                                     <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.15rem;">
                                         <span><strong>${escapeHtml(opt)}:</strong> ${mil.toFixed(2)} su ${baseMillesimi.toFixed(2)} ‰ (${teste} ${teste === 1 ? 'testa' : 'teste'})</span>
-                                        <span style="font-weight:700;">${percent}%</span>
                                     </div>
                                     <div style="width:100%; background:var(--surface-color-light); height:8px; border-radius:4px; overflow:hidden;">
                                         <div style="width:${Math.min(100, parseFloat(percent))}%; background:${color}; height:100%; transition:width 0.3s;"></div>
@@ -21022,7 +21196,9 @@ ${renderBottomNavigation()}
                             const requiredHeads = Math.ceil((isGroupScope ? groupHeadsPresent : totalPresences) / 2);
                             const quorumPassed = (favMil >= (requiredMil - 0.01)) && (favTeste >= requiredHeads || (totalVotesMil > 0 && favMil > (totalVotesMil / 2)));
 
-                            if (isFav && quorumPassed) {
+                            if (item.cancelledNoQuorum) {
+                                itemBadge = `<span class="badge" style="background-color: #7f8c8d; color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} ANNULLATO (senza quorum)</span>`;
+                            } else if (isFav && quorumPassed) {
                                 itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(14)} APPROVATO (${favMil.toFixed(2)} ‰) ${THEME_ICONS.circleGreen(11)}</span>`;
                             } else if (isFav && !quorumPassed) {
                                 itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} NON APPROVATO (Sotto Quorum) ${THEME_ICONS.circleRed(11)}</span>`;
@@ -21097,10 +21273,51 @@ ${renderBottomNavigation()}
                         const pointNonVoters = targetAttendees.filter(a => getAttendeePendingMilForPoint(a) > 0.0001);
                         const nonVotersMilSum = pointNonVoters.reduce((acc, a) => acc + getAttendeePendingMilForPoint(a), 0);
 
+                        let totalPendingVotesHeads = 0;
+                        pointNonVoters.forEach(a => {
+                            let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                            if (isGroupScope) {
+                                held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
+                            }
+                            const selfM = (typeof window.getAttendeePersonalMillesimi === 'function')
+                                ? window.getAttendeePersonalMillesimi(a, held, itemGroup, allUsers, isGroupScope)
+                                : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0));
+                            const hasSelfVoted = (selfM > 0 || !isGroupScope)
+                                ? votesList.some(v => (a.uid && (v.voterId === a.uid || v.userId === a.uid)) || (a.id && (v.voterId === a.id || v.userId === a.id)))
+                                : true;
+                            if (!hasSelfVoted && selfM > 0) totalPendingVotesHeads++;
+                            held.forEach(p => {
+                                const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                                const isProxyVoted = votesList.some(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                                if (!isProxyVoted) totalPendingVotesHeads++;
+                            });
+                        });
+
                         let adminActionHtml = '';
                         if (isAdmin && !isClosedOrCancelled) {
+                            // Calcolo modCount per distinguere punto originario (0), bis (1), tris (2+)
+                            let itemModCount = 0;
+                            if (item.isScopeModification) {
+                                const itemParentId = item.parentItemId || item.id;
+                                for (let mi = 0; mi <= idx; mi++) {
+                                    const mitm = assembly.agenda[mi];
+                                    if ((mitm.id === itemParentId || mitm.parentItemId === itemParentId || mitm.id === item.id) && mitm.isScopeModification) {
+                                        itemModCount++;
+                                    }
+                                }
+                            }
+                            const isBisPoint = item.isScopeModification && itemModCount === 1;
+                            const isTrisOrLater = item.isScopeModification && itemModCount >= 2;
+
                             let btnScope = '';
-                            if (!isOdgApproved || !prevItemClosed) {
+                            if (item.isScopeModification) {
+                                // Punto bis o successivo: pulsante "Annulla" per chiudere senza esito
+                                if (itemStatus === 'voting') {
+                                    btnScope = `<button onclick="window.cancelScopeVotingNoQuorum('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:rgba(239,68,68,0.15); color:var(--danger); border:1.5px solid var(--danger); font-size:0.75rem; font-weight:700; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Chiudi la votazione senza esito per mancanza del quorum costitutivo">${THEME_ICONS.crossDanger(14)} <span>Annulla</span></button>`;
+                                } else {
+                                    btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Annullamento disponibile solo durante la votazione attiva">${THEME_ICONS.lock(14)} <span>Annulla</span></button>`;
+                                }
+                            } else if (!isOdgApproved || !prevItemClosed) {
                                 btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="L'ambito potrà essere modificato solo quando il punto precedente sarà concluso dall'amministratore">${THEME_ICONS.lock(14)} <span>Ambito</span></button>`;
                             } else {
                                 btnScope = `<button onclick="openChangeScopeModal('${assemblyId}', '${item.id}')" class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cambia ambito di votazione">${THEME_ICONS.settings(14)} <span>Ambito</span></button>`;
@@ -21117,7 +21334,7 @@ ${renderBottomNavigation()}
                                 }
                             } else if (itemStatus === 'voting') {
                                 if (pointNonVoters.length > 0) {
-                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;" title="Ci sono ancora ${pointNonVoters.length} condòmini che non hanno votato">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione (${pointNonVoters.length} senza voto)</span></button>`;
+                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;" title="Ci sono ancora ${totalPendingVotesHeads} teste senza voto (${pointNonVoters.length} condòmini in aula)">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione (${totalPendingVotesHeads} senza voto)</span></button>`;
                                 } else {
                                     btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'closed')" class="btn" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background-color:var(--danger); color:white; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.stop(14, 2)} <span>Chiudi Votazione</span></button>`;
                                 }
@@ -21126,14 +21343,17 @@ ${renderBottomNavigation()}
                             }
 
                             let btnManualVote = '';
-                            if (!isOdgApproved) {
+                            if (isBisPoint) {
+                                // Punto bis: voto manuale sempre disabilitato
+                                btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale non è disponibile per questo punto. Utilizzare il punto successivo per modificare i voti">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
+                            } else if (!isOdgApproved) {
                                 btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
                             } else if (!prevItemClosed) {
                                 btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto manuale per questo punto potrà essere registrato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
                             } else if (itemStatus === 'pending') {
                                 btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Avvia prima la votazione con 'Inizia Voto' per registrare i voti manuali">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
                             } else if (itemStatus === 'voting') {
-                                btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inserisci voto manuale per condòmino privo di smartphone">${THEME_ICONS.pen(14)} <span>Voto Manuale</span></button>`;
+                                btnManualVote = `<button onclick="openAdminManualVoteModal('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#3498db; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${isTrisOrLater ? 'Modifica il voto di un condòmino presente' : 'Inserisci voto manuale per condòmino privo di smartphone'}">${THEME_ICONS.pen(14)} <span>Voto Manuale</span></button>`;
                             } else {
                                 btnManualVote = `<button type="button" disabled class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:#7f8c8d; color:white; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Votazione conclusa. Riapri la votazione per registrare o modificare voti">${THEME_ICONS.lock(14)} <span>Voto Manuale</span></button>`;
                             }
@@ -21711,7 +21931,7 @@ ${renderBottomNavigation()}
                                 <details style="margin-top: 0.75rem; font-size: 0.8rem;">
                                     <summary style="cursor: pointer; color: #F59E0B; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; width: 100%; box-sizing: border-box;">
                                         <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #F59E0B; font-weight: 700;">
-                                            ${THEME_ICONS.hourglass(14, 2)} <span>Senza voto (${pointNonVoters.length})</span>
+                                            ${THEME_ICONS.hourglass(14, 2)} <span>Senza voto (${totalPendingVotesHeads} teste)</span>
                                             <span style="font-size:0.75rem; color:var(--secondary-text); font-weight:600; margin-left:0.25rem;">• ${nonVotersMilSum.toFixed(2)} ‰</span>
                                         </span>
                                     </summary>
@@ -21723,7 +21943,7 @@ ${renderBottomNavigation()}
                         }
 
                         const exPointText = (item.originalIndex && item.originalIndex !== (idx + 1)) ? ` <span style="font-size:0.8rem; color:var(--warning); font-weight:700;">(ex punto ${item.originalIndex})</span>` : '';
-                        const scopeModBadge = item.isScopeModification ? ` <span class="badge" style="background:rgba(59,130,246,0.18); color:#3B82F6; border:1px solid rgba(59,130,246,0.35); font-size:0.75rem; font-weight:800; padding:0.18rem 0.5rem; border-radius:5px; margin-left:0.3rem;">${THEME_ICONS.layers(13)} Modifica Ambito</span>` : '';
+                        const scopeModBadge = item.isScopeModification ? `<div style="margin-top: 0.25rem;"><span class="badge" style="background:rgba(59,130,246,0.18); color:#3B82F6; border:1px solid rgba(59,130,246,0.35); font-size:0.72rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:5px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.layers(12)} Modifica Ambito</span></div>` : '';
 
                         const cardItemId = item.id || `item_${idx}`;
                         const isPointHighlighted = (window._currentlyHighlightedPointId === cardItemId);
@@ -21732,13 +21952,16 @@ ${renderBottomNavigation()}
                         const isPointOpen = window._openOdgPointCards.has(cardItemId);
 
                         return `
-                            <div id="odg-card-${escapeHtml(cardItemId)}" class="card odg-point-card${highlightClass}" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 0.85rem 1rem; margin-bottom: 0.65rem; ${item.isScopeModification ? 'border-left: 3.5px solid #3B82F6;' : ''}">
-                                <!-- RIGA UNICA VISIBILE DA CHIUSO: SOLO Titolo a sinistra e Mostra/Nascondi al posto del LIVE a destra -->
-                                <div style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;" onclick="window.toggleSingleOdgCard('${escapeJsAttr(cardItemId)}')">
-                                    <h4 style="font-size: 0.95rem; font-weight: 700; margin: 0; line-height: 1.3; flex: 1; min-width: 0; color: var(--primary-text); overflow: hidden; text-overflow: ellipsis;">
-                                        Punto ${pointDisplayNum}${exPointText}: ${escapeHtml(window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title)}${scopeModBadge}
-                                    </h4>
-                                    <span id="odg-toggle-text-${escapeHtml(cardItemId)}" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 600; white-space: nowrap; flex-shrink: 0;">
+                            <div id="odg-card-${escapeHtml(cardItemId)}" class="card odg-point-card${highlightClass}" style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 0.8rem 0.85rem; margin-bottom: 0.65rem; ${item.isScopeModification ? 'border-left: 3.5px solid #3B82F6;' : ''}">
+                                <!-- Intestazione Card OdG: Titolo a sinistra (senza badge a capo forzato), badge sotto se Modifica Ambito, Mostra/Nascondi a destra -->
+                                <div style="cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; width: 100%;" onclick="window.toggleSingleOdgCard('${escapeJsAttr(cardItemId)}')">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <h4 style="font-size: 0.92rem; font-weight: 700; margin: 0; line-height: 1.35; color: var(--primary-text); word-break: break-word;">
+                                            Punto&nbsp;${pointDisplayNum}${exPointText}: ${escapeHtml(window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title)}
+                                        </h4>
+                                        ${scopeModBadge}
+                                    </div>
+                                    <span id="odg-toggle-text-${escapeHtml(cardItemId)}" style="font-size: 0.72rem; color: var(--accent-color); font-weight: 600; white-space: nowrap; flex-shrink: 0; margin-top: 0.12rem;">
                                         ${isPointOpen ? 'Mostra/Nascondi ▲' : 'Mostra/Nascondi ▼'}
                                     </span>
                                 </div>
@@ -21789,11 +22012,18 @@ ${renderBottomNavigation()}
                         }
                     }
                 }
-            });
+            };
+
+            _lastLiveRenderOdg = renderOdgPollList;
+            renderOdgPollList();
+        });
 
             const btnConclude = document.getElementById('btn-room-conclude');
             if (btnConclude) {
-                btnConclude.onclick = concludeLiveRoom;
+                btnConclude.onclick = (e) => {
+                    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+                    concludeLiveRoom();
+                };
             }
         };
 
@@ -23348,8 +23578,6 @@ ${renderBottomNavigation()}
                 // Invalida cache anagrafica accreditamento su salvataggio delega
                 if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
-                hideModal();
-
                 // Overlay di feedback visivo #manual-attendance-feedback-popup
                 const fPopup = document.getElementById("manual-attendance-feedback-popup");
                 if (fPopup) {
@@ -23403,6 +23631,7 @@ ${renderBottomNavigation()}
                     : `Delega registrata con successo per il delegato ${delegateFullName} (${totalDelegateMillesimi.toFixed(2)} millesimi totali).\nRegistrata la presenza dei deleganti:\n${delegatorsData.map(d => `- ${(d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim()} (${(parseFloat(d.millesimiTotali) || 0).toFixed(2)} millesimi)`).join('\n')}`;
 
                 await customAlert(alertMessage);
+                await window.openManualProxyModal();
             } catch (error) {
                 console.error("Errore salvataggio delega cartacea:", error);
                 await customAlert("Errore durante la registrazione della delega: " + error.message);
@@ -25290,7 +25519,7 @@ ${renderBottomNavigation()}
                     const isChecked = item.targetGroup === 'Tutte le scale' || (item.targetGroup || '').split(', ').includes(g);
                     return `
                         <label class="card" style="cursor:pointer; display:flex; align-items:center; gap:0.6rem; font-size:0.85rem; padding:0.5rem 0.7rem; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important;">
-                            <input type="checkbox" name="modal-scale-checkbox" value="${escapeHtml(g)}" ${isChecked ? 'checked' : ''} class="modal-scale-item-cb" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0;">
+                            <input type="checkbox" name="modal-scale-checkbox" value="${escapeHtml(g)}" ${isChecked ? 'checked' : ''} onchange="updateAllScaleCheckboxState()" class="modal-scale-item-cb" style="accent-color:var(--accent-color); width:17px; height:17px; cursor:pointer; flex-shrink:0;">
                             <span style="font-weight:600; color:var(--text-color);">${escapeHtml(g)}</span>
                         </label>
                     `;
@@ -25405,6 +25634,14 @@ ${renderBottomNavigation()}
             cbs.forEach(cb => cb.checked = isChecked);
         };
 
+        window.updateAllScaleCheckboxState = () => {
+            const allCb = document.getElementById('modal-all-scales-cb');
+            if (!allCb) return;
+            const cbs = document.querySelectorAll('.modal-scale-item-cb');
+            const checkedCbs = document.querySelectorAll('.modal-scale-item-cb:checked');
+            allCb.checked = cbs.length > 0 && cbs.length === checkedCbs.length;
+        };
+
         window.saveScopeChange = async (e, assemblyId, itemId) => {
             e.preventDefault();
             const scopeType = document.querySelector('input[name="modal-scope-type"]:checked')?.value || 'intero';
@@ -25418,10 +25655,11 @@ ${renderBottomNavigation()}
                 }
             } else if (scopeType === 'scale') {
                 const isAll = document.getElementById('modal-all-scales-cb')?.checked;
+                const allScaleCbs = document.querySelectorAll('.modal-scale-item-cb');
                 const checkedScaleCbs = document.querySelectorAll('.modal-scale-item-cb:checked');
                 const selectedScales = Array.from(checkedScaleCbs).map(cb => cb.value);
 
-                if (isAll || selectedScales.length === 0) {
+                if (isAll || selectedScales.length === 0 || (allScaleCbs.length > 0 && checkedScaleCbs.length === allScaleCbs.length)) {
                     targetGroup = 'Tutte le scale';
                 } else {
                     targetGroup = selectedScales.join(', ');
@@ -25451,13 +25689,14 @@ ${renderBottomNavigation()}
                 };
 
                 // Crea la nuova voce deliberativa successiva (Punto X bis, ter, quater...) e aprila direttamente alla votazione
+                // Riuso dei voti: copia i voti dal punto precedente per consentire la modifica solo dove necessario
                 const newDeliberationItem = {
                     id: 'scope_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
                     title: window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title,
                     scope: scopeType,
                     targetGroup: targetGroup,
                     status: 'voting',
-                    votes: [],
+                    votes: JSON.parse(JSON.stringify(item.votes || [])),
                     voteOptions: item.voteOptions && item.voteOptions.length > 0 ? [...item.voteOptions] : ["Favorevole", "Contrario", "Astenuto"],
                     isScopeModification: true,
                     parentItemId: item.parentItemId || item.id,
@@ -25489,6 +25728,38 @@ ${renderBottomNavigation()}
             } catch (err) {
                 console.error("Errore salvataggio ambito:", err);
                 await customAlert("Errore durante il salvataggio dell'ambito: " + (err?.message || err));
+            }
+        };
+
+        // Funzione di annullamento votazione senza esito per punti derivati (bis/tris) in assenza di quorum costitutivo
+        window.cancelScopeVotingNoQuorum = async (assemblyId, itemId) => {
+            try {
+                const confirmed = await customConfirm('Sei sicuro di voler annullare questa votazione senza esito? Il punto verrà chiuso per mancanza del quorum costitutivo.');
+                if (!confirmed) return;
+
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx < 0) return;
+
+                const updatedAgenda = [...agenda];
+                updatedAgenda[targetIdx] = {
+                    ...updatedAgenda[targetIdx],
+                    status: 'closed',
+                    cancelledNoQuorum: true
+                };
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+
+                const pointNumStr = window.getPointDisplayNumber ? window.getPointDisplayNumber(updatedAgenda, targetIdx) : `${targetIdx + 1}`;
+                await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_QUORUM', `Punto ${pointNumStr} chiuso senza esito per mancanza del quorum costitutivo.`);
+                await customAlert(`Punto ${pointNumStr} annullato senza esito per mancanza del quorum costitutivo.`);
+            } catch (err) {
+                console.error("Errore annullamento votazione:", err);
+                await customAlert("Errore durante l'annullamento: " + (err?.message || err));
             }
         };
 
@@ -29815,7 +30086,7 @@ ${renderBottomNavigation()}
 
                     const multiScaleCheckboxesHtml = groupNames.map(g => `
                         <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-size:0.82rem;">
-                            <input type="checkbox" value="${escapeHtml(g)}" class="odg-scale-item-cb" style="accent-color:var(--accent-color); width:15px; height:15px;">
+                            <input type="checkbox" value="${escapeHtml(g)}" class="odg-scale-item-cb" onchange="const p=this.closest('.odg-scale-multi-wrapper'); if(p){const all=p.querySelector('.odg-all-scales-cb'); const cbs=p.querySelectorAll('.odg-scale-item-cb'); const chk=p.querySelectorAll('.odg-scale-item-cb:checked'); if(all) all.checked = (cbs.length > 0 && cbs.length === chk.length);}" style="accent-color:var(--accent-color); width:15px; height:15px;">
                             <span>${escapeHtml(g)}</span>
                         </label>
                     `).join('');
@@ -29973,10 +30244,11 @@ ${renderBottomNavigation()}
                         let targetGroup = null;
                         if (scopeVal === 'scale') {
                             const isAll = row.querySelector('.odg-all-scales-cb')?.checked;
+                            const allScaleCbs = row.querySelectorAll('.odg-scale-item-cb');
                             const checkedScaleCbs = row.querySelectorAll('.odg-scale-item-cb:checked');
                             const selectedScales = Array.from(checkedScaleCbs).map(cb => cb.value);
 
-                            if (isAll || (selectedScales.length === groupNames.length && groupNames.length > 0)) {
+                            if (isAll || (allScaleCbs.length > 0 && checkedScaleCbs.length === allScaleCbs.length) || (selectedScales.length === groupNames.length && groupNames.length > 0)) {
                                 targetGroup = 'Tutte le scale';
                             } else if (selectedScales.length > 0) {
                                 targetGroup = selectedScales.join(', ');
