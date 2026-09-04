@@ -10,12 +10,6 @@ window.AssembleeModule = {
                 </div>
                 <p>Pianifica Assemblea</p>
             </div>
-            <div onclick="startQuickAdminQRScanner()" class="dashboard-item">
-                <div class="dashboard-card" style="position: relative;">
-                    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
-                </div>
-                <p>Scansione presenze</p>
-            </div>
         ` : '';
 
         const admDeleteAllButton = userProfile?.tipoUtente === 'adm' ? `
@@ -27,7 +21,7 @@ window.AssembleeModule = {
             </div>
         ` : '';
 
-        // DELEGHE E TESSERA QR VISIBILI SOLO SE NON SI È AMMINISTRATORI
+        // DELEGHE VISIBILI SOLO SE NON SI È AMMINISTRATORI
         const delegheButton = isCondomino ? `
             <div onclick="navigateTo('assemblea_deleghe')" class="dashboard-item">
                 <div class="dashboard-card" style="position: relative;">
@@ -35,15 +29,6 @@ window.AssembleeModule = {
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 </div>
                 <p>Le Mie Deleghe</p>
-            </div>
-        ` : '';
-
-        const tesseraButton = isCondomino ? `
-            <div onclick="navigateTo('assemblea_tessera')" class="dashboard-item">
-                <div class="dashboard-card">
-                    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3,3H9V9H3V3M5,5V7H7V5H5M15,3H21V9H15V3M17,5V7H19V5H17M3,15H9V21H3V15M5,17V19H7V17H5M18,15H21V18H18V15M15,11H18V14H15V11M18,18H21V21H18V18M11,3H14V6H11V3M11,18H14V21H11V18M11,8H14V11H11V8M11,13H14V16H11V13M8,11H11V14H8V11Z"/></svg>
-                </div>
-                <p>La Mia Tessera (QR)</p>
             </div>
         ` : '';
 
@@ -61,7 +46,6 @@ window.AssembleeModule = {
                         <p>Tutte le Assemblee</p>
                     </div>
                     ${delegheButton}
-                    ${tesseraButton}
                     ${admDeleteAllButton}
                 </div>
             </main>
@@ -184,46 +168,59 @@ window.AssembleeModule = {
 
                     <!-- STRUMENTI ADMIN NELLA STANZA LIVE -->
                     <div id="room-admin-bar" class="card hidden" style="margin-bottom: 1rem; padding: 1rem;">
-                        <h4 style="font-size:0.85rem; color:var(--warning); text-transform:uppercase; font-weight:700; margin-bottom:0.75rem;">Strumenti Amministratore</h4>
-                        <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                            <button id="btn-toggle-room-scanner" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
-                            <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
+                        <!-- Intestazione cliccabile per Mostra/Nascondi -->
+                        <div style="cursor: pointer;" onclick="window.toggleRoomAdminToolsCollapsible ? window.toggleRoomAdminToolsCollapsible() : (function(){ const el = document.getElementById('room-admin-tools-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-admin-tools-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                                <h4 style="font-size: 0.85rem; color: var(--warning); text-transform: uppercase; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    <span>Strumenti Amm.</span>
+                                </h4>
+                                <span id="room-admin-tools-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▲</span>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                            <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
-                            <button id="btn-room-start" onclick="startLiveAssemblySession()" class="btn" style="background-color: #10B981; color: white; font-weight: 800; font-size:0.8rem; padding:0.6rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
+
+                        <!-- Contenitore collassabile strumenti amministratore -->
+                        <div id="room-admin-tools-collapsible" style="margin-top: 0.75rem;">
+                            <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
+                                <button id="btn-toggle-room-scanner" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">Scanner QR</button>
+                                <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
+                                <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
+                                <button id="btn-room-start" onclick="startLiveAssemblySession()" class="btn" style="background-color: #10B981; color: white; font-weight: 800; font-size:0.8rem; padding:0.6rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
+                                </button>
+                            </div>
+                            <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta esito per quorum costitutivo
                             </button>
-                        </div>
-                        <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta esito per quorum costitutivo
-                        </button>
 
-                        <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
-                        <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
-                            <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
-                                <!-- PULSANTE RAPIDO X NELL'ANGOLO IN ALTO A DESTRA -->
-                                <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </button>
+                            <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
+                            <div id="room-scanner-container" class="hidden" style="text-align:center; margin-top:1.25rem; padding-top:0.5rem;">
+                                <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--accent-color); background: #000; min-height: 250px;">
+                                    <!-- PULSANTE RAPIDO X NELL'ANGOLO IN ALTO A DESTRA -->
+                                    <button type="button" onclick="toggleRoomScanner()" title="Chiudi fotocamera scanner" style="position: absolute; top: 8px; right: 8px; z-index: 45; background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    </button>
 
-                                <div id="reader" style="width: 100%; min-height: 250px;"></div>
-                                <!-- FEEDBACK POPUP IN OVERLAY SOVRIMPRESSO AL QUADRANTE SCANNER -->
-                                <div id="scanner-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box;"></div>
+                                    <div id="reader" style="width: 100%; min-height: 250px;"></div>
+                                    <!-- FEEDBACK POPUP IN OVERLAY SOVRIMPRESSO AL QUADRANTE SCANNER -->
+                                    <div id="scanner-feedback-popup" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 0.85rem; box-sizing: border-box;"></div>
+                                </div>
+
+                                <!-- MICRO-COPY ED ISTRUZIONI ESPLICITE DI CHIUSURA SOTTO IL FRAME -->
+                                <div style="margin-top: 0.65rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
+                                    <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path></svg>
+                                        <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
+                                    </p>
+                                    <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
+                                        <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi Fotocamera</span>
+                                    </button>
+                                </div>
+
+                                <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
                             </div>
-
-                            <!-- MICRO-COPY ED ISTRUZIONI ESPLICITE DI CHIUSURA SOTTO IL FRAME -->
-                            <div style="margin-top: 0.65rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
-                                <p style="font-size: 0.8rem; color: var(--secondary-text); margin: 0; line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"></path></svg>
-                                    <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
-                                </p>
-                                <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
-                                    <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi Fotocamera</span>
-                                </button>
-                            </div>
-
-                            <div id="scanner-message" class="message-box" style="margin-top:0.75rem; display:none;"></div>
                         </div>
                     </div>
 
@@ -237,15 +234,23 @@ window.AssembleeModule = {
                     </div>
 
                     <!-- BANNER DI STATO LIVE -->
-                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--surface-color-light);">
-                            <div>
-                                <h3 id="room-assembly-title" class="card-title" style="margin:0; font-size: 1.1rem; font-weight: 800; color: var(--primary-text); display:flex; align-items:center; gap:0.4rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg> Quorum</h3>
+                    <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
+                        <!-- Intestazione cliccabile per Mostra/Nascondi -->
+                        <div style="cursor: pointer;" onclick="window.toggleRoomQuorumCollapsible ? window.toggleRoomQuorumCollapsible() : (function(){ const el = document.getElementById('room-quorum-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-quorum-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲'; })()">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                                <h3 id="room-assembly-title" class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="12" y1="3" x2="12" y2="21"></line><polyline points="5 6 12 3 19 6"></polyline><path d="M2 12l3-6 3 6a3 3 0 0 1-6 0z"></path><path d="M16 12l3-6 3 6a3 3 0 0 1-6 0z"></path></svg>
+                                    <span>Quorum</span>
+                                </h3>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                                    <span id="room-quorum-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; font-weight: 600;">Mostra/Nascondi ▼</span>
+                                </div>
                             </div>
-                            <span id="room-status-badge" class="badge" style="background-color: #1DB954; color: black; font-weight: 800; animation: pulse 1.5s infinite; flex-shrink:0; display:inline-flex; align-items:center; gap:0.35rem;">LIVE <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="12" cy="12" r="8"></circle></svg></span>
                         </div>
 
-                        <!-- BADGE PRESIDENTE ELETTO -->
+                        <!-- Contenitore collassabile quorum -->
+                        <div id="room-quorum-collapsible" class="hidden" style="margin-top: 0.75rem;">
+                            <!-- BADGE PRESIDENTE ELETTO -->
                         <div id="room-president-badge-container" class="hidden" style="margin-bottom: 1rem; padding: 0.9rem 1rem; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.35rem; width: 100%; box-sizing: border-box;">
                             <!-- 1. Stella centrata in alto -->
                             <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #2563EB; color: white; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); margin-bottom: 0.1rem;">
@@ -303,6 +308,7 @@ window.AssembleeModule = {
                                 </div>
                             </div>
                             <div id="room-partial-quorum-container" style="display: flex; flex-direction: column; gap: 0.85rem;"></div>
+                        </div>
                         </div>
                     </div>
 
@@ -385,13 +391,18 @@ window.AssembleeModule = {
                         </div>
                     </div>
 
-                    <!-- PULSANTE CONCLUDI ASSEMBLEA (POSIZIONATO IN FONDO ALLA SCHERMATA) -->
-                    <div id="room-admin-conclude-bottom" class="hidden card" style="padding: 1rem; text-align: center; background: rgba(239,68,68,0.08); border: 1px dashed var(--danger);">
-                        <p style="font-size: 0.85rem; color: var(--secondary-text); margin-bottom: 0.75rem;">Al termine di tutte le discussioni e votazioni, concludi ufficialmente l'assemblea.</p>
-                        <button id="btn-room-conclude" onclick="concludeLiveRoom()" class="btn" style="background-color: var(--danger); color: white; font-weight: 800; font-size:0.9rem; padding:0.75rem 1.5rem; width:100%; max-width:340px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
-                            Concludi Assemblea
-                        </button>
+                    <!-- PULSANTE CONCLUDI ASSEMBLEA (STILE CARD COME LE ALTRE, SENZA RIQUADRO ESPANDI) -->
+                    <div id="room-admin-conclude-bottom" class="hidden card" style="margin-bottom: 1rem; padding: 1rem; cursor: pointer; border: 1.5px solid rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.05); transition: all 0.2s ease;" onclick="concludeLiveRoom()" onmouseover="this.style.background='rgba(239, 68, 68, 0.12)'; this.style.borderColor='var(--danger, #EF4444)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'; this.style.borderColor='rgba(239, 68, 68, 0.35)';">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
+                            <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--danger, #EF4444); display: flex; align-items: center; gap: 0.45rem; flex: 1; min-width: 0;">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                <span>Status</span>
+                            </h3>
+                            <span id="btn-room-conclude" style="font-size: 0.75rem; color: var(--danger, #EF4444); white-space: nowrap; flex-shrink: 0; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                <span>Chiudi Assemblea</span>
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -588,15 +599,46 @@ window.AssembleeModule = {
 
     isScaleInTargetGroup: function (propGroup, targetGroup) {
         if (!targetGroup) return true;
-        if (targetGroup === 'Tutte le scale' || targetGroup === 'Intero Condominio' || targetGroup === 'Intero condominio') return true;
+        const tgNorm = targetGroup.trim().toLowerCase();
+        if (tgNorm === 'tutte le scale' || tgNorm === 'tutte le scale/gruppi' || tgNorm === 'intero condominio' || tgNorm === 'intero') return true;
         if (!propGroup) return false;
         const pNorm = propGroup.trim().toLowerCase();
         const allowed = targetGroup.split(',').map(s => s.trim().toLowerCase());
         if (allowed.includes(pNorm)) return true;
+
+        // Se propGroup è Portineria o parti comuni:
+        // quando il targetGroup include tutte le scale o la totalità dei gruppi del condominio,
+        // la portineria (bene comune di pertinenza di tutte le unità) fa parte dell'ambito.
+        if (pNorm === 'portineria' || pNorm.includes('portineria') || pNorm.includes('parti comuni') || pNorm.includes('custode')) {
+            const scaleCount = allowed.filter(a => a.includes('bellini') || a.includes('mascagni') || a.includes('scala')).length;
+            if (scaleCount >= 4 || allowed.length >= 5) return true;
+            if (allowed.length >= 2 && typeof window !== 'undefined') {
+                const tData = window._liveAssemblyStaticCache?.tableData || window._currentTableData;
+                if (tData && tData.length > 0) {
+                    const allGroups = new Set();
+                    tData.forEach(r => {
+                        const g = (r['Raggruppamento'] || r['raggruppamento'] || r['Gruppo'] || r['gruppo'] || r['Scala'] || r['scala'] || '').toString().trim().toLowerCase();
+                        if (g && !g.includes('portineria') && !g.includes('parti comuni') && !g.includes('custode')) allGroups.add(g);
+                    });
+                    if (allGroups.size > 0 && Array.from(allGroups).every(g => allowed.some(a => a === g || a.includes(g) || g.includes(a)))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         return allowed.some(a => {
             const aClean = a.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
             const pClean = pNorm.replace(/^(scala|gruppo|palazzina|fabbricato)\s+/i, '').trim();
             if (aClean === pClean) return true;
+
+            if (pNorm.includes(a) || a.includes(pNorm) || pClean.includes(aClean) || aClean.includes(pClean)) {
+                const aDigits = aClean.replace(/\D/g, '');
+                const pDigits = pClean.replace(/\D/g, '');
+                if (!aDigits || !pDigits || aDigits === pDigits) {
+                    return true;
+                }
+            }
 
             const aWords = aClean.split(/\s+/);
             const pWords = pClean.split(/\s+/);
@@ -604,12 +646,12 @@ window.AssembleeModule = {
             if (aWords.length >= 2) {
                 const aInitial = aWords[0][0];
                 const aNum = aWords.slice(1).join('');
-                if (`${aInitial}${aNum}` === pWords.join('')) return true;
+                if (`${aInitial}${aNum}` === pWords.join('') || `${aInitial}${aNum}` === pClean) return true;
             }
             if (pWords.length >= 2) {
                 const pInitial = pWords[0][0];
                 const pNum = pWords.slice(1).join('');
-                if (`${pInitial}${pNum}` === aWords.join('')) return true;
+                if (`${pInitial}${pNum}` === aWords.join('') || `${pInitial}${pNum}` === aClean) return true;
             }
             return false;
         });
