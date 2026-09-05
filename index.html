@@ -3030,6 +3030,10 @@
             window.isOdgApprovalModalOpen = false;
             window._openNonVotersModalIndex = null;
             window._openVotersModalIndex = null;
+            window._presidentSavedScrollTop = 0;
+            window._presidentSavedMainScrollTop = 0;
+            window._presidentSavedSearchQuery = '';
+            window._presidentSavedVotersScroll = {};
             if (typeof window.stopQuickQRScanner === 'function') {
                 try { window.stopQuickQRScanner(); } catch (e) { }
             }
@@ -20892,6 +20896,10 @@ ${renderBottomNavigation()}
                                     ? `<span class="badge" style="background:rgba(239,68,68,0.18); color:var(--danger, #EF4444); border:1px solid rgba(239,68,68,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleRed(12)} Uscito</span>`
                                     : `<span class="badge" style="background:rgba(29,185,84,0.18); color:#1DB954; border:1px solid rgba(29,185,84,0.3); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGreen(12)} Presente</span>`;
 
+                                const isAttCons = a.isConsigliere === true || (a.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere' || (window._cachedAllUsers || []).some(cu => (cu.id === a.uid || cu.uid === a.uid) && (cu.tipoUtente || cu.ruolo || cu.role || '').toString().toLowerCase().trim() === 'consigliere');
+                                const consigliereLiveBadge = isAttCons
+                                    ? `<span class="badge badge-consigliere" style="font-size:0.68rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.15rem 0.45rem; border-radius:5px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.user(12)} Consigliere</span>`
+                                    : '';
                                 const regTypeBadge = isManual
                                     ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10B981; font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">${THEME_ICONS.pen(13)} Manuale</span>`
                                     : `<span class="badge" style="background:rgba(243,156,18,0.12); color:var(--warning); font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">${THEME_ICONS.smartphone(13)} QR</span>`;
@@ -20939,6 +20947,7 @@ ${renderBottomNavigation()}
                                             <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
                                                 ${statusBadge}
                                                 ${regTypeBadge}
+                                                ${consigliereLiveBadge}
                                             </div>
                                             ${(toggleButtonHtml || cancelBtnHtml) ? `
                                                 <div style="display:flex; align-items:center; flex-shrink:0;">
@@ -20971,6 +20980,10 @@ ${renderBottomNavigation()}
                                     cancelBtnHtml = `<button type="button" onclick="event.stopPropagation(); cancelAttendeePresence('${assemblyId}', '${d.id}')" class="btn" style="background:rgba(239,68,68,0.15); color:var(--danger, #EF4444); border:1px solid var(--danger, #EF4444); font-size:0.75rem; padding:0.35rem 0.65rem; border-radius:6px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:0.3rem;" title="Annulla registrazione delega">${THEME_ICONS.trash(14)} Annulla Delega</button>`;
                                 }
 
+                                const isDelCons = d.isConsigliere === true || (d.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere' || (window._cachedAllUsers || []).some(cu => (cu.id === d.uid || cu.uid === d.uid || cu.id === d.id) && (cu.tipoUtente || cu.ruolo || cu.role || '').toString().toLowerCase().trim() === 'consigliere');
+                                const consigliereDelBadge = isDelCons
+                                    ? `<span class="badge badge-consigliere" style="font-size:0.68rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.15rem 0.45rem; border-radius:5px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.user(12)} Consigliere</span>`
+                                    : '';
                                 const modeBadge = d.isDigital
                                     ? `<span class="badge" style="background:rgba(59,130,246,0.12); color:#3B82F6; font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">${THEME_ICONS.smartphone(13)} App</span>`
                                     : `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10B981; font-size:0.68rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:5px; white-space:nowrap;">${THEME_ICONS.pen(13)} Cartacea</span>`;
@@ -21000,6 +21013,7 @@ ${renderBottomNavigation()}
                                             <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
                                                 ${statusBadge}
                                                 ${modeBadge}
+                                                ${consigliereDelBadge}
                                             </div>
                                             ${cancelBtnHtml ? `
                                                 <div style="display:flex; align-items:center; flex-shrink:0;">
@@ -21067,6 +21081,43 @@ ${renderBottomNavigation()}
                     }
                 }
 
+                window.checkIsOdgReordered = (targetAssembly) => {
+                    if (!targetAssembly) return false;
+                    const odgAppr = targetAssembly.odgApproval || {};
+
+                    // 1. Flag espliciti di variazione
+                    if (odgAppr.mode === 'variato' || odgAppr.mode === 'modificato' || odgAppr.mode === 'reordered') return true;
+                    if (odgAppr.isReordered === true || odgAppr.isModified === true) return true;
+                    if (targetAssembly.odgReordered === true || targetAssembly.isOdgModified === true) return true;
+                    if (odgAppr.status === 'rejected') return true;
+
+                    // 2. Controllo sequenza agenda rispetto all'ordine originario
+                    const agendaList = targetAssembly.agenda || [];
+                    if (Array.isArray(agendaList) && agendaList.length > 0) {
+                        for (let aIdx = 0; aIdx < agendaList.length; aIdx++) {
+                            const itm = agendaList[aIdx];
+                            if (!itm) continue;
+                            if (itm.originalIndex !== undefined && itm.originalIndex !== null) {
+                                const origNum = parseInt(itm.originalIndex, 10);
+                                if (!isNaN(origNum) && origNum !== (aIdx + 1)) {
+                                    return true;
+                                }
+                            }
+                            if (itm.id && typeof itm.id === 'string') {
+                                const m = itm.id.match(/^punto_(\d+)$/i);
+                                if (m) {
+                                    const origNum = parseInt(m[1], 10);
+                                    if (!isNaN(origNum) && origNum !== (aIdx + 1)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    return false;
+                };
+
                 // RENDERING SONDAGGI-STYLE ODG LIST (#room-odg-poll-list) CON DETTAGLIO VOTANTI E DELEGHE
                 renderOdgPollList = (staticData) => {
                     if (staticData) {
@@ -21117,20 +21168,17 @@ ${renderBottomNavigation()}
                         const isApproved = odgStatus === 'approved';
                         const isRejected = odgStatus === 'rejected';
                         const isVoting = odgStatus === 'voting';
+                        const isReordered = (typeof window.checkIsOdgReordered === 'function') ? window.checkIsOdgReordered(assembly) : false;
 
-                        let statusText = 'Invariato';
-                        let statusBg = 'rgba(16, 185, 129, 0.15)';
-                        let statusColor = '#10B981';
-                        let statusBorder = 'rgba(16, 185, 129, 0.35)';
-                        let statusIcon = THEME_ICONS.checkSuccess(13);
+                        let statusText = isReordered ? 'Variato' : 'Invariato';
+                        let statusBg = isReordered ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                        let statusColor = isReordered ? 'var(--accent-color, #2563EB)' : '#10B981';
+                        let statusBorder = isReordered ? 'rgba(37, 99, 235, 0.35)' : 'rgba(16, 185, 129, 0.35)';
+                        let statusIcon = isReordered
+                            ? (THEME_ICONS.shuffle ? THEME_ICONS.shuffle(13) : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>')
+                            : THEME_ICONS.checkSuccess(13);
 
-                        if (isRejected) {
-                            statusText = 'Modificato';
-                            statusBg = 'rgba(239, 68, 68, 0.15)';
-                            statusColor = 'var(--danger, #EF4444)';
-                            statusBorder = 'rgba(239, 68, 68, 0.35)';
-                            statusIcon = THEME_ICONS.shuffle ? THEME_ICONS.shuffle(12) : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>';
-                        } else if (isVoting) {
+                        if (isVoting) {
                             statusText = 'In votazione';
                             statusBg = 'rgba(245, 158, 11, 0.15)';
                             statusColor = 'var(--warning, #F59E0B)';
@@ -22242,9 +22290,15 @@ ${renderBottomNavigation()}
             // 1. Fetch registered users from Firestore
             const usersSnapshot = await getDocs(query(collection(db, "users")));
             const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            const registeredCondomini = registeredUsers.filter(u =>
-                ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)
-            );
+            const isUserConsigliere = (u) => {
+                if (!u) return false;
+                const r = (u.tipoUtente || u.ruolo || u.role || u.userType || '').toString().toLowerCase().trim();
+                return r === 'consigliere';
+            };
+            const registeredCondomini = registeredUsers.filter(u => {
+                const r = (u.tipoUtente || u.ruolo || u.role || u.userType || '').toString().toLowerCase().trim();
+                return ['condomino', 'consigliere'].includes(r) || isUserConsigliere(u) || (u.millesimiTotali && u.millesimiTotali > 0);
+            });
 
             // 2. Fetch imported general anagrafica (Supervisore > Importa dati millesimi)
             let importedRows = [];
@@ -22394,7 +22448,9 @@ ${renderBottomNavigation()}
                     existing.cognome = u.cognome || existing.cognome;
                     existing.email = u.email || existing.email || '';
                     existing.isRegistered = true;
-                    existing.tipoUtente = u.tipoUtente || 'condomino';
+                    const uIsConsigliere = isUserConsigliere(u) || existing.isConsigliere === true;
+                    existing.isConsigliere = uIsConsigliere;
+                    existing.tipoUtente = uIsConsigliere ? 'consigliere' : (u.tipoUtente || existing.tipoUtente || 'condomino');
                     if (u.millesimiTotali && u.millesimiTotali > 0) {
                         existing.millesimiTotali = u.millesimiTotali;
                     }
@@ -22412,6 +22468,7 @@ ${renderBottomNavigation()}
                         });
                     }
                 } else {
+                    const uIsConsigliere = isUserConsigliere(u);
                     registryMap.set(userNorm || u.id, {
                         id: u.id,
                         registeredUid: u.id,
@@ -22423,8 +22480,9 @@ ${renderBottomNavigation()}
                         proprieta: u.proprieta || [],
                         gruppo: (u.proprieta && u.proprieta[0]?.gruppo) ? u.proprieta[0].gruppo : '',
                         isRegistered: true,
+                        isConsigliere: uIsConsigliere,
                         email: u.email || '',
-                        tipoUtente: u.tipoUtente || 'condomino'
+                        tipoUtente: uIsConsigliere ? 'consigliere' : (u.tipoUtente || 'condomino')
                     });
                 }
             });
@@ -22491,16 +22549,25 @@ ${renderBottomNavigation()}
                     if (!matchingApp.gruppo && anag.gruppo) {
                         matchingApp.gruppo = anag.gruppo;
                     }
+                    if (anag.isConsigliere) {
+                        matchingApp.isConsigliere = true;
+                        matchingApp.tipoUtente = 'consigliere';
+                    }
                     return false; // Rimuove duplicato Anagrafica
                 }
                 return true;
             });
 
             const allEntries = [...appEntries, ...filteredAnagrafica];
-            const unifiedList = allEntries.map(d => ({
-                ...d,
-                unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
-            })).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
+            const unifiedList = allEntries.map(d => {
+                const isConsigliere = d.isConsigliere === true || (d.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere';
+                return {
+                    ...d,
+                    isConsigliere: isConsigliere,
+                    tipoUtente: isConsigliere ? 'consigliere' : (d.tipoUtente || 'condomino'),
+                    unitaStr: Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')
+                };
+            }).sort((a, b) => (a.nominativo || a.cognome || '').localeCompare(b.nominativo || b.cognome || ''));
 
             const result = {
                 allCondomini: unifiedList,
@@ -23091,7 +23158,20 @@ ${renderBottomNavigation()}
             }
         };
 
-        window.onProxyDelegatorsChanged = () => {
+        window.onProxyDelegatorsChanged = (changedCb) => {
+            if (changedCb && changedCb.checked) {
+                const searchDelegatorInput = document.getElementById('input-search-proxy-delegator');
+                if (searchDelegatorInput && searchDelegatorInput.value) {
+                    searchDelegatorInput.value = '';
+                    if (typeof window.filterProxyDelegatorsList === 'function') {
+                        window.filterProxyDelegatorsList('');
+                    }
+                    setTimeout(() => {
+                        try { searchDelegatorInput.focus(); } catch (e) { }
+                    }, 50);
+                }
+            }
+
             const checkedCbs = Array.from(document.querySelectorAll('.proxy-delegator-checkbox:checked'));
             const gotoStep2Btn = document.getElementById('btn-goto-step-2');
             const badgeStep1 = document.getElementById('selected-delegator-badge');
@@ -23107,12 +23187,15 @@ ${renderBottomNavigation()}
                         const mil = parseFloat(d.millesimiTotali) || 0;
                         const unit = d.unitaStr || (Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || ''));
                         totalMil += mil;
+                        const isCons = d.isConsigliere === true || (d.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere';
                         delegatorsList.push({
                             id: d.id || cb.value,
                             name: name,
                             mil: mil,
                             unit: unit,
-                            isRegistered: !!d.isRegistered
+                            isRegistered: !!d.isRegistered,
+                            isConsigliere: isCons,
+                            tipoUtente: isCons ? 'consigliere' : (d.tipoUtente || 'condomino')
                         });
                     } catch (e) { }
                 }
@@ -23142,6 +23225,7 @@ ${renderBottomNavigation()}
                                     ${d.isRegistered
                     ? `<span style="font-size:0.65rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.smartphone(13)} App</span>`
                     : `<span style="font-size:0.65rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.clipboard(13)} Anagrafica</span>`}
+                                    ${d.isConsigliere ? `<span style="font-size:0.65rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.08rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.user(11)} Consigliere</span>` : ''}
                                     ${d.unit ? `<span style="font-size:0.72rem; color:var(--secondary-text); line-height:1.2;">Unità: ${escapeHtml(d.unit)}</span>` : ''}
                                 </div>
                             </div>
@@ -23214,6 +23298,19 @@ ${renderBottomNavigation()}
         window.onProxyDelegatorSelected = window.onProxyDelegatorsChanged;
 
         window.onProxyDelegateSelected = (radioElem) => {
+            if (radioElem && radioElem.checked) {
+                const searchDelegateInput = document.getElementById('input-search-proxy-delegate');
+                if (searchDelegateInput && searchDelegateInput.value) {
+                    searchDelegateInput.value = '';
+                    if (typeof window.filterProxyDelegatesList === 'function') {
+                        window.filterProxyDelegatesList('');
+                    }
+                    setTimeout(() => {
+                        try { searchDelegateInput.focus(); } catch (e) { }
+                    }, 50);
+                }
+            }
+
             const submitBtn = document.getElementById('btn-submit-manual-proxy');
             if (submitBtn) {
                 submitBtn.disabled = false;
@@ -23282,23 +23379,47 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                // Delegates list: tutta l'anagrafica (App + Anagrafica) come per i deleganti
-                const allDelegates = [...allDelegators];
+                // Delegates list: tutta l'anagrafica condominiale (App + Anagrafica)
+                const allDelegates = [...allCondomini];
+
+                const checkIsUserConsigliere = (item) => {
+                    if (!item) return false;
+                    if (item.isConsigliere === true) return true;
+                    const r = (item.tipoUtente || item.ruolo || item.role || item.userType || '').toString().toLowerCase().trim();
+                    if (r === 'consigliere') return true;
+                    const matched = (registeredUsers || []).find(ru => ru.id === item.id || ru.id === item.registeredUid);
+                    if (matched) {
+                        const mr = (matched.tipoUtente || matched.ruolo || matched.role || matched.userType || '').toString().toLowerCase().trim();
+                        if (mr === 'consigliere') return true;
+                    }
+                    return false;
+                };
 
                 const delegatorCardsHtml = allDelegators.map((d) => {
                     const dDisplayName = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
+                    const isConsigliere = checkIsUserConsigliere(d);
+                    const dRole = isConsigliere ? 'consigliere' : (d.tipoUtente || 'condomino');
+                    d.isConsigliere = isConsigliere;
+                    d.tipoUtente = dRole;
+                    const consigliereBadge = isConsigliere
+                        ? `<span class="badge badge-consigliere" style="font-size:0.68rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.12rem 0.45rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.user(12)} Consigliere</span>`
+                        : '';
+                    const regBadge = d.isRegistered
+                        ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.smartphone(13)} App</span>`
+                        : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.clipboard(13)} Anagrafica</span>`;
+                    const searchText = ((dDisplayName || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + (d.unitaStr || '') + (isConsigliere ? ' consigliere' : '')).toLowerCase();
+
                     return `
-                    <label class="proxy-delegator-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:56px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box; transition: all 0.15s ease;" data-search-text="${escapeHtml(((dDisplayName || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + d.unitaStr).toLowerCase())}">
+                    <label class="proxy-delegator-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:56px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box; transition: all 0.15s ease;" data-search-text="${escapeHtml(searchText)}">
                         <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                            <input type="checkbox" name="proxy-delegator-checkbox" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" onchange="onProxyDelegatorsChanged()" class="proxy-delegator-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
+                            <input type="checkbox" name="proxy-delegator-checkbox" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" onchange="onProxyDelegatorsChanged(this)" class="proxy-delegator-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
                             <div style="flex:1; min-width:0; overflow:hidden;">
                                 <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     ${escapeHtml(dDisplayName)}
                                 </div>
-                                <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
-                                    ${d.isRegistered
-                            ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.smartphone(13)} App</span>`
-                            : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.clipboard(13)} Anagrafica</span>`}
+                                <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.15rem; flex-wrap:wrap;">
+                                    ${regBadge}
+                                    ${consigliereBadge}
                                 </div>
                                 ${d.unitaStr ? `
                                 <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
@@ -23315,18 +23436,29 @@ ${renderBottomNavigation()}
                 const delegateCardsHtml = allDelegates.map((u) => {
                     const uDisplayName = u.nominativo || `${u.cognome || ''} ${u.nome || ''}`.trim();
                     const uUnitaStr = u.unitaStr || (u.unitaImmobiliare ? (Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare.join(', ') : u.unitaImmobiliare) : (u.proprieta ? u.proprieta.map(p => p.interno).join(', ') : ''));
+                    const isConsigliere = checkIsUserConsigliere(u);
+                    const uRole = isConsigliere ? 'consigliere' : (u.tipoUtente || 'condomino');
+                    u.isConsigliere = isConsigliere;
+                    u.tipoUtente = uRole;
+                    const consigliereBadge = isConsigliere
+                        ? `<span class="badge badge-consigliere" style="font-size:0.68rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.12rem 0.45rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.user(12)} Consigliere</span>`
+                        : '';
+                    const regBadge = u.isRegistered
+                        ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.smartphone(13)} App</span>`
+                        : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.clipboard(13)} Anagrafica</span>`;
+                    const searchText = ((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + (uUnitaStr || '') + (isConsigliere ? ' consigliere' : '')).toLowerCase();
+
                     return `
-                        <label class="proxy-delegate-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:56px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box; transition: all 0.15s ease;" data-search-text="${escapeHtml(((uDisplayName || '') + ' ' + (u.cognome || '') + ' ' + (u.nome || '') + ' ' + (u.email || '') + ' ' + uUnitaStr).toLowerCase())}">
+                        <label class="proxy-delegate-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:56px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box; transition: all 0.15s ease;" data-search-text="${escapeHtml(searchText)}">
                             <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
                                 <input type="radio" name="proxy-delegate-radio" value="${u.id}" data-delegate-json="${escapeHtml(JSON.stringify(u))}" onchange="onProxyDelegateSelected(this)" class="proxy-delegate-radio form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
                                 <div style="flex:1; min-width:0; overflow:hidden;">
                                     <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                         ${escapeHtml(uDisplayName)}
                                     </div>
-                                    <div style="display:flex; align-items:center; margin-bottom:0.15rem;">
-                                        ${u.isRegistered
-                            ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.smartphone(13)} App</span>`
-                            : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.clipboard(13)} Anagrafica</span>`}
+                                    <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.15rem; flex-wrap:wrap;">
+                                        ${regBadge}
+                                        ${consigliereBadge}
                                     </div>
                                     ${uUnitaStr ? `
                                     <div style="font-size:0.73rem; color:var(--secondary-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2;">
@@ -23586,8 +23718,13 @@ ${renderBottomNavigation()}
                 }
 
                 // REGISTRAZIONE DELEGHE
+                const isDelegateConsigliere = delegateData.isConsigliere === true || (delegateData.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere';
+                const delegateRole = isDelegateConsigliere ? 'consigliere' : (delegateData.tipoUtente || 'condomino');
+
                 const newProxies = delegatorsData.map(d => {
                     const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
+                    const isDelegatorCons = d.isConsigliere === true || (d.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere';
+                    const delegatorRole = isDelegatorCons ? 'consigliere' : (d.tipoUtente || 'condomino');
                     return {
                         id: 'proxy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                         delegatorId: d.id,
@@ -23595,9 +23732,13 @@ ${renderBottomNavigation()}
                         delegatorMillesimi: parseFloat(d.millesimiTotali) || 0,
                         delegatorUnita: d.unitaStr || (Array.isArray(d.unitaImmobiliare) ? d.unitaImmobiliare.join(', ') : (d.unitaImmobiliare || '')),
                         delegatorGroup: d.gruppo || '',
+                        delegatorTipoUtente: delegatorRole,
+                        isDelegatorConsigliere: isDelegatorCons,
                         proprieta: d.proprieta || [],
                         delegateId: delegateId,
                         delegateName: delegateFullName,
+                        delegateTipoUtente: delegateRole,
+                        isDelegateConsigliere: isDelegateConsigliere,
                         isDigital: false,
                         status: 'accepted',
                         createdAt: new Date().toISOString()
@@ -23635,7 +23776,9 @@ ${renderBottomNavigation()}
                         status: 'presente',
                         nome: `${delegateFullName} (+${allHeldProxies.length} deleghe ricevute)`,
                         millesimi: totalDelegateMillesimi,
-                        heldProxiesCount: allHeldProxies.length
+                        heldProxiesCount: allHeldProxies.length,
+                        tipoUtente: delegateRole,
+                        isConsigliere: isDelegateConsigliere
                     };
                 } else {
                     // Delegato registrato con presenza manuale
@@ -23644,6 +23787,8 @@ ${renderBottomNavigation()}
                         nome: `${delegateFullName} (+${allHeldProxies.length} deleghe ricevute)`,
                         cognome: delegateData.cognome || '',
                         millesimi: totalDelegateMillesimi,
+                        tipoUtente: delegateRole,
+                        isConsigliere: isDelegateConsigliere,
                         proprieta: delegateData.proprieta || (delegateData.unitaImmobiliare ? (Array.isArray(delegateData.unitaImmobiliare) ? delegateData.unitaImmobiliare.map(u => ({ interno: u, millesimi: totalDelegateMillesimi, gruppo: delegateData.gruppo || '' })) : [{ interno: delegateData.unitaImmobiliare, millesimi: totalDelegateMillesimi, gruppo: delegateData.gruppo || '' }]) : []),
                         unitaImmobiliare: delegateData.unitaImmobiliare || [],
                         heldProxiesCount: allHeldProxies.length,
@@ -23668,12 +23813,16 @@ ${renderBottomNavigation()}
                         return false;
                     });
 
+                    const isDelegatorCons = d.isConsigliere === true || (d.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere';
+                    const delegatorRole = isDelegatorCons ? 'consigliere' : (d.tipoUtente || 'condomino');
                     const delegatorAttendeeData = {
                         uid: d.id,
                         nome: delegatorFullName,
                         cognome: d.cognome || '',
                         millesimi: 0, // i millesimi per il voto e quorum sono computati sul delegato
                         baseMillesimi: delegatorMil,
+                        tipoUtente: delegatorRole,
+                        isConsigliere: isDelegatorCons,
                         status: 'delegato',
                         isDelegated: true,
                         delegatedTo: delegateId,
@@ -26918,6 +27067,12 @@ ${renderBottomNavigation()}
         window.submitPresidentVoteForAttendee = async (assemblyId, attendeeUid, candidateName) => {
             try {
                 if (!candidateName) return;
+                const fList = document.getElementById('president-fullscreen-nonvoters-list');
+                if (fList && fList.scrollTop > 0) window._presidentSavedScrollTop = fList.scrollTop;
+                const mBody = document.getElementById('president-admin-scroll-body');
+                if (mBody && mBody.scrollTop > 0) window._presidentSavedMainScrollTop = mBody.scrollTop;
+                const sInput = document.getElementById('input-search-president-nonvoters');
+                if (sInput) window._presidentSavedSearchQuery = sInput.value;
                 candidateName = window.cleanCandidateName ? window.cleanCandidateName(candidateName) : (candidateName || '').trim();
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
@@ -26970,6 +27125,8 @@ ${renderBottomNavigation()}
         window.modifyPresidentVote = async (assemblyId, voterId, newChoice) => {
             try {
                 if (!newChoice) return;
+                const mBody = document.getElementById('president-admin-scroll-body');
+                if (mBody && mBody.scrollTop > 0) window._presidentSavedMainScrollTop = mBody.scrollTop;
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
                 if (!docSnap.exists()) return;
@@ -27098,6 +27255,20 @@ ${renderBottomNavigation()}
             window.isPresidentVotingModalOpen = true;
             window._expandedPresidentVoterCards = window._expandedPresidentVoterCards || new Set();
             window._lastPresidentVotingArgs = [assembly, assemblyId, activeAttendees, activeProxies];
+
+            // Salva lo scroll e la ricerca correnti prima di ri-renderizzare
+            const liveFullscreenList = document.getElementById('president-fullscreen-nonvoters-list');
+            if (liveFullscreenList && liveFullscreenList.scrollTop > 0) {
+                window._presidentSavedScrollTop = liveFullscreenList.scrollTop;
+            }
+            const liveMainBody = document.getElementById('president-admin-scroll-body');
+            if (liveMainBody && liveMainBody.scrollTop > 0) {
+                window._presidentSavedMainScrollTop = liveMainBody.scrollTop;
+            }
+            const liveSearchInput = document.getElementById('input-search-president-nonvoters');
+            if (liveSearchInput && liveSearchInput.value) {
+                window._presidentSavedSearchQuery = liveSearchInput.value;
+            }
 
             assembly = assembly || {};
             activeAttendees = Array.isArray(activeAttendees) ? activeAttendees : ((assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated));
@@ -27238,7 +27409,7 @@ ${renderBottomNavigation()}
                                     ${isExpanded ? 'Chiudi ▲' : 'Dettagli ▼'}
                                 </span>
                             </div>
-                            <div id="president-voters-${safeId}" style="display:${isExpanded ? 'flex' : 'none'}; flex-direction:column; gap:0.25rem; max-height:160px; overflow-y:auto; padding-right:0.1rem;">
+                            <div id="president-voters-${safeId}" onscroll="window._presidentSavedVotersScroll = window._presidentSavedVotersScroll || {}; window._presidentSavedVotersScroll['${safeId}'] = this.scrollTop;" style="display:${isExpanded ? 'flex' : 'none'}; flex-direction:column; gap:0.25rem; max-height:160px; overflow-y:auto; padding-right:0.1rem;">
                                 ${voterItems}
                             </div>
                         </div>
@@ -27370,7 +27541,7 @@ ${renderBottomNavigation()}
                                     ${isExpanded ? 'Chiudi ▲' : 'Dettagli ▼'}
                                 </span>
                             </div>
-                            <div id="president-voters-${safeId}" style="display:${isExpanded ? 'flex' : 'none'}; flex-direction:column; gap:0.25rem; max-height:160px; overflow-y:auto; padding-right:0.1rem;">
+                            <div id="president-voters-${safeId}" onscroll="window._presidentSavedVotersScroll = window._presidentSavedVotersScroll || {}; window._presidentSavedVotersScroll['${safeId}'] = this.scrollTop;" style="display:${isExpanded ? 'flex' : 'none'}; flex-direction:column; gap:0.25rem; max-height:160px; overflow-y:auto; padding-right:0.1rem;">
                                 ${voterItems}
                             </div>
                         </div>
@@ -27584,12 +27755,12 @@ ${renderBottomNavigation()}
                             <div style="position:absolute; left:0.65rem; top:50%; transform:translateY(-50%); color:var(--secondary-text); pointer-events:none; display:flex; align-items:center;">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </div>
-                            <input type="text" id="input-search-president-nonvoters" placeholder="Cerca tra i non votanti o deleghe..." oninput="window.filterPresidentNonVoters(this.value)" class="form-input" style="width:100%; box-sizing:border-box; padding:0.4rem 2rem 0.4rem 2.1rem; font-size:0.82rem; border-radius:7px;" autocomplete="off">
-                            <button type="button" id="btn-clear-search-president-nonvoters" onclick="document.getElementById('input-search-president-nonvoters').value = ''; window.filterPresidentNonVoters(''); this.style.display = 'none';" style="display:none; position:absolute; right:0.6rem; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--secondary-text); cursor:pointer; padding:0.2rem; font-size:0.9rem; line-height:1;" title="Cancella ricerca">✕</button>
+                            <input type="text" id="input-search-president-nonvoters" placeholder="Cerca tra i non votanti o deleghe..." value="${escapeHtml(window._presidentSavedSearchQuery || '')}" oninput="window._presidentSavedSearchQuery = this.value; window.filterPresidentNonVoters(this.value);" class="form-input" style="width:100%; box-sizing:border-box; padding:0.4rem 2rem 0.4rem 2.1rem; font-size:0.82rem; border-radius:7px;" autocomplete="off">
+                            <button type="button" id="btn-clear-search-president-nonvoters" onclick="document.getElementById('input-search-president-nonvoters').value = ''; window._presidentSavedSearchQuery = ''; window.filterPresidentNonVoters(''); this.style.display = 'none';" style="display:${window._presidentSavedSearchQuery ? 'block' : 'none'}; position:absolute; right:0.6rem; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--secondary-text); cursor:pointer; padding:0.2rem; font-size:0.9rem; line-height:1;" title="Cancella ricerca">✕</button>
                         </div>
 
                         <!-- LISTA DETTAGLIATA SCROLLABILE A TUTTO SCHERMO -->
-                        <div id="president-fullscreen-nonvoters-list" style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem; -webkit-overflow-scrolling:touch;">
+                        <div id="president-fullscreen-nonvoters-list" onscroll="window._presidentSavedScrollTop = this.scrollTop;" style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.35rem; -webkit-overflow-scrolling:touch;">
                             ${fullscreenPendingRows}
                         </div>
                         <p id="president-nonvoters-no-results" class="hidden" style="color:var(--secondary-text); font-size:0.85rem; text-align:center; padding:1.2rem 0; margin:0;">Nessun condòmino non votante trovato con i criteri di ricerca.</p>
@@ -27646,7 +27817,7 @@ ${renderBottomNavigation()}
                 modalContent = `
                     <div style="position: relative; text-align: left; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden; gap: 0.35rem;">
                         <!-- SEZIONE SCROLLABILE CENTRALE -->
-                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
+                        <div id="president-admin-scroll-body" onscroll="window._presidentSavedMainScrollTop = this.scrollTop;" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
                             <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                                 ${tallyCardsHtml}
                                 ${contrarioCardHtml}
@@ -27665,6 +27836,46 @@ ${renderBottomNavigation()}
             }
 
             showModal(currentModalTitle, modalContent, true);
+
+            // RIPRISTINO AUTOMATICO DELLA POSIZIONE DI SCORRIMENTO E DELLA RICERCA ("VIDEATA SENZA VOTO")
+            const restorePresidentScrollAndState = () => {
+                if (window._presidentFullscreenView === 'pending') {
+                    const listEl = document.getElementById('president-fullscreen-nonvoters-list');
+                    if (listEl && typeof window._presidentSavedScrollTop === 'number' && window._presidentSavedScrollTop > 0) {
+                        listEl.scrollTop = window._presidentSavedScrollTop;
+                    }
+                    if (window._presidentSavedSearchQuery) {
+                        const searchInput = document.getElementById('input-search-president-nonvoters');
+                        if (searchInput) {
+                            searchInput.value = window._presidentSavedSearchQuery;
+                            const clearBtn = document.getElementById('btn-clear-search-president-nonvoters');
+                            if (clearBtn) clearBtn.style.display = 'block';
+                            if (typeof window.filterPresidentNonVoters === 'function') {
+                                window.filterPresidentNonVoters(window._presidentSavedSearchQuery);
+                            }
+                        }
+                    }
+                } else {
+                    const bodyEl = document.getElementById('president-admin-scroll-body');
+                    if (bodyEl && typeof window._presidentSavedMainScrollTop === 'number' && window._presidentSavedMainScrollTop > 0) {
+                        bodyEl.scrollTop = window._presidentSavedMainScrollTop;
+                    }
+                }
+
+                if (window._presidentSavedVotersScroll) {
+                    Object.keys(window._presidentSavedVotersScroll).forEach(safeId => {
+                        const vList = document.getElementById(`president-voters-${safeId}`);
+                        if (vList && window._presidentSavedVotersScroll[safeId] > 0) {
+                            vList.scrollTop = window._presidentSavedVotersScroll[safeId];
+                        }
+                    });
+                }
+            };
+
+            restorePresidentScrollAndState();
+            requestAnimationFrame(restorePresidentScrollAndState);
+            setTimeout(restorePresidentScrollAndState, 25);
+            setTimeout(restorePresidentScrollAndState, 80);
         };
 
         window.closePresidentVotingAndElect = async (assemblyId) => {
@@ -28169,7 +28380,10 @@ ${renderBottomNavigation()}
             const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected');
             const allUsers = window._cachedAllUsers || [];
 
-            const isDirectInvariato = (odgApproval.mode === 'invariato' || odgApproval.status === 'approved') && votes.length === 0;
+            const isReordered = (typeof window.checkIsOdgReordered === 'function') ? window.checkIsOdgReordered(assembly) : false;
+            const isVoting = odgApproval.status === 'voting';
+            const isDirectInvariato = !isReordered && (odgApproval.mode === 'invariato' || odgApproval.status === 'approved') && votes.length === 0;
+            const isDirectVariato = isReordered && votes.length === 0;
 
             let dateStr = '';
             const compTs = odgApproval.completedAt || odgApproval.startedAt;
@@ -28178,11 +28392,15 @@ ${renderBottomNavigation()}
                 dateStr = d.toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' alle ' + d.toLocaleTimeString("it-IT", { hour: '2-digit', minute: '2-digit' });
             }
 
-            const isRejected = odgApproval.status === 'rejected';
-            const isVoting = odgApproval.status === 'voting';
-            let statusTitle = isRejected ? 'Ordine dei Punti Modificato' : (isVoting ? 'Votazione Ordinamento in Corso' : 'Ordine dei Punti Confermato Invariato');
-            let statusBadgeColor = isRejected ? 'var(--danger, #EF4444)' : (isVoting ? 'var(--warning, #F59E0B)' : '#10B981');
-            let statusBadgeBg = isRejected ? 'rgba(239, 68, 68, 0.15)' : (isVoting ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)');
+            let statusTitle = isVoting
+                ? 'Votazione Ordinamento in Corso'
+                : (isReordered ? 'Ordine dei Punti Variato' : 'Ordine dei Punti Confermato Invariato');
+            let statusBadgeColor = isVoting
+                ? 'var(--warning, #F59E0B)'
+                : (isReordered ? 'var(--accent-color, #2563EB)' : '#10B981');
+            let statusBadgeBg = isVoting
+                ? 'rgba(245, 158, 11, 0.15)'
+                : (isReordered ? 'rgba(37, 99, 235, 0.15)' : 'rgba(16, 185, 129, 0.15)');
 
             const heroCardHtml = `
                 <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(16, 185, 129, 0.12)); border: 1.5px solid rgba(37, 99, 235, 0.35); border-radius: 14px; padding: 1.15rem 1rem; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; margin-bottom: 0.1rem; width: 100% !important; box-sizing: border-box !important;">
@@ -28198,7 +28416,7 @@ ${renderBottomNavigation()}
                 </div>
             `;
 
-            if (isDirectInvariato && votes.length === 0) {
+            if ((isDirectInvariato || isDirectVariato) && votes.length === 0) {
                 const pointsListHtml = agenda.map((item, idx) => `
                     <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; text-align:left; border-left:3px solid var(--accent-color);">
                         <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
@@ -28215,10 +28433,10 @@ ${renderBottomNavigation()}
                                     ${THEME_ICONS.clipboard(20)}
                                 </div>
                                 <strong style="font-size: 0.95rem; color: var(--primary-text); display: block; margin-bottom: 0.25rem; text-align: center !important; width: 100% !important;">
-                                    Ordine Confermato all'Avvio
+                                    ${isReordered ? 'Ordine dei Punti Variato' : 'Ordine Confermato all\'Avvio'}
                                 </strong>
                                 <p style="color: var(--secondary-text); margin: 0; font-size: 0.82rem; line-height: 1.35; text-align: center !important; width: 100% !important; max-width: 320px; margin-left: auto; margin-right: auto;">
-                                    Sequenza dei punti confermata invariata all'avvio della seduta dall'amministratore.
+                                    ${isReordered ? 'Sequenza dei punti variata dall\'amministratore a seguito della revisione dell\'ordine del giorno.' : 'Sequenza dei punti confermata invariata all\'avvio della seduta dall\'amministratore.'}
                                 </p>
                             </div>
                             <div style="margin-top: 0.25rem;">
@@ -29093,11 +29311,31 @@ ${renderBottomNavigation()}
                 );
             };
 
+            const checkAttendeeConsigliere = (userObj) => {
+                if (!userObj) return false;
+                if (userObj.isConsigliere === true) return true;
+                const r = (userObj.tipoUtente || userObj.ruolo || userObj.role || userObj.userType || '').toString().toLowerCase().trim();
+                if (r === 'consigliere') return true;
+                const uid = userObj.uid || userObj.id || userObj.registeredUid;
+                if (uid && Array.isArray(window._cachedAllUsers)) {
+                    const cached = window._cachedAllUsers.find(cu => cu.id === uid || cu.uid === uid);
+                    if (cached && (cached.tipoUtente || cached.ruolo || cached.role || '').toString().toLowerCase().trim() === 'consigliere') {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             const formatVoterCardNameAndProxies = (attendee) => {
                 const rawDisplayName = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(attendee) : ((attendee.cognome ? attendee.cognome + ' ' : '') + (attendee.nome || ''));
                 const cleanName = (rawDisplayName || '').replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '').trim();
+                const isAttendeeConsigliere = checkAttendeeConsigliere(attendee);
+                const consigliereBadgeHtml = isAttendeeConsigliere
+                    ? `<span class="badge badge-consigliere" style="font-size:0.65rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.1rem 0.35rem; border-radius:4px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.user(11)} Consigliere</span>`
+                    : '';
 
                 const held = getAttendeeHeldProxies(attendee);
+                let anyProxyConsigliere = false;
                 let proxySubLineHtml = '';
                 if (held.length > 0) {
                     let proxiesTotalMil = 0;
@@ -29120,11 +29358,14 @@ ${renderBottomNavigation()}
                                     const pMil = (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0).toFixed(2);
                                     const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, window._cachedAllUsers || []) : (p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
                                     const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                    const isProxyCons = p.isDelegatorConsigliere === true || (p.delegatorTipoUtente || '').toString().toLowerCase().trim() === 'consigliere' || (p.delegatorProfile && (p.delegatorProfile.tipoUtente || '').toString().toLowerCase().trim() === 'consigliere') || (window._cachedAllUsers || []).some(cu => (cu.id === p.delegatorId || cu.uid === p.delegatorId) && (cu.tipoUtente || cu.ruolo || cu.role || '').toString().toLowerCase().trim() === 'consigliere');
+                                    if (isProxyCons) anyProxyConsigliere = true;
                                     return `
                                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; ${pIdx > 0 ? 'border-top:1px solid rgba(255,255,255,0.06); padding-top:0.25rem;' : ''}">
                                             <div style="min-width:0; flex:1;">
-                                                <div style="color:var(--primary-text); font-size:0.74rem; font-weight:700; line-height:1.2;">
-                                                    • ${escapeHtml(pName)}
+                                                <div style="color:var(--primary-text); font-size:0.74rem; font-weight:700; line-height:1.2; display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                                    <span>• ${escapeHtml(pName)}</span>
+                                                    ${isProxyCons ? `<span class="badge badge-consigliere" style="font-size:0.62rem; color:#2563EB; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.28); padding:0.08rem 0.3rem; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.user(10)} Consigliere</span>` : ''}
                                                 </div>
                                                 ${cleanPUnit ? `
                                                     <div style="color:var(--secondary-text); font-size:0.69rem; font-weight:600; margin-left:0.65rem; margin-top:0.1rem;">
@@ -29156,7 +29397,7 @@ ${renderBottomNavigation()}
                         </div>
                     `;
                 }
-                return { cleanName, proxySubLineHtml, held };
+                return { cleanName, proxySubLineHtml, held, isAttendeeConsigliere, anyProxyConsigliere, consigliereBadgeHtml };
             };
 
             const pendingManual = pendingList.filter(a => isManualAttendee(a));
@@ -29175,10 +29416,10 @@ ${renderBottomNavigation()}
                 let manualSectionHtml = '';
                 if (pendingManual.length > 0) {
                     const manualItems = pendingManual.map(a => {
-                        const { cleanName, proxySubLineHtml, held } = formatVoterCardNameAndProxies(a);
+                        const { cleanName, proxySubLineHtml, held, isAttendeeConsigliere, anyProxyConsigliere, consigliereBadgeHtml } = formatVoterCardNameAndProxies(a);
                         const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
                         const proxySearchTerms = (held || []).map(p => (p.delegatorName || p.delegator || '') + ' ' + (p.unitaImmobiliare || p.unit || '')).join(' ');
-                        const searchText = ((cleanName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '') + ' ' + proxySearchTerms + ' manuale').toLowerCase();
+                        const searchText = ((cleanName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '') + ' ' + proxySearchTerms + ((isAttendeeConsigliere || anyProxyConsigliere) ? ' consigliere' : '') + ' manuale').toLowerCase();
                         return `
                             <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; flex-direction:column; background:var(--surface-color); border:1px solid rgba(16, 185, 129, 0.25); border-left:4px solid #10B981; border-radius:8px; padding:0.5rem 0.65rem; margin-bottom:0.45rem; gap:0.35rem; box-shadow:0 1px 3px rgba(0,0,0,0.06); text-align:left; box-sizing:border-box;">
                                 <!-- 1. NOME, UNITÀ E MILLESIMI CON CHECKBOX -->
@@ -29190,6 +29431,7 @@ ${renderBottomNavigation()}
                                         </div>
                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem; flex-wrap:wrap;">
                                             <span class="badge" style="background:#10B981; color:white; font-size:0.65rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(10)} Manuale</span>
+                                            ${consigliereBadgeHtml}
                                             <span style="color:var(--primary-text); font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
                                             ${unitText}
                                         </div>
@@ -29252,10 +29494,10 @@ ${renderBottomNavigation()}
                 let qrSectionHtml = '';
                 if (pendingQr.length > 0) {
                     const qrItems = pendingQr.map(a => {
-                        const { cleanName, proxySubLineHtml, held } = formatVoterCardNameAndProxies(a);
+                        const { cleanName, proxySubLineHtml, held, isAttendeeConsigliere, anyProxyConsigliere, consigliereBadgeHtml } = formatVoterCardNameAndProxies(a);
                         const unitText = a.unitaImmobiliare ? ` • Unità: ${escapeHtml(a.unitaImmobiliare)}` : '';
                         const proxySearchTerms = (held || []).map(p => (p.delegatorName || p.delegator || '') + ' ' + (p.unitaImmobiliare || p.unit || '')).join(' ');
-                        const searchText = ((cleanName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '') + ' ' + proxySearchTerms + ' qr app smartphone').toLowerCase();
+                        const searchText = ((cleanName || '') + ' ' + (a.cognome || '') + ' ' + (a.unitaImmobiliare || '') + ' ' + (a.email || '') + ' ' + proxySearchTerms + ((isAttendeeConsigliere || anyProxyConsigliere) ? ' consigliere' : '') + ' qr app smartphone').toLowerCase();
                         return `
                             <div class="odg-voter-card" data-search-text="${escapeHtml(searchText)}" style="display:flex; flex-direction:column; background:var(--surface-color); border:1px solid rgba(245, 158, 11, 0.25); border-left:4px solid #F59E0B; border-radius:8px; padding:0.5rem 0.65rem; margin-bottom:0.45rem; gap:0.35rem; box-shadow:0 1px 3px rgba(0,0,0,0.06); text-align:left; box-sizing:border-box;">
                                 <!-- 1. NOME, UNITÀ E MILLESIMI -->
@@ -29266,6 +29508,7 @@ ${renderBottomNavigation()}
                                         </div>
                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem; flex-wrap:wrap;">
                                             <span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(11)} App/QR</span>
+                                            ${consigliereBadgeHtml}
                                             <span style="color:var(--primary-text); font-weight:700;">${(a.millesimi || 0).toFixed(2)} ‰</span>
                                             ${unitText}
                                         </div>
@@ -29333,7 +29576,7 @@ ${renderBottomNavigation()}
             const declinedHtml = declinedList.map(a => {
                 const v = downVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
-                const { cleanName, proxySubLineHtml, held } = formatVoterCardNameAndProxies(a);
+                const { cleanName, proxySubLineHtml, held, consigliereBadgeHtml } = formatVoterCardNameAndProxies(a);
                 const methodBadge = isManual
                     ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(9)} Manuale</span>`
                     : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(10)} App/QR</span>`;
@@ -29367,6 +29610,7 @@ ${renderBottomNavigation()}
                                         ${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}
                                     </strong>
                                     ${methodBadge}
+                                    ${consigliereBadgeHtml}
                                 </div>
                                 ${cleanSelfUnits ? `
                                     <div style="font-size:0.74rem; color:var(--secondary-text); font-weight:500; margin-top:0.15rem; word-break:break-word;">
@@ -29400,7 +29644,7 @@ ${renderBottomNavigation()}
             const approvedHtml = approvedList.map(a => {
                 const v = upVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
-                const { cleanName, proxySubLineHtml, held } = formatVoterCardNameAndProxies(a);
+                const { cleanName, proxySubLineHtml, held, consigliereBadgeHtml } = formatVoterCardNameAndProxies(a);
                 const methodBadge = isManual
                     ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(9)} Manuale</span>`
                     : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(10)} App/QR</span>`;
@@ -29841,11 +30085,22 @@ ${renderBottomNavigation()}
             }
         };
 
+        // ==========================================
+        // GESTIONE E RIORDINO ORDINE DEL GIORNO (ODG)
+        // TRASPORTO INTEGRALE: DESCRIZIONE, AMBITO E RISPOSTE
+        // ==========================================
+
+        window._currentReorderAgenda = null;
+        window._currentReorderAssemblyId = null;
+        window._currentReorderGroupNames = [];
+
         window.toggleEditGroupOptions = (selectEl) => {
             const card = selectEl.closest('.odg-edit-card');
             if (!card) return;
             const wrapper = card.querySelector('.odg-edit-group-wrapper');
-            if (wrapper) wrapper.style.display = selectEl.value === 'gruppo' ? 'flex' : 'none';
+            if (wrapper) wrapper.style.display = (selectEl.value === 'gruppo' || selectEl.value === 'scale') ? 'flex' : 'none';
+            if (typeof window.syncDomToReorderState === 'function') window.syncDomToReorderState();
+            if (typeof window.updateOdgCardBadges === 'function') window.updateOdgCardBadges(card);
         };
 
         window.toggleEditCustomOptions = (selectEl) => {
@@ -29853,88 +30108,278 @@ ${renderBottomNavigation()}
             if (!card) return;
             const wrapper = card.querySelector('.odg-edit-custom-wrapper');
             if (wrapper) wrapper.style.display = selectEl.value === 'custom' ? 'block' : 'none';
+            if (typeof window.syncDomToReorderState === 'function') window.syncDomToReorderState();
+            if (typeof window.updateOdgCardBadges === 'function') window.updateOdgCardBadges(card);
         };
 
-        window.removeOdgEditCard = (btn) => {
-            const card = btn.closest('.odg-edit-card');
-            if (card) {
-                card.remove();
-                const container = document.getElementById('reorder-items-container');
-                if (container) {
-                    container.querySelectorAll('.odg-edit-card').forEach((c, idx) => {
-                        c.setAttribute('data-idx', idx);
-                        const badge = c.querySelector('.item-badge');
-                        if (badge) badge.textContent = `Punto ${idx + 1}:`;
-                    });
+        window.updateOdgCardBadges = (card) => {
+            if (!card) return;
+            const scopeSelect = card.querySelector('.odg-edit-scope');
+            const isGroup = scopeSelect && (scopeSelect.value === 'gruppo' || scopeSelect.value === 'scale');
+            let groupText = 'Intero Condominio';
+            if (isGroup) {
+                const checked = Array.from(card.querySelectorAll('.odg-edit-group-cb:checked')).map(cb => cb.value);
+                groupText = checked.length > 0 ? checked.join(', ') : 'Nessuna scala selezionata';
+            }
+            const scopeBadgeEl = card.querySelector('.odg-badge-scope');
+            if (scopeBadgeEl) {
+                if (isGroup) {
+                    scopeBadgeEl.style.background = 'rgba(245, 158, 11, 0.12)';
+                    scopeBadgeEl.style.color = 'var(--warning, #F59E0B)';
+                    scopeBadgeEl.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+                    scopeBadgeEl.innerHTML = `🏢 Ambito: ${escapeHtml(groupText)}`;
+                } else {
+                    scopeBadgeEl.style.background = 'rgba(16, 185, 129, 0.12)';
+                    scopeBadgeEl.style.color = '#10B981';
+                    scopeBadgeEl.style.border = '1px solid rgba(16, 185, 129, 0.35)';
+                    scopeBadgeEl.innerHTML = `🌐 Ambito: Intero Condominio`;
                 }
+            }
+
+            const optionsSelect = card.querySelector('.odg-edit-options');
+            const optType = optionsSelect ? optionsSelect.value : 'standard';
+            let optText = 'Favorevole / Contrario / Astenuto';
+            if (optType === 'approvato') optText = 'Approvato / Respinto / Astenuto';
+            else if (optType === 'sino') optText = 'Sì / No / Astenuto';
+            else if (optType === 'custom') {
+                const custInput = card.querySelector('.odg-edit-custom-options');
+                optText = custInput && custInput.value.trim() ? custInput.value.trim() : 'Personalizzate';
+            }
+            const optionsBadgeEl = card.querySelector('.odg-badge-options');
+            if (optionsBadgeEl) {
+                optionsBadgeEl.innerHTML = `📋 Risposte: ${escapeHtml(optText)}`;
             }
         };
 
-        window.addOdgEditCard = (groupNamesJsonStr) => {
+        window.syncDomToReorderState = () => {
             const container = document.getElementById('reorder-items-container');
-            if (!container) return;
-            let groupNames = [];
-            try { groupNames = JSON.parse(groupNamesJsonStr || '[]'); } catch (e) { }
+            if (!container || !window._currentReorderAgenda) return;
+            const cards = container.querySelectorAll('.odg-edit-card');
+            cards.forEach((card, idx) => {
+                if (!window._currentReorderAgenda[idx]) return;
+                const item = window._currentReorderAgenda[idx];
 
-            const idx = container.querySelectorAll('.odg-edit-card').length;
-            const itemId = 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                const titleInput = card.querySelector('.odg-edit-title');
+                if (titleInput) item.title = titleInput.value.trim();
 
-            const groupCheckboxesHtml = groupNames.map(g => `
-                <label class="flex items-center gap-1.5" style="cursor:pointer; font-size:0.82rem; display:inline-flex; align-items:center;">
-                    <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" style="accent-color:var(--accent-color); width:15px; height:15px;">
-                    <span>${escapeHtml(g)}</span>
-                </label>
-            `).join('');
+                const scopeSelect = card.querySelector('.odg-edit-scope');
+                if (scopeSelect) {
+                    const scopeVal = scopeSelect.value;
+                    item.scope = scopeVal;
+                    item.votingScope = scopeVal;
+                    if (scopeVal === 'intero') {
+                        item.targetGroup = null;
+                        item.targetGroups = [];
+                    } else {
+                        const checkedCbs = card.querySelectorAll('.odg-edit-group-cb:checked');
+                        const selGroups = Array.from(checkedCbs).map(cb => cb.value);
+                        item.targetGroups = selGroups;
+                        item.targetGroup = selGroups.length > 0 ? selGroups.join(', ') : null;
+                    }
+                }
 
-            const div = document.createElement('div');
-            div.className = 'reorder-item-card odg-edit-card card';
-            div.setAttribute('data-id', itemId);
-            div.setAttribute('data-idx', idx);
-            div.setAttribute('data-original-point', (idx + 1));
-            div.setAttribute('draggable', 'true');
-            div.style.cssText = 'padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;';
+                const optionsSelect = card.querySelector('.odg-edit-options');
+                if (optionsSelect) {
+                    const optType = optionsSelect.value;
+                    item.optionsType = optType;
+                    item.voteOptionsType = optType;
+                    if (optType === 'standard') {
+                        item.voteOptions = ["Favorevole", "Contrario", "Astenuto"];
+                    } else if (optType === 'approvato') {
+                        item.voteOptions = ["Approvato", "Respinto", "Astenuto"];
+                    } else if (optType === 'sino') {
+                        item.voteOptions = ["Sì", "No", "Astenuto"];
+                    } else if (optType === 'custom') {
+                        const customInput = card.querySelector('.odg-edit-custom-options');
+                        const customStr = customInput ? customInput.value.trim() : '';
+                        item.customOptionsStr = customStr;
+                        const customArr = customStr.split(',').map(s => s.trim()).filter(Boolean);
+                        item.voteOptions = customArr.length > 0 ? customArr : ["Favorevole", "Contrario", "Astenuto"];
+                    }
+                }
+            });
+        };
 
-            div.innerHTML = `
-                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
-                    <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                        <span class="drag-handle" style="font-size:1rem; color:var(--secondary-text); cursor:grab; flex-shrink:0; display:inline-flex; align-items:center;">${THEME_ICONS.dragHandle(18)}</span>
-                        <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:</span>
-                        <input type="text" class="form-input odg-edit-title" value="" required placeholder="Nome del nuovo punto OdG" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
+        window.renderReorderCards = () => {
+            const container = document.getElementById('reorder-items-container');
+            if (!container || !window._currentReorderAgenda) return;
+
+            const groupNames = window._currentReorderGroupNames || [];
+            const agenda = window._currentReorderAgenda;
+            const total = agenda.length;
+
+            const cardsHtml = agenda.map((item, idx) => {
+                const itemId = item.id || ('item_' + Date.now() + '_' + idx);
+                const originalPointNum = item.originalIndex || (idx + 1);
+                const isGroup = (item.scope === 'scale' || item.scope === 'gruppo' || item.votingScope === 'scale' || item.votingScope === 'gruppo');
+                const targetGroup = item.targetGroup || '';
+                const targetGroups = item.targetGroups || (targetGroup ? targetGroup.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+                let optionsType = item.voteOptionsType || item.optionsType || 'standard';
+                let voteOptions = item.voteOptions && item.voteOptions.length > 0 ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+                if (!item.voteOptionsType && !item.optionsType) {
+                    if (voteOptions.includes('Sì') || voteOptions.includes('Si')) optionsType = 'sino';
+                    else if (voteOptions.includes('Approvato')) optionsType = 'approvato';
+                    else if (!voteOptions.includes('Favorevole')) optionsType = 'custom';
+                    else optionsType = 'standard';
+                }
+
+                let voteOptionsSummary = voteOptions.join(' / ');
+                if (optionsType === 'standard') voteOptionsSummary = 'Favorevole / Contrario / Astenuto';
+                else if (optionsType === 'approvato') voteOptionsSummary = 'Approvato / Respinto / Astenuto';
+                else if (optionsType === 'sino') voteOptionsSummary = 'Sì / No / Astenuto';
+
+                const customOptionsText = item.customOptionsStr || (optionsType === 'custom' ? voteOptions.join(', ') : '');
+
+                const groupCheckboxesHtml = groupNames.map(g => `
+                    <label class="flex items-center gap-1.5" style="cursor:pointer; font-size:0.82rem; display:inline-flex; align-items:center;">
+                        <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" onchange="window.syncDomToReorderState(); window.updateOdgCardBadges(this.closest('.odg-edit-card'));" ${(targetGroup.includes(g) || targetGroups.includes(g)) ? 'checked' : ''} style="accent-color:var(--accent-color); width:15px; height:15px;">
+                        <span>${escapeHtml(g)}</span>
+                    </label>
+                `).join('');
+
+                const isExPoint = originalPointNum !== (idx + 1);
+                const exPointHtml = isExPoint
+                    ? ` <span class="ex-point-label" style="font-size:0.75rem; color:var(--warning, #F59E0B); font-weight:800; background:rgba(245, 158, 11, 0.15); border:1px solid rgba(245, 158, 11, 0.3); padding:0.12rem 0.45rem; border-radius:5px;">(ex punto ${originalPointNum})</span>`
+                    : '<span class="ex-point-label"></span>';
+
+                const scopeBadgeText = isGroup
+                    ? `🏢 Ambito: ${escapeHtml(targetGroup || 'Scala/Gruppo non specificato')}`
+                    : `🌐 Ambito: Intero Condominio`;
+                const scopeBadgeStyle = isGroup
+                    ? `background:rgba(245, 158, 11, 0.12); color:var(--warning, #F59E0B); border:1px solid rgba(245, 158, 11, 0.35);`
+                    : `background:rgba(16, 185, 129, 0.12); color:#10B981; border:1px solid rgba(16, 185, 129, 0.35);`;
+
+                return `
+                    <div class="reorder-item-card odg-edit-card card" data-id="${escapeHtml(itemId)}" data-idx="${idx}" data-agenda-idx="${idx}" data-original-point="${originalPointNum}" draggable="true" style="padding:0.9rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.65rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.65rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; box-sizing:border-box;">
+                            <div style="display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0;">
+                                <span class="drag-handle" style="font-size:1rem; color:var(--secondary-text); cursor:grab; flex-shrink:0; display:inline-flex; align-items:center;" title="Trascina per riordinare">${THEME_ICONS.dragHandle(18)}</span>
+                                
+                                <div style="display:inline-flex; align-items:center; gap:0.2rem; flex-shrink:0;">
+                                    <button type="button" onclick="window.moveOdgCardUp(${idx})" ${idx === 0 ? 'disabled style="opacity:0.25; cursor:not-allowed; background:rgba(255,255,255,0.05); color:var(--secondary-text); border:1px solid rgba(255,255,255,0.08); width:28px; height:28px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; padding:0;"' : 'style="cursor:pointer; background:rgba(37,99,235,0.15); color:#60A5FA; border:1px solid rgba(37,99,235,0.35); width:28px; height:28px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; padding:0; transition:all 0.15s ease;"'} title="Sposta punto su (▲)" aria-label="Sposta su">
+                                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                    </button>
+                                    <button type="button" onclick="window.moveOdgCardDown(${idx})" ${idx === total - 1 ? 'disabled style="opacity:0.25; cursor:not-allowed; background:rgba(255,255,255,0.05); color:var(--secondary-text); border:1px solid rgba(255,255,255,0.08); width:28px; height:28px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; padding:0;"' : 'style="cursor:pointer; background:rgba(37,99,235,0.15); color:#60A5FA; border:1px solid rgba(37,99,235,0.35); width:28px; height:28px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; padding:0; transition:all 0.15s ease;"'} title="Sposta punto giù (▼)" aria-label="Sposta giù">
+                                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </button>
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; min-width:0;">
+                                    <span class="item-badge" style="font-weight:900; color:var(--accent-color); font-size:0.92rem; flex-shrink:0;">Punto ${idx + 1}:</span>
+                                    ${exPointHtml}
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="window.removeOdgEditCard(${idx})" style="background:none; border:none; color:var(--danger, #EF4444); width:28px; height:28px; cursor:pointer; padding:0; margin-left:0.4rem; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;" title="Rimuovi punto" aria-label="Rimuovi punto"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; width:100%;">
+                            <span class="odg-badge-scope" style="${scopeBadgeStyle} font-size:0.72rem; font-weight:800; padding:0.15rem 0.5rem; border-radius:5px; max-width:100%; word-break:break-word;">
+                                ${scopeBadgeText}
+                            </span>
+                            <span class="odg-badge-options" style="background:rgba(37, 99, 235, 0.12); color:#60A5FA; border:1px solid rgba(37, 99, 235, 0.35); font-size:0.72rem; font-weight:800; padding:0.15rem 0.5rem; border-radius:5px; max-width:100%; word-break:break-word;">
+                                📋 Risposte: ${escapeHtml(voteOptionsSummary)}
+                            </span>
+                        </div>
+
+                        <div style="width:100%; box-sizing:border-box;">
+                            <input type="text" class="form-input odg-edit-title" value="${escapeHtml(item.title || '')}" required placeholder="Nome del punto OdG" oninput="window.syncDomToReorderState()" style="width:100%; box-sizing:border-box; padding:0.5rem 0.7rem; font-size:0.9rem; font-weight:700; border-radius:8px;">
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; box-sizing:border-box;">
+                            <div>
+                                <label style="font-size:0.76rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Ambito Votazione:</label>
+                                <select class="form-select odg-edit-scope" onchange="window.toggleEditGroupOptions(this)" style="padding:0.42rem 0.6rem; font-size:0.83rem; width:100%; border-radius:6px;">
+                                    <option value="intero" ${!isGroup ? 'selected' : ''}>1. Intero Condominio</option>
+                                    <option value="gruppo" ${isGroup ? 'selected' : ''}>2. Singola Scala / Gruppo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.76rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Opzioni di Voto:</label>
+                                <select class="form-select odg-edit-options" onchange="window.toggleEditCustomOptions(this)" style="padding:0.42rem 0.6rem; font-size:0.83rem; width:100%; border-radius:6px;">
+                                    <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
+                                    <option value="approvato" ${optionsType === 'approvato' ? 'selected' : ''}>Approvato / Respinto / Astenuto</option>
+                                    <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
+                                    <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>Personalizzate...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="odg-edit-group-wrapper" style="display:${isGroup ? 'flex' : 'none'}; flex-wrap:wrap; gap:0.6rem; background:rgba(245, 158, 11, 0.05); padding:0.55rem 0.7rem; border-radius:7px; border:1px dashed rgba(245, 158, 11, 0.4);">
+                            <span style="font-size:0.76rem; color:var(--warning, #F59E0B); font-weight:800; width:100%;">Seleziona Scale/Gruppi abilitati al voto:</span>
+                            ${groupCheckboxesHtml}
+                        </div>
+
+                        <div class="odg-edit-custom-wrapper" style="display:${optionsType === 'custom' ? 'block' : 'none'};">
+                            <label style="font-size:0.76rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Risposte personalizzate (separate da virgola):</label>
+                            <input type="text" class="form-input odg-edit-custom-options" value="${escapeHtml(customOptionsText)}" placeholder="Opzione A, Opzione B, Astenuto" oninput="window.syncDomToReorderState(); window.updateOdgCardBadges(this.closest('.odg-edit-card'));" style="padding:0.42rem 0.65rem; font-size:0.83rem; width:100%; border-radius:6px;">
+                        </div>
                     </div>
-                    <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger, #EF4444); width:28px; height:28px; cursor:pointer; padding:0; margin-left:0.4rem; display:inline-flex; align-items:center; justify-content:center;" title="Rimuovi punto" aria-label="Rimuovi punto"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-                </div>
+                `;
+            }).join('');
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; box-sizing:border-box;">
-                    <div>
-                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Ambito Votazione:</label>
-                        <select class="form-select odg-edit-scope" onchange="toggleEditGroupOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
-                            <option value="intero" selected>1. Intero Condominio</option>
-                            <option value="gruppo">2. Singola Scala / Gruppo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Opzioni di Voto:</label>
-                        <select class="form-select odg-edit-options" onchange="toggleEditCustomOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
-                            <option value="standard" selected>Favorevole / Contrario / Astenuto</option>
-                            <option value="approvato">Approvato / Respinto / Astenuto</option>
-                            <option value="sino">Sì / No / Astenuto</option>
-                            <option value="custom">Personalizzate...</option>
-                        </select>
-                    </div>
-                </div>
+            container.innerHTML = cardsHtml;
+        };
 
-                <div class="odg-edit-group-wrapper" style="display:none; flex-wrap:wrap; gap:0.6rem; background:rgba(255,255,255,0.03); padding:0.5rem 0.65rem; border-radius:6px; border:1px dashed var(--accent-color);">
-                    <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:700; width:100%;">Seleziona Scale/Gruppi abilitati al voto:</span>
-                    ${groupCheckboxesHtml}
-                </div>
+        window.moveOdgCardUp = (idx) => {
+            window.syncDomToReorderState();
+            if (!window._currentReorderAgenda || idx <= 0 || idx >= window._currentReorderAgenda.length) return;
+            const temp = window._currentReorderAgenda[idx];
+            window._currentReorderAgenda[idx] = window._currentReorderAgenda[idx - 1];
+            window._currentReorderAgenda[idx - 1] = temp;
+            window.renderReorderCards();
+        };
 
-                <div class="odg-edit-custom-wrapper" style="display:none;">
-                    <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Risposte personalizzate (separate da virgola):</label>
-                    <input type="text" class="form-input odg-edit-custom-options" value="" placeholder="Opzione A, Opzione B, Astenuto" style="padding:0.4rem 0.65rem; font-size:0.83rem; width:100%;">
-                </div>
-            `;
+        window.moveOdgCardDown = (idx) => {
+            window.syncDomToReorderState();
+            if (!window._currentReorderAgenda || idx < 0 || idx >= window._currentReorderAgenda.length - 1) return;
+            const temp = window._currentReorderAgenda[idx];
+            window._currentReorderAgenda[idx] = window._currentReorderAgenda[idx + 1];
+            window._currentReorderAgenda[idx + 1] = temp;
+            window.renderReorderCards();
+        };
 
-            container.appendChild(div);
+        window.invertOdgOrder = () => {
+            window.syncDomToReorderState();
+            if (!window._currentReorderAgenda || window._currentReorderAgenda.length < 2) {
+                return;
+            }
+            window._currentReorderAgenda.reverse();
+            window.renderReorderCards();
+        };
+
+        window.removeOdgEditCard = (idx) => {
+            window.syncDomToReorderState();
+            if (!window._currentReorderAgenda || window._currentReorderAgenda.length <= 1) {
+                customAlert("Deve essere presente almeno un punto all'ordine del giorno.");
+                return;
+            }
+            window._currentReorderAgenda.splice(idx, 1);
+            window.renderReorderCards();
+        };
+
+        window.addOdgEditCard = () => {
+            window.syncDomToReorderState();
+            if (!window._currentReorderAgenda) window._currentReorderAgenda = [];
+            const newPointNum = window._currentReorderAgenda.length + 1;
+            const newItem = {
+                id: 'punto_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                title: '',
+                originalIndex: newPointNum,
+                scope: 'intero',
+                votingScope: 'intero',
+                targetGroup: null,
+                targetGroups: [],
+                voteOptionsType: 'standard',
+                optionsType: 'standard',
+                voteOptions: ["Favorevole", "Contrario", "Astenuto"],
+                customOptionsStr: '',
+                status: 'pending',
+                votes: []
+            };
+            window._currentReorderAgenda.push(newItem);
+            window.renderReorderCards();
         };
 
         window.showInteractiveReorderModal = async (assemblyId) => {
@@ -29949,8 +30394,8 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                let agenda = [...(assembly.agenda || [])];
-                window.originalAgenda = agenda;
+                window._currentReorderAssemblyId = assemblyId;
+                window.originalAgenda = [...(assembly.agenda || [])];
 
                 let groupNames = [];
                 try {
@@ -29963,90 +30408,96 @@ ${renderBottomNavigation()}
                     });
                 } catch (e) { console.error("Errore gruppi:", e); }
 
-                const renderAgendaCards = () => {
-                    return agenda.map((item, idx) => {
-                        const itemId = item.id || ('item_' + Date.now() + '_' + idx);
-                        const originalPointNum = item.originalIndex || (idx + 1);
-                        const scope = item.scope || (item.votingScope === 'gruppo' ? 'gruppo' : 'intero');
-                        const targetGroup = item.targetGroup || '';
-                        const optionsType = item.optionsType || 'standard';
-                        const customOptionsText = (item.voteOptions || []).join(', ');
+                window._currentReorderGroupNames = groupNames;
 
-                        const groupCheckboxesHtml = groupNames.map(g => `
-                            <label class="flex items-center gap-1.5" style="cursor:pointer; font-size:0.82rem; display:inline-flex; align-items:center;">
-                                <input type="checkbox" value="${escapeHtml(g)}" class="odg-edit-group-cb" ${(targetGroup.includes(g) || (item.targetGroups || []).includes(g)) ? 'checked' : ''} style="accent-color:var(--accent-color); width:15px; height:15px;">
-                                <span>${escapeHtml(g)}</span>
-                            </label>
-                        `).join('');
+                window._currentReorderAgenda = (assembly.agenda || []).map((item, idx) => {
+                    const originalPointNum = item.originalIndex || (idx + 1);
+                    const scope = (item.scope === 'scale' || item.scope === 'gruppo' || item.votingScope === 'scale' || item.votingScope === 'gruppo') ? 'gruppo' : 'intero';
+                    const targetGroup = item.targetGroup || '';
+                    const targetGroups = item.targetGroups || (targetGroup ? targetGroup.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-                        const exPointHtml = (originalPointNum !== (idx + 1)) ? ` <span class="ex-point-label" style="font-size:0.75rem; color:var(--warning); font-weight:700;">(ex punto ${originalPointNum})</span>` : '<span class="ex-point-label"></span>';
+                    let optionsType = item.voteOptionsType || item.optionsType || 'standard';
+                    let voteOptions = item.voteOptions && item.voteOptions.length > 0 ? [...item.voteOptions] : ["Favorevole", "Contrario", "Astenuto"];
+                    if (!item.voteOptionsType && !item.optionsType) {
+                        if (voteOptions.includes('Sì') || voteOptions.includes('Si')) optionsType = 'sino';
+                        else if (voteOptions.includes('Approvato')) optionsType = 'approvato';
+                        else if (!voteOptions.includes('Favorevole')) optionsType = 'custom';
+                        else optionsType = 'standard';
+                    }
+                    const customOptionsStr = item.customOptionsStr || (optionsType === 'custom' ? voteOptions.join(', ') : '');
 
-                        return `
-                            <div class="reorder-item-card odg-edit-card card" data-id="${escapeHtml(itemId)}" data-idx="${idx}" data-original-point="${originalPointNum}" draggable="true" style="padding:1rem; background:var(--surface-color-light); border-radius:12px; display:flex; flex-direction:column; gap:0.75rem; border:2px solid transparent; cursor:grab; touch-action:none; user-select:none; margin-bottom:0.75rem; transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;">
-                                <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                                            <span class="drag-handle" style="font-size:1rem; color:var(--secondary-text); cursor:grab; flex-shrink:0; display:inline-flex; align-items:center;">${THEME_ICONS.dragHandle(18)}</span>
-                                            <span class="item-badge" style="font-weight:800; color:var(--accent-color); font-size:0.88rem; flex-shrink:0;">Punto ${idx + 1}:${exPointHtml}</span>
-                                        </div>
-                                        <button type="button" onclick="removeOdgEditCard(this)" style="background:none; border:none; color:var(--danger, #EF4444); width:28px; height:28px; cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center;" title="Rimuovi punto" aria-label="Rimuovi punto"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-                                    </div>
-                                    <input type="text" class="form-input odg-edit-title" value="${escapeHtml(item.title || '')}" required placeholder="Nome del punto OdG" style="width:100%; box-sizing:border-box; padding:0.45rem 0.65rem; font-size:0.9rem; font-weight:700;">
-                                </div>
+                    return {
+                        ...item,
+                        id: item.id || ('item_' + Date.now() + '_' + idx),
+                        title: item.title || `Punto ${idx + 1}`,
+                        originalIndex: originalPointNum,
+                        scope: scope,
+                        votingScope: scope,
+                        targetGroup: targetGroup,
+                        targetGroups: targetGroups,
+                        optionsType: optionsType,
+                        voteOptionsType: optionsType,
+                        voteOptions: voteOptions,
+                        customOptionsStr: customOptionsStr,
+                        status: item.status || 'pending',
+                        votes: item.votes || []
+                    };
+                });
 
-                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; box-sizing:border-box;">
-                                    <div>
-                                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Ambito Votazione:</label>
-                                        <select class="form-select odg-edit-scope" onchange="toggleEditGroupOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
-                                            <option value="intero" ${scope === 'intero' ? 'selected' : ''}>1. Intero Condominio</option>
-                                            <option value="gruppo" ${scope === 'gruppo' ? 'selected' : ''}>2. Singola Scala / Gruppo</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Opzioni di Voto:</label>
-                                        <select class="form-select odg-edit-options" onchange="toggleEditCustomOptions(this)" style="padding:0.4rem 0.6rem; font-size:0.83rem; width:100%;">
-                                            <option value="standard" ${optionsType === 'standard' ? 'selected' : ''}>Favorevole / Contrario / Astenuto</option>
-                                            <option value="approvato" ${optionsType === 'approvato' ? 'selected' : ''}>Approvato / Respinto / Astenuto</option>
-                                            <option value="sino" ${optionsType === 'sino' ? 'selected' : ''}>Sì / No / Astenuto</option>
-                                            <option value="custom" ${optionsType === 'custom' ? 'selected' : ''}>Personalizzate...</option>
-                                        </select>
-                                    </div>
-                                </div>
+                const isVariazioneVotata = assembly.odgApproval?.status === 'rejected';
 
-                                <div class="odg-edit-group-wrapper" style="display:${scope === 'gruppo' ? 'flex' : 'none'}; flex-wrap:wrap; gap:0.6rem; background:rgba(255,255,255,0.03); padding:0.5rem 0.65rem; border-radius:6px; border:1px dashed var(--accent-color);">
-                                    <span style="font-size:0.78rem; color:var(--secondary-text); font-weight:700; width:100%;">Seleziona Scale/Gruppi abilitati al voto:</span>
-                                    ${groupCheckboxesHtml}
-                                </div>
-
-                                <div class="odg-edit-custom-wrapper" style="display:${optionsType === 'custom' ? 'block' : 'none'};">
-                                    <label style="font-size:0.78rem; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:0.25rem;">Risposte personalizzate (separate da virgola):</label>
-                                    <input type="text" class="form-input odg-edit-custom-options" value="${escapeHtml(customOptionsText)}" placeholder="Opzione A, Opzione B, Astenuto" style="padding:0.4rem 0.65rem; font-size:0.83rem; width:100%;">
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                };
+                const variazioneBannerHtml = isVariazioneVotata ? `
+                    <div style="background: rgba(245, 158, 11, 0.12); border: 1.5px solid var(--warning, #F59E0B); border-radius: 10px; padding: 0.75rem 0.85rem; margin-bottom: 0.65rem; display: flex; flex-direction: column; gap: 0.45rem; flex-shrink: 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                            <span style="font-weight: 800; font-size: 0.86rem; color: var(--warning, #F59E0B); display: inline-flex; align-items: center; gap: 0.35rem;">
+                                ⚠️ Variazione OdG approvata dall'assemblea
+                            </span>
+                            <button type="button" onclick="window.invertOdgOrder()" class="btn" style="background: var(--warning, #F59E0B); color: #1e1e1e; font-weight: 800; font-size: 0.8rem; padding: 0.3rem 0.7rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);">
+                                🔄 Inverti Ordine dei Punti
+                            </button>
+                        </div>
+                        <p style="margin: 0; font-size: 0.78rem; color: var(--secondary-text); line-height: 1.35;">
+                            I presenti hanno votato per variare l'ordine. Clicca <strong>Inverti Ordine dei Punti</strong> oppure usa le frecce <strong>▲ / ▼</strong> per spostare i singoli punti. Ciascun punto trasferirà integralmente descrizione, ambito di voto e risposte.
+                        </p>
+                    </div>
+                ` : '';
 
                 const modalContent = `
                     <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
-                        <div id="reorder-items-container" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding: 0.25rem 0.15rem; display: flex; flex-direction: column; gap: 0.5rem; -webkit-overflow-scrolling: touch;">
-                            ${renderAgendaCards()}
+                        ${variazioneBannerHtml}
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <span style="font-size: 0.76rem; color: var(--secondary-text); font-weight: 600;">
+                                Usa le frecce <strong>▲ ▼</strong> o trascina le schede per riordinare:
+                            </span>
+                            <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                                <button type="button" onclick="window.invertOdgOrder()" class="btn" style="font-size: 0.78rem; font-weight: 800; background: rgba(245, 158, 11, 0.15); color: var(--warning, #F59E0B); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 7px; padding: 0.32rem 0.65rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer;" title="Inverte completamente l'ordine attuale dei punti">
+                                    🔄 Inverti Ordine
+                                </button>
+                                <button type="button" onclick="window.addOdgEditCard()" class="btn" style="font-size: 0.78rem; font-weight: 800; background: rgba(37, 99, 235, 0.15); color: #60A5FA; border: 1px solid rgba(37, 99, 235, 0.4); border-radius: 7px; padding: 0.32rem 0.65rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer;" title="Aggiungi un nuovo punto">
+                                    + Aggiungi Punto
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="reorder-items-container" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding: 0.25rem 0.15rem; display: flex; flex-direction: column; gap: 0.2rem; -webkit-overflow-scrolling: touch;">
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
                             <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; padding: 0; font-weight: 700; font-size: 0.88rem; display: flex; align-items: center; justify-content: center; border-radius: 8px;">Annulla</button>
-                            <button type="button" class="btn btn-primary" onclick="saveReorderedOdg('${assemblyId}')" style="width: 100%; height: 42px; padding: 0; font-weight: 800; font-size: 0.88rem; justify-content: center; background: #10B981; color: white; display: flex; align-items: center; gap: 0.4rem; border-radius: 8px;">
+                            <button type="button" class="btn btn-primary" onclick="window.saveReorderedOdg('${assemblyId}')" style="width: 100%; height: 42px; padding: 0; font-weight: 800; font-size: 0.88rem; justify-content: center; background: #10B981; color: white; display: flex; align-items: center; gap: 0.4rem; border-radius: 8px;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                Salva
+                                Salva Ordine Punti
                             </button>
                         </div>
                     </div>
                 `;
 
                 showModal('Modifica & Riordino OdG', modalContent, true);
+                window.renderReorderCards();
 
                 setTimeout(() => {
-                    initOdgDragAndDrop(assemblyId);
+                    window.initOdgDragAndDrop(assemblyId);
                 }, 100);
             } catch (err) {
                 console.error("Errore modal riordino:", err);
@@ -30059,30 +30510,33 @@ ${renderBottomNavigation()}
 
             let draggedCard = null;
 
-            const refreshDomList = () => {
-                const cards = container.querySelectorAll('.odg-edit-card');
-                cards.forEach((card, currentIdx) => {
-                    card.setAttribute('data-idx', currentIdx);
-                    const badge = card.querySelector('.item-badge');
-                    const originalPoint = card.getAttribute('data-original-point');
-                    let exPointHtml = '';
-                    if (originalPoint && parseInt(originalPoint, 10) !== (currentIdx + 1)) {
-                        exPointHtml = ` <span class="ex-point-label" style="font-size:0.75rem; color:var(--warning); font-weight:700;">(ex punto ${originalPoint})</span>`;
+            const syncFromDomOrder = () => {
+                const domCards = Array.from(container.querySelectorAll('.odg-edit-card'));
+                if (domCards.length === 0 || !window._currentReorderAgenda) return;
+                window.syncDomToReorderState();
+                const newAgenda = [];
+                domCards.forEach(c => {
+                    const originalIdx = parseInt(c.getAttribute('data-agenda-idx'), 10);
+                    if (!isNaN(originalIdx) && window._currentReorderAgenda[originalIdx]) {
+                        newAgenda.push(window._currentReorderAgenda[originalIdx]);
                     }
-                    if (badge) badge.innerHTML = `Punto ${currentIdx + 1}:${exPointHtml}`;
                 });
+                if (newAgenda.length === window._currentReorderAgenda.length) {
+                    window._currentReorderAgenda = newAgenda;
+                    window.renderReorderCards();
+                }
             };
 
-            // Mouse Drag Events for Desktop
             container.addEventListener('dragstart', (e) => {
                 const card = e.target.closest('.odg-edit-card');
                 if (!card) return;
+                window.syncDomToReorderState();
                 draggedCard = card;
                 card.classList.add('dragging');
                 card.style.background = 'var(--surface-color)';
                 card.style.borderColor = 'var(--accent-color)';
                 card.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.4)';
-                card.style.transform = 'scale(1.02)';
+                card.style.transform = 'scale(1.01)';
                 card.style.opacity = '0.95';
                 e.dataTransfer.effectAllowed = 'move';
             });
@@ -30098,11 +30552,10 @@ ${renderBottomNavigation()}
 
                 if (draggedIdx !== -1 && targetIdx !== -1) {
                     if (draggedIdx < targetIdx) {
-                        container.insertBefore(overCard, draggedCard);
+                        container.insertBefore(draggedCard, overCard.nextSibling);
                     } else {
                         container.insertBefore(draggedCard, overCard);
                     }
-                    refreshDomList();
                 }
             });
 
@@ -30117,10 +30570,9 @@ ${renderBottomNavigation()}
                     card.style.opacity = '1';
                 }
                 draggedCard = null;
-                refreshDomList();
+                syncFromDomOrder();
             });
 
-            // Touch Drag Events for Mobile & Touchscreens
             let touchDraggedCard = null;
 
             container.addEventListener('touchstart', (e) => {
@@ -30128,12 +30580,13 @@ ${renderBottomNavigation()}
                 if (interactive) return;
                 const card = e.target.closest('.odg-edit-card');
                 if (!card) return;
+                window.syncDomToReorderState();
                 touchDraggedCard = card;
                 card.classList.add('dragging');
                 card.style.background = 'var(--surface-color)';
                 card.style.borderColor = 'var(--accent-color)';
                 card.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.4)';
-                card.style.transform = 'scale(1.02)';
+                card.style.transform = 'scale(1.01)';
                 card.style.opacity = '0.95';
                 card.style.zIndex = '999';
             }, { passive: true });
@@ -30156,7 +30609,6 @@ ${renderBottomNavigation()}
                     } else {
                         container.insertBefore(touchDraggedCard, overCard);
                     }
-                    refreshDomList();
                 }
             }, { passive: false });
 
@@ -30170,8 +30622,8 @@ ${renderBottomNavigation()}
                     touchDraggedCard.style.opacity = '1';
                     touchDraggedCard.style.zIndex = 'auto';
                     touchDraggedCard = null;
+                    syncFromDomOrder();
                 }
-                refreshDomList();
             };
 
             container.addEventListener('touchend', handleTouchEnd);
@@ -30179,62 +30631,46 @@ ${renderBottomNavigation()}
         };
 
         window.saveReorderedOdg = async (assemblyId) => {
-            const container = document.getElementById('reorder-items-container');
-            if (!container) return;
-
-            const cards = container.querySelectorAll('.odg-edit-card');
-            if (cards.length === 0) {
+            window.syncDomToReorderState();
+            if (!window._currentReorderAgenda || window._currentReorderAgenda.length === 0) {
                 await customAlert("Inserisci almeno un punto all'ordine del giorno.");
                 return;
             }
 
-            const updatedAgenda = [];
-
-            cards.forEach((card, idx) => {
-                const originalId = card.getAttribute('data-id') || ('item_' + Date.now() + '_' + idx);
-                const originalPointAttr = card.getAttribute('data-original-point');
-                const originalPointNum = originalPointAttr ? parseInt(originalPointAttr, 10) : null;
-                const titleInput = card.querySelector('.odg-edit-title');
-                const title = titleInput ? titleInput.value.trim() : `Punto ${idx + 1}`;
-                const scopeSelect = card.querySelector('.odg-edit-scope');
-                const scope = scopeSelect ? scopeSelect.value : 'intero';
-
-                let targetGroup = null;
-                let targetGroups = [];
-                if (scope === 'gruppo') {
-                    const checkedGroupCbs = card.querySelectorAll('.odg-edit-group-cb:checked');
-                    targetGroups = Array.from(checkedGroupCbs).map(cb => cb.value);
-                    targetGroup = targetGroups.length > 0 ? targetGroups.join(', ') : null;
+            for (let i = 0; i < window._currentReorderAgenda.length; i++) {
+                const item = window._currentReorderAgenda[i];
+                if (!item.title || !item.title.trim()) {
+                    await customAlert(`Inserisci il titolo/descrizione per il Punto ${i + 1}.`);
+                    return;
                 }
-
-                const optionsSelect = card.querySelector('.odg-edit-options');
-                const optionsType = optionsSelect ? optionsSelect.value : 'standard';
-                let voteOptions = ["Favorevole", "Contrario", "Astenuto"];
-
-                if (optionsType === 'approvato') {
-                    voteOptions = ["Approvato", "Respinto", "Astenuto"];
-                } else if (optionsType === 'sino') {
-                    voteOptions = ["Sì", "No", "Astenuto"];
-                } else if (optionsType === 'custom') {
-                    const customText = card.querySelector('.odg-edit-custom-options')?.value || '';
-                    const customArr = customText.split(',').map(s => s.trim()).filter(Boolean);
-                    if (customArr.length > 0) voteOptions = customArr;
+                const isGroup = (item.scope === 'scale' || item.scope === 'gruppo' || item.votingScope === 'scale' || item.votingScope === 'gruppo');
+                if (isGroup && (!item.targetGroup || !item.targetGroup.trim())) {
+                    await customAlert(`Seleziona almeno una scala/gruppo per il Punto ${i + 1} impostato su Condominio Parziale.`);
+                    return;
                 }
+            }
 
-                const existingItem = (window.originalAgenda || []).find(i => i.id === originalId);
+            const updatedAgenda = window._currentReorderAgenda.map((item, idx) => {
+                const originalPointNum = item.originalIndex || (idx + 1);
+                const isGroup = (item.scope === 'scale' || item.scope === 'gruppo' || item.votingScope === 'scale' || item.votingScope === 'gruppo');
+                const finalScope = isGroup ? (item.scope || 'gruppo') : 'intero';
 
-                updatedAgenda.push({
-                    id: originalId,
-                    title: title || `Punto ${idx + 1}`,
-                    originalIndex: (originalPointNum && originalPointNum !== (idx + 1)) ? originalPointNum : (originalPointNum || (idx + 1)),
-                    scope: scope,
-                    votingScope: scope,
-                    targetGroup: targetGroup,
-                    targetGroups: targetGroups,
-                    optionsType: optionsType,
-                    voteOptions: voteOptions,
-                    votes: existingItem ? (existingItem.votes || []) : []
-                });
+                return {
+                    ...item,
+                    id: item.id || ('punto_' + (idx + 1)),
+                    title: item.title.trim(),
+                    originalIndex: originalPointNum,
+                    scope: finalScope,
+                    votingScope: finalScope,
+                    targetGroup: isGroup ? item.targetGroup : null,
+                    targetGroups: isGroup ? (item.targetGroups || (item.targetGroup ? item.targetGroup.split(',').map(s => s.trim()) : [])) : [],
+                    optionsType: item.optionsType || item.voteOptionsType || 'standard',
+                    voteOptionsType: item.voteOptionsType || item.optionsType || 'standard',
+                    voteOptions: (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"],
+                    customOptionsStr: item.customOptionsStr || '',
+                    status: item.status || 'pending',
+                    votes: item.votes || []
+                };
             });
 
             try {
@@ -30242,12 +30678,23 @@ ${renderBottomNavigation()}
                 const currentDocSnap = await getDoc(assemblyRef);
                 const currentData = currentDocSnap.exists() ? currentDocSnap.data() : {};
 
+                const isReordered = updatedAgenda.some((item, idx) => {
+                    if (item.originalIndex && Number(item.originalIndex) !== (idx + 1)) return true;
+                    const m = (item.id || '').match(/^punto_(\d+)$/i);
+                    if (m && parseInt(m[1], 10) !== (idx + 1)) return true;
+                    return false;
+                });
+
                 await updateDoc(assemblyRef, {
                     agenda: updatedAgenda,
                     status: 'in_corso',
                     sessionStage: 'active',
                     'odgApproval.status': 'approved',
+                    'odgApproval.mode': isReordered ? 'variato' : 'invariato',
+                    'odgApproval.isReordered': isReordered,
                     'odgApproval.completedAt': Date.now(),
+                    odgReordered: isReordered,
+                    isOdgModified: isReordered,
                     startedAt: currentData.startedAt || Date.now()
                 });
 
@@ -30267,7 +30714,7 @@ ${renderBottomNavigation()}
                 await customAlert("Nuovo Ordine del Giorno salvato con successo! L'assemblea è stata avviata automaticamente e le votazioni sui punti sono ora aperte.");
             } catch (err) {
                 console.error("Errore salvataggio OdG:", err);
-                await customAlert("Errore durante il salvataggio del riordino.");
+                await customAlert("Errore durante il salvataggio del riordino: " + (err?.message || err));
             }
         };
 
