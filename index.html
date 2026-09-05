@@ -2588,6 +2588,7 @@
                         if (prop === 'check' || prop === 'checkSuccess') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color === 'currentColor' ? '#10B981' : color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
                         if (prop === 'hourglass') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg>`;
                         if (prop === 'scroll') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><path d="M8 2h8a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z"></path><path d="M8 6h8"></path><path d="M8 10h8"></path><path d="M8 14h5"></path></svg>`;
+                        if (prop === 'crown') return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="#F59E0B" stroke="#B45309" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" class="theme-icon ${extraClass}" style="${extraStyle}"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"></path><rect x="3" y="18" width="18" height="2.5" rx="1"></rect></svg>`;
                         return `<span class="icon-${String(prop)}"></span>`;
                     };
                 }
@@ -19805,6 +19806,7 @@ ${renderBottomNavigation()}
             onSnapshot(assemblyRef, (docSnap) => {
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
+                window._lastLiveAssemblySnapshot = { id: docSnap.id, ...assembly };
 
                 // Recupero dati statici anagrafica/gruppi (allUsers, tableData, partialCondosList)
                 let currentStaticData = window._liveAssemblyStaticCache || {};
@@ -19867,6 +19869,7 @@ ${renderBottomNavigation()}
                 const presidentBadgeContainer = document.getElementById('room-president-badge-container');
                 const presidentNameEl = document.getElementById('room-president-name');
                 const presidentModeBadge = document.getElementById('room-president-mode-badge');
+                const presidentDetailsBtn = document.getElementById('room-president-details-btn');
                 if (presidentBadgeContainer && presidentNameEl && presidentModeBadge) {
                     if (assembly.president && assembly.president.nome) {
                         presidentBadgeContainer.classList.remove('hidden');
@@ -19876,8 +19879,20 @@ ${renderBottomNavigation()}
                         presidentModeBadge.style.backgroundColor = isAcclamation ? 'rgba(16, 185, 129, 0.15)' : 'rgba(37, 99, 235, 0.15)';
                         presidentModeBadge.style.color = isAcclamation ? '#10B981' : 'var(--accent-color)';
                         presidentModeBadge.style.border = isAcclamation ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(37, 99, 235, 0.3)';
+
+                        if (presidentDetailsBtn) {
+                            const hasVotes = (assembly.presidentVoting && Array.isArray(assembly.presidentVoting.votes) && assembly.presidentVoting.votes.length > 0) || !isAcclamation;
+                            if (hasVotes) {
+                                presidentDetailsBtn.classList.remove('hidden');
+                            } else {
+                                presidentDetailsBtn.classList.add('hidden');
+                            }
+                        }
                     } else {
                         presidentBadgeContainer.classList.add('hidden');
+                        if (presidentDetailsBtn) {
+                            presidentDetailsBtn.classList.add('hidden');
+                        }
                     }
                 }
 
@@ -21024,7 +21039,59 @@ ${renderBottomNavigation()}
                         </div>
                     ` : '';
 
-                    odgPollContainer.innerHTML = odgLockedBanner + assembly.agenda.map((item, idx) => {
+                    let odgStatusBanner = '';
+                    if (assembly.odgApproval || assembly.status === 'in_corso' || assembly.status === 'conclusa') {
+                        const odgAppr = assembly.odgApproval || {};
+                        const odgStatus = odgAppr.status || (assembly.status === 'in_corso' ? 'approved' : '');
+                        const isApproved = odgStatus === 'approved';
+                        const isRejected = odgStatus === 'rejected';
+                        const isVoting = odgStatus === 'voting';
+
+                        let statusText = 'Invariato';
+                        let statusBg = 'rgba(16, 185, 129, 0.15)';
+                        let statusColor = '#10B981';
+                        let statusBorder = 'rgba(16, 185, 129, 0.35)';
+                        let statusIcon = THEME_ICONS.checkSuccess(13);
+
+                        if (isRejected) {
+                            statusText = 'Modificato';
+                            statusBg = 'rgba(239, 68, 68, 0.15)';
+                            statusColor = 'var(--danger, #EF4444)';
+                            statusBorder = 'rgba(239, 68, 68, 0.35)';
+                            statusIcon = THEME_ICONS.shuffle ? THEME_ICONS.shuffle(12) : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>';
+                        } else if (isVoting) {
+                            statusText = 'In votazione';
+                            statusBg = 'rgba(245, 158, 11, 0.15)';
+                            statusColor = 'var(--warning, #F59E0B)';
+                            statusBorder = 'rgba(245, 158, 11, 0.35)';
+                            statusIcon = '<span style="width:6px; height:6px; border-radius:50%; background:#F59E0B; display:inline-block; animation:pulse 1.5s infinite;"></span>';
+                        }
+
+                        odgStatusBanner = `
+                            <div style="padding: 0.75rem 0.9rem; background: var(--surface-color); border: 1.5px solid rgba(37, 99, 235, 0.25); border-left: 4px solid var(--accent-color); border-radius: 10px; margin-bottom: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; text-align: center;">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;">
+                                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: rgba(37, 99, 235, 0.15); color: var(--accent-color); flex-shrink: 0;">
+                                        ${THEME_ICONS.layers(15)}
+                                    </span>
+                                    <span style="font-size: 0.88rem; font-weight: 800; color: var(--primary-text); line-height: 1.2;">
+                                        Ordinamento punti
+                                    </span>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; width: 100%;">
+                                    <button type="button" onclick="${isAdmin ? `showInteractiveReorderModal('${assemblyId}')` : `window.showOdgVotingResultsModal('${assemblyId}')`}" class="btn" style="font-size: 0.76rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusBorder}; cursor: pointer; transition: all 0.15s ease;" title="${isAdmin ? 'Clicca per gestire o modificare l\'ordine dei punti' : 'Stato dell\'ordinamento dei punti'}">
+                                        ${statusIcon}
+                                        <span>${statusText}</span>
+                                    </button>
+                                    <button type="button" onclick="window.showOdgVotingResultsModal('${assemblyId}')" class="btn" style="font-size: 0.76rem; font-weight: 700; padding: 0.32rem 0.75rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(37, 99, 235, 0.45); color: #60A5FA; background: rgba(37, 99, 235, 0.12); cursor: pointer; transition: all 0.15s ease;" title="Visualizza chi ha votato l'ordinamento dei punti">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        <span>Dettagli</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    odgPollContainer.innerHTML = odgLockedBanner + odgStatusBanner + assembly.agenda.map((item, idx) => {
                         const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
 
                         const tally = {};
@@ -25646,6 +25713,7 @@ ${renderBottomNavigation()}
             e.preventDefault();
             const scopeType = document.querySelector('input[name="modal-scope-type"]:checked')?.value || 'intero';
             let targetGroup = null;
+            let splitScales = [];
 
             if (scopeType === 'gruppo') {
                 targetGroup = document.getElementById('modal-scope-target-group')?.value;
@@ -25661,7 +25729,11 @@ ${renderBottomNavigation()}
 
                 if (isAll || selectedScales.length === 0 || (allScaleCbs.length > 0 && checkedScaleCbs.length === allScaleCbs.length)) {
                     targetGroup = 'Tutte le scale';
+                } else if (selectedScales.length === 1) {
+                    targetGroup = selectedScales[0];
                 } else {
+                    // Selezione multipla di 2 o più scale: genera un punto autonomo per ciascuna scala
+                    splitScales = selectedScales;
                     targetGroup = selectedScales.join(', ');
                 }
             }
@@ -25676,54 +25748,125 @@ ${renderBottomNavigation()}
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
 
-                const hasPreviousVotes = item.votes && item.votes.length > 0;
+                const allUsers = window._cachedAllUsers || [];
+                const tableData = window._liveAssemblyStaticCache?.tableData || window._currentTableData || [];
+                const activeAttendees = (assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+                const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected');
+
+                const baseCleanTitle = (window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title)
+                    .replace(/\s*-\s*(Scala\s+[A-Za-z0-9\s]+|Box|Gruppo\s+[A-Za-z0-9\s]+)$/i, '').trim();
+
+                // Funzione per filtrare e ricalcolare i voti riusati specifici per la scala/gruppo target
+                const getFilteredVotesForScale = (targetScaleName) => {
+                    if (!targetScaleName || targetScaleName === 'Tutte le scale' || scopeType === 'intero') {
+                        return JSON.parse(JSON.stringify(item.votes || []));
+                    }
+                    return (item.votes || []).map(v => {
+                        if (!v.voterId) return null;
+                        const voterAttendee = activeAttendees.find(a => a.uid === v.voterId || a.id === v.voterId) ||
+                            (assembly.attendees || []).find(a => a.uid === v.voterId || a.id === v.voterId);
+                        if (!voterAttendee) return null;
+
+                        const personalMil = window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(voterAttendee, targetScaleName, allUsers, tableData) : 0;
+                        const heldProxies = (activeProxies || []).filter(p => (p.delegateId === voterAttendee.uid || p.delegateId === voterAttendee.id));
+                        let proxyMil = 0;
+                        let proxyHeads = 0;
+                        heldProxies.forEach(p => {
+                            const pm = window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetScaleName, allUsers, tableData) : 0;
+                            if (pm > 0) {
+                                proxyMil += pm;
+                                proxyHeads += 1;
+                            }
+                        });
+                        const totalScaleMil = personalMil + proxyMil;
+                        const totalScaleHeads = (personalMil > 0 ? 1 : 0) + proxyHeads;
+
+                        if (totalScaleMil <= 0) return null;
+
+                        return {
+                            ...v,
+                            millesimi: totalScaleMil,
+                            heads: totalScaleHeads
+                        };
+                    }).filter(Boolean);
+                };
+
                 let scopeDesc = 'Intero Condominio';
                 if (scopeType === 'gruppo' || scopeType === 'scale') {
                     scopeDesc = targetGroup || 'Condominio Parziale';
                 }
 
-                // Formalizza la chiusura definitiva del punto originario per consentire il passaggio alla nuova delibera
+                // Formalizza la chiusura definitiva del punto originario per consentire il passaggio alle nuove delibere
                 const updatedCurrentItem = {
                     ...item,
                     status: 'closed'
                 };
 
-                // Crea la nuova voce deliberativa successiva (Punto X bis, ter, quater...) e aprila direttamente alla votazione
-                // Riuso dei voti: copia i voti dal punto precedente per consentire la modifica solo dove necessario
-                const newDeliberationItem = {
-                    id: 'scope_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                    title: window.cleanPointTitle ? window.cleanPointTitle(item.title) : item.title,
-                    scope: scopeType,
-                    targetGroup: targetGroup,
-                    status: 'voting',
-                    votes: JSON.parse(JSON.stringify(item.votes || [])),
-                    voteOptions: item.voteOptions && item.voteOptions.length > 0 ? [...item.voteOptions] : ["Favorevole", "Contrario", "Astenuto"],
-                    isScopeModification: true,
-                    parentItemId: item.parentItemId || item.id,
-                    modifiedFromScope: item.scope || 'intero',
-                    modifiedFromTargetGroup: item.targetGroup || null,
-                    createdAt: Date.now()
-                };
+                let newDeliberationItems = [];
+
+                if (splitScales.length > 1) {
+                    // Genera una delibera autonoma per ciascuna scala selezionata
+                    newDeliberationItems = splitScales.map((scaleName, sIdx) => {
+                        return {
+                            id: 'scope_' + Date.now() + '_' + sIdx + '_' + Math.random().toString(36).substr(2, 6),
+                            title: `${baseCleanTitle} - ${scaleName}`,
+                            scope: 'scale',
+                            targetGroup: scaleName,
+                            status: sIdx === 0 ? 'voting' : 'pending',
+                            votes: getFilteredVotesForScale(scaleName),
+                            voteOptions: item.voteOptions && item.voteOptions.length > 0 ? [...item.voteOptions] : ["Favorevole", "Contrario", "Astenuto"],
+                            isScopeModification: true,
+                            parentItemId: item.parentItemId || item.id,
+                            modifiedFromScope: item.scope || 'intero',
+                            modifiedFromTargetGroup: item.targetGroup || null,
+                            createdAt: Date.now() + (sIdx * 20)
+                        };
+                    });
+                } else {
+                    // Singola scala, singolo gruppo o Intero Condominio
+                    const itemTitle = (targetGroup && targetGroup !== 'Tutte le scale') ? `${baseCleanTitle} - ${targetGroup}` : baseCleanTitle;
+                    newDeliberationItems = [{
+                        id: 'scope_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                        title: itemTitle,
+                        scope: scopeType,
+                        targetGroup: targetGroup,
+                        status: 'voting',
+                        votes: getFilteredVotesForScale(targetGroup),
+                        voteOptions: item.voteOptions && item.voteOptions.length > 0 ? [...item.voteOptions] : ["Favorevole", "Contrario", "Astenuto"],
+                        isScopeModification: true,
+                        parentItemId: item.parentItemId || item.id,
+                        modifiedFromScope: item.scope || 'intero',
+                        modifiedFromTargetGroup: item.targetGroup || null,
+                        createdAt: Date.now()
+                    }];
+                }
 
                 const updatedAgenda = [
                     ...agenda.slice(0, targetIdx),
                     updatedCurrentItem,
-                    newDeliberationItem,
+                    ...newDeliberationItems,
                     ...agenda.slice(targetIdx + 1)
                 ];
 
-                // Chiudi l'espansione del punto precedente e apri la scheda della nuova delibera
+                // Chiudi l'espansione del punto precedente e apri le schede delle nuove delibere
                 if (window._openOdgPointCards) {
                     window._openOdgPointCards.delete(item.id);
-                    window._openOdgPointCards.add(newDeliberationItem.id);
+                    newDeliberationItems.forEach(nItem => {
+                        window._openOdgPointCards.add(nItem.id);
+                    });
                 }
 
                 await updateDoc(assemblyRef, { agenda: updatedAgenda });
-                await logAssemblyEvent(assemblyId, 'MODIFICA_AMBITO', `Punto precedente chiuso e avviata votazione per la nuova delibera con Modifica Ambito (${scopeDesc}) per "${item.title}".`);
+
+                const alertMsg = splitScales.length > 1
+                    ? `Generate con successo ${newDeliberationItems.length} delibere autonome (una per ogni scala selezionata: ${splitScales.join(', ')}) con quorum e voti isolati!`
+                    : `Nuova delibera con Modifica Ambito (${scopeDesc}) creata e aperta alla votazione con successo!`;
+
+                await logAssemblyEvent(assemblyId, 'MODIFICA_AMBITO', `Punto precedente chiuso e create ${newDeliberationItems.length} delibere autonome con Modifica Ambito (${scopeDesc}) per "${item.title}".`);
                 hideModal();
-                await customAlert(`Nuova delibera con Modifica Ambito (${scopeDesc}) creata e aperta alla votazione con successo!`);
-                if (window.scrollToAndHighlightOdgPoint) {
-                    window.scrollToAndHighlightOdgPoint(newDeliberationItem.id);
+                await customAlert(alertMsg);
+                if (window.scrollToAndHighlightOdgPoint && newDeliberationItems[0]) {
+                    window.scrollToAndHighlightOdgPoint(newDeliberationItems[0].id);
                 }
             } catch (err) {
                 console.error("Errore salvataggio ambito:", err);
@@ -27458,6 +27601,708 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.showPresidentElectionResultsModal = async (assemblyIdParam) => {
+            const assemblyId = assemblyIdParam || sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) {
+                await customAlert("Nessuna assemblea attiva identificata.");
+                return;
+            }
+
+            let assembly = window._lastLiveAssemblySnapshot;
+            if (!assembly || assembly.id !== assemblyId) {
+                try {
+                    const docSnap = await getDoc(doc(db, "assemblies", assemblyId));
+                    if (docSnap.exists()) {
+                        assembly = { id: docSnap.id, ...docSnap.data() };
+                    }
+                } catch (e) {
+                    console.error("Errore recupero dati assemblea per dettaglio presidente:", e);
+                }
+            }
+
+            if (!assembly) {
+                await customAlert("Dati dell'assemblea non disponibili.");
+                return;
+            }
+
+            const president = assembly.president || {};
+            const presidentVoting = assembly.presidentVoting || {};
+            const isAcclamation = president.mode === 'acclamazione';
+
+            // Data e ora completamento
+            let dateStr = '';
+            const compTs = presidentVoting.completedAt || president.electedAt;
+            if (compTs) {
+                const d = new Date(compTs);
+                dateStr = d.toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' alle ' + d.toLocaleTimeString("it-IT", { hour: '2-digit', minute: '2-digit' });
+            }
+
+            // Hero Card Presidente Proclamato
+            const heroCardHtml = `
+                <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(16, 185, 129, 0.12)); border: 1.5px solid rgba(37, 99, 235, 0.35); border-radius: 14px; padding: 1.15rem 1rem; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; margin-bottom: 0.1rem; width: 100% !important; box-sizing: border-box !important;">
+                    <div style="width: 46px; height: 46px; border-radius: 50%; background: #2563EB; color: white; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); margin-bottom: 0.45rem; margin-left: auto; margin-right: auto; flex-shrink: 0;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
+                    </div>
+                    <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--secondary-text); letter-spacing: 0.7px; margin-bottom: 0.25rem; text-align: center !important; width: 100% !important; display: block;">
+                        Presidente Proclamato
+                    </div>
+                    <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-text); margin: 0 0 0.45rem 0 !important; word-break: break-word; line-height: 1.25; text-align: center !important; width: 100% !important; display: block;">
+                        ${escapeHtml(president.nome || 'Non designato')}
+                    </h3>
+                    <div style="display: flex !important; align-items: center !important; justify-content: center !important; gap: 0.45rem; flex-wrap: wrap; text-align: center !important; width: 100% !important;">
+                        <span class="badge" style="background: ${isAcclamation ? 'rgba(16, 185, 129, 0.2)' : 'rgba(37, 99, 235, 0.2)'}; color: ${isAcclamation ? '#10B981' : 'var(--accent-color)'}; font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap;">
+                            ${isAcclamation ? 'Eletto per acclamazione' : 'Eletto per votazione'}
+                        </span>
+                        ${dateStr ? `<span style="font-size: 0.72rem; color: var(--secondary-text); white-space: nowrap; text-align: center !important;">Concluso il ${dateStr}</span>` : ''}
+                    </div>
+                </div>
+            `;
+
+            const rawVotes = presidentVoting.votes || [];
+            if (isAcclamation && rawVotes.length === 0) {
+                const modalContent = `
+                    <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.25rem 1rem 0.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                            ${heroCardHtml}
+                            <div class="card" style="padding: 1.25rem; text-align: center; background: var(--surface-color-light); border-radius: 10px;">
+                                <div style="font-size: 1.5rem; margin-bottom: 0.4rem;">🤝</div>
+                                <strong style="font-size: 0.95rem; color: var(--primary-text); display: block; margin-bottom: 0.3rem;">Nomina all'Unanimità</strong>
+                                <p style="color: var(--secondary-text); margin: 0; font-size: 0.84rem; line-height: 1.4;">
+                                    L'elezione del Presidente dell'Assemblea è avvenuta all'unanimità per acclamazione di tutti i condòmini presenti, senza necessità di procedere allo scrutinio dei voti a schede/millesimi.
+                                </p>
+                            </div>
+                        </div>
+                        <div style="padding: 0.6rem 0.25rem max(0.4rem, env(safe-area-inset-bottom)) 0.25rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0; width: 100%; background: var(--surface-color, #1e1e1e);">
+                            <button type="button" onclick="hideModal()" class="btn btn-secondary w-full" style="height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                Chiudi
+                            </button>
+                        </div>
+                    </div>
+                `;
+                showModal('Esiti Elezione Presidente', modalContent, true);
+                return;
+            }
+
+            // Elaborazione voti
+            const rawCandidates = presidentVoting.candidates || [];
+            const candidates = rawCandidates.map(c => window.cleanCandidateName ? window.cleanCandidateName(c) : c);
+            if (president.nome && !candidates.some(c => c.toLowerCase() === president.nome.toLowerCase())) {
+                candidates.unshift(president.nome);
+            }
+
+            const votes = rawVotes.map(v => ({
+                ...v,
+                candidate: window.cleanCandidateName ? window.cleanCandidateName(v.candidate) : v.candidate
+            }));
+
+            // Calcolo presenze in sala per percentuali
+            const activeAttendees = (assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+            const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && activeAttendees.some(a => (a.uid && a.uid === p.delegateId) || (a.id && a.id === p.delegateId)));
+            const totalEligiblePresences = activeAttendees.length + activeProxies.length;
+
+            let totalRoomMil = activeAttendees.reduce((acc, a) => acc + (parseFloat(a.millesimi) || 0), 0);
+            if (totalRoomMil <= 0) totalRoomMil = 1000.00;
+
+            const candidateScores = candidates.map(c => {
+                const cVotes = votes.filter(v => (v.candidate || '').toLowerCase() === c.toLowerCase());
+                let mil = 0, heads = 0;
+                cVotes.forEach(v => {
+                    mil += (parseFloat(v.millesimi) || 0);
+                    heads += (parseInt(v.heads, 10) || 1);
+                });
+                return {
+                    name: c,
+                    millesimi: parseFloat(mil.toFixed(2)),
+                    heads: heads,
+                    count: cVotes.length,
+                    votes: cVotes,
+                    isWinner: (c.toLowerCase() === (president.nome || '').toLowerCase())
+                };
+            }).sort((a, b) => {
+                if (a.isWinner && !b.isWinner) return -1;
+                if (!a.isWinner && b.isWinner) return 1;
+                return b.millesimi !== a.millesimi ? (b.millesimi - a.millesimi) : (b.heads - a.heads);
+            });
+
+            const contraryVotes = votes.filter(v => (v.candidate || '').toLowerCase() === 'contrario');
+            let contraryMil = 0, contraryHeads = 0;
+            contraryVotes.forEach(v => {
+                contraryMil += (parseFloat(v.millesimi) || 0);
+                contraryHeads += (parseInt(v.heads, 10) || 1);
+            });
+
+            const abstainVotes = votes.filter(v => (v.candidate || '').toLowerCase() === 'astenuto');
+            let abstainMil = 0, abstainHeads = 0;
+            abstainVotes.forEach(v => {
+                abstainMil += (parseFloat(v.millesimi) || 0);
+                abstainHeads += (parseInt(v.heads, 10) || 1);
+            });
+
+            const totalVotedMil = candidateScores.reduce((acc, c) => acc + c.millesimi, 0) + contraryMil + abstainMil;
+            const totalVotedHeads = candidateScores.reduce((acc, c) => acc + c.heads, 0) + contraryHeads + abstainHeads;
+
+            // Render dei votanti per una determinata lista di voti
+            const renderVotersList = (voteList) => {
+                if (!voteList || voteList.length === 0) {
+                    return `<div style="font-size: 0.75rem; color: var(--secondary-text); font-style: italic; padding: 0.2rem 0;">Nessun voto espresso</div>`;
+                }
+
+                const sortedVotes = [...voteList].sort((a, b) => {
+                    const nameA = (a.voterName || '').trim().toLowerCase();
+                    const nameB = (b.voterName || '').trim().toLowerCase();
+                    return nameA.localeCompare(nameB, 'it', { sensitivity: 'base' });
+                });
+
+                return sortedVotes.map(v => {
+                    const attendeeData = activeAttendees.find(a => (a.uid && a.uid === v.voterId) || (a.id && a.id === v.voterId) || (a.nome && a.nome === v.voterName));
+                    const attendeeProxies = (assembly.proxies || []).filter(p => (p.status !== 'rejected') && (p.delegateId === v.voterId || (attendeeData?.uid && p.delegateId === attendeeData.uid) || (attendeeData?.id && p.delegateId === attendeeData.id)));
+
+                    const totalMil = parseFloat(v.millesimi) || 0;
+                    const totalHeads = parseInt(v.heads, 10) || 1;
+
+                    let proxiesTotalMil = 0;
+                    attendeeProxies.forEach(p => {
+                        proxiesTotalMil += (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                    });
+
+                    // Calcolo quota personale
+                    let personalMil = 0;
+                    if (attendeeData && attendeeData.baseMillesimi !== undefined && attendeeData.baseMillesimi !== null) {
+                        personalMil = parseFloat(attendeeData.baseMillesimi) || 0;
+                    } else if (attendeeData && attendeeData.personalMillesimi !== undefined && attendeeData.personalMillesimi !== null) {
+                        personalMil = parseFloat(attendeeData.personalMillesimi) || 0;
+                    } else {
+                        personalMil = Math.max(0, parseFloat((totalMil - proxiesTotalMil).toFixed(2)));
+                    }
+
+                    const cleanName = attendeeData?.nominativo || attendeeData?.nome || v.voterName || 'Condòmino';
+                    const rawSelfUnits = window.getVoterUnitString
+                        ? window.getVoterUnitString(attendeeData || v, window._cachedAllUsers || [])
+                        : ((Array.isArray(attendeeData?.proprieta) && attendeeData.proprieta.length > 0
+                            ? attendeeData.proprieta.map(pr => pr.interno ? (pr.scala ? `${pr.scala} - Int. ${pr.interno}` : `Int. ${pr.interno}`) : '').filter(Boolean).join(', ')
+                            : '') || attendeeData?.unitaImmobiliare || attendeeData?.units || '');
+                    const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
+
+                    let proxyInfo = '';
+                    if (attendeeProxies.length > 0) {
+                        proxyInfo = `
+                            <div style="font-size:0.73rem; color:var(--accent-color, #10B981); font-weight:600; margin-top:0.35rem; background:rgba(37,99,235,0.06); padding:0.35rem 0.55rem; border-radius:6px; border:1px solid rgba(37,99,235,0.15); display:flex; flex-direction:column; gap:0.2rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="display:inline-flex; align-items:center; gap:0.3rem; color:#10B981;">
+                                        ${window.THEME_ICONS && window.THEME_ICONS.scroll ? window.THEME_ICONS.scroll(13, 2, '', '', '#10B981') : '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10B981" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'} Deleghe ricevute (${attendeeProxies.length}):
+                                    </strong>
+                                    <span style="font-weight:800; color:var(--warning, #F59E0B);">${proxiesTotalMil.toFixed(2)} ‰ totali</span>
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:0.25rem; margin-top:0.15rem;">
+                                    ${attendeeProxies.map((p, pIdx) => {
+                                        const dName = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
+                                        const dMil = (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0).toFixed(2);
+                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, window._cachedAllUsers || []) : (p.delegatorUnita || p.delegatorUnit || (Array.isArray(p.proprieta) ? p.proprieta.map(pr => pr.interno ? (pr.scala ? `${pr.scala} - Int. ${pr.interno}` : `Int. ${pr.interno}`) : '').filter(Boolean).join(', ') : '') || '');
+                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+
+                                        return `
+                                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; ${pIdx > 0 ? 'border-top:1px solid rgba(255,255,255,0.06); padding-top:0.25rem;' : ''}">
+                                                <div style="min-width:0; flex:1;">
+                                                    <div style="color:var(--primary-text); font-size:0.74rem; font-weight:700; line-height:1.2;">
+                                                        • ${escapeHtml(dName)}
+                                                    </div>
+                                                    ${cleanPUnit ? `
+                                                        <div style="color:var(--secondary-text); font-size:0.69rem; font-weight:600; margin-left:0.65rem; margin-top:0.1rem;">
+                                                            Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanPUnit)}</span>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                                <div style="flex-shrink:0; text-align:right;">
+                                                    <strong style="color:var(--warning, #F59E0B); font-size:0.75rem; font-weight:800; white-space:nowrap;">${dMil} ‰</strong>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.25rem; border-top:1px dashed rgba(239,68,68,0.35); font-size:0.73rem;">
+                                    <span style="color:var(--danger, #EF4444); font-weight:700;">Tot. con deleghe:</span>
+                                    <strong style="color:var(--danger, #EF4444); font-weight:800;">${totalMil.toFixed(2)} ‰</strong>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:7px; padding:0.5rem 0.65rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+                                <div style="min-width:0; flex:1;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                        <strong style="font-size:0.9rem; color:var(--primary-text); word-break:break-word; line-height:1.25;">
+                                            ${escapeHtml(cleanName)}
+                                        </strong>
+                                        ${v.recordedByAdmin ? '<span style="font-size:0.6rem; background:rgba(245, 158, 11, 0.2); color:var(--warning); padding:0.1rem 0.3rem; border-radius:3px; font-weight:700; flex-shrink:0;">Admin</span>' : ''}
+                                    </div>
+                                    ${cleanSelfUnits ? `
+                                        <div style="font-size:0.74rem; color:var(--secondary-text); font-weight:500; margin-top:0.15rem; word-break:break-word;">
+                                            Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanSelfUnits)}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div style="text-align:right; flex-shrink:0;">
+                                    <strong style="font-size:0.95rem; font-weight:800; color:var(--warning, #F59E0B); line-height:1.2; display:block;">
+                                        ${personalMil.toFixed(2)} ‰
+                                    </strong>
+                                    ${attendeeProxies.length === 0 ? `<span style="font-size:0.66rem; color:var(--secondary-text); display:block; margin-top:0.1rem;">1 testa</span>` : ''}
+                                </div>
+                            </div>
+                            ${proxyInfo}
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            // Graduatoria candidati
+            const candidatesHtml = candidateScores.map((c, idx) => {
+                const percent = totalRoomMil > 0 ? ((c.millesimi / totalRoomMil) * 100).toFixed(1) : '0.0';
+                return `
+                    <div class="card" style="padding: 0.85rem; background: var(--surface-color); border: 1.5px solid ${c.isWinner ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.08)'}; border-radius: 10px; margin-bottom: 0.65rem; box-shadow: ${c.isWinner ? '0 4px 16px rgba(16, 185, 129, 0.12)' : 'none'};">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.45rem;">
+                            <div style="display: flex; align-items: flex-start; gap: 0.5rem; min-width: 0; flex: 1;">
+                                <div style="margin-top: 0.1rem; flex-shrink: 0;">
+                                    ${c.isWinner ? `
+                                        <div style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex-shrink: 0;">
+                                            <svg viewBox="0 0 24 24" width="22" height="22" fill="#F59E0B" stroke="#B45309" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="display: block; filter: drop-shadow(0 2px 5px rgba(245, 158, 11, 0.5));">
+                                                <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"></path>
+                                                <rect x="3" y="18" width="18" height="2.5" rx="1"></rect>
+                                            </svg>
+                                        </div>
+                                    ` : `
+                                        <span style="width: 26px; height: 26px; border-radius: 50%; background: var(--surface-color-light); color: var(--secondary-text); font-size: 0.74rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">${idx + 1}</span>
+                                    `}
+                                </div>
+                                <div style="min-width: 0;">
+                                    <strong style="font-size: 0.95rem; color: var(--primary-text); display: block; word-break: break-word; line-height: 1.3;">
+                                        ${escapeHtml(c.name)}
+                                    </strong>
+                                    ${c.isWinner ? '<span class="badge" style="background: #10B981; color: black; font-weight: 800; font-size: 0.65rem; padding: 0.12rem 0.45rem; border-radius: 4px; display: inline-block; margin-top: 0.2rem;">ELETTO PRESIDENTE</span>' : '<span style="font-size: 0.68rem; color: var(--secondary-text); display: inline-block; margin-top: 0.15rem;">Candidato</span>'}
+                                </div>
+                            </div>
+                            <div style="text-align: right; flex-shrink: 0;">
+                                <div style="font-size: 1rem; font-weight: 800; color: ${c.isWinner ? '#10B981' : 'var(--primary-text)'}; line-height: 1.2;">${c.millesimi.toFixed(2)} ‰</div>
+                                <div style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600; margin-top: 0.15rem;">${c.heads} ${c.heads === 1 ? 'testa' : 'teste'} (${percent}%)</div>
+                            </div>
+                        </div>
+
+                        <!-- BARRA PERCENTUALE -->
+                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-bottom: 0.65rem;">
+                            <div style="width: ${Math.min(100, Math.max(0, percent))}%; height: 100%; background: ${c.isWinner ? '#10B981' : 'var(--accent-color, #2563EB)'}; border-radius: 3px;"></div>
+                        </div>
+
+                        <!-- VOTANTI DEL CANDIDATO -->
+                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size: 0.72rem; font-weight: 700; color: var(--secondary-text); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.4rem;">
+                                Votanti a Favore (${c.votes.length}):
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                ${renderVotersList(c.votes)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Contrari (se presenti)
+            let contraryHtml = '';
+            if (contraryVotes.length > 0) {
+                const contraryPercent = totalRoomMil > 0 ? ((contraryMil / totalRoomMil) * 100).toFixed(1) : '0.0';
+                contraryHtml = `
+                    <div class="card" style="padding: 0.85rem; background: var(--surface-color); border: 1.5px solid rgba(239, 68, 68, 0.35); border-radius: 10px; margin-bottom: 0.65rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                            <div style="display: flex; align-items: center; gap: 0.45rem;">
+                                <span style="width: 22px; height: 22px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); color: var(--danger, #EF4444); font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;">✕</span>
+                                <strong style="font-size: 0.9rem; color: var(--danger, #EF4444);">Voti Contrari</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.95rem; font-weight: 800; color: var(--danger, #EF4444);">${contraryMil.toFixed(2)} ‰</span>
+                                <span style="font-size: 0.72rem; color: var(--secondary-text); display: block;">${contraryHeads} ${contraryHeads === 1 ? 'testa' : 'teste'} (${contraryPercent}%)</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                ${renderVotersList(contraryVotes)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Astenuti (se presenti)
+            let abstainHtml = '';
+            if (abstainVotes.length > 0) {
+                const abstainPercent = totalRoomMil > 0 ? ((abstainMil / totalRoomMil) * 100).toFixed(1) : '0.0';
+                abstainHtml = `
+                    <div class="card" style="padding: 0.85rem; background: var(--surface-color); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; margin-bottom: 0.65rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                            <div style="display: flex; align-items: center; gap: 0.45rem;">
+                                <span style="width: 22px; height: 22px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: var(--warning, #F59E0B); font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;">—</span>
+                                <strong style="font-size: 0.9rem; color: var(--warning, #F59E0B);">Astenuti</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.95rem; font-weight: 800; color: var(--warning, #F59E0B);">${abstainMil.toFixed(2)} ‰</span>
+                                <span style="font-size: 0.72rem; color: var(--secondary-text); display: block;">${abstainHeads} ${abstainHeads === 1 ? 'testa' : 'teste'} (${abstainPercent}%)</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                ${renderVotersList(abstainVotes)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const modalContent = `
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <!-- CONTENUTO SCROLLABILE -->
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.25rem 1.25rem 0.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                        ${heroCardHtml}
+
+                        <!-- KPI RIEPILOGO VOTAZIONE -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; text-align: center;">
+                            <div style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 0.65rem 0.35rem; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600; margin-bottom: 0.15rem; white-space: nowrap;">Voti Favorevoli</span>
+                                <strong style="font-size: 0.96rem; font-weight: 800; color: #10B981; line-height: 1.2;">${(candidateScores[0]?.millesimi || 0).toFixed(2)} ‰</strong>
+                                <span style="font-size: 0.68rem; color: var(--secondary-text); margin-top: 0.15rem;">${candidateScores[0]?.heads || 0} ${(candidateScores[0]?.heads || 0) === 1 ? 'testa' : 'teste'}</span>
+                            </div>
+                            <div style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 0.65rem 0.35rem; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600; margin-bottom: 0.15rem; white-space: nowrap;">Voti Contrari</span>
+                                <strong style="font-size: 0.96rem; font-weight: 800; color: var(--danger, #EF4444); line-height: 1.2;">${contraryMil.toFixed(2)} ‰</strong>
+                                <span style="font-size: 0.68rem; color: var(--secondary-text); margin-top: 0.15rem;">${contraryHeads} ${contraryHeads === 1 ? 'testa' : 'teste'}</span>
+                            </div>
+                            <div style="background: var(--surface-color); border: 1px solid var(--surface-color-light); padding: 0.65rem 0.35rem; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600; margin-bottom: 0.15rem; white-space: nowrap;">Astenuti</span>
+                                <strong style="font-size: 0.96rem; font-weight: 800; color: var(--warning, #F59E0B); line-height: 1.2;">${abstainMil.toFixed(2)} ‰</strong>
+                                <span style="font-size: 0.68rem; color: var(--secondary-text); margin-top: 0.15rem;">${abstainHeads} ${abstainHeads === 1 ? 'testa' : 'teste'}</span>
+                            </div>
+                        </div>
+
+                        <!-- GRADUATORIA CANDIDATI -->
+                        <div>
+                            <div style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">
+                                Graduatoria Candidati
+                            </div>
+                            ${candidatesHtml}
+                        </div>
+
+                        ${contraryHtml}
+                        ${abstainHtml}
+                    </div>
+
+                    <!-- FOOTER FISSO CON BOTTONE CHIUDI -->
+                    <div style="padding: 0.6rem 0.25rem max(0.4rem, env(safe-area-inset-bottom)) 0.25rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0; width: 100%; background: var(--surface-color, #1e1e1e);">
+                        <button type="button" onclick="hideModal()" class="btn btn-secondary w-full" style="height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            showModal('Esiti Elezione Presidente', modalContent, true);
+        };
+
+        window.showOdgVotingResultsModal = async (assemblyIdParam = null) => {
+            const assemblyId = assemblyIdParam || sessionStorage.getItem('activeLiveAssemblyId');
+            if (!assemblyId) return;
+
+            let assembly = window._lastLiveAssemblySnapshot;
+            if (!assembly || assembly.id !== assemblyId) {
+                try {
+                    const docSnap = await getDoc(doc(db, "assemblies", assemblyId));
+                    if (docSnap.exists()) {
+                        assembly = { id: docSnap.id, ...docSnap.data() };
+                    }
+                } catch (e) {
+                    console.error("Errore recupero dati assemblea per dettaglio OdG:", e);
+                }
+            }
+
+            if (!assembly) {
+                await customAlert("Dati dell'assemblea non disponibili.");
+                return;
+            }
+
+            const odgApproval = assembly.odgApproval || {};
+            const agenda = assembly.agenda || [];
+            const votes = odgApproval.votes || [];
+            const activeAttendees = (assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+            const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected');
+            const allUsers = window._cachedAllUsers || [];
+
+            const isDirectInvariato = (odgApproval.mode === 'invariato' || odgApproval.status === 'approved') && votes.length === 0;
+
+            let dateStr = '';
+            const compTs = odgApproval.completedAt || odgApproval.startedAt;
+            if (compTs) {
+                const d = new Date(compTs);
+                dateStr = d.toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' alle ' + d.toLocaleTimeString("it-IT", { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const isRejected = odgApproval.status === 'rejected';
+            const isVoting = odgApproval.status === 'voting';
+            let statusTitle = isRejected ? 'Ordine dei Punti Modificato' : (isVoting ? 'Votazione Ordinamento in Corso' : 'Ordine dei Punti Confermato Invariato');
+            let statusBadgeColor = isRejected ? 'var(--danger, #EF4444)' : (isVoting ? 'var(--warning, #F59E0B)' : '#10B981');
+            let statusBadgeBg = isRejected ? 'rgba(239, 68, 68, 0.15)' : (isVoting ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)');
+
+            const heroCardHtml = `
+                <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(16, 185, 129, 0.12)); border: 1.5px solid rgba(37, 99, 235, 0.35); border-radius: 14px; padding: 1.15rem 1rem; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; margin-bottom: 0.1rem; width: 100% !important; box-sizing: border-box !important;">
+                    <div style="width: 46px; height: 46px; border-radius: 50%; background: #2563EB; color: white; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); margin-bottom: 0.65rem; margin-left: auto; margin-right: auto; flex-shrink: 0;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    </div>
+                    <div style="display: flex !important; align-items: center !important; justify-content: center !important; gap: 0.45rem; flex-wrap: wrap; text-align: center !important; width: 100% !important;">
+                        <span class="badge" style="background: ${statusBadgeBg}; color: ${statusBadgeColor}; font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap;">
+                            ${votes.length > 0 ? `Esito votazione (${votes.length} ${votes.length === 1 ? 'voto' : 'voti'})` : 'Confermato senza votazione'}
+                        </span>
+                        ${dateStr ? `<span style="font-size: 0.72rem; color: var(--secondary-text); white-space: nowrap; text-align: center !important;">${dateStr}</span>` : ''}
+                    </div>
+                </div>
+            `;
+
+            if (isDirectInvariato && votes.length === 0) {
+                const pointsListHtml = agenda.map((item, idx) => `
+                    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; text-align:left; border-left:3px solid var(--accent-color);">
+                        <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
+                        <span style="font-weight:600; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
+                    </div>
+                `).join('');
+
+                const modalContent = `
+                    <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.25rem 1rem 0.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                            ${heroCardHtml}
+                            <div class="card" style="padding: 1.15rem 1rem; text-align: center !important; background: var(--surface-color-light); border-radius: 10px; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; width: 100% !important; box-sizing: border-box !important;">
+                                <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(37, 99, 235, 0.14); color: var(--accent-color, #2563EB); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.5rem; margin-left: auto; margin-right: auto;">
+                                    ${THEME_ICONS.clipboard(20)}
+                                </div>
+                                <strong style="font-size: 0.95rem; color: var(--primary-text); display: block; margin-bottom: 0.25rem; text-align: center !important; width: 100% !important;">
+                                    Ordine Confermato all'Avvio
+                                </strong>
+                                <p style="color: var(--secondary-text); margin: 0; font-size: 0.82rem; line-height: 1.35; text-align: center !important; width: 100% !important; max-width: 320px; margin-left: auto; margin-right: auto;">
+                                    Sequenza dei punti confermata invariata all'avvio della seduta dall'amministratore.
+                                </p>
+                            </div>
+                            <div style="margin-top: 0.25rem;">
+                                <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.45rem;">
+                                    Sequenza dei Punti (${agenda.length})
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                    ${pointsListHtml}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="padding: 0.6rem 0.25rem max(0.4rem, env(safe-area-inset-bottom)) 0.25rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0; width: 100%; background: var(--surface-color, #1e1e1e);">
+                            <button type="button" onclick="hideModal()" class="btn btn-secondary w-full" style="height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                Chiudi
+                            </button>
+                        </div>
+                    </div>
+                `;
+                showModal('Esiti Ordinamento Punti', modalContent, true);
+                return;
+            }
+
+            const upVotes = votes.filter(v => v.choice === 'up');
+            const downVotes = votes.filter(v => v.choice === 'down');
+
+            let upMil = 0, upHeads = 0;
+            upVotes.forEach(v => {
+                upMil += (parseFloat(v.millesimi) || 0);
+                upHeads += (parseInt(v.heads, 10) || 1);
+            });
+
+            let downMil = 0, downHeads = 0;
+            downVotes.forEach(v => {
+                downMil += (parseFloat(v.millesimi) || 0);
+                downHeads += (parseInt(v.heads, 10) || 1);
+            });
+
+            const renderVoterCards = (voteList) => {
+                if (!voteList || voteList.length === 0) {
+                    return `<div style="font-size: 0.76rem; color: var(--secondary-text); font-style: italic; padding: 0.4rem 0; text-align: center;">Nessun voto espresso in questa categoria</div>`;
+                }
+
+                const sortedVotes = [...voteList].sort((a, b) => {
+                    const nameA = (a.voterName || '').trim().toLowerCase();
+                    const nameB = (b.voterName || '').trim().toLowerCase();
+                    return nameA.localeCompare(nameB, 'it', { sensitivity: 'base' });
+                });
+
+                return sortedVotes.map(v => {
+                    const attendeeData = (activeAttendees || []).find(a => (a.uid && a.uid === v.voterId) || (a.id && a.id === v.voterId) || (a.nome && a.nome === v.voterName));
+                    const attendeeProxies = (activeProxies || []).filter(p => (p.status !== 'rejected') && (p.delegateId === v.voterId || (attendeeData?.uid && p.delegateId === attendeeData.uid) || (attendeeData?.id && p.delegateId === attendeeData.id)));
+
+                    const totalMil = parseFloat(v.millesimi) || 0;
+                    const totalHeads = parseInt(v.heads, 10) || 1;
+
+                    let proxiesTotalMil = 0;
+                    attendeeProxies.forEach(p => {
+                        proxiesTotalMil += (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                    });
+
+                    let personalMil = 0;
+                    if (attendeeData && attendeeData.baseMillesimi !== undefined && attendeeData.baseMillesimi !== null) {
+                        personalMil = parseFloat(attendeeData.baseMillesimi) || 0;
+                    } else if (attendeeData && attendeeData.personalMillesimi !== undefined && attendeeData.personalMillesimi !== null) {
+                        personalMil = parseFloat(attendeeData.personalMillesimi) || 0;
+                    } else {
+                        personalMil = Math.max(0, parseFloat((totalMil - proxiesTotalMil).toFixed(2)));
+                    }
+
+                    const cleanName = attendeeData?.nominativo || attendeeData?.nome || v.voterName || 'Condòmino';
+                    const rawSelfUnits = window.getVoterUnitString
+                        ? window.getVoterUnitString(attendeeData || v, allUsers || [])
+                        : ((Array.isArray(attendeeData?.proprieta) && attendeeData.proprieta.length > 0
+                            ? attendeeData.proprieta.map(pr => pr.interno ? (pr.scala ? `${pr.scala} - Int. ${pr.interno}` : `Int. ${pr.interno}`) : '').filter(Boolean).join(', ')
+                            : '') || attendeeData?.unitaImmobiliare || attendeeData?.units || '');
+                    const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
+
+                    let proxyInfo = '';
+                    if (attendeeProxies.length > 0) {
+                        proxyInfo = `
+                            <div style="font-size:0.73rem; color:var(--accent-color, #10B981); font-weight:600; margin-top:0.35rem; background:rgba(37,99,235,0.06); padding:0.35rem 0.55rem; border-radius:6px; border:1px solid rgba(37,99,235,0.15); display:flex; flex-direction:column; gap:0.2rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="display:inline-flex; align-items:center; gap:0.3rem; color:#10B981;">
+                                        ${window.THEME_ICONS && window.THEME_ICONS.scroll ? window.THEME_ICONS.scroll(13, 2, '', '', '#10B981') : '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10B981" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'} Deleghe ricevute (${attendeeProxies.length}):
+                                    </strong>
+                                    <span style="font-weight:800; color:var(--warning, #F59E0B);">${proxiesTotalMil.toFixed(2)} ‰ totali</span>
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:0.25rem; margin-top:0.15rem;">
+                                    ${attendeeProxies.map((p, pIdx) => {
+                                        const dName = p.delegatorName || `${p.delegatorProfile?.nome || ''} ${p.delegatorProfile?.cognome || ''}`.trim() || 'Delegante';
+                                        const dMil = (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0).toFixed(2);
+                                        const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers || []) : (p.delegatorUnita || p.delegatorUnit || (Array.isArray(p.proprieta) ? p.proprieta.map(pr => pr.interno ? (pr.scala ? `${pr.scala} - Int. ${pr.interno}` : `Int. ${pr.interno}`) : '').filter(Boolean).join(', ') : '') || '');
+                                        const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+
+                                        return `
+                                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; ${pIdx > 0 ? 'border-top:1px solid rgba(255,255,255,0.06); padding-top:0.25rem;' : ''}">
+                                                <div style="min-width:0; flex:1;">
+                                                    <div style="color:var(--primary-text); font-size:0.74rem; font-weight:700; line-height:1.2;">
+                                                        • ${escapeHtml(dName)}
+                                                    </div>
+                                                    ${cleanPUnit ? `
+                                                        <div style="color:var(--secondary-text); font-size:0.69rem; font-weight:600; margin-left:0.65rem; margin-top:0.1rem;">
+                                                            Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanPUnit)}</span>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                                <div style="flex-shrink:0; text-align:right;">
+                                                    <strong style="color:var(--warning, #F59E0B); font-size:0.75rem; font-weight:800; white-space:nowrap;">${dMil} ‰</strong>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.25rem; border-top:1px dashed rgba(239,68,68,0.35); font-size:0.73rem;">
+                                    <span style="color:var(--danger, #EF4444); font-weight:700;">Tot. con deleghe:</span>
+                                    <strong style="color:var(--danger, #EF4444); font-weight:800;">${totalMil.toFixed(2)} ‰</strong>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:7px; padding:0.5rem 0.65rem; margin-bottom:0.4rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
+                                <div style="min-width:0; flex:1;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                        <strong style="font-size:0.9rem; color:var(--primary-text); word-break:break-word; line-height:1.25;">
+                                            ${escapeHtml(cleanName)}
+                                        </strong>
+                                        ${v.recordedByAdmin ? '<span style="font-size:0.6rem; background:rgba(245, 158, 11, 0.2); color:var(--warning); padding:0.1rem 0.3rem; border-radius:3px; font-weight:700; flex-shrink:0;">Admin</span>' : ''}
+                                    </div>
+                                    ${cleanSelfUnits ? `
+                                        <div style="font-size:0.74rem; color:var(--secondary-text); font-weight:500; margin-top:0.15rem; word-break:break-word;">
+                                            Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanSelfUnits)}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div style="text-align:right; flex-shrink:0;">
+                                    <strong style="font-size:0.95rem; font-weight:800; color:var(--warning, #F59E0B); line-height:1.2; display:block;">
+                                        ${personalMil.toFixed(2)} ‰
+                                    </strong>
+                                    ${attendeeProxies.length === 0 ? `<span style="font-size:0.66rem; color:var(--secondary-text); display:block; margin-top:0.1rem;">1 testa</span>` : ''}
+                                </div>
+                            </div>
+                            ${proxyInfo}
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            const upCardsHtml = renderVoterCards(upVotes);
+            const downCardsHtml = renderVoterCards(downVotes);
+
+            const modalContent = `
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.25rem 1rem 0.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                        ${heroCardHtml}
+
+                        <!-- 2 CARD TOTALI AFFIANCATE (VERDE E ROSSA) -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.55rem;">
+                            <!-- CARD ORDINE ATTUALE (VERDE) -->
+                            <div class="card" style="padding:0.65rem 0.45rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(16, 185, 129, 0.08); border:2px solid #10B981; border-radius:10px; margin:0 !important;">
+                                <div style="margin-bottom:0.15rem; color:#10B981;">${THEME_ICONS.thumbsUp(24, 2)}</div>
+                                <span style="font-size:0.72rem; font-weight:800; color:#10B981; text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.1rem;">ORDINE ATTUALE</span>
+                                <strong style="font-size:1.3rem; color:#10B981; display:block; width:100%; text-align:center !important; margin-bottom:0.1rem; line-height:1.2;">${upMil.toFixed(2)} ‰</strong>
+                                <span style="font-size:0.72rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${upHeads} ${upHeads === 1 ? 'testa' : 'teste'} (${upVotes.length} ${upVotes.length === 1 ? 'voto' : 'voti'})</span>
+                            </div>
+
+                            <!-- CARD ORDINE DA CAMBIARE (ROSSA) -->
+                            <div class="card" style="padding:0.65rem 0.45rem; text-align:center !important; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(239, 68, 68, 0.08); border:2px solid var(--danger, #EF4444); border-radius:10px; margin:0 !important;">
+                                <div style="margin-bottom:0.15rem; color:var(--danger);">${THEME_ICONS.thumbsDown(24, 2)}</div>
+                                <span style="font-size:0.72rem; font-weight:800; color:var(--danger); text-transform:uppercase; display:block; width:100%; text-align:center !important; margin-bottom:0.1rem;">ORDINE DA CAMBIARE</span>
+                                <strong style="font-size:1.3rem; color:var(--danger); display:block; width:100%; text-align:center !important; margin-bottom:0.1rem; line-height:1.2;">${downMil.toFixed(2)} ‰</strong>
+                                <span style="font-size:0.72rem; color:var(--secondary-text); font-weight:600; display:block; width:100%; text-align:center !important;">${downHeads} ${downHeads === 1 ? 'testa' : 'teste'} (${downVotes.length} ${downVotes.length === 1 ? 'voto' : 'voti'})</span>
+                            </div>
+                        </div>
+
+                        <!-- SEZIONE DETTAGLIO VOTANTI ORDINE ATTUALE -->
+                        <div class="card" style="padding: 0.85rem; background: var(--surface-color); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 10px; margin: 0 !important;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(16, 185, 129, 0.2);">
+                                <strong style="font-size: 0.85rem; color: #10B981; display:flex; align-items:center; gap:0.35rem;">
+                                    ${THEME_ICONS.thumbsUp(15)} Favorevoli all'Ordine Attuale (${upVotes.length})
+                                </strong>
+                                <span style="font-size: 0.82rem; font-weight: 800; color: #10B981;">
+                                    ${upMil.toFixed(2)} ‰
+                                </span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                                ${upCardsHtml}
+                            </div>
+                        </div>
+
+                        <!-- SEZIONE DETTAGLIO VOTANTI ORDINE DA CAMBIARE -->
+                        <div class="card" style="padding: 0.85rem; background: var(--surface-color); border: 1.5px solid rgba(239, 68, 68, 0.35); border-radius: 10px; margin: 0 !important;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(239, 68, 68, 0.2);">
+                                <strong style="font-size: 0.85rem; color: var(--danger, #EF4444); display:flex; align-items:center; gap:0.35rem;">
+                                    ${THEME_ICONS.thumbsDown(15)} Favorevoli alla Variazione (${downVotes.length})
+                                </strong>
+                                <span style="font-size: 0.82rem; font-weight: 800; color: var(--danger, #EF4444);">
+                                    ${downMil.toFixed(2)} ‰
+                                </span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                                ${downCardsHtml}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FOOTER FISSO CON BOTTONE CHIUDI -->
+                    <div style="padding: 0.6rem 0.25rem max(0.4rem, env(safe-area-inset-bottom)) 0.25rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0; width: 100%; background: var(--surface-color, #1e1e1e);">
+                        <button type="button" onclick="hideModal()" class="btn btn-secondary w-full" style="height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            showModal('Esiti Ordinamento Punti', modalContent, true);
+        };
+
         window.showElectPresidentModal = (assemblyId, activeAttendees, activeProxies) => {
             const isUserAdmin = ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
             if (!isUserAdmin) return;
@@ -28119,25 +28964,48 @@ ${renderBottomNavigation()}
                 const held = getAttendeeHeldProxies(attendee);
                 let proxySubLineHtml = '';
                 if (held.length > 0) {
+                    let proxiesTotalMil = 0;
+                    held.forEach(p => {
+                        proxiesTotalMil += (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                    });
+                    const totalAttendeeMil = parseFloat(attendee.millesimi) || 0;
+
                     proxySubLineHtml = `
-                        <div class="fullscreen-nv-proxies" style="margin-top:0.25rem; margin-bottom:0.2rem;">
-                            <div class="fullscreen-nv-proxies-title">
-                                ${THEME_ICONS.scroll(12)} Deleghe ricevute (${held.length}):
+                        <div style="font-size:0.73rem; color:var(--accent-color, #10B981); font-weight:600; margin-top:0.35rem; background:rgba(37,99,235,0.06); padding:0.35rem 0.55rem; border-radius:6px; border:1px solid rgba(37,99,235,0.15); display:flex; flex-direction:column; gap:0.2rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="display:inline-flex; align-items:center; gap:0.3rem; color:#10B981;">
+                                    ${window.THEME_ICONS && window.THEME_ICONS.scroll ? window.THEME_ICONS.scroll(13, 2, '', '', '#10B981') : '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10B981" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>'} Deleghe ricevute (${held.length}):
+                                </strong>
+                                <span style="font-weight:800; color:var(--warning, #F59E0B);">${proxiesTotalMil.toFixed(2)} ‰ totali</span>
                             </div>
-                            <div style="display:flex; flex-direction:column; gap:0.22rem;">
-                                ${held.map(p => {
-                        const pName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || p.delegator || 'Delegante';
-                        const pMil = parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0;
-                        const pUnit = p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '';
-                        return `
-                                        <div class="fullscreen-nv-proxy-row">
-                                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                                ${escapeHtml(pName)}${pUnit ? ` <span style="color:var(--secondary-text); font-size:0.68rem;">(Int. ${escapeHtml(pUnit)})</span>` : ''}
-                                            </span>
-                                            <strong class="fullscreen-nv-proxy-mil">${pMil.toFixed(2)} ‰</strong>
+                            <div style="display:flex; flex-direction:column; gap:0.25rem; margin-top:0.15rem;">
+                                ${held.map((p, pIdx) => {
+                                    const pName = p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || p.delegator || 'Delegante';
+                                    const pMil = (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0).toFixed(2);
+                                    const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, window._cachedAllUsers || []) : (p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
+                                    const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                                    return `
+                                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; ${pIdx > 0 ? 'border-top:1px solid rgba(255,255,255,0.06); padding-top:0.25rem;' : ''}">
+                                            <div style="min-width:0; flex:1;">
+                                                <div style="color:var(--primary-text); font-size:0.74rem; font-weight:700; line-height:1.2;">
+                                                    • ${escapeHtml(pName)}
+                                                </div>
+                                                ${cleanPUnit ? `
+                                                    <div style="color:var(--secondary-text); font-size:0.69rem; font-weight:600; margin-left:0.65rem; margin-top:0.1rem;">
+                                                        Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanPUnit)}</span>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                            <div style="flex-shrink:0; text-align:right;">
+                                                <strong style="color:var(--warning, #F59E0B); font-size:0.75rem; font-weight:800; white-space:nowrap;">${pMil} ‰</strong>
+                                            </div>
                                         </div>
                                     `;
-                    }).join('')}
+                                }).join('')}
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.25rem; border-top:1px dashed rgba(239,68,68,0.35); font-size:0.73rem;">
+                                <span style="color:var(--danger, #EF4444); font-weight:700;">Tot. con deleghe:</span>
+                                <strong style="color:var(--danger, #EF4444); font-weight:800;">${totalAttendeeMil.toFixed(2)} ‰</strong>
                             </div>
                         </div>
                     `;
@@ -28329,29 +29197,53 @@ ${renderBottomNavigation()}
             const declinedHtml = declinedList.map(a => {
                 const v = downVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
-                const { cleanName, proxySubLineHtml } = formatVoterCardNameAndProxies(a);
+                const { cleanName, proxySubLineHtml, held } = formatVoterCardNameAndProxies(a);
                 const methodBadge = isManual
                     ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(9)} Manuale</span>`
                     : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(10)} App/QR</span>`;
+
+                let proxiesTotalMil = 0;
+                (held || []).forEach(p => {
+                    proxiesTotalMil += (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                });
+                let personalMil = 0;
+                if (a.baseMillesimi !== undefined && a.baseMillesimi !== null) {
+                    personalMil = parseFloat(a.baseMillesimi) || 0;
+                } else if (a.personalMillesimi !== undefined && a.personalMillesimi !== null) {
+                    personalMil = parseFloat(a.personalMillesimi) || 0;
+                } else {
+                    const totalMil = parseFloat(v?.millesimi || a.millesimi || 0);
+                    personalMil = Math.max(0, parseFloat((totalMil - proxiesTotalMil).toFixed(2)));
+                }
+
+                const rawSelfUnits = window.getVoterUnitString
+                    ? window.getVoterUnitString(a, window._cachedAllUsers || [])
+                    : (a.unitaImmobiliare || '');
+                const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
+
                 return `
-                    <div style="display:flex; flex-direction:column; background:rgba(239, 68, 68, 0.08); border-left:3.5px solid var(--danger); padding:0.45rem 0.65rem; border-radius:7px; margin-bottom:0.4rem; gap:0.35rem; text-align:left;">
+                    <div style="display:flex; flex-direction:column; background:rgba(239, 68, 68, 0.08); border-left:3.5px solid var(--danger); padding:0.5rem 0.65rem; border-radius:8px; margin-bottom:0.45rem; gap:0.35rem; text-align:left;">
                         <!-- 1. NOME, UNITÀ E MILLESIMI -->
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.45rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
                             <div style="flex:1; min-width:0;">
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--primary-text); line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    ${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}
-                                </div>
-                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem; flex-wrap:wrap;">
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                    <strong style="font-size:0.9rem; color:var(--primary-text); word-break:break-word; line-height:1.25;">
+                                        ${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}
+                                    </strong>
                                     ${methodBadge}
-                                    <span style="color:var(--primary-text); font-weight:700;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</span>
-                                    ${a.unitaImmobiliare ? `<span>• Unità: ${escapeHtml(a.unitaImmobiliare)}</span>` : ''}
                                 </div>
+                                ${cleanSelfUnits ? `
+                                    <div style="font-size:0.74rem; color:var(--secondary-text); font-weight:500; margin-top:0.15rem; word-break:break-word;">
+                                        Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanSelfUnits)}</span>
+                                    </div>
+                                ` : ''}
                             </div>
-                            ${!isManual ? `
-                                <span style="color:var(--danger); padding:0.15rem 0.35rem; background:rgba(239, 68, 68, 0.15); border-radius:5px; display:inline-flex; align-items:center;" title="Votato tramite App/QR">
-                                    ${THEME_ICONS.thumbsDown(13)}
-                                </span>
-                            ` : ''}
+                            <div style="text-align:right; flex-shrink:0;">
+                                <strong style="font-size:0.95rem; font-weight:800; color:var(--warning, #F59E0B); line-height:1.2; display:block;">
+                                    ${personalMil.toFixed(2)} ‰
+                                </strong>
+                                ${(held || []).length === 0 ? `<span style="font-size:0.66rem; color:var(--secondary-text); display:block; margin-top:0.1rem;">1 testa</span>` : ''}
+                            </div>
                         </div>
 
                         <!-- 2. LISTA EVENTUALI DELEGHE (SCHEDA BLU) -->
@@ -28372,29 +29264,53 @@ ${renderBottomNavigation()}
             const approvedHtml = approvedList.map(a => {
                 const v = upVotes.find(x => x.voterId === a.uid);
                 const isManual = isManualAttendee(a);
-                const { cleanName, proxySubLineHtml } = formatVoterCardNameAndProxies(a);
+                const { cleanName, proxySubLineHtml, held } = formatVoterCardNameAndProxies(a);
                 const methodBadge = isManual
                     ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.circleGreen(9)} Manuale</span>`
                     : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.1rem 0.35rem; border-radius:5px;">${THEME_ICONS.smartphone(10)} App/QR</span>`;
+
+                let proxiesTotalMil = 0;
+                (held || []).forEach(p => {
+                    proxiesTotalMil += (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                });
+                let personalMil = 0;
+                if (a.baseMillesimi !== undefined && a.baseMillesimi !== null) {
+                    personalMil = parseFloat(a.baseMillesimi) || 0;
+                } else if (a.personalMillesimi !== undefined && a.personalMillesimi !== null) {
+                    personalMil = parseFloat(a.personalMillesimi) || 0;
+                } else {
+                    const totalMil = parseFloat(v?.millesimi || a.millesimi || 0);
+                    personalMil = Math.max(0, parseFloat((totalMil - proxiesTotalMil).toFixed(2)));
+                }
+
+                const rawSelfUnits = window.getVoterUnitString
+                    ? window.getVoterUnitString(a, window._cachedAllUsers || [])
+                    : (a.unitaImmobiliare || '');
+                const cleanSelfUnits = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawSelfUnits) : rawSelfUnits;
+
                 return `
-                    <div style="display:flex; flex-direction:column; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; padding:0.45rem 0.65rem; border-radius:7px; margin-bottom:0.4rem; gap:0.35rem; text-align:left;">
+                    <div style="display:flex; flex-direction:column; background:rgba(16, 185, 129, 0.08); border-left:3.5px solid #10B981; padding:0.5rem 0.65rem; border-radius:8px; margin-bottom:0.45rem; gap:0.35rem; text-align:left;">
                         <!-- 1. NOME, UNITÀ E MILLESIMI -->
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.45rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
                             <div style="flex:1; min-width:0;">
-                                <div style="font-weight:700; font-size:0.85rem; color:var(--primary-text); line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                    ${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}
-                                </div>
-                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.73rem; color:var(--secondary-text); font-weight:600; margin-top:0.15rem; flex-wrap:wrap;">
+                                <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                    <strong style="font-size:0.9rem; color:var(--primary-text); word-break:break-word; line-height:1.25;">
+                                        ${THEME_ICONS.user(13)} ${escapeHtml(cleanName)}
+                                    </strong>
                                     ${methodBadge}
-                                    <span style="color:var(--primary-text); font-weight:700;">${(v?.millesimi || a.millesimi || 0).toFixed(2)} ‰</span>
-                                    ${a.unitaImmobiliare ? `<span>• Unità: ${escapeHtml(a.unitaImmobiliare)}</span>` : ''}
                                 </div>
+                                ${cleanSelfUnits ? `
+                                    <div style="font-size:0.74rem; color:var(--secondary-text); font-weight:500; margin-top:0.15rem; word-break:break-word;">
+                                        Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanSelfUnits)}</span>
+                                    </div>
+                                ` : ''}
                             </div>
-                            ${!isManual ? `
-                                <span style="color:#10B981; padding:0.15rem 0.35rem; background:rgba(16, 185, 129, 0.15); border-radius:5px; display:inline-flex; align-items:center;" title="Votato tramite App/QR">
-                                    ${THEME_ICONS.thumbsUp(13)}
-                                </span>
-                            ` : ''}
+                            <div style="text-align:right; flex-shrink:0;">
+                                <strong style="font-size:0.95rem; font-weight:800; color:var(--warning, #F59E0B); line-height:1.2; display:block;">
+                                    ${personalMil.toFixed(2)} ‰
+                                </strong>
+                                ${(held || []).length === 0 ? `<span style="font-size:0.66rem; color:var(--secondary-text); display:block; margin-top:0.1rem;">1 testa</span>` : ''}
+                            </div>
                         </div>
 
                         <!-- 2. LISTA EVENTUALI DELEGHE (SCHEDA BLU) -->
@@ -31148,6 +32064,7 @@ ${renderBottomNavigation()}
         window.rejectAndReorderOdg = rejectAndReorderOdg;
         window.renderOdgApprovalAdminModal = renderOdgApprovalAdminModal;
         window.renderOdgApprovalCondominoModal = renderOdgApprovalCondominoModal;
+        window.showOdgVotingResultsModal = showOdgVotingResultsModal;
         window.filterOdgVotersList = filterOdgVotersList;
         window.toggleSelectAllOdgVoters = toggleSelectAllOdgVoters;
         window.updateOdgSelectedVotersCount = updateOdgSelectedVotersCount;
