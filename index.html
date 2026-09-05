@@ -17902,7 +17902,8 @@ ${renderBottomNavigation()}
                 targetGroup === 'Tutte le scale' ||
                 targetGroup === 'Intero Condominio' ||
                 targetGroup === 'Intero condominio' ||
-                targetGroup.trim().toLowerCase() === 'intero';
+                targetGroup.trim().toLowerCase() === 'intero' ||
+                targetGroup.trim().toLowerCase() === 'tutti';
 
             if (isGlobal) {
                 if (userOrAttendee.baseMillesimi !== undefined && userOrAttendee.baseMillesimi !== null) {
@@ -17933,12 +17934,30 @@ ${renderBottomNavigation()}
                 }
             }
 
+            if (props.length === 0 && window._currentAssembly?.attendees) {
+                const uId = userOrAttendee.uid || userOrAttendee.id;
+                const att = window._currentAssembly.attendees.find(a => (uId && (a.uid === uId || a.id === uId)));
+                if (att && Array.isArray(att.proprieta) && att.proprieta.length > 0) {
+                    props = att.proprieta;
+                }
+            }
+
+            const cleanCandidate = (entity) => {
+                if (!entity) return '';
+                let n = entity.nominativo || '';
+                if (!n && entity.cognome && entity.nome) n = `${entity.cognome} ${entity.nome}`;
+                else if (!n && entity.nome && entity.cognome) n = `${entity.nome} ${entity.cognome}`;
+                else if (!n && entity.nome) n = entity.nome;
+                return (window.cleanCandidateName ? window.cleanCandidateName(n) : n).trim().toLowerCase();
+            };
+
+            const candTarget = cleanCandidate(userOrAttendee);
+
             if (props.length === 0 && window._liveAssemblyStaticCache?.allCondomini) {
                 const uId = userOrAttendee.uid || userOrAttendee.id;
-                const uName = userOrAttendee.nome || userOrAttendee.nominativo;
                 const cachedUser = window._liveAssemblyStaticCache.allCondomini.find(c =>
-                    (uId && c.id === uId) ||
-                    (uName && c.nominativo && c.nominativo.trim().toLowerCase() === uName.trim().toLowerCase())
+                    (uId && (c.id === uId || c.uid === uId)) ||
+                    (candTarget && cleanCandidate(c) && (cleanCandidate(c) === candTarget || (window.isCandidateNameMatching && window.isCandidateNameMatching(cleanCandidate(c), candTarget))))
                 );
                 if (cachedUser && Array.isArray(cachedUser.proprieta) && cachedUser.proprieta.length > 0) {
                     props = cachedUser.proprieta;
@@ -17947,10 +17966,9 @@ ${renderBottomNavigation()}
 
             if (props.length === 0 && window._unifiedCondominiumRegistryCache?.data?.allCondomini) {
                 const uId = userOrAttendee.uid || userOrAttendee.id;
-                const uName = userOrAttendee.nome || userOrAttendee.nominativo;
                 const cachedUser = window._unifiedCondominiumRegistryCache.data.allCondomini.find(c =>
-                    (uId && c.id === uId) ||
-                    (uName && c.nominativo && c.nominativo.trim().toLowerCase() === uName.trim().toLowerCase())
+                    (uId && (c.id === uId || c.uid === uId)) ||
+                    (candTarget && cleanCandidate(c) && (cleanCandidate(c) === candTarget || (window.isCandidateNameMatching && window.isCandidateNameMatching(cleanCandidate(c), candTarget))))
                 );
                 if (cachedUser && Array.isArray(cachedUser.proprieta) && cachedUser.proprieta.length > 0) {
                     props = cachedUser.proprieta;
@@ -17960,7 +17978,7 @@ ${renderBottomNavigation()}
             if (props.length === 0) {
                 const tData = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
                 if (tData && tData.length > 0) {
-                    props = window.extractPropsFromTableData(tData, userOrAttendee.uid || userOrAttendee.id, userOrAttendee.nome || userOrAttendee.nominativo);
+                    props = window.extractPropsFromTableData(tData, userOrAttendee.uid || userOrAttendee.id, candTarget || userOrAttendee.nome || userOrAttendee.nominativo);
                 }
             }
 
@@ -18210,6 +18228,47 @@ ${renderBottomNavigation()}
 
         window.getAttendeePersonalMillesimi = (attendee, heldProxies = [], tGroup = null, uList = [], grpScope = false) => {
             if (!attendee) return 0;
+
+            const isEffectiveGroupScope = grpScope && !!tGroup &&
+                tGroup !== 'Tutte le scale' &&
+                tGroup !== 'Intero Condominio' &&
+                tGroup !== 'Intero condominio' &&
+                tGroup.trim().toLowerCase() !== 'intero' &&
+                tGroup.trim().toLowerCase() !== 'tutti';
+
+            if (isEffectiveGroupScope) {
+                // In un punto a votazione parziale (es. singola scala o gruppo):
+                // I millesimi personali devono derivare ESCLUSIVAMENTE dalle unità appartenenti a tGroup.
+                // Se il condòmino non possiede unità in tGroup, i suoi millesimi personali per questo punto SONO STRETTAMENTE 0!
+                // 1. Controlla prima le proprietà dirette dell'attendee
+                if (Array.isArray(attendee.proprieta) && attendee.proprieta.length > 0) {
+                    const matchingProps = attendee.proprieta.filter(p => window.isScaleInTargetGroup ? window.isScaleInTargetGroup(p.gruppo, tGroup) : true);
+                    return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+                if (Array.isArray(attendee.properties) && attendee.properties.length > 0) {
+                    const matchingProps = attendee.properties.filter(p => window.isScaleInTargetGroup ? window.isScaleInTargetGroup(p.gruppo, tGroup) : true);
+                    return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+                // 2. Cerca tramite getEffectiveUnitMillesimi (anagrafica/utenti/tableData)
+                if (window.getEffectiveUnitMillesimi) {
+                    const eff = window.getEffectiveUnitMillesimi(attendee, tGroup, uList);
+                    if (eff > 0) return eff;
+                }
+                const uId = attendee.uid || attendee.id;
+                const matchedUser = (uList || []).find(u =>
+                    (uId && (u.id === uId || u.uid === uId || u.registeredUid === uId)) ||
+                    (window.isCandidateNameMatching && window.isCandidateNameMatching(attendee.nome || attendee.nominativo || '', u.nominativo || `${u.nome || ''} ${u.cognome || ''}`))
+                );
+                if (matchedUser && window.getEffectiveUnitMillesimi) {
+                    const uMil = window.getEffectiveUnitMillesimi(matchedUser, tGroup, uList);
+                    if (uMil > 0) return uMil;
+                }
+                // Se non possiede unità in questo gruppo, per un punto di gruppo il valore personale È ZERO!
+                // Non effettuare MAI fallback a baseMillesimi o totMil dell'intero condominio!
+                return 0;
+            }
+
+            // Ambito Globale (Intero Condominio / Tutte le scale):
             const uId = attendee.uid || attendee.id;
             const cleanA = window.cleanCandidateName ? window.cleanCandidateName(attendee.nome || attendee.nominativo || '') : (attendee.nome || '');
             const matchedUser = (uList || []).find(u =>
@@ -18220,9 +18279,7 @@ ${renderBottomNavigation()}
             );
 
             if (matchedUser) {
-                const uMil = grpScope
-                    ? (window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(matchedUser, tGroup, uList) : 0)
-                    : (parseFloat(matchedUser.millesimiTotali) || (Array.isArray(matchedUser.proprieta) ? matchedUser.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0));
+                const uMil = parseFloat(matchedUser.millesimiTotali) || (Array.isArray(matchedUser.proprieta) ? matchedUser.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0);
                 if (uMil > 0) return uMil;
             }
 
@@ -18233,15 +18290,11 @@ ${renderBottomNavigation()}
                 return parseFloat(attendee.personalMillesimi) || 0;
             }
             if (Array.isArray(attendee.proprieta) && attendee.proprieta.length > 0) {
-                if (grpScope) {
-                    const matchingProps = attendee.proprieta.filter(p => window.isScaleInTargetGroup ? window.isScaleInTargetGroup(p.gruppo, tGroup) : true);
-                    return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
-                }
                 return attendee.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
             }
             const totMil = parseFloat(attendee.millesimi) || 0;
             const totalHeldMil = (heldProxies && heldProxies.length > 0)
-                ? heldProxies.reduce((sum, p) => sum + (grpScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, tGroup, uList) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0)), 0)
+                ? heldProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0), 0)
                 : 0;
 
             if (window.getEffectiveUnitMillesimi) {
@@ -19153,11 +19206,29 @@ ${renderBottomNavigation()}
                     await customAlert("La votazione per questo punto non è ancora aperta.");
                     return;
                 }
+
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                    targetGroup !== 'Intero condominio' && targetGroup !== 'Intero Condominio' && targetGroup !== 'Tutte le scale';
+
+                if (isGroupScope && choice !== '__RESET__' && (parseFloat(voterMil) || 0) <= 0.0001) {
+                    await customAlert(`Votazione non consentita: ${voterName} non possiede millesimi o deleghe per l'ambito ${targetGroup}.`);
+                    return;
+                }
+
+                let actualDelegateId = delegateId;
+                let actualProxyId = proxyId;
+                if (voterType === 'proxy' && proxyId && typeof proxyId === 'string' && (proxyId.length === 28 || proxyId.startsWith('anagrafica_'))) {
+                    actualDelegateId = proxyId;
+                    actualProxyId = delegateId;
+                }
+
                 const existingVotes = item.votes || [];
 
                 let updatedVotes = [];
                 if (choice === '__RESET__') {
-                    updatedVotes = existingVotes.filter(v => v.voterId !== voterId && !(proxyId && v.proxyId === proxyId));
+                    updatedVotes = existingVotes.filter(v => v.voterId !== voterId && !(actualProxyId && v.proxyId === actualProxyId));
                     await logAssemblyEvent(assemblyId, 'VOTO_MANUALE_ANNULLATO', `Voto per ${voterName} annullato dall'amministratore da pannello Non Votanti.`);
                 } else {
                     const newVote = {
@@ -19168,11 +19239,11 @@ ${renderBottomNavigation()}
                         heads: 1,
                         isManualAdminVote: true,
                         isProxyVote: voterType === 'proxy',
-                        delegateId: delegateId,
-                        proxyId: proxyId,
+                        delegateId: actualDelegateId,
+                        proxyId: actualProxyId,
                         recordedAt: Date.now()
                     };
-                    const filteredVotes = existingVotes.filter(v => v.voterId !== voterId && !(proxyId && v.proxyId === proxyId));
+                    const filteredVotes = existingVotes.filter(v => v.voterId !== voterId && !(actualProxyId && v.proxyId === actualProxyId));
                     updatedVotes = [...filteredVotes, newVote];
                     await logAssemblyEvent(assemblyId, 'VOTO_MANUALE', `Registrato voto per ${voterName} da pannello Non Votanti: ${choice} (${(parseFloat(voterMil) || 0).toFixed(2)} ‰)`);
                 }
@@ -21108,7 +21179,12 @@ ${renderBottomNavigation()}
 
                         const itemScope = item.scope || 'intero';
                         const itemGroup = item.targetGroup || '';
-                        const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!itemGroup && itemGroup !== 'Intero condominio';
+                        const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!itemGroup &&
+                            itemGroup !== 'Intero condominio' &&
+                            itemGroup !== 'Intero Condominio' &&
+                            itemGroup !== 'Tutte le scale' &&
+                            itemGroup.trim().toLowerCase() !== 'intero' &&
+                            itemGroup.trim().toLowerCase() !== 'tutti';
 
                         let scopeBadge = '';
                         let groupQuorumBoxHtml = '';
@@ -24411,7 +24487,12 @@ ${renderBottomNavigation()}
 
             const itemScope = item.scope || 'intero';
             const targetGroup = item.targetGroup || null;
-            const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
+            const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                targetGroup !== 'Intero condominio' &&
+                targetGroup !== 'Intero Condominio' &&
+                targetGroup !== 'Tutte le scale' &&
+                targetGroup.trim().toLowerCase() !== 'intero' &&
+                targetGroup.trim().toLowerCase() !== 'tutti';
 
             const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUid && p.status !== 'rejected');
 
@@ -24429,7 +24510,7 @@ ${renderBottomNavigation()}
 
             const totalGroupMil = selfMil + validProxies.reduce((sum, p) => sum + (isGroupScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0)), 0);
 
-            if (isGroupScope && totalGroupMil <= 0) {
+            if (isGroupScope && totalGroupMil <= 0.0001) {
                 return `
                     <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left;">
                         ${THEME_ICONS.lock(16)} <strong>Votazione Riservata:</strong> Questo punto è riservato ai condòmini aventi proprietà o deleghe in <strong>${escapeHtml(targetGroup)}</strong>. Non risultano unità immobiliari di tua pertinenza per queste scale.
@@ -24547,7 +24628,12 @@ ${renderBottomNavigation()}
 
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
-                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                    targetGroup !== 'Intero condominio' &&
+                    targetGroup !== 'Intero Condominio' &&
+                    targetGroup !== 'Tutte le scale' &&
+                    targetGroup.trim().toLowerCase() !== 'intero' &&
+                    targetGroup.trim().toLowerCase() !== 'tutti';
 
                 let selfMil = 0;
                 if (isGroupScope) {
@@ -24564,7 +24650,7 @@ ${renderBottomNavigation()}
 
                 const totalGroupMil = selfMil + validProxies.reduce((sum, p) => sum + (isGroupScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0)), 0);
 
-                if (isGroupScope && totalGroupMil <= 0) {
+                if (isGroupScope && totalGroupMil <= 0.0001) {
                     await customAlert(`Votazione Riservata: Questo punto è riservato ai condòmini aventi proprietà o deleghe in ${targetGroup}. Non risultano unità di tua pertinenza per queste scale.`);
                     return;
                 }
@@ -25180,6 +25266,21 @@ ${renderBottomNavigation()}
                     await customAlert("La votazione per questo punto non è ancora aperta.");
                     return;
                 }
+
+                const itemScope = item.scope || 'intero';
+                const targetGroup = item.targetGroup || null;
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                    targetGroup !== 'Intero condominio' &&
+                    targetGroup !== 'Intero Condominio' &&
+                    targetGroup !== 'Tutte le scale' &&
+                    targetGroup.trim().toLowerCase() !== 'intero' &&
+                    targetGroup.trim().toLowerCase() !== 'tutti';
+
+                if (isGroupScope && choice !== '__RESET__' && (parseFloat(voterMil) || 0) <= 0.0001) {
+                    await customAlert(`Votazione non consentita: ${voterName} non possiede millesimi per l'ambito ${targetGroup}.`);
+                    return;
+                }
+
                 const existingVotes = item.votes || [];
 
                 let updatedVotes = [];
@@ -25246,7 +25347,12 @@ ${renderBottomNavigation()}
 
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
-                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                    targetGroup !== 'Intero condominio' &&
+                    targetGroup !== 'Intero Condominio' &&
+                    targetGroup !== 'Tutte le scale' &&
+                    targetGroup.trim().toLowerCase() !== 'intero' &&
+                    targetGroup.trim().toLowerCase() !== 'tutti';
 
                 // Check se quota personale selezionata
                 const selfCb = document.getElementById(`condo-self-cb-${itemId}`);
@@ -25316,6 +25422,11 @@ ${renderBottomNavigation()}
                     }
                 });
 
+                if (newVotesList.length === 0) {
+                    await customAlert("Nessuna quota votabile per questo punto dell'ordine del giorno.");
+                    return;
+                }
+
                 const voteIdsToReplace = newVotesList.map(nv => nv.voterId);
                 const filteredVotes = existingVotes.filter(v => !voteIdsToReplace.includes(v.voterId) && !(v.delegateId === currentUser?.uid && newVotesList.some(nv => nv.proxyId && nv.proxyId === v.proxyId)));
                 const updatedVotes = [...filteredVotes, ...newVotesList];
@@ -25336,11 +25447,36 @@ ${renderBottomNavigation()}
         };
 
         const submitLiveVote = async (assemblyId, itemId, choice) => {
-            const heldProxies = (window._currentAssemblyData?.proxies || []).filter(p => p.delegateId === currentUser?.uid && p.status !== 'rejected');
+            const assembly = window._currentAssemblyData || {};
+            const agenda = assembly.agenda || [];
+            const item = agenda.find(i => i.id === itemId);
+            const itemScope = item?.scope || 'intero';
+            const targetGroup = item?.targetGroup || null;
+            const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                targetGroup !== 'Intero condominio' &&
+                targetGroup !== 'Intero Condominio' &&
+                targetGroup !== 'Tutte le scale' &&
+                targetGroup.trim().toLowerCase() !== 'intero' &&
+                targetGroup.trim().toLowerCase() !== 'tutti';
+
+            let allUsers = [];
+            if (isGroupScope) {
+                try {
+                    const usersSnap = await getDocs(query(collection(db, "users")));
+                    allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch (e) { }
+            }
+
+            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser?.uid && p.status !== 'rejected');
             if (heldProxies.length > 0) {
                 await window.submitCondominoGroupVote(assemblyId, itemId, choice);
             } else {
-                let selfMil = parseFloat(userProfile?.millesimiTotali) || (Array.isArray(userProfile?.proprieta) ? userProfile.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0);
+                let selfMil = 0;
+                if (isGroupScope) {
+                    selfMil = window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(userProfile, targetGroup, allUsers) : 0;
+                } else {
+                    selfMil = parseFloat(userProfile?.millesimiTotali) || (Array.isArray(userProfile?.proprieta) ? userProfile.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0);
+                }
                 const uName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim() || 'Condòmino';
                 await window.submitCondominoSingleVote(assemblyId, itemId, currentUser?.uid, choice, 'self', null, null, uName, selfMil);
             }
@@ -30190,51 +30326,14 @@ ${renderBottomNavigation()}
 
                 const itemScope = item.scope || 'intero';
                 const targetGroup = item.targetGroup || null;
-                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
+                const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup &&
+                    targetGroup !== 'Intero condominio' &&
+                    targetGroup !== 'Intero Condominio' &&
+                    targetGroup !== 'Tutte le scale' &&
+                    targetGroup.trim().toLowerCase() !== 'intero' &&
+                    targetGroup.trim().toLowerCase() !== 'tutti';
 
-                window.getAttendeePersonalMillesimi = (attendee, heldProxies, tGroup = null, uList = [], grpScope = false) => {
-                    if (!attendee) return 0;
-                    const uId = attendee.uid || attendee.id;
-                    const cleanA = window.cleanCandidateName ? window.cleanCandidateName(attendee.nome || attendee.nominativo || '') : (attendee.nome || '');
-                    const matchedUser = (uList || []).find(u =>
-                        (uId && (u.id === uId || u.uid === uId || u.registeredUid === uId)) ||
-                        (cleanA && u.nominativo && (window.cleanCandidateName ? window.cleanCandidateName(u.nominativo).toLowerCase() === cleanA.toLowerCase() : u.nominativo.toLowerCase() === cleanA.toLowerCase())) ||
-                        (cleanA && `${u.nome || ''} ${u.cognome || ''}`.trim().toLowerCase() === cleanA.toLowerCase()) ||
-                        (cleanA && `${u.cognome || ''} ${u.nome || ''}`.trim().toLowerCase() === cleanA.toLowerCase())
-                    );
-
-                    if (matchedUser) {
-                        const uMil = grpScope
-                            ? (window.getEffectiveUnitMillesimi ? window.getEffectiveUnitMillesimi(matchedUser, tGroup, uList) : 0)
-                            : (parseFloat(matchedUser.millesimiTotali) || (Array.isArray(matchedUser.proprieta) ? matchedUser.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0));
-                        if (uMil > 0) return uMil;
-                    }
-
-                    if (attendee.baseMillesimi !== undefined && attendee.baseMillesimi !== null) {
-                        return parseFloat(attendee.baseMillesimi) || 0;
-                    }
-                    if (attendee.personalMillesimi !== undefined && attendee.personalMillesimi !== null) {
-                        return parseFloat(attendee.personalMillesimi) || 0;
-                    }
-                    if (Array.isArray(attendee.proprieta) && attendee.proprieta.length > 0) {
-                        if (grpScope) {
-                            const matchingProps = attendee.proprieta.filter(p => window.isScaleInTargetGroup ? window.isScaleInTargetGroup(p.gruppo, tGroup) : true);
-                            return matchingProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
-                        }
-                        return attendee.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
-                    }
-
-                    const rawMil = parseFloat(attendee.millesimi) || 0;
-                    if (heldProxies && heldProxies.length > 0) {
-                        const pSum = heldProxies.reduce((sum, p) => sum + (grpScope && window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, tGroup, uList) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0)), 0);
-                        if (rawMil > pSum) {
-                            return Math.max(0, rawMil - pSum);
-                        }
-                    }
-                    return rawMil;
-                };
-
-                const getAttendeePersonalMillesimi = (att, held) => window.getAttendeePersonalMillesimi(att, held, targetGroup, allUsers, isGroupScope);
+                const getAttendeePersonalMillesimi = (att, held) => window.getAttendeePersonalMillesimi ? window.getAttendeePersonalMillesimi(att, held, targetGroup, allUsers, isGroupScope) : 0;
 
                 const isAttendeeEligibleForManualVote = (a) => {
                     let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
@@ -30243,7 +30342,7 @@ ${renderBottomNavigation()}
                     }
                     const selfMil = getAttendeePersonalMillesimi(a, held);
                     const proxMil = held.reduce((sum, p) => sum + (isGroupScope ? (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0)), 0);
-                    return (selfMil + proxMil) > 0;
+                    return (selfMil + proxMil) > 0.0001;
                 };
 
                 const isManualAttendee = (a) => a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
