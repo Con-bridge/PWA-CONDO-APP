@@ -263,8 +263,14 @@ window.AssembleeModule = {
                             <!-- 3. Nome del Presidente Eletto -->
                             <strong id="room-president-name" style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); line-height: 1.3; word-break: break-word; max-width: 100%; margin-bottom: 0.2rem;">-</strong>
 
-                            <!-- 4. Badge Modalità di Elezione -->
-                            <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap; display: inline-block;">-</span>
+                            <!-- 4. Badge Modalità di Elezione e Pulsante Dettaglio -->
+                            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.15rem;">
+                                <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap; display: inline-block;">-</span>
+                                <button type="button" id="room-president-details-btn" onclick="showPresidentElectionResultsModal()" class="btn hidden" style="font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(37, 99, 235, 0.45); color: #60A5FA; background: rgba(37, 99, 235, 0.12); cursor: pointer; transition: all 0.15s ease;" title="Visualizza esiti e dettaglio voti">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    <span>Dettagli Voti</span>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
