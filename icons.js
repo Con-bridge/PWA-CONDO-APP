@@ -174,6 +174,9 @@
             createSvg('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>', size, stroke, extraClass, extraStyle),
 
         edit: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
-            createSvg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>', size, stroke, extraClass, extraStyle)
+            createSvg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>', size, stroke, extraClass, extraStyle),
+
+        crown: (size = 16, stroke = 2.2, extraClass = '', extraStyle = '', color = '#F59E0B') =>
+            createSvg('<path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"></path><line x1="4" y1="20" x2="20" y2="20"></line>', size, stroke, extraClass, extraStyle, color)
     };
 })();
