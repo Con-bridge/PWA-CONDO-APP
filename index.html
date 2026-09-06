@@ -17622,7 +17622,8 @@ ${renderBottomNavigation()}
                             millesimi: totalMillesimiAccreditati,
                             heldProxiesCount: heldProxies.length,
                             reenteredAt: Date.now(),
-                            registrationType: updatedAttendees[existingIndex].registrationType || 'qr',
+                            isManual: false,
+                            registrationType: 'qr',
                             scannedAt: new Date().toISOString()
                         };
                     } else {
@@ -18837,7 +18838,7 @@ ${renderBottomNavigation()}
                                                     ${methodBadge}
                                                     <strong style="font-size:0.84rem; font-weight:800; color:var(--warning); white-space:nowrap;">${nv.millesimi.toFixed(2)} ‰</strong>
                                                 </div>
-                                                ${canAdminVotePoint ? `
+                                                ${canAdminVotePoint ? (nv.isManual ? `
                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; border-radius:7px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Registra voto">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -18848,7 +18849,11 @@ ${renderBottomNavigation()}
                                                             ${voteOpts.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
                                                         </select>
                                                     </div>
-                                                ` : ''}
+                                                ` : `
+                                                    <span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#D97706; border:1px solid rgba(245, 158, 11, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                        ${THEME_ICONS.hourglass(11, 2)} In attesa da App
+                                                    </span>
+                                                `) : ''}
                                             </div>
                                         </div>
                                     `;
@@ -18892,7 +18897,7 @@ ${renderBottomNavigation()}
                                                             </strong>
                                                             ${isSelfVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(nv.selfVote.choice)}</span>` : ''}
                                                         </div>
-                                                        ${canAdminVotePoint ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.74rem; font-weight:700; padding:0.25rem 0.5rem; border-radius:5px; border:1px solid rgba(255,255,255,0.1);">0.00 ‰</span>` : `
+                                                        ${canAdminVotePoint ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.74rem; font-weight:700; padding:0.25rem 0.5rem; border-radius:5px; border:1px solid rgba(255,255,255,0.1);">0.00 ‰</span>` : (nv.isManual ? `
                                                             <div style="flex-shrink:0;">
                                                                 <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${isSelfVoted ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${isSelfVoted ? `Già votato (${escapeHtml(nv.selfVote.choice)}) - Clicca per modificare` : 'Registra voto personale'}">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -18906,7 +18911,15 @@ ${renderBottomNavigation()}
                                                                     </select>
                                                                 </div>
                                                             </div>
-                                                        `) : ''}
+                                                        ` : (isSelfVoted ? `
+                                                            <span class="badge" style="background:rgba(16, 185, 129, 0.12); color:#10B981; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                                ${THEME_ICONS.check(11, 2)} Voto da App
+                                                            </span>
+                                                        ` : `
+                                                            <span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#D97706; border:1px solid rgba(245, 158, 11, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                                ${THEME_ICONS.hourglass(11, 2)} In attesa da App
+                                                            </span>
+                                                        `))) : ''}
                                                     </div>
                                                 </div>
                                             `;
@@ -18946,7 +18959,7 @@ ${renderBottomNavigation()}
                                                                 </strong>
                                                                 ${hasVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(p.vote.choice)}</span>` : ''}
                                                             </div>
-                                                            ${canAdminVotePoint ? `
+                                                            ${canAdminVotePoint ? (nv.isManual ? `
                                                                 <div style="flex-shrink:0;">
                                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${hasVoted ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25); color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'};" title="${hasVoted ? `Già votato (${escapeHtml(p.vote.choice)}) - Clicca per modificare` : 'Registra voto delega'}">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -18960,7 +18973,15 @@ ${renderBottomNavigation()}
                                                                         </select>
                                                                     </div>
                                                                 </div>
-                                                            ` : ''}
+                                                            ` : (hasVoted ? `
+                                                                <span class="badge" style="background:rgba(16, 185, 129, 0.12); color:#10B981; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                                    ${THEME_ICONS.check(11, 2)} Voto da App
+                                                                </span>
+                                                            ` : `
+                                                                <span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#D97706; border:1px solid rgba(245, 158, 11, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                                    ${THEME_ICONS.hourglass(11, 2)} In attesa da App
+                                                                </span>
+                                                            `)) : ''}
                                                         </div>
                                                     </div>
                                                 `;
@@ -19349,6 +19370,23 @@ ${renderBottomNavigation()}
                 if (voterType === 'proxy' && proxyId && typeof proxyId === 'string' && (proxyId.length === 28 || proxyId.startsWith('anagrafica_'))) {
                     actualDelegateId = proxyId;
                     actualProxyId = delegateId;
+                }
+
+                // Verifica di sicurezza: blocco per condòmini accreditati con QR Code / App
+                const attendeesList = assembly.attendees || [];
+                const checkAttendee = attendeesList.find(a => a.uid === voterId || a.id === voterId || a.qrUid === voterId);
+                const isAttendeeManual = checkAttendee ? (checkAttendee.isManual === true || checkAttendee.manualAttendance === true || checkAttendee.registrationType === 'manual' || checkAttendee.registeredVia === 'manual' || (!checkAttendee.scannedAt && !!checkAttendee.joinedAt && checkAttendee.registrationType !== 'qr' && checkAttendee.registrationType !== 'app')) : false;
+
+                if (voterType === 'proxy' && actualDelegateId) {
+                    const checkDelegate = attendeesList.find(a => a.uid === actualDelegateId || a.id === actualDelegateId || a.qrUid === actualDelegateId);
+                    const isDelegateManual = checkDelegate ? (checkDelegate.isManual === true || checkDelegate.manualAttendance === true || checkDelegate.registrationType === 'manual' || checkDelegate.registeredVia === 'manual' || (!checkDelegate.scannedAt && !!checkDelegate.joinedAt && checkDelegate.registrationType !== 'qr' && checkDelegate.registrationType !== 'app')) : false;
+                    if (checkDelegate && !isDelegateManual) {
+                        await customAlert("Impossibile registrare o modificare il voto per delega: il delegato è accreditato tramite QR Code (App) e deve votare autonomamente dal proprio smartphone.");
+                        return;
+                    }
+                } else if (checkAttendee && !isAttendeeManual) {
+                    await customAlert(`Impossibile registrare o modificare il voto di ${voterName}: il condòmino è accreditato tramite QR Code (App) e deve votare autonomamente dal proprio smartphone.`);
+                    return;
                 }
 
                 const existingVotes = item.votes || [];
@@ -21329,7 +21367,8 @@ ${renderBottomNavigation()}
                     }
 
                     const activeAttendees = (assembly?.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
-                    const activeProxies = (assembly?.proxies || []).filter(p => p.status !== 'rejected');
+                    const activeAttendeeIds = new Set(activeAttendees.map(a => a.uid || a.id).filter(Boolean));
+                    const activeProxies = (assembly?.proxies || []).filter(p => p.status !== 'rejected' && (activeAttendeeIds.has(p.delegateId) || activeAttendeeIds.has(p.delegateUid)));
 
                     let nominativoHeader = null;
                     let millesimiHeader = null;
@@ -21407,7 +21446,7 @@ ${renderBottomNavigation()}
                                 ? window.getAttendeePersonalMillesimi(a, held, scName, allUsers, true)
                                 : (typeof window.getEffectiveUnitMillesimi === 'function'
                                     ? window.getEffectiveUnitMillesimi(a, scName, allUsers, tableData)
-                                    : (a.scale && (a.scale.toLowerCase() === scName.toLowerCase() || a.scale.toLowerCase().includes(scName.toLowerCase())) ? (parseFloat(a.millesimi) || 0) : 0));
+                                    : (((a.scale || a.scala || a.gruppo) && ((a.scale || a.scala || a.gruppo).toLowerCase() === scName.toLowerCase() || (a.scale || a.scala || a.gruppo).toLowerCase().includes(scName.toLowerCase()) || scName.toLowerCase().includes((a.scale || a.scala || a.gruppo).toLowerCase()))) ? (parseFloat(a.millesimi) || 0) : 0));
                             if (selfM > 0) {
                                 groupPresentHeadsSet.add(a.uid || a.id);
                                 groupMillesimiPresent += selfM;
@@ -21543,10 +21582,10 @@ ${renderBottomNavigation()}
                                     </span>
                                 </div>
                                 <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; width: 100%;">
-                                    <button type="button" onclick="${isAdmin ? `showInteractiveReorderModal('${assemblyId}')` : `window.showOdgVotingResultsModal('${assemblyId}')`}" class="btn" style="font-size: 0.76rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusBorder}; cursor: pointer; transition: all 0.15s ease;" title="${isAdmin ? 'Clicca per gestire o modificare l\'ordine dei punti' : 'Stato dell\'ordinamento dei punti'}">
+                                    <span style="font-size: 0.76rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusBorder}; cursor: default; user-select: none;">
                                         ${statusIcon}
                                         <span>${statusText}</span>
-                                    </button>
+                                    </span>
                                     <button type="button" onclick="window.showOdgVotingResultsModal('${assemblyId}')" class="btn" style="font-size: 0.76rem; font-weight: 700; padding: 0.32rem 0.75rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(37, 99, 235, 0.45); color: #60A5FA; background: rgba(37, 99, 235, 0.12); cursor: pointer; transition: all 0.15s ease;" title="Visualizza chi ha votato l'ordinamento dei punti">
                                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                         <span>Dettagli</span>
@@ -21652,7 +21691,7 @@ ${renderBottomNavigation()}
                                                 ? window.getAttendeePersonalMillesimi(a, held, sc.name, allUsers, true)
                                                 : (typeof window.getEffectiveUnitMillesimi === 'function'
                                                     ? window.getEffectiveUnitMillesimi(a, sc.name, allUsers, tableData)
-                                                    : (a.scale && (a.scale.toLowerCase() === sc.name.toLowerCase() || a.scale.toLowerCase().includes(sc.name.toLowerCase())) ? (parseFloat(a.millesimi) || 0) : 0));
+                                                    : (((a.scale || a.scala || a.gruppo) && ((a.scale || a.scala || a.gruppo).toLowerCase() === sc.name.toLowerCase() || (a.scale || a.scala || a.gruppo).toLowerCase().includes(sc.name.toLowerCase()) || sc.name.toLowerCase().includes((a.scale || a.scala || a.gruppo).toLowerCase()))) ? (parseFloat(a.millesimi) || 0) : 0));
                                         } else if (Array.isArray(allUsers)) {
                                             const u = allUsers.find(user => (v.voterId && (user.id === v.voterId || user.uid === v.voterId)));
                                             if (u && typeof window.getEffectiveUnitMillesimi === 'function') {
@@ -22101,13 +22140,7 @@ ${renderBottomNavigation()}
                         if (!isAdmin && isAttendee) {
                             voteButtonsHtml = window.renderCondoVotingSection ? window.renderCondoVotingSection(assemblyId, item, currentUser, userProfile, assembly, allUsers) : '';
                         } else if (isOdgApproved && itemStatus === 'voting' && !isClosedOrCancelled) {
-                            if (isAdmin && !isAccreditedCondominoAttendee) {
-                                voteButtonsHtml = `
-                                    <div style="font-size:0.8rem; color:var(--secondary-text); background:rgba(255,255,255,0.03); border:1px dashed var(--surface-color-light); padding:0.6rem; border-radius:6px; margin-top:0.5rem; text-align:left; display:flex; align-items:center; gap:0.4rem;">
-                                        ${THEME_ICONS.alertCircle(16, 2, '', 'color:var(--accent-color); flex-shrink:0;')} <div><strong>Modalità Amministratore:</strong> Utilizza il pulsante <strong>Voto Manuale</strong> per registrare i voti dei condòmini presenti</div>
-                                    </div>
-                                `;
-                            } else if (isAdmin && isAccreditedCondominoAttendee) {
+                            if (isAdmin && isAccreditedCondominoAttendee) {
                                 voteButtonsHtml = window.renderCondoVotingSection ? window.renderCondoVotingSection(assemblyId, item, currentUser, userProfile, assembly, allUsers) : '';
                             }
                         }
@@ -22421,7 +22454,7 @@ ${renderBottomNavigation()}
                                 const selfMil = (typeof window.getAttendeePersonalMillesimi === 'function')
                                     ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
                                     : Math.max(0, mil - heldProxies.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0));
-                                const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+                                const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || a.registeredVia === 'manual' || (!a.scannedAt && !!a.joinedAt && a.registrationType !== 'qr' && a.registrationType !== 'app');
                                 const selfVote = votesList.find(v => v.voterId === a.uid || v.userId === a.uid);
                                 return {
                                     uid: a.uid,
@@ -22477,7 +22510,7 @@ ${renderBottomNavigation()}
                                     ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
                                     : Math.max(0, milVal - heldProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0));
 
-                                const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
+                                const isManual = a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || a.registeredVia === 'manual' || (!a.scannedAt && !!a.joinedAt && a.registrationType !== 'qr' && a.registrationType !== 'app');
                                 const methodBadge = isManual
                                     ? `<span class="badge" style="background:#10B981; color:white; font-size:0.64rem; font-weight:800; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.circleGreen(8)} Manuale</span>`
                                     : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.64rem; padding:0.08rem 0.35rem; border-radius:4px;">${THEME_ICONS.smartphone(9)} App/QR</span>`;
@@ -22504,7 +22537,7 @@ ${renderBottomNavigation()}
                                                     ${methodBadge}
                                                     <strong style="color:var(--warning); font-size:0.84rem; font-weight:800; white-space:nowrap;">${milVal.toFixed(2)} ‰</strong>
                                                 </div>
-                                                ${canAdminVotePoint ? `
+                                                ${canAdminVotePoint ? (isManual ? `
                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; border-radius:7px; background:rgba(255,255,255,0.07); border:1.5px solid rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="Registra voto">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -22515,7 +22548,11 @@ ${renderBottomNavigation()}
                                                             ${voteOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
                                                         </select>
                                                     </div>
-                                                ` : ''}
+                                                ` : `
+                                                    <span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#D97706; border:1px solid rgba(245, 158, 11, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                        ${THEME_ICONS.hourglass(11, 2)} In attesa da App
+                                                    </span>
+                                                `) : ''}
                                             </div>
                                         </div>
                                     `;
@@ -22556,7 +22593,7 @@ ${renderBottomNavigation()}
                                                     </strong>
                                                     ${selfVote ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(selfVote.choice)}</span>` : ''}
                                                 </div>
-                                                ${canAdminVotePoint ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : `
+                                                ${canAdminVotePoint ? (isFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : (isManual ? `
                                                     <div style="flex-shrink:0;">
                                                         <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${selfVote ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${selfVote ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="${selfVote ? `Già votato (${escapeHtml(selfVote.choice)}) - Clicca per modificare` : 'Registra voto personale'}">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -22567,7 +22604,15 @@ ${renderBottomNavigation()}
                                                             </select>
                                                         </div>
                                                     </div>
-                                                `) : ''}
+                                                ` : (selfVote ? `
+                                                    <span class="badge" style="background:rgba(16, 185, 129, 0.12); color:#10B981; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                        ${THEME_ICONS.check(11, 2)} Voto da App
+                                                    </span>
+                                                ` : `
+                                                    <span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#D97706; border:1px solid rgba(245, 158, 11, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                        ${THEME_ICONS.hourglass(11, 2)} In attesa da App
+                                                    </span>
+                                                `))) : ''}
                                             </div>
                                         </div>
 
@@ -22608,7 +22653,7 @@ ${renderBottomNavigation()}
                                                                 </strong>
                                                                 ${pVote ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(pVote.choice)}</span>` : ''}
                                                             </div>
-                                                            ${canAdminVotePoint ? `
+                                                            ${canAdminVotePoint ? (isManual ? `
                                                                 <div style="flex-shrink:0;">
                                                                     <div style="position:relative; width:34px; height:34px; min-width:34px; max-width:34px; border-radius:7px; background:${pVote ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.07)'}; border:1.5px solid ${pVote ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'}; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.25);" title="${pVote ? `Già votato (${escapeHtml(pVote.choice)}) - Clicca per modificare` : 'Registra voto delega'}">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -22619,7 +22664,15 @@ ${renderBottomNavigation()}
                                                                         </select>
                                                                     </div>
                                                                 </div>
-                                                            ` : ''}
+                                                            ` : (pVote ? `
+                                                                <span class="badge" style="background:rgba(16, 185, 129, 0.12); color:#10B981; border:1px solid rgba(16, 185, 129, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                                    ${THEME_ICONS.check(11, 2)} Voto da App
+                                                                </span>
+                                                            ` : `
+                                                                <span class="badge" style="background:rgba(245, 158, 11, 0.12); color:#D97706; border:1px solid rgba(245, 158, 11, 0.3); font-size:0.72rem; font-weight:700; padding:0.2rem 0.45rem; border-radius:6px; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                                    ${THEME_ICONS.hourglass(11, 2)} In attesa da App
+                                                                </span>
+                                                            `)) : ''}
                                                         </div>
                                                     </div>
                                                 `;
@@ -32640,7 +32693,8 @@ ${renderBottomNavigation()}
                                     millesimi: userMillesimi,
                                     heldProxiesCount: heldProxies.length,
                                     reenteredAt: Date.now(),
-                                    registrationType: updatedAttendees[existingIndex].registrationType || 'qr',
+                                    isManual: false,
+                                    registrationType: 'qr',
                                     scannedAt: new Date().toISOString()
                                 };
                             } else {
