@@ -519,11 +519,35 @@
             min-height: 100px;
         }
 
-        /* Contorno in risalto per le celle di input dei punti all'ordine del giorno */
+        /* Contorno e stili per input e select in modalità giorno (light theme) */
+        :root[data-theme="light"] .form-input,
+        :root[data-theme="light"] .form-select,
+        :root[data-theme="light"] .form-textarea {
+            background-color: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            color: #1e293b;
+        }
+
+        :root[data-theme="light"] .form-input:focus,
+        :root[data-theme="light"] .form-select:focus,
+        :root[data-theme="light"] .form-textarea:focus {
+            border-color: var(--accent-color, #10B981);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+        }
+
+        /* Contorno in risalto per tutte le celle dei punti all'ordine del giorno (titolo, ambito, singola scala/gruppo, risposte) */
         .odg-title-input,
-        .odg-edit-title {
+        .odg-edit-title,
+        .odg-scope-select,
+        .odg-group-select,
+        .odg-options-type-select,
+        .odg-custom-options-input,
+        .odg-edit-scope,
+        .odg-edit-options,
+        .odg-edit-custom-options,
+        #modal-scope-target-group {
             border: 2px solid var(--accent-color, #10B981) !important;
-            background: var(--surface-color-light) !important;
+            background-color: var(--surface-color-light) !important;
             border-radius: 8px !important;
             box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
             color: var(--primary-text) !important;
@@ -531,8 +555,21 @@
             transition: all 0.2s ease !important;
         }
 
+        .odg-scope-select,
+        .odg-group-select,
+        .odg-options-type-select,
+        .odg-edit-scope,
+        .odg-edit-options,
+        #modal-scope-target-group {
+            background-position: right 0.75rem center !important;
+            background-size: 14px 14px !important;
+            padding-right: 2rem !important;
+        }
+
         .odg-title-input::placeholder,
-        .odg-edit-title::placeholder {
+        .odg-edit-title::placeholder,
+        .odg-custom-options-input::placeholder,
+        .odg-edit-custom-options::placeholder {
             color: var(--secondary-text) !important;
             opacity: 0.9 !important;
             font-weight: 400 !important;
@@ -540,6 +577,8 @@
 
         :root[data-theme="light"] .odg-title-input::placeholder,
         :root[data-theme="light"] .odg-edit-title::placeholder,
+        :root[data-theme="light"] .odg-custom-options-input::placeholder,
+        :root[data-theme="light"] .odg-edit-custom-options::placeholder,
         :root[data-theme="light"] .form-input::placeholder,
         :root[data-theme="light"] input::placeholder {
             color: #475569 !important;
@@ -547,17 +586,66 @@
         }
 
         :root[data-theme="dark"] .odg-title-input::placeholder,
-        :root[data-theme="dark"] .odg-edit-title::placeholder {
+        :root[data-theme="dark"] .odg-edit-title::placeholder,
+        :root[data-theme="dark"] .odg-custom-options-input::placeholder,
+        :root[data-theme="dark"] .odg-edit-custom-options::placeholder {
             color: rgba(255, 255, 255, 0.6) !important;
             opacity: 1 !important;
         }
 
         .odg-title-input:focus,
-        .odg-edit-title:focus {
+        .odg-edit-title:focus,
+        .odg-scope-select:focus,
+        .odg-group-select:focus,
+        .odg-options-type-select:focus,
+        .odg-custom-options-input:focus,
+        .odg-edit-scope:focus,
+        .odg-edit-options:focus,
+        .odg-edit-custom-options:focus,
+        #modal-scope-target-group:focus {
             outline: none !important;
             border-color: var(--accent-color, #10B981) !important;
             box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-            background: var(--surface-color-light) !important;
+            background-color: var(--surface-color-light) !important;
+        }
+
+        /* Modalità giorno: sfondo bianco puro e contorno verde netto ad alta visibilità */
+        :root[data-theme="light"] .odg-title-input,
+        :root[data-theme="light"] .odg-edit-title,
+        :root[data-theme="light"] .odg-scope-select,
+        :root[data-theme="light"] .odg-group-select,
+        :root[data-theme="light"] .odg-options-type-select,
+        :root[data-theme="light"] .odg-custom-options-input,
+        :root[data-theme="light"] .odg-edit-scope,
+        :root[data-theme="light"] .odg-edit-options,
+        :root[data-theme="light"] .odg-edit-custom-options,
+        :root[data-theme="light"] #modal-scope-target-group {
+            background-color: #ffffff !important;
+            border: 2px solid var(--accent-color, #10B981) !important;
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+            color: #0f172a !important;
+        }
+
+        :root[data-theme="light"] .odg-title-input:focus,
+        :root[data-theme="light"] .odg-edit-title:focus,
+        :root[data-theme="light"] .odg-scope-select:focus,
+        :root[data-theme="light"] .odg-group-select:focus,
+        :root[data-theme="light"] .odg-options-type-select:focus,
+        :root[data-theme="light"] .odg-custom-options-input:focus,
+        :root[data-theme="light"] .odg-edit-scope:focus,
+        :root[data-theme="light"] .odg-edit-options:focus,
+        :root[data-theme="light"] .odg-edit-custom-options:focus,
+        :root[data-theme="light"] #modal-scope-target-group:focus {
+            background-color: #ffffff !important;
+            border-color: var(--accent-color, #10B981) !important;
+            box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        }
+
+        /* Contorno per selezione multipla scale nei punti OdG */
+        :root[data-theme="light"] .odg-scale-multi-wrapper {
+            background-color: #ffffff !important;
+            border: 1.5px dashed var(--accent-color, #10B981) !important;
+            border-radius: 8px !important;
         }
 
         /* Bordi celle evidenziati per il form di creazione/modifica regole */
@@ -17720,6 +17808,37 @@ ${renderBottomNavigation()}
                         return;
                     }
                 }
+
+                // Controllo preventivo quorum costitutivo per condominio parziale
+                const currentItem = agenda[targetIdx];
+                if (currentItem && typeof window.calculateSubcondominiumsQuorum === 'function') {
+                    const tData = window._liveAssemblyStaticCache?.tableData || window._currentTableData || [];
+                    const uList = window._liveAssemblyStaticCache?.allUsers || [];
+                    const pCondos = window._liveAssemblyStaticCache?.partialCondosList || [];
+                    const qInfo = window.calculateSubcondominiumsQuorum(currentItem, assembly, tData, uList, pCondos);
+
+                    if (qInfo.isPartial && qInfo.anyUnderQuorum) {
+                        const pointNumStr = window.getPointDisplayNumber ? window.getPointDisplayNumber(agenda, targetIdx) : `${targetIdx + 1}`;
+                        const failedStr = qInfo.failedNames.join(', ');
+                        const confirmNoVote = await customConfirm(
+                            `⚠️ ATTENZIONE - MANCATO RAGGIUNGIMENTO DEL QUORUM COSTITUTIVO\n\n` +
+                            `Per il Punto ${pointNumStr} ("${currentItem.title || ''}"), le seguenti scale/sottocondomini non hanno raggiunto il quorum costitutivo minimo di legge (1/3 teste e 1/3 millesimi ex Art. 1136 c.c.):\n` +
+                            `• ${failedStr}\n\n` +
+                            `In assenza del quorum costitutivo, la votazione non può svolgersi validamente.\n\n` +
+                            `Vuoi NON svolgere la votazione e archiviare direttamente il punto per mancanza di quorum?\n\n` +
+                            `[OK] = Non svolgere la votazione e archivia il punto\n` +
+                            `[Annulla] = Torna indietro senza avviare il voto`
+                        );
+                        if (confirmNoVote) {
+                            if (typeof window.cancelPointNoQuorum === 'function') {
+                                await window.cancelPointNoQuorum(assemblyId, itemId);
+                            }
+                            return;
+                        } else {
+                            return;
+                        }
+                    }
+                }
             }
 
             if (newStatus === 'closed') {
@@ -18421,11 +18540,15 @@ ${renderBottomNavigation()}
         window.togglePartialQuorumCollapsible = () => {
             const container = document.getElementById('room-partial-quorum-container');
             const toggleBtn = document.getElementById('room-partial-toggle-btn');
+            const badgesRow = document.getElementById('room-partial-badges-row') || document.getElementById('room-partial-groups-count')?.parentElement;
             if (!container) return;
             const isHidden = container.classList.toggle('hidden');
             window._partialQuorumCollapsed = isHidden;
             if (toggleBtn) {
                 toggleBtn.textContent = isHidden ? 'Mostra ▼' : 'Nascondi ▲';
+            }
+            if (badgesRow) {
+                badgesRow.style.display = isHidden ? 'none' : 'flex';
             }
         };
 
@@ -20118,6 +20241,10 @@ ${renderBottomNavigation()}
                         if (toggleBtn) {
                             toggleBtn.textContent = window._partialQuorumCollapsed ? 'Mostra ▼' : 'Nascondi ▲';
                         }
+                        const badgesRow = document.getElementById('room-partial-badges-row') || document.getElementById('room-partial-groups-count')?.parentElement;
+                        if (badgesRow) {
+                            badgesRow.style.display = window._partialQuorumCollapsed ? 'none' : 'flex';
+                        }
 
                         if (relevantGroups.length === 0) {
                             partialContainer.innerHTML = '';
@@ -21118,6 +21245,219 @@ ${renderBottomNavigation()}
                     return false;
                 };
 
+                // CALCOLO INFO NUOVO E VECCHIO ORDINE ODG APPROVATO
+                window.getPointOrderInfo = (item, agenda, idx) => {
+                    let oldNum = null;
+                    if (item && item.originalIndex !== undefined && item.originalIndex !== null) {
+                        const parsed = parseInt(item.originalIndex, 10);
+                        if (!isNaN(parsed)) oldNum = parsed;
+                    }
+                    if (oldNum === null && item && item.id && typeof item.id === 'string') {
+                        const m = item.id.match(/^punto_(\d+)$/i);
+                        if (m) {
+                            const parsed = parseInt(m[1], 10);
+                            if (!isNaN(parsed)) oldNum = parsed;
+                        }
+                    }
+                    if (oldNum === null) {
+                        oldNum = idx + 1;
+                    }
+                    const newNum = idx + 1;
+                    const isChanged = (oldNum !== newNum);
+                    return {
+                        newNum,
+                        oldNum,
+                        isChanged
+                    };
+                };
+
+                // CALCOLO PUNTUALE DEI QUORUM COSTITUTIVI PER CIASCUN SINGOLO CONDOMINIO PARZIALE
+                window.calculateSubcondominiumsQuorum = (item, assembly, tableData, allUsers, partialCondosList) => {
+                    if (!item) return { isPartial: false, subconds: [], anyUnderQuorum: false, allUnderQuorum: false, failedNames: [] };
+
+                    const itemScope = (item.scope || item.votingScope || '').toLowerCase();
+                    let subcondNames = [];
+
+                    if (Array.isArray(item.targetGroups) && item.targetGroups.length > 0) {
+                        subcondNames = item.targetGroups.filter(Boolean).map(s => s.trim());
+                    } else if (item.targetGroup) {
+                        const tgTrim = item.targetGroup.trim();
+                        const tgLower = tgTrim.toLowerCase();
+                        if (tgLower === 'tutte le scale' || tgLower === 'tutte le scale/gruppi') {
+                            const foundGroups = new Set();
+                            if (Array.isArray(partialCondosList)) {
+                                partialCondosList.forEach(pc => {
+                                    const name = typeof pc === 'string' ? pc : (pc.name || pc.groupName || '');
+                                    if (name && name.toLowerCase() !== 'portineria' && !name.toLowerCase().includes('parti comuni')) {
+                                        foundGroups.add(name.trim());
+                                    }
+                                });
+                            }
+                            if (foundGroups.size === 0 && Array.isArray(tableData) && tableData.length > 0) {
+                                const hObj = (typeof getTableHeaders === 'function') ? getTableHeaders(tableData) : null;
+                                const gHeader = hObj?.groupHeader || 'Gruppo';
+                                tableData.forEach(r => {
+                                    const g = (r[gHeader] || r['Gruppo'] || r['Raggruppamento'] || r['Scala'] || '').toString().trim();
+                                    if (g && g.toLowerCase() !== 'portineria' && !g.toLowerCase().includes('parti comuni')) {
+                                        foundGroups.add(g);
+                                    }
+                                });
+                            }
+                            subcondNames = Array.from(foundGroups);
+                        } else if (tgLower !== 'intero condominio' && tgLower !== 'intero' && tgLower !== 'tutti') {
+                            subcondNames = tgTrim.split(',').map(s => s.trim()).filter(s => s && s.toLowerCase() !== 'intero condominio' && s.toLowerCase() !== 'intero');
+                        }
+                    }
+
+                    if (subcondNames.length === 0 && (itemScope === 'gruppo' || itemScope === 'scale') && item.targetGroup) {
+                        const tgTrim = item.targetGroup.trim();
+                        if (tgTrim.toLowerCase() !== 'intero condominio' && tgTrim.toLowerCase() !== 'intero') {
+                            subcondNames = [tgTrim];
+                        }
+                    }
+
+                    const uniqueSubconds = [];
+                    subcondNames.forEach(s => {
+                        if (!uniqueSubconds.some(u => u.toLowerCase() === s.toLowerCase())) {
+                            uniqueSubconds.push(s);
+                        }
+                    });
+
+                    const isPartial = uniqueSubconds.length > 0;
+                    if (!isPartial) {
+                        return { isPartial: false, subconds: [], anyUnderQuorum: false, allUnderQuorum: false, failedNames: [] };
+                    }
+
+                    const activeAttendees = (assembly?.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+                    const activeProxies = (assembly?.proxies || []).filter(p => p.status !== 'rejected');
+
+                    let nominativoHeader = null;
+                    let millesimiHeader = null;
+                    let groupHeader = null;
+                    let unitaHeader = null;
+                    if (Array.isArray(tableData) && tableData.length > 0) {
+                        if (typeof getTableHeaders === 'function') {
+                            const hObj = getTableHeaders(tableData);
+                            nominativoHeader = hObj?.nominativoHeader;
+                            millesimiHeader = hObj?.millesimiHeader;
+                            groupHeader = hObj?.groupHeader;
+                            unitaHeader = hObj?.unitaHeader;
+                        }
+                        if (!nominativoHeader || !millesimiHeader || !groupHeader) {
+                            const sampleRow = tableData[0] || {};
+                            const keys = Object.keys(sampleRow);
+                            if (!nominativoHeader) nominativoHeader = keys.find(k => /nominativo|condomino|proprietario|nome/i.test(k)) || 'Nominativo';
+                            if (!millesimiHeader) millesimiHeader = keys.find(k => /millesim/i.test(k)) || 'Millesimi';
+                            if (!groupHeader) groupHeader = keys.find(k => /gruppo|scala|fabbricato|raggruppamento/i.test(k)) || 'Gruppo';
+                            if (!unitaHeader) unitaHeader = keys.find(k => /unita|interno|sub/i.test(k)) || 'Unità';
+                        }
+                    }
+
+                    const subconds = uniqueSubconds.map(scName => {
+                        const subcondDistinct = new Set();
+                        let subcondTotalMil = 0;
+
+                        if (tableData && Array.isArray(tableData) && tableData.length > 0) {
+                            tableData.forEach(row => {
+                                let rowGroup = groupHeader && row[groupHeader] ? row[groupHeader].toString().trim() : '';
+                                if (!rowGroup && unitaHeader && row[unitaHeader] && Array.isArray(allUsers)) {
+                                    const rowUnit = row[unitaHeader].toString().trim();
+                                    const matchedUser = allUsers.find(u => (u.proprieta || []).some(p => p.interno && p.interno.toString().trim() === rowUnit));
+                                    if (matchedUser) {
+                                        const p = (matchedUser.proprieta || []).find(pr => pr.interno && pr.interno.toString().trim() === rowUnit);
+                                        if (p?.gruppo) rowGroup = p.gruppo;
+                                    }
+                                }
+                                const isScaleIn = (typeof window.isScaleInTargetGroup === 'function')
+                                    ? window.isScaleInTargetGroup(rowGroup, scName)
+                                    : (rowGroup && scName && (rowGroup.toLowerCase() === scName.toLowerCase() || rowGroup.toLowerCase().includes(scName.toLowerCase()) || scName.toLowerCase().includes(rowGroup.toLowerCase())));
+                                if (isScaleIn) {
+                                    const nom = nominativoHeader && row[nominativoHeader] ? row[nominativoHeader].toString().trim().toLowerCase() : '';
+                                    if (nom) subcondDistinct.add(nom);
+                                    const rawMil = millesimiHeader && row[millesimiHeader] ? row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
+                                    subcondTotalMil += (parseFloat(rawMil) || 0);
+                                }
+                            });
+                        }
+
+                        if ((subcondDistinct.size === 0 || subcondTotalMil <= 0) && Array.isArray(allUsers)) {
+                            subcondTotalMil = 0;
+                            subcondDistinct.clear();
+                            allUsers.forEach(u => {
+                                const uMil = (typeof window.getEffectiveUnitMillesimi === 'function')
+                                    ? window.getEffectiveUnitMillesimi(u, scName)
+                                    : 0;
+                                if (uMil > 0) {
+                                    subcondDistinct.add(u.id);
+                                    subcondTotalMil += uMil;
+                                }
+                            });
+                        }
+
+                        const subcondTotalHeads = subcondDistinct.size > 0 ? subcondDistinct.size : 1;
+                        if (subcondTotalMil <= 0) subcondTotalMil = 1000.00;
+
+                        const groupPresentHeadsSet = new Set();
+                        let groupMillesimiPresent = 0;
+
+                        activeAttendees.forEach(a => {
+                            let held = activeProxies.filter(p => (p.delegateId === a.uid || p.delegateId === a.id));
+                            held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, scName, allUsers) : 0) > 0);
+                            const selfM = (typeof window.getAttendeePersonalMillesimi === 'function')
+                                ? window.getAttendeePersonalMillesimi(a, held, scName, allUsers, true)
+                                : (typeof window.getEffectiveUnitMillesimi === 'function'
+                                    ? window.getEffectiveUnitMillesimi(a, scName, allUsers, tableData)
+                                    : (a.scale && (a.scale.toLowerCase() === scName.toLowerCase() || a.scale.toLowerCase().includes(scName.toLowerCase())) ? (parseFloat(a.millesimi) || 0) : 0));
+                            if (selfM > 0) {
+                                groupPresentHeadsSet.add(a.uid || a.id);
+                                groupMillesimiPresent += selfM;
+                            }
+                        });
+
+                        activeProxies.forEach(p => {
+                            const proxyMil = window.getEffectiveProxyMillesimi
+                                ? window.getEffectiveProxyMillesimi(p, scName, allUsers)
+                                : (parseFloat(p.delegatorMillesimi) || 0);
+                            if (proxyMil > 0) {
+                                groupPresentHeadsSet.add(p.delegatorId || p.delegatorUid || p.id);
+                                groupMillesimiPresent += proxyMil;
+                            }
+                        });
+
+                        const groupHeadsPresent = groupPresentHeadsSet.size;
+                        const requiredHeads = Math.ceil(subcondTotalHeads / 3);
+                        const requiredMil = subcondTotalMil / 3;
+                        const isHeadsReached = groupHeadsPresent >= requiredHeads;
+                        const isMilReached = groupMillesimiPresent >= (requiredMil - 0.01);
+                        const isQuorumReached = isHeadsReached && isMilReached;
+
+                        return {
+                            name: scName,
+                            totalHeads: subcondTotalHeads,
+                            totalMil: subcondTotalMil,
+                            presentHeads: groupHeadsPresent,
+                            presentMil: groupMillesimiPresent,
+                            requiredHeads: requiredHeads,
+                            requiredMil: requiredMil,
+                            isHeadsReached: isHeadsReached,
+                            isMilReached: isMilReached,
+                            isQuorumReached: isQuorumReached
+                        };
+                    });
+
+                    const failedNames = subconds.filter(s => !s.isQuorumReached).map(s => s.name);
+                    const anyUnderQuorum = failedNames.length > 0;
+                    const allUnderQuorum = subconds.length > 0 && subconds.every(s => !s.isQuorumReached);
+
+                    return {
+                        isPartial: true,
+                        subconds,
+                        anyUnderQuorum,
+                        allUnderQuorum,
+                        failedNames
+                    };
+                };
+
                 // RENDERING SONDAGGI-STYLE ODG LIST (#room-odg-poll-list) CON DETTAGLIO VOTANTI E DELEGHE
                 renderOdgPollList = (staticData) => {
                     if (staticData) {
@@ -21130,6 +21470,12 @@ ${renderBottomNavigation()}
                         groupHeader = hObj.groupHeader;
                         unitaHeader = hObj.unitaHeader;
                     }
+
+                    window._liveAssemblyStaticCache = {
+                        tableData: tableData || [],
+                        allUsers: allUsers || [],
+                        partialCondosList: partialCondosList || []
+                    };
 
                     totMillesimi = 0;
                     activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
@@ -21211,6 +21557,8 @@ ${renderBottomNavigation()}
                     }
 
                     odgPollContainer.innerHTML = odgLockedBanner + odgStatusBanner + assembly.agenda.map((item, idx) => {
+                        const itemStatus = item.status || 'pending';
+                        const prevItemClosed = idx === 0 || ((assembly.agenda[idx - 1]?.status || 'pending') === 'closed');
                         const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
 
                         const tally = {};
@@ -21225,14 +21573,14 @@ ${renderBottomNavigation()}
                             totalVotesMil += (v.millesimi || 0);
                         });
 
-                        const itemScope = item.scope || 'intero';
-                        const itemGroup = item.targetGroup || '';
-                        const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!itemGroup &&
-                            itemGroup !== 'Intero condominio' &&
-                            itemGroup !== 'Intero Condominio' &&
-                            itemGroup !== 'Tutte le scale' &&
-                            itemGroup.trim().toLowerCase() !== 'intero' &&
-                            itemGroup.trim().toLowerCase() !== 'tutti';
+                        const quorumInfo = (typeof window.calculateSubcondominiumsQuorum === 'function')
+                            ? window.calculateSubcondominiumsQuorum(item, assembly, tableData, allUsers, partialCondosList)
+                            : { isPartial: false, subconds: [], anyUnderQuorum: false, allUnderQuorum: false, failedNames: [] };
+
+                        const isGroupScope = quorumInfo.isPartial && quorumInfo.subconds.length > 0;
+                        const isPartial = isGroupScope;
+                        const itemScope = item.scope || (isGroupScope ? 'scale' : 'intero');
+                        const itemGroup = item.targetGroup || (isGroupScope ? quorumInfo.subconds.map(s => s.name).join(', ') : '');
 
                         let scopeBadge = '';
                         let groupQuorumBoxHtml = '';
@@ -21241,101 +21589,245 @@ ${renderBottomNavigation()}
                         let groupMillesimiPresent = 0;
 
                         if (isGroupScope) {
-                            scopeBadge = `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; font-weight:800; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left; box-shadow:0 1px 3px rgba(0,0,0,0.15);">${THEME_ICONS.layers(14)} Condominio Parziale: ${escapeHtml(itemGroup)}</span>`;
+                            const subcondNamesLabel = quorumInfo.subconds.map(s => s.name).join(', ');
+                            scopeBadge = `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; font-weight:800; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-block; max-width:100%; text-align:left; box-shadow:0 1px 3px rgba(0,0,0,0.15);">${THEME_ICONS.layers(14)} Cond. Parziale: ${escapeHtml(subcondNamesLabel)}</span>`;
 
-                            // Calcolo totali anagrafici del sottocondominio (denominatore)
-                            const subcondDistinct = new Set();
-                            let subcondTotalMil = 0;
-                            if (tableData && tableData.length > 0) {
-                                tableData.forEach(row => {
-                                    let rowGroup = groupHeader && row[groupHeader] ? row[groupHeader].toString().trim() : '';
-                                    if (!rowGroup && unitaHeader && row[unitaHeader]) {
-                                        const rowUnit = row[unitaHeader].toString().trim();
-                                        const matchedUser = allUsers.find(u => (u.proprieta || []).some(p => p.interno && p.interno.toString().trim() === rowUnit));
-                                        if (matchedUser) {
-                                            const p = (matchedUser.proprieta || []).find(pr => pr.interno && pr.interno.toString().trim() === rowUnit);
-                                            if (p?.gruppo) rowGroup = p.gruppo;
-                                        }
-                                    }
-                                    if (window.isScaleInTargetGroup(rowGroup, itemGroup)) {
-                                        const nom = nominativoHeader && row[nominativoHeader] ? row[nominativoHeader].toString().trim().toLowerCase() : '';
-                                        if (nom) subcondDistinct.add(nom);
-                                        const rawMil = millesimiHeader && row[millesimiHeader] ? row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
-                                        subcondTotalMil += (parseFloat(rawMil) || 0);
-                                    }
-                                });
-                            }
-                            if (subcondDistinct.size === 0 || subcondTotalMil <= 0) {
-                                subcondTotalMil = 0;
-                                subcondDistinct.clear();
-                                allUsers.forEach(u => {
-                                    const uMil = window.getEffectiveUnitMillesimi(u, itemGroup);
-                                    if (uMil > 0) {
-                                        subcondDistinct.add(u.id);
-                                        subcondTotalMil += uMil;
-                                    }
-                                });
-                            }
-                            const subcondTotalHeads = subcondDistinct.size > 0 ? subcondDistinct.size : 1;
-                            if (subcondTotalMil <= 0) subcondTotalMil = 1000.00;
+                            // Calcolo teste e millesimi complessivi presenti per questo punto (per base millesimi e progress bar)
+                            const allPartialPresentHeads = new Set();
+                            groupMillesimiPresent = 0;
+                            quorumInfo.subconds.forEach(sc => {
+                                groupMillesimiPresent += sc.presentMil;
+                            });
 
-                            // Calcolo aventi diritto presenti per questo gruppo/scala
-                            const groupPresentHeadsSet = new Set();
                             activeAttendees.forEach(a => {
                                 let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
-                                if (isGroupScope) {
-                                    held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
-                                }
+                                held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
                                 const selfM = (typeof window.getAttendeePersonalMillesimi === 'function')
-                                    ? window.getAttendeePersonalMillesimi(a, held, itemGroup, allUsers, isGroupScope)
+                                    ? window.getAttendeePersonalMillesimi(a, held, itemGroup, allUsers, true)
                                     : Math.max(0, (parseFloat(a.millesimi) || 0) - held.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0));
-                                if (selfM > 0) {
-                                    groupPresentHeadsSet.add(a.uid);
-                                    groupMillesimiPresent += selfM;
-                                }
+                                if (selfM > 0) allPartialPresentHeads.add(a.uid || a.id);
                             });
 
                             activeProxies.forEach(p => {
                                 const proxyMil = window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || 0);
-                                if (proxyMil > 0) {
-                                    groupPresentHeadsSet.add(p.delegatorId || p.id);
-                                    groupMillesimiPresent += proxyMil;
-                                }
+                                if (proxyMil > 0) allPartialPresentHeads.add(p.delegatorId || p.delegatorUid || p.id);
                             });
 
-                            groupHeadsPresent = groupPresentHeadsSet.size;
+                            groupHeadsPresent = allPartialPresentHeads.size;
                             baseMillesimi = groupMillesimiPresent > 0 ? groupMillesimiPresent : (totalVotesMil || 1000);
 
-                            groupQuorumBoxHtml = `
-                                <div style="background: rgba(245, 158, 11, 0.06); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 0.65rem 0.75rem; margin-top: 0.5rem; margin-bottom: 0.65rem; text-align: left;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem; flex-wrap: wrap; gap: 0.35rem;">
-                                        <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary-text); display: flex; align-items: center; gap: 0.35rem;">
-                                            ${THEME_ICONS.scale(16)} <strong>Quorum Costitutivo</strong>
-                                        </span>
-                                        <span class="badge" style="background: #78350F; color: #FEF3C7; border: 1.5px solid #F59E0B; font-weight: 800; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: 6px; max-width: 100%; white-space: normal; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.15);">
-                                            ${THEME_ICONS.layers(14)} ${escapeHtml(itemGroup)}
-                                        </span>
+                            // Generazione box distinti per ogni singolo condominio parziale (Quorum Costitutivo + Voti espressi + Esito)
+                            const subcondBoxesHtml = quorumInfo.subconds.map(sc => {
+                                const isReached = sc.isQuorumReached;
+                                const badgeColor = isReached ? '#065F46' : '#7F1D1D';
+                                const badgeBorder = isReached ? '#10B981' : '#EF4444';
+                                const badgeText = isReached ? '#D1FAE5' : '#FEE2E2';
+                                const badgeIcon = isReached ? THEME_ICONS.checkSuccess(13) : THEME_ICONS.crossDanger(13);
+                                const statusLabel = isReached ? 'Quorum Raggiunto (≥ 1/3)' : 'Sotto Quorum (Richiesto 1/3)';
+
+                                // Calcolo voti espressi per questo specifico sottocondominio
+                                const scTally = {};
+                                voteOptions.forEach(opt => { scTally[opt] = { mil: 0, teste: 0 }; });
+                                let scTotalVotedMil = 0;
+                                let scTotalVotedHeads = 0;
+
+                                (item.votes || []).forEach(v => {
+                                    let vMilInSc = 0;
+                                    if (v.isProxyVote || v.proxyId) {
+                                        const p = (assembly.proxies || []).find(pr =>
+                                            (v.proxyId && pr.id === v.proxyId) ||
+                                            (v.voterId && (pr.delegatorId === v.voterId || pr.delegatorUid === v.voterId || pr.id === v.voterId))
+                                        );
+                                        if (p && typeof window.getEffectiveProxyMillesimi === 'function') {
+                                            vMilInSc = window.getEffectiveProxyMillesimi(p, sc.name, allUsers, tableData);
+                                        } else if (p) {
+                                            vMilInSc = parseFloat(p.delegatorMillesimi) || 0;
+                                        }
+                                    } else {
+                                        const a = activeAttendees.find(att => (v.voterId && (att.uid === v.voterId || att.id === v.voterId)));
+                                        if (a) {
+                                            let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                                            held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, sc.name, allUsers) : 0) > 0);
+                                            vMilInSc = (typeof window.getAttendeePersonalMillesimi === 'function')
+                                                ? window.getAttendeePersonalMillesimi(a, held, sc.name, allUsers, true)
+                                                : (typeof window.getEffectiveUnitMillesimi === 'function'
+                                                    ? window.getEffectiveUnitMillesimi(a, sc.name, allUsers, tableData)
+                                                    : (a.scale && (a.scale.toLowerCase() === sc.name.toLowerCase() || a.scale.toLowerCase().includes(sc.name.toLowerCase())) ? (parseFloat(a.millesimi) || 0) : 0));
+                                        } else if (Array.isArray(allUsers)) {
+                                            const u = allUsers.find(user => (v.voterId && (user.id === v.voterId || user.uid === v.voterId)));
+                                            if (u && typeof window.getEffectiveUnitMillesimi === 'function') {
+                                                vMilInSc = window.getEffectiveUnitMillesimi(u, sc.name, allUsers, tableData);
+                                            }
+                                        }
+                                    }
+
+                                    if (vMilInSc <= 0 && quorumInfo.subconds.length === 1) {
+                                        vMilInSc = parseFloat(v.millesimi) || 0;
+                                    }
+
+                                    if (vMilInSc > 0) {
+                                        const optKey = voteOptions.includes(v.choice) ? v.choice : (scTally[v.choice] ? v.choice : voteOptions[0]);
+                                        if (!scTally[optKey]) scTally[optKey] = { mil: 0, teste: 0 };
+                                        scTally[optKey].mil += vMilInSc;
+                                        scTally[optKey].teste += (v.heads || 1);
+                                        scTotalVotedMil += vMilInSc;
+                                        scTotalVotedHeads += (v.heads || 1);
+                                    }
+                                });
+
+                                const scBaseMillesimi = sc.presentMil > 0 ? sc.presentMil : (sc.totalMil > 0 ? sc.totalMil : 1000);
+
+                                const scOptionsProgressHtml = voteOptions.map(opt => {
+                                    const mil = scTally[opt]?.mil || 0;
+                                    const teste = scTally[opt]?.teste || 0;
+                                    const percent = scBaseMillesimi > 0 ? ((mil / scBaseMillesimi) * 100).toFixed(1) : '0.0';
+                                    let color = 'var(--accent-color)';
+                                    if (opt.toLowerCase().includes('favorevole') || opt.toLowerCase().includes('sì') || opt.toLowerCase().includes('approvato')) color = '#1DB954';
+                                    else if (opt.toLowerCase().includes('contrario') || opt.toLowerCase().includes('no') || opt.toLowerCase().includes('respinto')) color = 'var(--danger)';
+                                    else if (opt.toLowerCase().includes('astenuto')) color = '#f1c40f';
+
+                                    return `
+                                        <div style="margin-top: 0.35rem;">
+                                            <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:0.12rem;">
+                                                <span><strong>${escapeHtml(opt)}:</strong> ${mil.toFixed(2)} su ${scBaseMillesimi.toFixed(2)} ‰ (${teste} ${teste === 1 ? 'testa' : 'teste'})</span>
+                                                <span style="color:var(--secondary-text); font-weight:600;">${percent}%</span>
+                                            </div>
+                                            <div style="width:100%; background:var(--surface-color-light); height:7px; border-radius:4px; overflow:hidden;">
+                                                <div style="width:${Math.min(100, parseFloat(percent))}%; background:${color}; height:100%; transition:width 0.3s;"></div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+
+                                let scOutcomeBadge = '';
+                                let scDelibPassed = false;
+                                if (item.cancelledNoQuorum) {
+                                    scOutcomeBadge = `<span class="badge" style="background:#7f8c8d; color:white; font-weight:700; font-size:0.7rem; padding:0.18rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(12)} ANNULLATO (senza quorum)</span>`;
+                                } else if (itemStatus === 'closed') {
+                                    if (!isReached) {
+                                        scOutcomeBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:700; font-size:0.7rem; padding:0.18rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(12)} NON DELIBERATO</span>`;
+                                    } else {
+                                        let leadingOpt = voteOptions[0];
+                                        let maxMil = -1;
+                                        voteOptions.forEach(opt => {
+                                            if ((scTally[opt]?.mil || 0) > maxMil) {
+                                                maxMil = scTally[opt]?.mil || 0;
+                                                leadingOpt = opt;
+                                            }
+                                        });
+                                        const isFav = leadingOpt.toLowerCase().includes('favorevole') || leadingOpt.toLowerCase().includes('sì') || leadingOpt.toLowerCase().includes('approvato');
+                                        const favMil = scTally[leadingOpt]?.mil || 0;
+                                        const favTeste = scTally[leadingOpt]?.teste || 0;
+                                        const scReqMil = sc.totalMil / 3;
+                                        const scReqHeads = Math.ceil(sc.presentHeads / 2);
+                                        scDelibPassed = (favMil >= (scReqMil - 0.01)) && (favTeste >= scReqHeads || (scTotalVotedMil > 0 && favMil > (scTotalVotedMil / 2)));
+
+                                        if (isFav && scDelibPassed) {
+                                            scOutcomeBadge = `<span class="badge" style="background:#065F46; color:#D1FAE5; border:1px solid #10B981; font-weight:800; font-size:0.7rem; padding:0.18rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(12)} APPROVATO (${favMil.toFixed(2)} ‰)</span>`;
+                                        } else if (isFav && !scDelibPassed) {
+                                            scOutcomeBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:700; font-size:0.7rem; padding:0.18rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(12)} NON APPROVATO (Sotto Quorum)</span>`;
+                                        } else {
+                                            scOutcomeBadge = `<span class="badge" style="background:var(--danger); color:white; font-weight:700; font-size:0.7rem; padding:0.18rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(12)} RESPINTO (${escapeHtml(leadingOpt).toUpperCase()})</span>`;
+                                        }
+                                    }
+                                 } else {
+                                     scOutcomeBadge = '';
+                                 }
+
+                                sc.isDelibPassed = scDelibPassed;
+
+                                return `
+                                    <div style="background: rgba(245, 158, 11, 0.04); border: 1.5px solid ${isReached ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.45)'}; border-radius: 10px; padding: 0.75rem 0.85rem; margin-top: 0.6rem; margin-bottom: 0.6rem; text-align: left;">
+                                        <!-- Intestazione Sottocondominio (Riga principale: Cond. Parziale, Riga sotto: Nome) + Esito Votazione -->
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.55rem; gap: 0.5rem;">
+                                            <div style="display: flex; align-items: flex-start; gap: 0.45rem; min-width: 0;">
+                                                <span style="display: inline-flex; align-items: center; justify-content: center; margin-top: 0.15rem; color: var(--accent-color); flex-shrink: 0;">
+                                                    ${THEME_ICONS.scale(17)}
+                                                </span>
+                                                <div style="display: flex; flex-direction: column; min-width: 0;">
+                                                    <div style="font-size: 0.72rem; font-weight: 800; color: var(--secondary-text); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">
+                                                        Cond. Parziale
+                                                    </div>
+                                                    <div style="font-size: 0.96rem; font-weight: 900; color: var(--accent-color, #10B981); line-height: 1.25; word-break: break-word; margin-top: 0.1rem;">
+                                                        ${escapeHtml(sc.name)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            ${scOutcomeBadge ? `<div style="flex-shrink: 0; margin-top: 0.1rem;">${scOutcomeBadge}</div>` : ''}
+                                        </div>
+
+                                        <!-- 1. Quorum Costitutivo per questa scala -->
+                                        <div style="background: var(--surface-color); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 0.55rem 0.65rem; margin-bottom: 0.55rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.25rem;">
+                                                <span style="font-size: 0.74rem; font-weight: 700; color: var(--secondary-text); text-transform: uppercase; letter-spacing: 0.4px;">
+                                                    Quorum Costitutivo
+                                                </span>
+                                                <span class="badge" style="background: ${badgeColor}; color: ${badgeText}; border: 1px solid ${badgeBorder}; font-weight: 800; font-size: 0.68rem; padding: 0.15rem 0.45rem; border-radius: 5px; display: inline-flex; align-items: center; gap: 0.25rem;">
+                                                    ${badgeIcon} ${statusLabel}
+                                                </span>
+                                            </div>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; text-align: center; background: rgba(0,0,0,0.12); padding: 0.45rem 0.35rem; border-radius: 6px;">
+                                                <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;">
+                                                    <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600;">Totale sottocond.</span>
+                                                    <strong style="display: block; font-size: 0.9rem; color: var(--primary-text); font-weight: 800;">${sc.totalHeads} teste</strong>
+                                                    <span style="font-size: 0.66rem; color: var(--secondary-text);">min. ${sc.requiredHeads}</span>
+                                                </div>
+                                                <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;">
+                                                    <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600;">Millesimi sottocond.</span>
+                                                    <strong style="display: block; font-size: 0.9rem; color: var(--primary-text); font-weight: 800;">${sc.totalMil.toFixed(2)} ‰</strong>
+                                                    <span style="font-size: 0.66rem; color: var(--secondary-text);">min. ${sc.requiredMil.toFixed(2)} ‰</span>
+                                                </div>
+                                                <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;">
+                                                    <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600;">Totale presenti</span>
+                                                    <strong style="display: block; font-size: 0.9rem; color: ${sc.isHeadsReached ? 'var(--accent-color)' : 'var(--danger)'}; font-weight: 800;">${sc.presentHeads} teste</strong>
+                                                </div>
+                                                <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;">
+                                                    <span style="font-size: 0.7rem; color: var(--secondary-text); font-weight: 600;">Millesimi presenti</span>
+                                                    <strong style="display: block; font-size: 0.9rem; color: ${sc.isMilReached ? 'var(--primary-text)' : 'var(--danger)'}; font-weight: 900;">${sc.presentMil.toFixed(2)} ‰</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 2. Votazioni Espresse per questa scala -->
+                                        <div style="margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                                <div style="font-size: 0.74rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; display: flex; align-items: center; gap: 0.3rem;">
+                                                    ${THEME_ICONS.chart(13)} <span>Voti espressi (${escapeHtml(sc.name)})</span>
+                                                </div>
+                                                <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">
+                                                    ${scTotalVotedMil.toFixed(2)} su ${scBaseMillesimi.toFixed(2)} ‰ (${scTotalVotedHeads} teste)
+                                                </span>
+                                            </div>
+                                            ${!isReached ? `
+                                                <div style="font-size: 0.78rem; color: var(--danger, #B91C1C); font-weight: 700; background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 0.45rem 0.65rem; margin-top: 0.35rem; margin-bottom: 0.45rem; line-height: 1.4;">
+                                                    ⚠️ Sottocondominio sotto quorum costitutivo: la votazione non produce effetti per ${escapeHtml(sc.name)}.
+                                                </div>
+                                            ` : ''}
+                                            ${scOptionsProgressHtml}
+                                        </div>
                                     </div>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; text-align: center; background: var(--surface-color); padding: 0.55rem 0.4rem; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05);">
-                                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
-                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Totale sottocond.</span>
-                                            <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 800; margin: 0.1rem 0;">${subcondTotalHeads} teste</strong>
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
-                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Millesimi sottocond.</span>
-                                            <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 800; margin: 0.1rem 0;">${subcondTotalMil.toFixed(2)} ‰</strong>
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
-                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Totale presenti</span>
-                                            <strong style="display: block; font-size: 0.95rem; color: var(--accent-color); font-weight: 800; margin: 0.1rem 0;">${groupHeadsPresent} teste</strong>
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;">
-                                            <span style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 600;">Millesimi presenti</span>
-                                            <strong style="display: block; font-size: 0.95rem; color: var(--primary-text); font-weight: 900; margin: 0.1rem 0;">${groupMillesimiPresent.toFixed(2)} ‰</strong>
+                                `;
+                            }).join('');
+
+                            let warningBannerHtml = '';
+                            if (quorumInfo.anyUnderQuorum) {
+                                warningBannerHtml = `
+                                    <div style="background: rgba(239, 68, 68, 0.1); border: 1.5px solid #EF4444; border-radius: 8px; padding: 0.5rem 0.75rem; margin-top: 0.4rem; margin-bottom: 0.6rem; text-align: left;">
+                                        <div style="display: flex; align-items: flex-start; gap: 0.45rem;">
+                                            <span style="color: var(--danger); font-size: 1rem; line-height: 1.2;">⚠️</span>
+                                            <div style="flex: 1; min-width: 0;">
+                                                <strong style="color: #EF4444; font-size: 0.84rem; font-weight: 800; display: block; line-height: 1.25;">Quorum Costitutivo Mancante</strong>
+                                                <div style="color: var(--secondary-text); font-size: 0.78rem; line-height: 1.3; margin-top: 0.15rem;">
+                                                    <strong style="color: var(--danger, #B91C1C);">${escapeHtml(quorumInfo.failedNames.join(', '))}</strong> sotto quorum minimo (1/3).<br>
+                                                    L'amministratore può non svolgere la votazione.
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            `;
+                                `;
+                            }
+
+                            groupQuorumBoxHtml = subcondBoxesHtml + warningBannerHtml;
                         } else {
                             scopeBadge = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:600; font-size:0.75rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.3rem 0.65rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.35rem; max-width:100%; text-align:left;">${THEME_ICONS.building(16)} <span>Intero Condominio</span></span>`;
                             baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
@@ -21362,39 +21854,52 @@ ${renderBottomNavigation()}
                             `;
                         }).join('');
 
-                        const itemStatus = item.status || 'pending';
-                        const prevItemClosed = idx === 0 || ((assembly.agenda[idx - 1]?.status || 'pending') === 'closed');
-
                         let itemBadge = '';
                         if (itemStatus === 'pending') {
                             itemBadge = `<span class="badge status-aperta" style="font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">In Attesa</span>`;
                         } else if (itemStatus === 'voting') {
                             itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:800; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem; animation: pulse 1.5s infinite;">LIVE ${THEME_ICONS.circleRed(12)}</span>`;
                         } else if (itemStatus === 'closed') {
-                            let leadingOpt = voteOptions[0];
-                            let maxMil = -1;
-                            voteOptions.forEach(opt => {
-                                if ((tally[opt]?.mil || 0) > maxMil) {
-                                    maxMil = tally[opt]?.mil || 0;
-                                    leadingOpt = opt;
-                                }
-                            });
-
-                            const isFav = leadingOpt.toLowerCase().includes('favorevole') || leadingOpt.toLowerCase().includes('sì') || leadingOpt.toLowerCase().includes('approvato');
-                            const favMil = tally[leadingOpt]?.mil || 0;
-                            const favTeste = tally[leadingOpt]?.teste || 0;
-                            const requiredMil = baseMillesimi / 3;
-                            const requiredHeads = Math.ceil((isGroupScope ? groupHeadsPresent : totalPresences) / 2);
-                            const quorumPassed = (favMil >= (requiredMil - 0.01)) && (favTeste >= requiredHeads || (totalVotesMil > 0 && favMil > (totalVotesMil / 2)));
-
                             if (item.cancelledNoQuorum) {
                                 itemBadge = `<span class="badge" style="background-color: #7f8c8d; color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} ANNULLATO (senza quorum)</span>`;
-                            } else if (isFav && quorumPassed) {
-                                itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(14)} APPROVATO (${favMil.toFixed(2)} ‰) ${THEME_ICONS.circleGreen(11)}</span>`;
-                            } else if (isFav && !quorumPassed) {
-                                itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} NON APPROVATO (Sotto Quorum) ${THEME_ICONS.circleRed(11)}</span>`;
+                            } else if (isGroupScope) {
+                                if (quorumInfo.anyUnderQuorum) {
+                                    itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} SOTTO QUORUM COSTITUTIVO ${THEME_ICONS.circleRed(11)}</span>`;
+                                } else {
+                                    const allPassed = quorumInfo.subconds.every(sc => sc.isDelibPassed);
+                                    const nonePassed = quorumInfo.subconds.every(sc => !sc.isDelibPassed);
+                                    if (allPassed) {
+                                        itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(14)} APPROVATO (${quorumInfo.subconds.length === 1 ? quorumInfo.subconds[0].name : `${quorumInfo.subconds.length} scale`}) ${THEME_ICONS.circleGreen(11)}</span>`;
+                                    } else if (nonePassed) {
+                                        itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} RESPINTO ${THEME_ICONS.circleRed(11)}</span>`;
+                                    } else {
+                                        itemBadge = `<span class="badge" style="background-color: #F59E0B; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.alertCircle(14)} ESITI DIFFORMI PER SCALA</span>`;
+                                    }
+                                }
                             } else {
-                                itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} RESPINTO (${escapeHtml(leadingOpt).toUpperCase()}) ${THEME_ICONS.circleRed(11)}</span>`;
+                                let leadingOpt = voteOptions[0];
+                                let maxMil = -1;
+                                voteOptions.forEach(opt => {
+                                    if ((tally[opt]?.mil || 0) > maxMil) {
+                                        maxMil = tally[opt]?.mil || 0;
+                                        leadingOpt = opt;
+                                    }
+                                });
+
+                                const isFav = leadingOpt.toLowerCase().includes('favorevole') || leadingOpt.toLowerCase().includes('sì') || leadingOpt.toLowerCase().includes('approvato');
+                                const favMil = tally[leadingOpt]?.mil || 0;
+                                const favTeste = tally[leadingOpt]?.teste || 0;
+                                const requiredMil = baseMillesimi / 3;
+                                const requiredHeads = Math.ceil(totalPresences / 2);
+                                const quorumPassed = (favMil >= (requiredMil - 0.01)) && (favTeste >= requiredHeads || (totalVotesMil > 0 && favMil > (totalVotesMil / 2)));
+
+                                if (isFav && quorumPassed) {
+                                    itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(14)} APPROVATO (${favMil.toFixed(2)} ‰) ${THEME_ICONS.circleGreen(11)}</span>`;
+                                } else if (isFav && !quorumPassed) {
+                                    itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} NON APPROVATO (Sotto Quorum) ${THEME_ICONS.circleRed(11)}</span>`;
+                                } else {
+                                    itemBadge = `<span class="badge" style="background-color: var(--danger); color: white; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.crossDanger(14)} RESPINTO (${escapeHtml(leadingOpt).toUpperCase()}) ${THEME_ICONS.circleRed(11)}</span>`;
+                                }
                             }
                         }
 
@@ -21508,6 +22013,8 @@ ${renderBottomNavigation()}
                                 } else {
                                     btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Annullamento disponibile solo durante la votazione attiva">${THEME_ICONS.lock(14)} <span>Annulla</span></button>`;
                                 }
+                            } else if (isGroupScope && itemStatus === 'voting') {
+                                btnScope = `<button onclick="window.cancelPointNoQuorum('${assemblyId}', '${item.id}')" class="btn" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; background:rgba(239,68,68,0.15); color:var(--danger); border:1.5px solid var(--danger); font-size:0.75rem; font-weight:700; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Annulla il punto per mancanza di quorum costitutivo">${THEME_ICONS.crossDanger(14)} <span>Non Votare</span></button>`;
                             } else if (!isOdgApproved || !prevItemClosed) {
                                 btnScope = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:36px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.75rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="L'ambito potrà essere modificato solo quando il punto precedente sarà concluso dall'amministratore">${THEME_ICONS.lock(14)} <span>Ambito</span></button>`;
                             } else {
@@ -21519,7 +22026,16 @@ ${renderBottomNavigation()}
                                 btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="È prima richiesta l'approvazione dell'Ordine del Giorno da parte dei presenti">${THEME_ICONS.lock(14)} <span>In attesa approvazione OdG</span></button>`;
                             } else if (itemStatus === 'pending') {
                                 if (prevItemClosed) {
-                                    btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.play(14, 2)} <span>Inizia Voto</span></button>`;
+                                    if (isGroupScope) {
+                                        btnStatus = `
+                                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; width:100%;">
+                                                <button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="height:38px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.play(14, 2)} <span>Inizia Voto</span></button>
+                                                <button onclick="window.cancelPointNoQuorum('${assemblyId}', '${item.id}')" class="btn" style="height:38px; padding:0 0.4rem; display:flex; align-items:center; justify-content:center; gap:0.35rem; background:rgba(239,68,68,0.15); color:var(--danger); border:1.5px solid var(--danger); font-size:0.75rem; font-weight:700; border-radius:6px; white-space:nowrap;" title="Non svolgere la votazione per mancanza di quorum costitutivo">${THEME_ICONS.crossDanger(14)} <span>Non Votare</span></button>
+                                            </div>
+                                        `;
+                                    } else {
+                                        btnStatus = `<button onclick="toggleOdgVote('${assemblyId}', '${item.id}', 'voting')" class="btn btn-primary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.85rem; font-weight:700; border-radius:6px; white-space:nowrap;">${THEME_ICONS.play(14, 2)} <span>Inizia Voto</span></button>`;
+                                    }
                                 } else {
                                     btnStatus = `<button type="button" disabled class="btn btn-secondary" style="width:100%; height:38px; padding:0 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.4rem; font-size:0.78rem; font-weight:600; border-radius:6px; white-space:nowrap; opacity:0.55; cursor:not-allowed;" title="Il voto per questo punto potrà essere avviato solo dopo la conclusione del punto precedente">${THEME_ICONS.lock(14)} <span>In attesa punto precedente</span></button>`;
                                 }
@@ -22176,11 +22692,13 @@ ${renderBottomNavigation()}
 
                                     ${voteButtonsHtml}
 
-                                    <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO -->
+                                    ${!isGroupScope ? `
+                                    <!-- BARRE PERCENTUALI RISULTATI STILE SONDAGGIO (INTERO CONDOMINIO) -->
                                     <div style="margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--surface-color-light);">
-                                        <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.35rem;">${THEME_ICONS.chart(15)} <span>Votazioni ${isGroupScope ? `(${escapeHtml(itemGroup)})` : ''}</span></div>
+                                        <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.35rem;">${THEME_ICONS.chart(15)} <span>Votazioni</span></div>
                                         ${optionsProgressHtml}
                                     </div>
+                                    ` : ''}
 
                                     <!-- ELENCO NON VOTANTI QUESTO PUNTO (VISIBILE A TUTTI) -->
                                     ${nonVotersHtml}
@@ -25344,7 +25862,7 @@ ${renderBottomNavigation()}
 
             let scopeBadgeHtml = '';
             if (isGroupScope) {
-                scopeBadgeHtml = `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; font-weight:800; font-size:0.78rem; padding:0.3rem 0.65rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.35rem; max-width:100%; word-break:break-word;">${THEME_ICONS.layers(14)} Condominio Parziale: ${escapeHtml(targetGroup)}</span>`;
+                scopeBadgeHtml = `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1.5px solid #F59E0B; font-weight:800; font-size:0.78rem; padding:0.3rem 0.65rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.35rem; max-width:100%; word-break:break-word;">${THEME_ICONS.layers(14)} Cond. Parziale: ${escapeHtml(targetGroup)}</span>`;
             } else {
                 scopeBadgeHtml = `<span class="badge" style="background:var(--surface-color-light); color:var(--secondary-text); font-weight:700; font-size:0.78rem; padding:0.3rem 0.65rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.35rem; border:1px solid rgba(255,255,255,0.08);">${THEME_ICONS.building(16)} Intero Condominio</span>`;
             }
@@ -25819,6 +26337,41 @@ ${renderBottomNavigation()}
             }
         };
 
+        window.checkIsPartialCondo = (targetItem, currentAgenda) => {
+            if (!targetItem) return false;
+            const s = (targetItem.scope || targetItem.votingScope || '').toLowerCase();
+            if (s === 'gruppo' || s === 'scale') return true;
+            const tg = (targetItem.targetGroup || '').trim().toLowerCase();
+            if (tg && tg !== 'intero condominio' && tg !== 'intero' && tg !== 'tutte le scale' && tg !== 'tutte le scale/gruppi' && tg !== 'tutti') return true;
+            const ms = (targetItem.modifiedFromScope || '').toLowerCase();
+            if (ms === 'gruppo' || ms === 'scale') return true;
+            const mfg = (targetItem.modifiedFromTargetGroup || '').trim().toLowerCase();
+            if (mfg && mfg !== 'intero condominio' && mfg !== 'intero' && mfg !== 'tutte le scale' && mfg !== 'tutte le scale/gruppi' && mfg !== 'tutti') return true;
+            if (targetItem.parentItemId && Array.isArray(currentAgenda)) {
+                const parent = currentAgenda.find(i => i.id === targetItem.parentItemId);
+                if (parent && parent.id !== targetItem.id) {
+                    const ps = (parent.scope || parent.votingScope || '').toLowerCase();
+                    if (ps === 'gruppo' || ps === 'scale') return true;
+                    const ptg = (parent.targetGroup || '').trim().toLowerCase();
+                    if (ptg && ptg !== 'intero condominio' && ptg !== 'intero' && ptg !== 'tutte le scale' && ptg !== 'tutte le scale/gruppi' && ptg !== 'tutti') return true;
+                }
+            }
+            if (Array.isArray(currentAgenda)) {
+                const hasPartialLinked = currentAgenda.some(other => {
+                    if (other.parentItemId === targetItem.id || (other.isScopeModification && other.parentItemId === (targetItem.parentItemId || targetItem.id))) {
+                        const os = (other.scope || other.votingScope || '').toLowerCase();
+                        const otg = (other.targetGroup || '').trim().toLowerCase();
+                        if (os === 'gruppo' || os === 'scale') return true;
+                        if (otg && otg !== 'intero condominio' && otg !== 'intero' && otg !== 'tutte le scale') return true;
+                    }
+                    return false;
+                });
+                if (hasPartialLinked) return true;
+            }
+            if (targetItem.votes && targetItem.votes.length > 0 && (s === 'gruppo' || s === 'scale')) return true;
+            return false;
+        };
+
         window.openChangeScopeModal = async (assemblyId, itemId) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
@@ -25859,9 +26412,17 @@ ${renderBottomNavigation()}
                     });
                 } catch (e) { console.error(e); }
 
+                const isPartialCondo = window.checkIsPartialCondo(item, agenda);
                 const isGroup = item.scope === 'gruppo';
                 const isScale = item.scope === 'scale';
-                const isIntero = !isGroup && !isScale;
+                const isIntero = !isPartialCondo && !isGroup && !isScale;
+
+                let defaultScope = 'intero';
+                if (isPartialCondo) {
+                    defaultScope = isGroup ? 'gruppo' : 'scale';
+                } else {
+                    defaultScope = isIntero ? 'intero' : (isGroup ? 'gruppo' : 'scale');
+                }
 
                 const singleGroupOptionsHtml = groupNames.map(g =>
                     `<option value="${escapeHtml(g)}" ${item.targetGroup === g ? 'selected' : ''}>${escapeHtml(g)}</option>`
@@ -25897,6 +26458,11 @@ ${renderBottomNavigation()}
                                     Modifica l'ambito di partecipazione e quorum per questa delibera (solo se previsto in odg);
                                 </p>
                                 ${previousVotesNoticeHtml}
+                                ${isPartialCondo ? `
+                                    <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 0.4rem 0.6rem; margin-top: 0.35rem; font-size: 0.75rem; color: #F59E0B; line-height: 1.35; display: flex; align-items: flex-start; gap: 0.35rem;">
+                                        <span>⚠️</span> <span><strong>Condominio Parziale (Art. 1123, c. 3 c.c.)</strong>: la votazione per l'intero condominio non è consentita. L'ambito può essere ripartito unicamente tra le scale o i gruppi competenti.</span>
+                                    </div>
+                                ` : ''}
                             </div>
 
                             <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.45rem; -webkit-overflow-scrolling: touch;">
@@ -25905,16 +26471,29 @@ ${renderBottomNavigation()}
                                         Seleziona Ambito di Votazione
                                     </label>
                                     <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-                                        <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
-                                            <input type="radio" name="modal-scope-type" value="intero" ${isIntero ? 'checked' : ''} onchange="toggleScopeInputsModal('intero')" class="form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
-                                            <div style="flex:1; min-width:0;">
-                                                <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${THEME_ICONS.building(16)} Intero Condominio</div>
-                                                <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Tutti i condòmini partecipano alla votazione.</div>
+                                        ${isPartialCondo ? `
+                                            <div class="card" style="background: var(--surface-color-light); border: 1px dashed rgba(239, 68, 68, 0.35); border-radius: 8px; margin: 0 !important; padding: 0.55rem 0.7rem; display: flex; align-items: center; gap: 0.55rem; opacity: 0.6; cursor: not-allowed;" title="Non ammesso per delibere di Condominio Parziale">
+                                                <input type="radio" name="modal-scope-type" value="intero" disabled style="width:18px; height:18px; flex-shrink:0; cursor:not-allowed; vertical-align:middle; margin:0; opacity:0.35;">
+                                                <div style="flex:1; min-width:0;">
+                                                    <div style="font-weight:700; font-size:0.85rem; color:var(--text-color); display:flex; align-items:center; justify-content:space-between; gap:0.4rem; flex-wrap:wrap;">
+                                                        <span style="color:var(--secondary-text); text-decoration:line-through; display:flex; align-items:center; gap:0.35rem;">${THEME_ICONS.building(16)} Intero Condominio</span>
+                                                        <span class="badge" style="background:rgba(239,68,68,0.18); color:var(--danger); border:1px solid rgba(239,68,68,0.3); font-size:0.68rem; font-weight:700; padding:0.12rem 0.4rem; border-radius:4px;">🚫 Non Ammesso</span>
+                                                    </div>
+                                                    <div style="font-size:0.72rem; color:var(--secondary-text); margin-top:0.1rem;">Votazione per l'intero condominio non disponibile per materie a condominio parziale.</div>
+                                                </div>
                                             </div>
-                                        </label>
+                                        ` : `
+                                            <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
+                                                <input type="radio" name="modal-scope-type" value="intero" ${defaultScope === 'intero' ? 'checked' : ''} onchange="toggleScopeInputsModal('intero')" class="form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
+                                                <div style="flex:1; min-width:0;">
+                                                    <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${THEME_ICONS.building(16)} Intero Condominio</div>
+                                                    <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Tutti i condòmini partecipano alla votazione.</div>
+                                                </div>
+                                            </label>
+                                        `}
 
                                         <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
-                                            <input type="radio" name="modal-scope-type" value="scale" ${isScale ? 'checked' : ''} onchange="toggleScopeInputsModal('scale')" class="form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
+                                            <input type="radio" name="modal-scope-type" value="scale" ${defaultScope === 'scale' ? 'checked' : ''} onchange="toggleScopeInputsModal('scale')" class="form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
                                             <div style="flex:1; min-width:0;">
                                                 <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${THEME_ICONS.layers(14)} Scale / Gruppi (Selezione Multipla)</div>
                                                 <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Scegli una o più scale/gruppi autorizzati a votare.</div>
@@ -25922,7 +26501,7 @@ ${renderBottomNavigation()}
                                         </label>
 
                                         <label class="card" style="cursor:pointer; background:var(--surface-color-light); border:1px solid rgba(255,255,255,0.06); border-radius:8px; margin:0 !important; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.55rem;">
-                                            <input type="radio" name="modal-scope-type" value="gruppo" ${isGroup ? 'checked' : ''} onchange="toggleScopeInputsModal('gruppo')" class="form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
+                                            <input type="radio" name="modal-scope-type" value="gruppo" ${defaultScope === 'gruppo' ? 'checked' : ''} onchange="toggleScopeInputsModal('gruppo')" class="form-check-input" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer; vertical-align:middle; margin:0;">
                                             <div style="flex:1; min-width:0;">
                                                 <div style="font-weight:700; font-size:0.85rem; color:var(--text-color);">${THEME_ICONS.layers(14)} Singola Scala / Gruppo</div>
                                                 <div style="font-size:0.73rem; color:var(--secondary-text); margin-top:0.05rem;">Limita la votazione a un'unica scala specifica.</div>
@@ -25932,7 +26511,7 @@ ${renderBottomNavigation()}
                                 </div>
 
                                 <!-- CONTENITORE SELEZIONE MULTIPLA SCALE -->
-                                <div id="modal-scope-scale-wrapper" class="${!isScale ? 'hidden' : ''}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); padding:0.65rem; border-radius:8px; display:flex; flex-direction:column; gap:0.35rem;">
+                                <div id="modal-scope-scale-wrapper" class="${defaultScope !== 'scale' ? 'hidden' : ''}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); padding:0.65rem; border-radius:8px; display:flex; flex-direction:column; gap:0.35rem;">
                                     <label class="form-label" style="font-weight:700; font-size:0.82rem; margin-bottom:0.15rem; color:var(--text-color);">Seleziona le scale autorizzate</label>
                                     <div style="margin-bottom:0.3rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.35rem;">
                                         <label class="flex items-center gap-2" style="cursor:pointer; display:flex; font-weight:700; color:var(--accent-color); font-size:0.82rem;">
@@ -25946,7 +26525,7 @@ ${renderBottomNavigation()}
                                 </div>
 
                                 <!-- CONTENITORE SELEZIONE SINGOLA SCALA -->
-                                <div id="modal-scope-group-wrapper" class="${!isGroup ? 'hidden' : ''}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); padding:0.65rem; border-radius:8px;">
+                                <div id="modal-scope-group-wrapper" class="${defaultScope !== 'gruppo' ? 'hidden' : ''}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); padding:0.65rem; border-radius:8px;">
                                     <label class="form-label" style="font-weight:700; font-size:0.82rem; margin-bottom:0.3rem; display:block; color:var(--text-color);">Seleziona Singola Scala / Gruppo</label>
                                     <select id="modal-scope-target-group" class="form-select" style="font-size:0.85rem; padding:0.45rem 0.65rem; border-radius:8px; width:100%;">
                                         <option value="" disabled ${!item.targetGroup ? 'selected' : ''}>Seleziona scala/gruppo...</option>
@@ -25996,7 +26575,8 @@ ${renderBottomNavigation()}
 
         window.saveScopeChange = async (e, assemblyId, itemId) => {
             e.preventDefault();
-            const scopeType = document.querySelector('input[name="modal-scope-type"]:checked')?.value || 'intero';
+            const scopeType = document.querySelector('input[name="modal-scope-type"]:checked:not(:disabled)')?.value ||
+                document.querySelector('input[name="modal-scope-type"]:checked')?.value || 'intero';
             let targetGroup = null;
             let splitScales = [];
 
@@ -26032,6 +26612,12 @@ ${renderBottomNavigation()}
                 const targetIdx = agenda.findIndex(i => i.id === itemId);
                 if (targetIdx < 0) return;
                 const item = agenda[targetIdx];
+
+                const isPartialCondo = window.checkIsPartialCondo ? window.checkIsPartialCondo(item, agenda) : false;
+                if (isPartialCondo && scopeType === 'intero') {
+                    await customAlert("Operazione non consentita: per delibere relative a condominio parziale non è ammessa la votazione per l'intero condominio (Art. 1123, c. 3 c.c.).");
+                    return;
+                }
 
                 const allUsers = window._cachedAllUsers || [];
                 const tableData = window._liveAssemblyStaticCache?.tableData || window._currentTableData || [];
@@ -26188,6 +26774,38 @@ ${renderBottomNavigation()}
             } catch (err) {
                 console.error("Errore annullamento votazione:", err);
                 await customAlert("Errore durante l'annullamento: " + (err?.message || err));
+            }
+        };
+
+        // Funzione per non svolgere o archiviare la votazione di un punto per mancanza del quorum costitutivo
+        window.cancelPointNoQuorum = async (assemblyId, itemId) => {
+            try {
+                const confirmed = await customConfirm('Sei sicuro di non voler svolgere la votazione per questo punto?\n\nIl punto verrà archiviato senza votazione a causa del mancato raggiungimento del quorum costitutivo (Art. 1136 c.c.).');
+                if (!confirmed) return;
+
+                const assemblyRef = doc(db, "assemblies", assemblyId);
+                const docSnap = await getDoc(assemblyRef);
+                if (!docSnap.exists()) return;
+                const assembly = docSnap.data();
+                const agenda = assembly.agenda || [];
+                const targetIdx = agenda.findIndex(i => i.id === itemId);
+                if (targetIdx < 0) return;
+
+                const updatedAgenda = [...agenda];
+                updatedAgenda[targetIdx] = {
+                    ...updatedAgenda[targetIdx],
+                    status: 'closed',
+                    cancelledNoQuorum: true
+                };
+
+                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+
+                const pointNumStr = window.getPointDisplayNumber ? window.getPointDisplayNumber(updatedAgenda, targetIdx) : `${targetIdx + 1}`;
+                await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_QUORUM', `Punto ${pointNumStr} archiviato senza votazione per mancato raggiungimento del quorum costitutivo.`);
+                await customAlert(`Punto ${pointNumStr} archiviato: la votazione non è stata svolta per mancato raggiungimento del quorum costitutivo.`);
+            } catch (err) {
+                console.error("Errore archiviazione per mancanza quorum:", err);
+                await customAlert("Errore durante l'operazione: " + (err?.message || err));
             }
         };
 
@@ -28417,13 +29035,6 @@ ${renderBottomNavigation()}
             `;
 
             if ((isDirectInvariato || isDirectVariato) && votes.length === 0) {
-                const pointsListHtml = agenda.map((item, idx) => `
-                    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.65rem; background:var(--surface-color-light); border-radius:6px; font-size:0.85rem; text-align:left; border-left:3px solid var(--accent-color);">
-                        <strong style="color:var(--accent-color); min-width:60px;">Punto ${idx + 1}:</strong>
-                        <span style="font-weight:600; color:var(--primary-text);">${escapeHtml(item.title || '')}</span>
-                    </div>
-                `).join('');
-
                 const modalContent = `
                     <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                         <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0.2rem 0.25rem 1rem 0.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
@@ -28438,14 +29049,6 @@ ${renderBottomNavigation()}
                                 <p style="color: var(--secondary-text); margin: 0; font-size: 0.82rem; line-height: 1.35; text-align: center !important; width: 100% !important; max-width: 320px; margin-left: auto; margin-right: auto;">
                                     ${isReordered ? 'Sequenza dei punti variata dall\'amministratore a seguito della revisione dell\'ordine del giorno.' : 'Sequenza dei punti confermata invariata all\'avvio della seduta dall\'amministratore.'}
                                 </p>
-                            </div>
-                            <div style="margin-top: 0.25rem;">
-                                <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.45rem;">
-                                    Sequenza dei Punti (${agenda.length})
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 0.35rem;">
-                                    ${pointsListHtml}
-                                </div>
                             </div>
                         </div>
                         <div style="padding: 0.6rem 0.25rem max(0.4rem, env(safe-area-inset-bottom)) 0.25rem; border-top: 1px solid var(--surface-color-light); flex-shrink: 0; width: 100%; background: var(--surface-color, #1e1e1e);">
@@ -28539,7 +29142,7 @@ ${renderBottomNavigation()}
                                                     </div>
                                                     ${cleanPUnit ? `
                                                         <div style="color:var(--secondary-text); font-size:0.69rem; font-weight:600; margin-left:0.65rem; margin-top:0.1rem;">
-                                                            Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanPUnit)}</span>
+                                                             Unità: <span style="color:var(--primary-text); font-weight:700;">${escapeHtml(cleanPUnit)}</span>
                                                         </div>
                                                     ` : ''}
                                                 </div>
