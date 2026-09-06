@@ -308,7 +308,7 @@ window.AssembleeModule = {
                                     </div>
                                     <span id="room-partial-toggle-btn" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 800; flex-shrink: 0;">Nascondi ▲</span>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.45rem; flex-wrap: wrap;">
+                                <div id="room-partial-badges-row" style="display: flex; align-items: center; gap: 0.4rem; margin-top: 0.45rem; flex-wrap: wrap;">
                                     <span id="room-partial-groups-count" class="badge" style="background: #1E293B; color: #FFFFFF; border: 1px solid #475569; font-size: 0.72rem; padding: 0.18rem 0.5rem; border-radius: 4px; font-weight: 800;">0 Scale</span>
                                     <span id="room-partial-status-summary" class="badge" style="font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; display: none;"></span>
                                 </div>
