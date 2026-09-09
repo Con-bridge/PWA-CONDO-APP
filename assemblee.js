@@ -8,7 +8,7 @@ window.AssembleeModule = {
                 <div class="dashboard-card" style="position: relative;">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 </div>
-                <p>Pianifica Assemblea</p>
+                <p>Pianifica assemblea</p>
             </div>
         ` : '';
 
@@ -17,7 +17,7 @@ window.AssembleeModule = {
                 <div class="dashboard-card">
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                 </div>
-                <p>Elimina Assemblee</p>
+                <p>Elimina assemblee</p>
             </div>
         ` : '';
 
@@ -28,14 +28,14 @@ window.AssembleeModule = {
                     <span id="deleghe-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 </div>
-                <p>Le Mie Deleghe</p>
+                <p>Le mie deleghe</p>
             </div>
         ` : '';
 
         return `
             ${renderHeader('Assemblee')}
             <main>
-                <h2 class="section-title">Gestione Assemblee</h2>
+                <h2 class="section-title">Gestione assemblee</h2>
                 <div class="dashboard-grid">
                     ${adminButtons}
                     <div onclick="navigateTo('assemblea_lista')" class="dashboard-item">
@@ -43,7 +43,7 @@ window.AssembleeModule = {
                             <span id="assemblee-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
                         </div>
-                        <p>Tutte le Assemblee</p>
+                        <p>Tutte le assemblee</p>
                     </div>
                     ${delegheButton}
                     ${admDeleteAllButton}
@@ -55,7 +55,7 @@ window.AssembleeModule = {
 
     renderDeleghe: function (renderHeader, renderBottomNavigation) {
         return `
-            ${renderHeader('Le Mie Deleghe')}
+            ${renderHeader('Le mie deleghe')}
             <main>
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <p style="color:var(--secondary-text); margin: 0; font-size: 0.9rem;">
@@ -73,11 +73,11 @@ window.AssembleeModule = {
     renderCrea: function (renderHeader, renderBottomNavigation) {
         setTimeout(() => showCreateAssemblyModal(), 100);
         return `
-            ${renderHeader('Pianifica Assemblea')}
+            ${renderHeader('Pianifica assemblea')}
             <main>
                 <div class="card text-center" style="padding: 2rem;">
                     <p style="color: var(--secondary-text);">Apertura pianificazione assemblea in corso...</p>
-                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">Apri Pianifica Assemblea</button>
+                    <button onclick="showCreateAssemblyModal()" class="btn btn-primary" style="margin-top: 1rem;">Apri pianifica assemblea</button>
                 </div>
             </main>
             ${renderBottomNavigation()}
@@ -86,16 +86,16 @@ window.AssembleeModule = {
 
     renderLista: function (renderHeader, renderBottomNavigation) {
         return `
-            ${renderHeader('Elenco Assemblee')}
+            ${renderHeader('Elenco assemblee')}
             <main>
                 <!-- FILTRI DI RICERCA ED ASSEMBLEE -->
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                     <div>
-                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Filtra per Stato Assemblea</label>
+                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Filtra per stato assemblea</label>
                         <select id="assembly-search-status" onchange="filterAssembleeList()" class="form-select" style="padding: 0.5rem 0.75rem; font-size: 0.9rem;">
                             <option value="tutti">Tutti gli stati</option>
                             <option value="programmata">Programmata</option>
-                            <option value="in_corso">In Corso (Live)</option>
+                            <option value="in_corso">In corso (live)</option>
                             <option value="conclusa">Conclusa</option>
                             <option value="annullata">Annullata</option>
                         </select>
@@ -116,7 +116,7 @@ window.AssembleeModule = {
         const isAdmin = ['amministratore', 'adm'].includes(profile?.tipoUtente);
 
         return `
-            ${renderHeader('Assemblea Live')}
+            ${renderHeader('Assemblea live')}
             <main style="padding-bottom: 2rem;">
                 <!-- SCHERMATA QR CODE ACCREDITAMENTO (VISIBILE ESCLUSIVAMENTE SE NON ANCORA ACCREDITATO) -->
                 <div id="room-qr-accreditation" class="card ${!isAdmin ? '' : 'hidden'}" style="${!isAdmin ? 'display: block;' : 'display: none;'} text-align: center; margin: 1rem auto 2rem auto; padding: 2rem 1.25rem; max-width: 440px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); border: 1px solid var(--surface-color-light);">
@@ -124,7 +124,7 @@ window.AssembleeModule = {
                         <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/></svg>
                     </div>
                     
-                    <h3 style="color: var(--primary-text); margin-bottom: 0.4rem; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.2px;">Accredito Ingresso Richiesto</h3>
+                    <h3 style="color: var(--primary-text); margin-bottom: 0.4rem; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.2px;">Accredito ingresso richiesto</h3>
                     <p style="font-size: 0.86rem; color: var(--secondary-text); margin-bottom: 1.5rem; line-height: 1.45; max-width: 340px; margin-left: auto; margin-right: auto;">
                         Mostra questo QR Code all'Amministratore per essere accreditato.<br>Non appena convalidata la presenza, verrai ammesso automaticamente alla schermata dell'assemblea.
                     </p>
@@ -149,7 +149,7 @@ window.AssembleeModule = {
                     <div>
                         <button type="button" onclick="navigateTo('assemblea_lista')" class="btn btn-secondary" style="font-size: 0.84rem; padding: 0.55rem 1.2rem; border-radius: 8px; width: 100%; max-width: 260px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                            <span>Esci dall'Assemblea</span>
+                            <span>Esci dall'assemblea</span>
                         </button>
                     </div>
                 </div>
@@ -173,7 +173,7 @@ window.AssembleeModule = {
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
                                 <h4 style="font-size: 0.85rem; color: var(--warning); text-transform: uppercase; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                                    <span>Strumenti Amm.</span>
+                                    <span>Strumenti amm.</span>
                                 </h4>
                                 <span id="room-admin-tools-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▲</span>
                             </div>
@@ -186,7 +186,7 @@ window.AssembleeModule = {
                                 <button onclick="openManualAttendanceModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Presenza</button>
                             </div>
                             <div class="grid grid-cols-2 gap-2" style="margin-bottom:0.75rem;">
-                                <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega Cartacea</button>
+                                <button onclick="openManualProxyModal()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.6rem;">+ Delega cartacea</button>
                                 <button id="btn-room-start" onclick="startLiveAssemblySession()" class="btn" style="background-color: #10B981; color: white; font-weight: 800; font-size:0.8rem; padding:0.6rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
                                 </button>
@@ -215,7 +215,7 @@ window.AssembleeModule = {
                                         <em>Premi la <strong>X</strong> o il tasto <strong>"Scanner QR"</strong> per chiudere la fotocamera.</em>
                                     </p>
                                     <button type="button" onclick="toggleRoomScanner()" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;">
-                                        <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi Fotocamera</span>
+                                        <span style="display:inline-flex; align-items:center; gap:0.35rem;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Chiudi fotocamera</span>
                                     </button>
                                 </div>
 
@@ -257,8 +257,8 @@ window.AssembleeModule = {
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5-4.5-4.5 6-1z"/></svg>
                             </span>
 
-                            <!-- 2. Scritta Presidente dell'Assemblea -->
-                            <span style="font-size: 0.74rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2;">Presidente dell'Assemblea</span>
+                            <!-- 2. Scritta Presidente dell'assemblea -->
+                            <span style="font-size: 0.74rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2;">Presidente dell'assemblea</span>
 
                             <!-- 3. Nome del Presidente Eletto -->
                             <strong id="room-president-name" style="font-size: 1.05rem; font-weight: 800; color: var(--primary-text); line-height: 1.3; word-break: break-word; max-width: 100%; margin-bottom: 0.2rem;">-</strong>
@@ -268,7 +268,7 @@ window.AssembleeModule = {
                                 <span id="room-president-mode-badge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; white-space: nowrap; display: inline-block;">-</span>
                                 <button type="button" id="room-president-details-btn" onclick="showPresidentElectionResultsModal()" class="btn hidden" style="font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(37, 99, 235, 0.45); color: #60A5FA; background: rgba(37, 99, 235, 0.12); cursor: pointer; transition: all 0.15s ease;" title="Visualizza esiti e dettaglio voti">
                                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                    <span>Dettagli Voti</span>
+                                    <span>Dettagli voti</span>
                                 </button>
                             </div>
                         </div>
@@ -276,7 +276,7 @@ window.AssembleeModule = {
                         <!-- SEZIONE 1: QUORUM GENERALE (Intero Fabbricato) -->
                         <div id="room-general-quorum-section" style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid var(--surface-color-light); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
                             <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.4rem;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="12"></line><line x1="15" y1="22" x2="15" y2="12"></line><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="7" x2="9.01" y2="7"></line><line x1="15" y1="7" x2="15.01" y2="7"></line></svg><span>Quorum Intero Condominio</span>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="12"></line><line x1="15" y1="22" x2="15" y2="12"></line><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="7" x2="9.01" y2="7"></line><line x1="15" y1="7" x2="15.01" y2="7"></line></svg><span>Quorum intero condominio</span>
                             </div>
                             <div id="room-general-quorum-box" class="grid grid-cols-2 gap-2" style="text-align: center; background: var(--surface-color); padding: 0.75rem 0.5rem; border-radius: 8px; align-items: start;">
                                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0;">
@@ -294,7 +294,7 @@ window.AssembleeModule = {
                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                 </span>
                                 <span style="color: var(--primary-text); min-width: 0; word-break: break-word;">
-                                    <strong style="color: var(--accent-color); font-weight: 700;">Regola Deleghe:</strong> <span id="room-proxy-limit-text">Caricamento regola...</span>
+                                    <strong style="color: var(--accent-color); font-weight: 700;">Regola deleghe:</strong> <span id="room-proxy-limit-text">Caricamento regola...</span>
                                 </span>
                             </div>
                         </div>
@@ -304,7 +304,7 @@ window.AssembleeModule = {
                             <div style="cursor: pointer; user-select: none; margin-bottom: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 0.6rem 0.75rem; transition: background 0.2s;" onclick="window.togglePartialQuorumCollapsible()">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
                                     <div style="font-size: 0.84rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.35rem;">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg><span>Condominio Parziale</span>
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg><span>Condominio parziale</span>
                                     </div>
                                     <span id="room-partial-toggle-btn" style="font-size: 0.75rem; color: var(--accent-color); font-weight: 800; flex-shrink: 0;">Nascondi ▲</span>
                                 </div>
@@ -325,7 +325,7 @@ window.AssembleeModule = {
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
                                 <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                    <span>Elenco Presenti</span>
+                                    <span>Elenco presenti</span>
                                 </h3>
                                 <span id="room-attendees-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
                             </div>
@@ -343,7 +343,7 @@ window.AssembleeModule = {
                                 </div>
                             </div>
 
-                            <!-- Barra di ricerca Elenco Presenti -->
+                            <!-- Barra di ricerca elenco presenti -->
                             <div style="position: relative; margin-bottom: 0.65rem;">
                                 <div style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
                                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -379,13 +379,13 @@ window.AssembleeModule = {
                         </div>
                     </div>
 
-                    <!-- Log Assemblea -->
+                    <!-- Log assemblea -->
                     <div class="card" style="margin-bottom: 1rem; padding: 1rem;">
                         <div style="cursor: pointer;" onclick="const el = document.getElementById('room-event-log-collapsible'); const isHid = el.classList.toggle('hidden'); const t = document.getElementById('room-event-log-toggle-text'); if(t) t.textContent = isHid ? 'Mostra/Nascondi ▼' : 'Mostra/Nascondi ▲';">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
                                 <h3 class="card-title" style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-text); display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                                    <span>Log Assemblea</span>
+                                    <span>Log assemblea</span>
                                 </h3>
                                 <span id="room-event-log-toggle-text" style="font-size: 0.75rem; color: var(--accent-color); white-space: nowrap; flex-shrink: 0; font-weight: 600;">Mostra/Nascondi ▼</span>
                             </div>
@@ -405,7 +405,7 @@ window.AssembleeModule = {
                                 <span>Status</span>
                             </h3>
                             <span id="btn-room-conclude" style="font-size: 0.75rem; color: var(--danger, #EF4444); white-space: nowrap; flex-shrink: 0; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
-                                <span>Chiudi Assemblea</span>
+                                <span>Chiudi assemblea</span>
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             </span>
                         </div>
@@ -418,7 +418,7 @@ window.AssembleeModule = {
 
     renderTessera: function (renderHeader, renderBottomNavigation) {
         return `
-            ${renderHeader('La Mia Tessera')}
+            ${renderHeader('La mia tessera')}
             <main>
                 <div class="card" style="text-align: center; margin-bottom: 2rem;">
                     <h3 class="card-title">Il tuo codice di accesso</h3>
