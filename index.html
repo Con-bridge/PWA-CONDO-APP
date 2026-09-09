@@ -6782,8 +6782,8 @@ ${renderBottomNavigation()}
                                 <input type="number" step="0.001" id="unit-millesimi" class="form-input" placeholder="Es. 45.50" required>
                             </div>
                             <div class="flex justify-end pt-2">
-                                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.45rem;">
-                                    ${THEME_ICONS.plus(16, 2.4)} Aggiungi UI
+                                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center;">
+                                    Aggiungi
                                 </button>
                             </div>
                         </form>
@@ -11116,7 +11116,7 @@ ${renderBottomNavigation()}
                         }
                     } finally {
                         submitBtn.disabled = false;
-                        submitBtn.innerHTML = `${THEME_ICONS.plus(16, 2.4)} Aggiungi UI`;
+                        submitBtn.textContent = 'Aggiungi';
                     }
                 });
             }
@@ -11221,41 +11221,55 @@ ${renderBottomNavigation()}
             if (existingModal) existingModal.remove();
 
             const modalHtml = `
-                <div id="${modalId}" class="modal-overlay" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
-                    <div class="modal-content card" style="max-width:550px; width:100%; max-height:90vh; overflow-y:auto; position:relative; padding:1.5rem; background:var(--card-bg, #1e1e1e); border:1px solid rgba(255,255,255,0.1); border-radius:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem;">
-                            <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
+                <div id="${modalId}" class="modal-overlay fullscreen-notification" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-color, #121212); z-index:9999; padding:0; width:100vw; height:100vh;">
+                    <div class="modal-content" style="width:100% !important; max-width:100% !important; height:100vh !important; max-height:100vh !important; border-radius:0 !important; border:none !important; display:flex; flex-direction:column; padding:0 !important; background:var(--bg-color, #121212); overflow:hidden !important; box-sizing:border-box;">
+                        
+                        <!-- Header fisso a schermo intero -->
+                        <div class="modal-header" style="flex-shrink:0; padding:0.85rem 1rem; margin-bottom:0; border-bottom:1px solid var(--surface-color-light); display:flex; justify-content:space-between; align-items:center; background:var(--surface-color, #1e1e1e);">
+                            <h3 class="modal-title" style="margin:0; font-size:1.15rem; font-weight:800; color:var(--primary-text); display:flex; align-items:center; gap:0.5rem;">
                                 ${THEME_ICONS.edit(18)} Modifica UI
                             </h3>
-                            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn-icon" style="background:transparent; border:none; color:var(--secondary-text); cursor:pointer;">
-                                ${THEME_ICONS.close(20)}
+                            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="modal-close-btn" aria-label="Chiudi" title="Chiudi">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
                             </button>
                         </div>
-                        <div id="edit-unit-modal-msg" class="message-box" style="display:none; margin-bottom:1rem;"></div>
-                        <form id="edit-unit-modal-form" class="space-y-4">
-                            <div class="form-group">
-                                <label class="form-label">Nominativo / Proprietario</label>
-                                <input type="text" id="edit-unit-nominativo" class="form-input" value="${escapeHtml(valNom)}">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Interno / Id U.I. *</label>
-                                <input type="text" id="edit-unit-interno" class="form-input" value="${escapeHtml(valInt)}" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Scala</label>
-                                <select id="edit-unit-scala" class="form-select">
-                                    ${groupOptionsHtml}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Millesimi *</label>
-                                <input type="number" step="0.001" id="edit-unit-millesimi" class="form-input" value="${escapeHtml(valMil)}" required>
-                            </div>
-                            <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
-                                <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn btn-secondary">Annulla</button>
-                                <button type="submit" class="btn btn-primary">Salva</button>
-                            </div>
-                        </form>
+
+                        <!-- Corpo del modale scrollabile con form -->
+                        <div class="modal-body" style="flex:1 1 0%; min-height:0; display:flex; flex-direction:column; padding:0.85rem 1rem; overflow:hidden; box-sizing:border-box;">
+                            <div id="edit-unit-modal-msg" class="message-box" style="display:none; margin-bottom:0.5rem; flex-shrink:0;"></div>
+                            
+                            <form id="edit-unit-modal-form" style="display:flex; flex-direction:column; flex:1 1 0%; min-height:0; height:100%; overflow:hidden; gap:0.45rem;">
+                                <div style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.75rem; -webkit-overflow-scrolling:touch;">
+                                    <div class="form-group">
+                                        <label class="form-label">Nominativo / Proprietario</label>
+                                        <input type="text" id="edit-unit-nominativo" class="form-input" value="${escapeHtml(valNom)}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Interno / Id U.I. *</label>
+                                        <input type="text" id="edit-unit-interno" class="form-input" value="${escapeHtml(valInt)}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Scala</label>
+                                        <select id="edit-unit-scala" class="form-select">
+                                            ${groupOptionsHtml}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Millesimi *</label>
+                                        <input type="number" step="0.001" id="edit-unit-millesimi" class="form-input" value="${escapeHtml(valMil)}" required>
+                                    </div>
+                                </div>
+
+                                <!-- Barra pulsanti fissa in basso: a tutta lunghezza -->
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; width:100%; box-sizing:border-box; margin-top:auto; padding-top:0.65rem; padding-bottom:max(0.4rem, env(safe-area-inset-bottom)); border-top:1px solid var(--surface-color-light); flex-shrink:0;">
+                                    <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn btn-secondary" style="width:100%; height:44px; font-size:0.9rem; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center;">Annulla</button>
+                                    <button type="submit" class="btn btn-primary" style="width:100%; height:44px; font-size:0.9rem; font-weight:800; border-radius:8px; display:flex; align-items:center; justify-content:center;">Salva</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             `;
@@ -11388,41 +11402,55 @@ ${renderBottomNavigation()}
                 sortedScales.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
 
             const modalHtml = `
-                <div id="${modalId}" class="modal-overlay" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
-                    <div class="modal-content card" style="max-width:550px; width:100%; max-height:90vh; overflow-y:auto; position:relative; padding:1.5rem; background:var(--card-bg, #1e1e1e); border:1px solid rgba(255,255,255,0.1); border-radius:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem;">
-                            <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
+                <div id="${modalId}" class="modal-overlay fullscreen-notification" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg-color, #121212); z-index:9999; padding:0; width:100vw; height:100vh;">
+                    <div class="modal-content" style="width:100% !important; max-width:100% !important; height:100vh !important; max-height:100vh !important; border-radius:0 !important; border:none !important; display:flex; flex-direction:column; padding:0 !important; background:var(--bg-color, #121212); overflow:hidden !important; box-sizing:border-box;">
+                        
+                        <!-- Header fisso a schermo intero -->
+                        <div class="modal-header" style="flex-shrink:0; padding:0.85rem 1rem; margin-bottom:0; border-bottom:1px solid var(--surface-color-light); display:flex; justify-content:space-between; align-items:center; background:var(--surface-color, #1e1e1e);">
+                            <h3 class="modal-title" style="margin:0; font-size:1.15rem; font-weight:800; color:var(--primary-text); display:flex; align-items:center; gap:0.5rem;">
                                 ${THEME_ICONS.plusCircle(18, 2.2)} Aggiungi UI
                             </h3>
-                            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn-icon" style="background:transparent; border:none; color:var(--secondary-text); cursor:pointer;">
-                                ${THEME_ICONS.close(20)}
+                            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="modal-close-btn" aria-label="Chiudi" title="Chiudi">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
                             </button>
                         </div>
-                        <div id="modal-add-unit-msg" class="message-box" style="display:none; margin-bottom:1rem;"></div>
-                        <form id="modal-add-unit-form" class="space-y-4">
-                            <div class="form-group">
-                                <label class="form-label">Nominativo / Proprietario</label>
-                                <input type="text" id="modal-add-unit-nominativo" class="form-input" placeholder="Es. Rossi Mario" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Interno / Id U.I. *</label>
-                                <input type="text" id="modal-add-unit-interno" class="form-input" placeholder="Es. UI-101 o 101" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Scala</label>
-                                <select id="modal-add-unit-scala" class="form-select">
-                                    ${groupOptionsHtml}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Millesimi *</label>
-                                <input type="number" step="0.001" id="modal-add-unit-millesimi" class="form-input" placeholder="Es. 45.50" required>
-                            </div>
-                            <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
-                                <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn btn-secondary">Annulla</button>
-                                <button type="submit" class="btn btn-primary">Aggiungi UI</button>
-                            </div>
-                        </form>
+
+                        <!-- Corpo del modale scrollabile con form -->
+                        <div class="modal-body" style="flex:1 1 0%; min-height:0; display:flex; flex-direction:column; padding:0.85rem 1rem; overflow:hidden; box-sizing:border-box;">
+                            <div id="modal-add-unit-msg" class="message-box" style="display:none; margin-bottom:0.5rem; flex-shrink:0;"></div>
+                            
+                            <form id="modal-add-unit-form" style="display:flex; flex-direction:column; flex:1 1 0%; min-height:0; height:100%; overflow:hidden; gap:0.45rem;">
+                                <div style="flex:1 1 0%; min-height:0; overflow-y:auto; padding-right:0.2rem; display:flex; flex-direction:column; gap:0.75rem; -webkit-overflow-scrolling:touch;">
+                                    <div class="form-group">
+                                        <label class="form-label">Nominativo / Proprietario</label>
+                                        <input type="text" id="modal-add-unit-nominativo" class="form-input" placeholder="Es. Rossi Mario" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Interno / Id U.I. *</label>
+                                        <input type="text" id="modal-add-unit-interno" class="form-input" placeholder="Es. UI-101 o 101" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Scala</label>
+                                        <select id="modal-add-unit-scala" class="form-select">
+                                            ${groupOptionsHtml}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Millesimi *</label>
+                                        <input type="number" step="0.001" id="modal-add-unit-millesimi" class="form-input" placeholder="Es. 45.50" required>
+                                    </div>
+                                </div>
+
+                                <!-- Barra pulsanti fissa in basso: a tutta lunghezza -->
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; width:100%; box-sizing:border-box; margin-top:auto; padding-top:0.65rem; padding-bottom:max(0.4rem, env(safe-area-inset-bottom)); border-top:1px solid var(--surface-color-light); flex-shrink:0;">
+                                    <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn btn-secondary" style="width:100%; height:44px; font-size:0.9rem; font-weight:700; border-radius:8px; display:flex; align-items:center; justify-content:center;">Annulla</button>
+                                    <button type="submit" class="btn btn-primary" style="width:100%; height:44px; font-size:0.9rem; font-weight:800; border-radius:8px; display:flex; align-items:center; justify-content:center;">Aggiungi</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             `;
@@ -11508,7 +11536,7 @@ ${renderBottomNavigation()}
                         modalMsg.style.display = 'block';
                     }
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Aggiungi UI';
+                    submitBtn.textContent = 'Aggiungi';
                 }
             });
         };
@@ -19296,8 +19324,8 @@ ${renderBottomNavigation()}
                     if (assembly.status === 'in_corso') {
                         liveRoomBtnHtml = `
                             <div style="margin-top: 1rem;">
-                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 0.95rem; padding: 0.75rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                                    ${THEME_ICONS.circleRed(12)} <span>ENTRA IN ASSEMBLEA</span>
+                                <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 0.95rem; padding: 0.75rem; display: flex; align-items: center; justify-content: center;">
+                                    <span>ENTRA IN ASSEMBLEA</span>
                                 </button>
                             </div>
                         `;
@@ -19313,8 +19341,8 @@ ${renderBottomNavigation()}
                         if (isAdmin) {
                             liveRoomBtnHtml = `
                                 <div style="margin-top: 1rem;">
-                                    <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 0.9rem; padding: 0.7rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                                        ${THEME_ICONS.door(15)} <span>ENTRA IN ASSEMBLEA</span>
+                                    <button onclick="enterLiveRoom('${docSnap.id}')" class="btn w-full" style="background-color: #1DB954; color: black; font-weight: 800; font-size: 0.9rem; padding: 0.7rem; display: flex; align-items: center; justify-content: center;">
+                                        <span>ENTRA IN ASSEMBLEA</span>
                                     </button>
                                 </div>
                             `;
