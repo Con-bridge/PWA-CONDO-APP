@@ -68,6 +68,9 @@
         cross: (size = 16, stroke = 2.4, color = 'currentColor', extraClass = '', extraStyle = '') =>
             createSvg('<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>', size, stroke, extraClass, extraStyle, color),
 
+        close: (size = 16, stroke = 2.4, color = 'currentColor', extraClass = '', extraStyle = '') =>
+            createSvg('<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>', size, stroke, extraClass, extraStyle, color),
+
         crossDanger: (size = 14) =>
             createSvg('<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>', size, 2.4, '', '', '#EF4444'),
 
@@ -175,6 +178,15 @@
 
         edit: (size = 16, stroke = 2, extraClass = '', extraStyle = '') =>
             createSvg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>', size, stroke, extraClass, extraStyle),
+
+        plus: (size = 16, stroke = 2, extraClass = '', extraStyle = '', color = 'currentColor') =>
+            createSvg('<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>', size, stroke, extraClass, extraStyle, color),
+
+        plusCircle: (size = 16, stroke = 2, extraClass = '', extraStyle = '', color = 'currentColor') =>
+            createSvg('<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>', size, stroke, extraClass, extraStyle, color),
+
+        plusSquare: (size = 16, stroke = 2, extraClass = '', extraStyle = '', color = 'currentColor') =>
+            createSvg('<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>', size, stroke, extraClass, extraStyle, color),
 
         crown: (size = 16, stroke = 2.2, extraClass = '', extraStyle = '', color = '#F59E0B') =>
             createSvg('<path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"></path><line x1="4" y1="20" x2="20" y2="20"></line>', size, stroke, extraClass, extraStyle, color)
