@@ -5670,79 +5670,84 @@
             } catch (e) { }
 
             const modalContent = `
-                <form id="edit-profile-personal-form" class="space-y-4" onsubmit="savePersonalData(event)">
-                    <!-- GUIDA DI MODIFICA -->
-                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.22); border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.8rem; line-height: 1.4; color: var(--secondary-text); margin-bottom: 0.5rem;">
-                        <div style="color: var(--accent-color); display: flex; align-items: center; gap: 0.35rem; font-weight: 700; margin-bottom: 0.25rem;">
-                            ${THEME_ICONS.info(15, 2.2)}
-                            <span>Indicazione Campi</span>
-                        </div>
-                        <div>I campi con badge <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem; vertical-align:middle;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span> possono essere aggiornati. I campi con <span class="badge" style="font-size:0.65rem; background:rgba(255,255,255,0.08); color:var(--secondary-text); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem; vertical-align:middle;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span> sono gestiti dall'amministrazione.</div>
-                    </div>
-
-                    <!-- RUOLO (PRIMA INFO) -->
-                    <div>
-                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.shield(13, 2)} Ruolo</span>
-                            <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--secondary-text); font-size: 0.68rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span>
-                        </label>
-                        <input type="text" value="${escapeHtml(userProfile?.tipoUtente || '')}" class="form-input" disabled style="opacity:0.75; cursor:not-allowed; background:rgba(255,255,255,0.04);">
-                    </div>
-
-                    <!-- ANAGRAFICA (DA IMPORTAZIONE EXCEL) -->
-                    <div class="form-group" style="margin-bottom: 0.85rem;">
-                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom: 0.35rem;">
-                            <span style="font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">${THEME_ICONS.scroll(14, 2)} Anagrafica</span>
-                            <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--secondary-text); font-size: 0.68rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span>
-                        </label>
-                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0.6rem 0.85rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <div style="font-weight: 700; color: var(--primary-text); font-size: 0.95rem;">${escapeHtml(officialNom && officialNom !== 'Condòmino' ? officialNom : 'Nessuna corrispondenza')}</div>
-                                <div style="font-size: 0.75rem; color: var(--secondary-text); margin-top: 0.15rem;">Dati da importazione Excel / anagrafica</div>
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <form id="edit-profile-personal-form" onsubmit="savePersonalData(event)" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left !important; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                            <!-- GUIDA DI MODIFICA -->
+                            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.22); border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.8rem; line-height: 1.4; color: var(--secondary-text); margin-bottom: 0.25rem;">
+                                <div style="color: var(--accent-color); display: flex; align-items: center; gap: 0.35rem; font-weight: 700; margin-bottom: 0.25rem;">
+                                    ${THEME_ICONS.info(15, 2.2)}
+                                    <span>Indicazione Campi</span>
+                                </div>
+                                <div>I campi con badge <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem; vertical-align:middle;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span> possono essere aggiornati. I campi con <span class="badge" style="font-size:0.65rem; background:rgba(255,255,255,0.08); color:var(--secondary-text); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem; vertical-align:middle;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span> sono gestiti dall'amministrazione.</div>
                             </div>
-                            <span class="badge" style="background: var(--surface-color-light); color: var(--secondary-text); font-size: 0.7rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.fileText(12, 2)} Excel</span>
+
+                            <!-- RUOLO (PRIMA INFO) -->
+                            <div>
+                                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.shield(13, 2)} Ruolo</span>
+                                    <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--secondary-text); font-size: 0.68rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span>
+                                </label>
+                                <input type="text" value="${escapeHtml(userProfile?.tipoUtente || '')}" class="form-input" disabled style="opacity:0.75; cursor:not-allowed; background:rgba(255,255,255,0.04);">
+                            </div>
+
+                            <!-- ANAGRAFICA (DA IMPORTAZIONE EXCEL) -->
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom: 0.35rem;">
+                                    <span style="font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">${THEME_ICONS.scroll(14, 2)} Anagrafica</span>
+                                    <span class="badge" style="background: rgba(255,255,255,0.08); color: var(--secondary-text); font-size: 0.68rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.lock(11, 2.2)} Non Modificabile</span>
+                                </label>
+                                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0.6rem 0.85rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--primary-text); font-size: 0.95rem;">${escapeHtml(officialNom && officialNom !== 'Condòmino' ? officialNom : 'Nessuna corrispondenza')}</div>
+                                        <div style="font-size: 0.75rem; color: var(--secondary-text); margin-top: 0.15rem;">Dati da importazione Excel / anagrafica</div>
+                                    </div>
+                                    <span class="badge" style="background: var(--surface-color-light); color: var(--secondary-text); font-size: 0.7rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.fileText(12, 2)} Excel</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.user(13, 2)} Nome</span>
+                                    <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                                </label>
+                                <input type="text" id="profile-nome" value="${escapeHtml(userProfile?.nome || '')}" required class="form-input">
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.user(13, 2)} Cognome</span>
+                                    <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                                </label>
+                                <input type="text" id="profile-cognome" value="${escapeHtml(userProfile?.cognome || '')}" required class="form-input">
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.mail(13, 2)} Email</span>
+                                    <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                                </label>
+                                <input type="email" id="profile-email" value="${escapeHtml(currentUser?.email || '')}" required class="form-input">
+                            </div>
+
+                            <div>
+                                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.phone(13, 2)} Telefono</span>
+                                    <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
+                                </label>
+                                <input type="tel" id="profile-telefono" value="${escapeHtml(userProfile?.telefono || '')}" placeholder="Es. 3401234567" class="form-input">
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.user(13, 2)} Nome</span>
-                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
-                        </label>
-                        <input type="text" id="profile-nome" value="${escapeHtml(userProfile?.nome || '')}" required class="form-input">
-                    </div>
-
-                    <div>
-                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.user(13, 2)} Cognome</span>
-                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
-                        </label>
-                        <input type="text" id="profile-cognome" value="${escapeHtml(userProfile?.cognome || '')}" required class="form-input">
-                    </div>
-
-                    <div>
-                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.mail(13, 2)} Email</span>
-                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
-                        </label>
-                        <input type="email" id="profile-email" value="${escapeHtml(currentUser?.email || '')}" required class="form-input">
-                    </div>
-
-                    <div>
-                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                            <span style="display:inline-flex; align-items:center; gap:0.3rem;">${THEME_ICONS.phone(13, 2)} Telefono</span>
-                            <span class="badge" style="font-size:0.65rem; background:rgba(34, 197, 94, 0.15); color:var(--success); border:1px solid rgba(34,197,94,0.3); padding:1px 5px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.pen(10, 2.2)} Modificabile</span>
-                        </label>
-                        <input type="tel" id="profile-telefono" value="${escapeHtml(userProfile?.telefono || '')}" placeholder="Es. 3401234567" class="form-input">
-                    </div>
-                    
-                    <div class="flex justify-end gap-4 pt-4">
-                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary">Salva</button>
-                    </div>
-                </form>
+                        <!-- BARRA AZIONI BOTTOM FISSA -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">Annulla</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">Salva</button>
+                        </div>
+                    </form>
+                </div>
             `;
-            showModal('Dati Personali', modalContent);
+            showModal('Dati Personali', modalContent, true);
         };
 
         const savePersonalData = async (event) => {
@@ -5783,60 +5788,71 @@
         const openPropertiesDetailModal = () => {
             const propertiesListHtml = userProfile?.proprieta && userProfile.proprieta.length > 0
                 ? userProfile.proprieta.map(p => `
-                    <div style="background: var(--surface-color-light); padding: 0.8rem 1rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.06);">
                         <div>
-                            <strong style="font-size: 1.05rem;">Interno ${escapeHtml(p.interno)}</strong>
-                            <div style="font-size: 0.85rem; color: var(--secondary-text);">
+                            <strong style="font-size: 1.05rem; color: var(--primary-text);">Interno ${escapeHtml(p.interno)}</strong>
+                            <div style="font-size: 0.85rem; color: var(--secondary-text); margin-top: 0.15rem;">
                                 Piano: ${escapeHtml(p.piano ?? 'N/A')} ${p.gruppo ? `• Gruppo: ${escapeHtml(p.gruppo)}` : ''}
                             </div>
                         </div>
-                        <div style="font-weight: 700; color: var(--accent-color); font-size: 1.1rem;">
+                        <div style="font-weight: 800; color: var(--accent-color); font-size: 1.15rem;">
                             ${(p.millesimi || 0).toFixed(2)} ‰
                         </div>
                     </div>
                 `).join('')
-                : '<p style="color:var(--secondary-text);">Nessuna proprietà associata.</p>';
+                : '<div class="card" style="text-align:center; padding:1.5rem;"><p style="color:var(--secondary-text); margin:0;">Nessuna proprietà associata.</p></div>';
 
             const modalContent = `
-                <div class="space-y-4">
-                    ${propertiesListHtml}
-                    <div style="background: var(--surface-color); padding: 1rem; border-radius: var(--radius-sm); border: 2px solid var(--accent-color); display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-                        <span style="font-weight: 700;">Totale Millesimi Posseduti:</span>
-                        <span style="font-weight: 800; font-size: 1.2rem; color: var(--accent-color);">${(userProfile?.millesimiTotali || 0).toFixed(2)} ‰</span>
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.6rem; -webkit-overflow-scrolling: touch;">
+                        <div style="display: flex; flex-direction: column;">
+                            ${propertiesListHtml}
+                        </div>
+                        <div style="background: var(--surface-color); padding: 1rem 1.1rem; border-radius: var(--radius-sm); border: 2px solid var(--accent-color); display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+                            <span style="font-weight: 700; color: var(--primary-text); font-size: 0.95rem;">Totale Millesimi Posseduti:</span>
+                            <span style="font-weight: 800; font-size: 1.25rem; color: var(--accent-color);">${(userProfile?.millesimiTotali || 0).toFixed(2)} ‰</span>
+                        </div>
                     </div>
-                    <div class="flex justify-end pt-2">
-                        <button type="button" class="btn btn-secondary w-full" onclick="hideModal()">Chiudi</button>
+
+                    <!-- BARRA BOTTOM FISSA -->
+                    <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
+                        <button type="button" class="btn btn-secondary w-full" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">Chiudi</button>
                     </div>
                 </div>
             `;
-            showModal('Proprietà', modalContent);
+            showModal('Proprietà', modalContent, true);
         };
 
         const openPermissionsModal = () => {
             const modalContent = `
-                <form id="profile-permissions-form" class="space-y-4" onsubmit="savePermissionsData(event)">
-                    <div class="permission-item flex items-center justify-between mb-3">
-                        <label for="profile_allowCustodeViewPhone" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">Consenti al custode di visualizzare il tuo recapito telefonico</label>
-                        <input type="checkbox" id="profile_allowCustodeViewPhone" name="allowCustodeViewPhone" class="form-check-input" ${userProfile?.allowCustodeViewPhone ? 'checked' : ''}>
-                    </div>
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <form id="profile-permissions-form" onsubmit="savePermissionsData(event)" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left !important; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                            <div class="permission-item flex items-center justify-between">
+                                <label for="profile_allowCustodeViewPhone" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem; cursor: pointer;">Consenti al custode di visualizzare il tuo recapito telefonico</label>
+                                <input type="checkbox" id="profile_allowCustodeViewPhone" name="allowCustodeViewPhone" class="form-check-input" ${userProfile?.allowCustodeViewPhone ? 'checked' : ''}>
+                            </div>
 
-                    <div class="permission-item flex items-center justify-between mb-3">
-                        <label for="profile_allowFornitoreViewPhone" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">Consenti al fornitore (in caso di intervento) di visualizzare il tuo recapito telefonico</label>
-                        <input type="checkbox" id="profile_allowFornitoreViewPhone" name="allowFornitoreViewPhone" class="form-check-input" ${userProfile?.allowFornitoreViewPhone ? 'checked' : ''}>
-                    </div>
+                            <div class="permission-item flex items-center justify-between">
+                                <label for="profile_allowFornitoreViewPhone" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem; cursor: pointer;">Consenti al fornitore (in caso di intervento) di visualizzare il tuo recapito telefonico</label>
+                                <input type="checkbox" id="profile_allowFornitoreViewPhone" name="allowFornitoreViewPhone" class="form-check-input" ${userProfile?.allowFornitoreViewPhone ? 'checked' : ''}>
+                            </div>
 
-                    <div class="permission-item flex items-center justify-between">
-                        <label for="profile_allowAdminViewContacts" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">Consenti ad Adm, supervisor e Amministratore di visualizzare i tuoi recapiti email e telefonici</label>
-                        <input type="checkbox" id="profile_allowAdminViewContacts" name="allowAdminViewContacts" class="form-check-input" checked disabled>
-                    </div>
+                            <div class="permission-item flex items-center justify-between">
+                                <label for="profile_allowAdminViewContacts" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">Consenti ad Adm, supervisor e Amministratore di visualizzare i tuoi recapiti email e telefonici</label>
+                                <input type="checkbox" id="profile_allowAdminViewContacts" name="allowAdminViewContacts" class="form-check-input" checked disabled>
+                            </div>
+                        </div>
 
-                    <div class="flex justify-end gap-4 pt-4">
-                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary">Salva Permessi</button>
-                    </div>
-                </form>
+                        <!-- BARRA AZIONI BOTTOM FISSA -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">Annulla</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">Salva</button>
+                        </div>
+                    </form>
+                </div>
             `;
-            showModal('Autorizzazioni', modalContent);
+            showModal('Autorizzazioni', modalContent, true);
         };
 
         const savePermissionsData = async (event) => {
@@ -5860,28 +5876,32 @@
 
         const openAccountManagementModal = () => {
             const modalContent = `
-                <div class="space-y-4">
-                    <p style="color: var(--secondary-text); font-size: 0.9rem;">
-                        Gestisci la portabilità dei tuoi dati personali o elimina definitivamente il tuo account.
-                    </p>
-                    <button onclick="downloadUserData()" class="btn btn-secondary w-full">
-                        <svg style="width: 20px; height: 20px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                        </svg>
-                        Scarica Dati (JSON)
-                    </button>
-                    <button onclick="confirmDeleteAccount()" class="btn" style="background-color: var(--danger); color: white; width: 100%;">
-                        <svg style="width: 20px; height: 20px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                        </svg>
-                        Elimina Account
-                    </button>
-                    <div class="flex justify-end pt-2">
-                        <button type="button" class="btn btn-secondary w-full" onclick="hideModal()">Chiudi</button>
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.85rem; -webkit-overflow-scrolling: touch;">
+                        <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.45; margin: 0;">
+                            Gestisci la portabilità dei tuoi dati personali o elimina definitivamente il tuo account.
+                        </p>
+                        <button type="button" onclick="downloadUserData()" class="btn btn-secondary w-full" style="width: 100%; padding: 0.85rem 1rem; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                            </svg>
+                            <span>Scarica Dati (JSON)</span>
+                        </button>
+                        <button type="button" onclick="confirmDeleteAccount()" class="btn" style="background-color: var(--danger); color: white; width: 100%; padding: 0.85rem 1rem; border-radius: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; cursor: pointer;">
+                            <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                            </svg>
+                            <span>Elimina Account</span>
+                        </button>
+                    </div>
+
+                    <!-- BARRA BOTTOM FISSA -->
+                    <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
+                        <button type="button" class="btn btn-secondary w-full" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">Chiudi</button>
                     </div>
                 </div>
             `;
-            showModal('Gestione Account', modalContent);
+            showModal('Gestione Account', modalContent, true);
         };
 
         const setupProfileHandlers = () => {
@@ -7418,7 +7438,7 @@ ${renderBottomNavigation()}
                             <div style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: var(--accent-color);">
                                 ${THEME_ICONS.building(18)}
                             </div>
-                            <h3 class="card-title" style="margin: 0; font-size: 1.05rem; font-weight: 700;">Recapiti Amministrazione</h3>
+                            <h3 class="card-title" style="margin: 0; font-size: 1.05rem; font-weight: 700;">Recapiti Amm.</h3>
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.35rem;">
                             <span id="toggle-admin-summary-recapiti-icon" style="color: var(--accent-color); font-size: 0.78rem; font-weight: 700;">Espandi ▼</span>
@@ -8140,7 +8160,7 @@ ${renderBottomNavigation()}
                             <p style="color:var(--secondary-text);">Caricamento utenti...</p>
                         </div>
                         <div class="flex justify-end pt-2">
-                            <button type="submit" class="btn btn-primary">Salva Permessi</button>
+                            <button type="submit" class="btn btn-primary">Salva</button>
                         </div>
                     </form>
                 </div>
@@ -8238,7 +8258,7 @@ ${renderBottomNavigation()}
                     messageBox.style.display = 'block';
                 } finally {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Salva Permessi';
+                    submitBtn.textContent = 'Salva';
                 }
             });
         };
@@ -13376,19 +13396,23 @@ ${renderBottomNavigation()}
             }
 
             const modalContent = `
-                <form id="edit-useful-number-form" class="space-y-4">
-                    <div><label class="form-label">INTERVENTO RICHIESTO</label><input type="text" id="edit-title" value="${(currentData.title || '').replace(/"/g, '&quot;')}" required class="form-input"></div>
-                    <div><label class="form-label">IMPRESA (Opzionale)</label><input type="text" id="edit-company" value="${(currentData.company || '').replace(/"/g, '&quot;')}" class="form-input"></div>
-                    <div><label class="form-label">1 NUM. TELEFONICO</label><input type="text" id="edit-number" value="${(currentData.number || '').replace(/"/g, '&quot;')}" required class="form-input"></div>
-                    <div><label class="form-label">2 NUM. TELEFONICO (Opzionale)</label><input type="text" id="edit-number-2" value="${(currentData.number2 || '').replace(/"/g, '&quot;')}" class="form-input"></div>
-                    <div class="flex justify-end gap-4 pt-2">
-                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary">Salva</button>
-                    </div>
-                </form>
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <form id="edit-useful-number-form" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left !important; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                            <div><label class="form-label">INTERVENTO RICHIESTO</label><input type="text" id="edit-title" value="${(currentData.title || '').replace(/"/g, '&quot;')}" required class="form-input"></div>
+                            <div><label class="form-label">IMPRESA (Opzionale)</label><input type="text" id="edit-company" value="${(currentData.company || '').replace(/"/g, '&quot;')}" class="form-input"></div>
+                            <div><label class="form-label">1 NUM. TELEFONICO</label><input type="text" id="edit-number" value="${(currentData.number || '').replace(/"/g, '&quot;')}" required class="form-input"></div>
+                            <div><label class="form-label">2 NUM. TELEFONICO (Opzionale)</label><input type="text" id="edit-number-2" value="${(currentData.number2 || '').replace(/"/g, '&quot;')}" class="form-input"></div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">Annulla</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">Salva</button>
+                        </div>
+                    </form>
+                </div>
             `;
 
-            showModal('Modifica Contatto', modalContent);
+            showModal('Modifica Contatto', modalContent, true);
 
             const form = document.getElementById('edit-useful-number-form');
             if (form) {
@@ -13559,16 +13583,20 @@ ${renderBottomNavigation()}
             }).join('');
 
             const editFormHtml = `
-                <form id="edit-imported-contact-form" class="space-y-4">
-                    ${formFields}
-                    <div class="flex justify-end gap-4 pt-2">
-                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
-                        <button type="submit" class="btn btn-primary">Salva</button>
-                    </div>
-                </form>
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <form id="edit-imported-contact-form" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left !important; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                            ${formFields}
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">Annulla</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">Salva</button>
+                        </div>
+                    </form>
+                </div>
             `;
 
-            showModal('Modifica Contatto Importato', editFormHtml);
+            showModal('Modifica Contatto Importato', editFormHtml, true);
 
             // Add event listener to the form after it has been added to the DOM
             const form = document.getElementById('edit-imported-contact-form');
@@ -13692,9 +13720,21 @@ ${renderBottomNavigation()}
                 return `<div><label class="form-label">${label}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
             }).join('');
 
-            const editFormHtml = `<form id="edit-schedule-form" class="space-y-4">${formFields}<div class="flex justify-end gap-4 pt-2"><button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button><button type="submit" class="btn btn-primary">Salva</button></div></form>`;
+            const editFormHtml = `
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <form id="edit-schedule-form" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left !important; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                            ${formFields}
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">Annulla</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">Salva</button>
+                        </div>
+                    </form>
+                </div>
+            `;
 
-            showModal('Modifica Voce Orario', editFormHtml);
+            showModal('Modifica Voce Orario', editFormHtml, true);
 
             document.getElementById('edit-schedule-form')?.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -13759,9 +13799,21 @@ ${renderBottomNavigation()}
                 return `<div><label class="form-label">${label}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
             }).join('');
 
-            const editFormHtml = `<form id="edit-admin-data-form" class="space-y-4">${formFields}<div class="flex justify-end gap-4 pt-2"><button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button><button type="submit" class="btn btn-primary">Salva</button></div></form>`;
+            const editFormHtml = `
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <form id="edit-admin-data-form" style="display: flex; flex-direction: column; flex: 1 1 0%; text-align: left !important; min-height: 0; height: 100%; overflow: hidden; gap: 0.45rem;">
+                        <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                            ${formFields}
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); flex-shrink: 0;">
+                            <button type="button" class="btn btn-secondary" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">Annulla</button>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; height: 42px; font-size: 0.88rem; font-weight: 700; border-radius: 8px;">Salva</button>
+                        </div>
+                    </form>
+                </div>
+            `;
 
-            showModal('Modifica Voce Amministratore', editFormHtml);
+            showModal('Modifica Voce Amministratore', editFormHtml, true);
 
             document.getElementById('edit-admin-data-form')?.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -36438,7 +36490,7 @@ ${renderBottomNavigation()}
     Stai per accedere a un'area con funzionalità avanzate normalmente riservate al Supervisore. 
 </p>
 <p style="color: var(--secondary-text); margin-bottom: 1.5rem; line-height: 1.6; text-align: center;">
-    <strong>Procedi con cautela.</strong>
+    <strong>Procedi con cautela</strong>
 </p>
                         <div class="flex gap-4" style="justify-content: center;">
                         <button onclick="hideModal()" class="btn btn-secondary">Annulla</button>
@@ -36446,7 +36498,7 @@ ${renderBottomNavigation()}
                     </div>
                 </div>
             `;
-            showModal('<span style="display:block; text-align:center; width:100%; padding-left:32px;">Attenzione</span>', modalContent);
+            showModal('<span style="display:block; text-align:center; width:100%; padding-left:32px;">Attenzione!</span>', modalContent);
         };
 
         const deletePoll = async (pollId) => {
@@ -37305,7 +37357,7 @@ ${renderBottomNavigation()}
         const downloadAdminSummaryPDF = async () => {
             const table = document.querySelector('#admin-data-summary-container table.data-table');
             if (table) {
-                generateTablePDF(table, 'recapiti-amministrazione', 'Recapiti Amministrazione');
+                generateTablePDF(table, 'recapiti-amministrazione', 'Recapiti Amm.');
             } else {
                 await customAlert('Nessuna tabella disponibile per il download.');
             }
