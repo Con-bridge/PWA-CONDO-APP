@@ -26106,10 +26106,21 @@ ${renderBottomNavigation()}
                         if (a.uid === u.id) return true;
                         if (u.registeredUid && a.uid === u.registeredUid) return true;
                         const uNom = (u.nominativo || `${u.cognome || ''} ${u.nome || ''}`).toLowerCase().trim();
-                        if (a.nome && uNom && a.nome.toLowerCase().trim() === uNom) return true;
+                        if (a.nome && uNom && (a.nome.toLowerCase().trim() === uNom || a.nome.toLowerCase().trim().includes(uNom) || uNom.includes(a.nome.toLowerCase().trim()))) return true;
                         return false;
                     });
-                    return !isPresent;
+                    const hasActiveProxy = (assembly.proxies || []).some(p => {
+                        if (p.status === 'rejected') return false;
+                        if (p.delegatorId && (p.delegatorId === u.id || p.delegatorId === u.registeredUid)) return true;
+                        if (p.delegatorUid && (p.delegatorUid === u.id || p.delegatorUid === u.registeredUid)) return true;
+                        const uNom = (u.nominativo || `${u.cognome || ''} ${u.nome || ''}`).toLowerCase().trim();
+                        if (p.delegatorName && uNom) {
+                            const pDelNom = p.delegatorName.toLowerCase().trim();
+                            if (pDelNom === uNom || pDelNom.includes(uNom) || uNom.includes(pDelNom)) return true;
+                        }
+                        return false;
+                    });
+                    return !isPresent && !hasActiveProxy;
                 });
 
                 // Aggiungi anche delegati terzi/esterni nominati ma non ancora accreditati in aula
@@ -26635,10 +26646,21 @@ ${renderBottomNavigation()}
                         if (a.uid === u.id) return true;
                         if (u.registeredUid && a.uid === u.registeredUid) return true;
                         const uNom = (u.nominativo || `${u.cognome || ''} ${u.nome || ''}`).toLowerCase().trim();
-                        if (a.nome && uNom && a.nome.toLowerCase().trim() === uNom) return true;
+                        if (a.nome && uNom && (a.nome.toLowerCase().trim() === uNom || a.nome.toLowerCase().trim().includes(uNom) || uNom.includes(a.nome.toLowerCase().trim()))) return true;
                         return false;
                     });
-                    return !isPresent;
+                    const hasActiveProxy = (assembly.proxies || []).some(p => {
+                        if (p.status === 'rejected') return false;
+                        if (p.delegatorId && (p.delegatorId === u.id || p.delegatorId === u.registeredUid)) return true;
+                        if (p.delegatorUid && (p.delegatorUid === u.id || p.delegatorUid === u.registeredUid)) return true;
+                        const uNom = (u.nominativo || `${u.cognome || ''} ${u.nome || ''}`).toLowerCase().trim();
+                        if (p.delegatorName && uNom) {
+                            const pDelNom = p.delegatorName.toLowerCase().trim();
+                            if (pDelNom === uNom || pDelNom.includes(uNom) || uNom.includes(pDelNom)) return true;
+                        }
+                        return false;
+                    });
+                    return !isPresent && !hasActiveProxy;
                 });
 
                 // Aggiungi anche eventuali altri delegati terzi non ancora accreditati
@@ -31258,15 +31280,15 @@ ${renderBottomNavigation()}
                 let isManual = false;
                 let proxiesInfoHtml = '';
                 let warningText = '';
-                let modalTitle = 'Conferma Annullamento Presenza';
+                let modalTitle = 'Annullamento Presenza';
                 let modalSubtitle = "Sei sicuro di voler annullare ed eliminare l'accredito di questo partecipante?";
-                let confirmBtnText = 'Elimina presenza';
+                let confirmBtnText = 'Elimina';
                 let badgeHtml = '';
 
                 if (isProxyDelegator) {
-                    modalTitle = 'Conferma Annullamento Delega';
+                    modalTitle = 'Annullamento Delega';
                     modalSubtitle = 'Sei sicuro di voler annullare ed eliminare la delega conferita da questo condòmino?';
-                    confirmBtnText = 'Elimina delega';
+                    confirmBtnText = 'Elimina';
 
                     if (targetAttendee) {
                         targetName = getAttendeeDisplayName(targetAttendee);
@@ -31315,7 +31337,6 @@ ${renderBottomNavigation()}
                         <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); color: var(--danger, #EF4444); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem auto; font-size: 1.8rem; border: 1.5px solid rgba(239, 68, 68, 0.3);">
                             ${THEME_ICONS.alertDanger(28)}
                         </div>
-                        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--primary-text); margin: 0 0 0.35rem 0;">${escapeHtml(modalTitle)}</h3>
                         <p style="font-size: 0.85rem; color: var(--secondary-text); margin: 0 0 1.25rem 0;">${escapeHtml(modalSubtitle)}</p>
 
                         <div style="background: var(--surface-color-light); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius: 10px; padding: 1rem; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: left;">
