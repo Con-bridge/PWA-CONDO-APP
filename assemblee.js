@@ -543,6 +543,21 @@ window.AssembleeModule = {
     },
 
     validateProxyLimit: function (assembly, delegate, existingHeldProxies = [], newDelegators = [], totalCondoCount = 20) {
+        // Controllo divieto assoluto di delega all'amministratore (Art. 67 disp. att. c.c.)
+        const delRole = (delegate?.tipoUtente || delegate?.ruolo || delegate?.role || '').toString().toLowerCase().trim();
+        if (['amministratore', 'adm'].includes(delRole)) {
+            return {
+                valid: false,
+                totalProxies: 0,
+                totalHeads: 0,
+                totalMillesimi: 0,
+                totalDelegatedMillesimi: 0,
+                maxHeads: null,
+                maxMillesimi: null,
+                errorMessage: "Divieto assoluto di delega all'amministratore (Art. 67 disp. att. c.c.): all'amministratore di condominio non possono mai essere conferite deleghe per la partecipazione a qualunque assemblea."
+            };
+        }
+
         const config = this.getProxyLimitConfig(assembly, totalCondoCount);
         if (config.type === 'nessun_limite') {
             return { valid: true };
