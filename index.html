@@ -1761,7 +1761,7 @@
             line-height: 1.6;
             color: var(--primary-text);
             margin-bottom: 1.5rem;
-            white-space: normal !important;
+            white-space: pre-line !important;
             word-wrap: break-word;
             text-align: left !important;
         }
@@ -3138,6 +3138,10 @@
             window._presidentSavedMainScrollTop = 0;
             window._presidentSavedSearchQuery = '';
             window._presidentSavedVotersScroll = {};
+            window._savedManualVoteScrollTop = 0;
+            window._savedManualVoteSearchQuery = '';
+            window._savedManualVoteFilter = 'all';
+            window._lastVotedVoterId = null;
             if (typeof window.stopQuickQRScanner === 'function') {
                 try { window.stopQuickQRScanner(); } catch (e) { }
             }
@@ -22717,6 +22721,231 @@ ${renderBottomNavigation()}
             navigateTo('assemblea_room');
         };
 
+        // ==========================================
+        // HOISTING FUNZIONI HELPER QUORUM E ODG (Stanza Live)
+        // ==========================================
+        if (typeof window.cleanPointTitle !== 'function') {
+            window.cleanPointTitle = (title) => {
+                if (!title) return '';
+                return String(title).replace(/^Punto\s+\d+(\s+(bis|ter|quater|quinquies|sexies|septies|octies))?\s*[:\-\.]\s*/i, '').trim();
+            };
+        }
+
+        if (typeof window.getPointDisplayNumber !== 'function') {
+            window.getPointDisplayNumber = (agenda, targetIndex) => {
+                if (!agenda || targetIndex < 0 || targetIndex >= agenda.length) return `${(targetIndex || 0) + 1}`;
+                let num = 0;
+                let modCount = 0;
+                for (let i = 0; i <= targetIndex; i++) {
+                    if (!agenda[i].isScopeModification) {
+                        num++;
+                        modCount = 0;
+                    } else {
+                        modCount++;
+                    }
+                }
+                const currentItem = agenda[targetIndex];
+                if (currentItem && currentItem.isScopeModification) {
+                    const suffixes = ['bis', 'ter', 'quater', 'quinquies', 'sexies', 'septies', 'octies', 'novies', 'decies'];
+                    const suffix = (modCount >= 1 && modCount <= suffixes.length) ? suffixes[modCount - 1] : `(${modCount})`;
+                    return `${num} ${suffix}`;
+                }
+                return `${num}`;
+            };
+        }
+
+        window.getAssemblyConstitutiveQuorumInfo = (assembly = {}, activeAttendees = [], activeProxies = [], allUsers = [], tableData = []) => {
+            const config = assembly?.constitutiveQuorum || { type: '1_3_valore_e_partecipanti' };
+            const qType = config.type || '1_3_valore_e_partecipanti';
+
+            const tData = (tableData && Array.isArray(tableData) && tableData.length > 0)
+                ? tableData
+                : (window._liveAssemblyStaticCache?.tableData || window._currentTableData || window._unifiedCondominiumRegistryCache?.data?.tableData || []);
+
+            const uList = (allUsers && Array.isArray(allUsers) && allUsers.length > 0)
+                ? allUsers
+                : (window._liveAssemblyStaticCache?.allUsers || window._cachedAllUsers || window._unifiedCondominiumRegistryCache?.data?.registeredUsers || []);
+
+            const qHObj = (typeof window.getTableHeaders === 'function')
+                ? window.getTableHeaders(tData)
+                : (typeof getTableHeaders === 'function' ? getTableHeaders(tData) : (function (data) {
+                    const headers = Object.keys((data && data[0]) || {});
+                    const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+                    const findH = (keys) => {
+                        let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                        if (found) return found;
+                        found = headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase())));
+                        return found || null;
+                    };
+                    return {
+                        nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']),
+                        millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico'])
+                    };
+                })(tData));
+
+            const nominativoHeader = qHObj?.nominativoHeader;
+            const millesimiHeader = qHObj?.millesimiHeader;
+
+            let totalBuildingUsers = 0;
+            let totalBuildingMillesimi = 0;
+            const distinctCondomini = new Set();
+
+            if (tData && tData.length > 0) {
+                tData.forEach(row => {
+                    if (nominativoHeader && row[nominativoHeader]) {
+                        const rawNom = row[nominativoHeader].toString().trim();
+                        const cleanNom = window.cleanCandidateName ? window.cleanCandidateName(rawNom) : rawNom;
+                        const nomKey = cleanNom.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        if (nomKey) distinctCondomini.add(nomKey);
+                    }
+                    if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
+                        const rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                        const milVal = parseFloat(rawMil) || 0;
+                        totalBuildingMillesimi += milVal;
+                    }
+                });
+            }
+
+            if (distinctCondomini.size > 0) {
+                totalBuildingUsers = distinctCondomini.size;
+            } else {
+                const allCondo = window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || [];
+                if (allCondo.length > 0) {
+                    totalBuildingUsers = allCondo.length;
+                } else if (uList.length > 0) {
+                    const filteredUsers = uList.filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0));
+                    totalBuildingUsers = filteredUsers.length || 1;
+                } else {
+                    totalBuildingUsers = tData.length || 1;
+                }
+            }
+
+            if (totalBuildingMillesimi <= 0 || Math.abs(totalBuildingMillesimi - 1000) < 5) {
+                totalBuildingMillesimi = 1000.00;
+            } else {
+                totalBuildingMillesimi = parseFloat(totalBuildingMillesimi.toFixed(2));
+            }
+
+            const presentHeadsSet = new Set();
+            let presentMillesimi = 0;
+
+            (activeAttendees || []).forEach(a => {
+                const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                if (!isExternal) {
+                    const hId = a.uid || a.id || a.nome;
+                    if (hId) presentHeadsSet.add(hId);
+                }
+                presentMillesimi += (parseFloat(a.millesimi) || 0);
+            });
+
+            (activeProxies || []).forEach(p => {
+                const delId = p.delegatorId || p.delegatorUid || p.id || p.delegatorName;
+                if (delId) {
+                    presentHeadsSet.add(delId);
+                }
+            });
+
+            const presentHeads = presentHeadsSet.size;
+            presentMillesimi = parseFloat(presentMillesimi.toFixed(2));
+
+            let requiredHeads = 0;
+            let requiredMillesimi = 0;
+            let description = '';
+
+            if (qType === '2_3_valore_e_maggioranza') {
+                requiredHeads = Math.floor(totalBuildingUsers / 2) + 1;
+                const baseMillesimi = totalBuildingMillesimi;
+                requiredMillesimi = (baseMillesimi === 1000.00 || Math.abs(baseMillesimi - 1000) < 0.1) ? 666.67 : Math.ceil((baseMillesimi * (2 / 3)) * 100) / 100;
+                description = "2/3 del valore dell'edificio (666,67‰) e maggioranza dei partecipanti";
+            } else if (qType === 'unanimita') {
+                requiredHeads = totalBuildingUsers;
+                requiredMillesimi = totalBuildingMillesimi;
+                description = "Unanimità (1000‰ e totalità dei condomini)";
+            } else if (qType === 'modificabile') {
+                requiredHeads = (config.customHeads && config.customHeads > 0) ? parseInt(config.customHeads, 10) : Math.ceil(totalBuildingUsers / 3);
+                requiredMillesimi = (config.customMillesimi && config.customMillesimi > 0) ? parseFloat(config.customMillesimi) : (totalBuildingMillesimi / 3);
+                description = config.description || `Quorum modificabile: min. ${requiredHeads} teste e ${requiredMillesimi.toFixed(2)} ‰`;
+            } else {
+                requiredHeads = Math.ceil(totalBuildingUsers / 3);
+                requiredMillesimi = totalBuildingMillesimi / 3;
+                description = "1/3 del valore dell'edificio (333‰) e 1/3 dei partecipanti";
+            }
+
+            const isHeadsReached = presentHeads >= requiredHeads;
+            const isMilReached = parseFloat((presentMillesimi || 0).toFixed(2)) >= parseFloat((requiredMillesimi || 0).toFixed(2));
+            const isReached = isHeadsReached && isMilReached;
+
+            return {
+                type: qType,
+                description,
+                totalBuildingUsers,
+                totalBuildingMillesimi,
+                presentHeads,
+                presentMillesimi,
+                requiredHeads,
+                requiredMillesimi,
+                isHeadsReached,
+                isMilReached,
+                isReached
+            };
+        };
+
+        window.calculateDeliberativeQuorumRequirements = (item = {}, baseMillesimi = 1000.00, totalPresences = 1, totalBuildingUsers = 1) => {
+            const config = item?.deliberativeQuorum || {};
+            const dType = config.type || 'maggioranza_500';
+
+            let requiredMil = 0;
+            let requiredHeads = 0;
+            let description = '';
+            let shortLabel = '';
+
+            const maggioranzaIntervenutiHeads = Math.floor(totalPresences / 2) + 1;
+
+            if (dType === 'maggioranza_333') {
+                requiredMil = baseMillesimi / 3;
+                requiredHeads = maggioranzaIntervenutiHeads;
+                description = "Maggioranza degli intervenuti e 1/3 del valore dell'edificio (333‰)";
+                shortLabel = "Maggioranza + 333‰";
+            } else if (dType === 'maggioranza_667') {
+                requiredMil = (baseMillesimi === 1000.00 || Math.abs(baseMillesimi - 1000) < 0.1) ? 666.67 : Math.ceil((baseMillesimi * (2 / 3)) * 100) / 100;
+                requiredHeads = maggioranzaIntervenutiHeads;
+                description = "Maggioranza degli intervenuti e 2/3 del valore dell'edificio (666,67‰)";
+                shortLabel = "Maggioranza + 666,67‰";
+            } else if (dType === 'unanimita') {
+                requiredMil = baseMillesimi;
+                requiredHeads = Math.max(totalBuildingUsers, totalPresences);
+                description = "Unanimità (1000‰ e totalità dei condomini)";
+                shortLabel = "Unanimità";
+            } else if (dType === 'modificabile') {
+                requiredMil = (config.customMillesimi && config.customMillesimi > 0) ? parseFloat(config.customMillesimi) : (baseMillesimi / 2);
+                requiredHeads = (config.customHeads && config.customHeads > 0) ? parseInt(config.customHeads, 10) : maggioranzaIntervenutiHeads;
+                description = config.description || `Quorum modificabile: min. ${requiredHeads} teste e ${requiredMil.toFixed(2)} ‰`;
+                shortLabel = `Min. ${requiredHeads}T / ${requiredMil.toFixed(0)}‰`;
+            } else {
+                requiredMil = baseMillesimi * 0.5;
+                requiredHeads = maggioranzaIntervenutiHeads;
+                description = "Maggioranza degli intervenuti e 1/2 del valore dell'edificio (500‰)";
+                shortLabel = "Maggioranza + 500‰";
+            }
+
+            return {
+                type: dType,
+                requiredMil,
+                requiredHeads,
+                description,
+                shortLabel
+            };
+        };
+
+        window.isDeliberativeQuorumPassed = (item = {}, favHeads = 0, favMil = 0, totalPresences = 1, baseMillesimi = 1000.00, totalBuildingUsers = 1) => {
+            const req = (typeof window.calculateDeliberativeQuorumRequirements === 'function')
+                ? window.calculateDeliberativeQuorumRequirements(item, baseMillesimi, totalPresences, totalBuildingUsers)
+                : { requiredMil: (baseMillesimi * 0.5), requiredHeads: Math.floor(totalPresences / 2) + 1 };
+            const milPassed = parseFloat((favMil || 0).toFixed(2)) >= parseFloat((req.requiredMil || 0).toFixed(2));
+            const headsPassed = favHeads >= req.requiredHeads;
+            return milPassed && headsPassed;
+        };
+
         let _lastLiveRenderQuorum = null;
         let _lastLiveRenderOdg = null;
 
@@ -22755,6 +22984,10 @@ ${renderBottomNavigation()}
                 let allUsers = currentStaticData.allUsers || [];
                 let tableData = currentStaticData.tableData || [];
                 let partialCondosList = currentStaticData.partialCondosList || [];
+                let totalBuildingUsers = 0;
+                let totalBuildingMillesimi = 0;
+                let currentTotalBuildingUsers = 0;
+                let currentTotalBuildingMillesimi = 0;
                 let renderOdgPollList = null;
 
                 const getTableHeaders = (data) => {
@@ -22980,8 +23213,8 @@ ${renderBottomNavigation()}
                     groupHeader = qHObj.groupHeader;
                     unitaHeader = qHObj.unitaHeader;
 
-                    let totalBuildingUsers = 0;
-                    let totalBuildingMillesimi = 0;
+                    totalBuildingUsers = 0;
+                    totalBuildingMillesimi = 0;
                     const distinctCondomini = new Set();
 
                     if (tableData.length > 0) {
@@ -23013,12 +23246,15 @@ ${renderBottomNavigation()}
                     }
 
                     if (totalBuildingMillesimi <= 0) totalBuildingMillesimi = 1000.00;
+                    currentTotalBuildingUsers = totalBuildingUsers;
+                    currentTotalBuildingMillesimi = totalBuildingMillesimi;
 
                     if (totTesteEl) {
                         totTesteEl.textContent = `${totalPresences} (${activeAttendeesPersonalHeads} + ${activeProxies.length} del.) su ${totalBuildingUsers} Tot.`;
                     }
                     if (totMillesimiEl) {
-                        totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} su ${totalBuildingMillesimi.toFixed(2)} ‰ Tot.`;
+                        const totalMilPct = totalBuildingMillesimi > 0 ? ((totMillesimi / totalBuildingMillesimi) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                        totMillesimiEl.textContent = `${totMillesimi.toFixed(2)} su ${totalBuildingMillesimi.toFixed(2)} ‰ Tot. (${totalMilPct}%)`;
                     }
                     if (proxyLimitTextEl) {
                         const calculatedRuleDesc = window.AssembleeModule?.getProxyLimitDescription
@@ -23036,19 +23272,35 @@ ${renderBottomNavigation()}
                     }
                     if (constQuorumEl && typeof window.getAssemblyConstitutiveQuorumInfo === 'function') {
                         const qInfo = window.getAssemblyConstitutiveQuorumInfo(assembly, activeAttendees, activeProxies, allUsers, tableData);
-                        constQuorumEl.style.cssText = `margin-top:0.5rem; padding:0.6rem 0.75rem; border-radius:8px; display:flex; flex-direction:column; gap:0.35rem; font-size:0.76rem; line-height:1.35; background:${qInfo.isReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.12)'}; border:1px solid ${qInfo.isReached ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.35)'};`;
+                        const presMilPct = qInfo.totalBuildingMillesimi > 0 ? ((qInfo.presentMillesimi / qInfo.totalBuildingMillesimi) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                        const reqMilPct = qInfo.totalBuildingMillesimi > 0 ? ((qInfo.requiredMillesimi / qInfo.totalBuildingMillesimi) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                        const headsReached = qInfo.isHeadsReached;
+                        const milReached = qInfo.isMilReached;
+                        const isReached = qInfo.isReached;
+
+                        constQuorumEl.style.cssText = `margin-top:0.5rem; padding:0.6rem 0.75rem; border-radius:8px; display:flex; flex-direction:column; gap:0.35rem; font-size:0.76rem; line-height:1.35; background:${isReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.12)'}; border:1px solid ${isReached ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.35)'};`;
                         constQuorumEl.innerHTML = `
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%;">
                                 <div style="display:flex; align-items:center; gap:0.4rem; min-width:0;">
-                                    <span style="color:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; display:inline-flex; align-items:center; flex-shrink:0;">${qInfo.isReached ? THEME_ICONS.checkSuccess(14) : THEME_ICONS.alertWarning(14)}</span>
-                                    <strong style="color:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; font-weight:700; font-size:0.8rem; line-height:1.2;">Quorum Costitutivo:</strong>
+                                    <span style="color:${isReached ? '#10B981' : 'var(--danger)'}; display:inline-flex; align-items:center; flex-shrink:0;">${isReached ? THEME_ICONS.checkSuccess(14) : THEME_ICONS.alertWarning(14)}</span>
+                                    <strong style="color:${isReached ? '#10B981' : 'var(--danger)'}; font-weight:700; font-size:0.8rem; line-height:1.2;">Quorum Costitutivo:</strong>
                                 </div>
-                                <span class="badge" style="font-size:0.68rem; font-weight:800; background:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; color:white; padding:0.18rem 0.5rem; border-radius:4px; white-space:nowrap; flex-shrink:0;">
-                                    ${qInfo.isReached ? 'RAGGIUNTO' : `SOTTO QUORUM (min. ${qInfo.requiredHeads}T / ${qInfo.requiredMillesimi.toFixed(2)}‰)`}
+                                <span class="badge" style="font-size:0.68rem; font-weight:800; background:${isReached ? '#10B981' : 'var(--danger)'}; color:white; padding:0.18rem 0.5rem; border-radius:4px; white-space:nowrap; flex-shrink:0;">
+                                    ${isReached ? 'RAGGIUNTO' : 'SOTTO QUORUM'}
                                 </span>
                             </div>
-                            <div style="padding-left:1.3rem; color:var(--secondary-text); font-size:0.72rem; line-height:1.35; word-break:break-word;">
-                                ${escapeHtml(qInfo.description)}
+                            <div style="padding-left:1.3rem; display:flex; flex-direction:column; gap:0.2rem; font-size:0.74rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
+                                    <span style="color:var(--secondary-text);">Teste presenti / richieste:</span>
+                                    <strong style="color:${headsReached ? '#10B981' : 'var(--danger)'}; font-weight:700;">${qInfo.presentHeads} su min. ${qInfo.requiredHeads}</strong>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
+                                    <span style="color:var(--secondary-text);">Millesimi presenti / richiesti:</span>
+                                    <strong style="color:${milReached ? '#10B981' : 'var(--danger)'}; font-weight:700;">${qInfo.presentMillesimi.toFixed(2)} ‰ (${presMilPct}%) su min. ${qInfo.requiredMillesimi.toFixed(2)} ‰ (${reqMilPct}%)</strong>
+                                </div>
+                                <div style="color:var(--secondary-text); font-size:0.71rem; line-height:1.3; margin-top:0.15rem; word-break:break-word;">
+                                    ${escapeHtml((qInfo.description || '').replace(/667\s*(?:‰|%°|%)/g, '666,67‰'))}
+                                </div>
                             </div>
                         `;
                     }
@@ -23225,7 +23477,7 @@ ${renderBottomNavigation()}
                                 const presentHeadsCount = presentGroupHeadsSet.size;
                                 const requiredHeads = Math.ceil(totalGroupHeads / 3);
                                 const requiredMil = totalGroupMil / 3;
-                                const isQuorumReached = (presentHeadsCount >= requiredHeads) && (presentGroupMil >= (requiredMil - 0.01));
+                                const isQuorumReached = (presentHeadsCount >= requiredHeads) && (parseFloat((presentGroupMil || 0).toFixed(2)) >= parseFloat((requiredMil || 0).toFixed(2)));
 
                                 if (isQuorumReached) {
                                     quorumReachedCount++;
@@ -24304,7 +24556,7 @@ ${renderBottomNavigation()}
                         const requiredHeads = Math.ceil(subcondTotalHeads / 3);
                         const requiredMil = subcondTotalMil / 3;
                         const isHeadsReached = groupHeadsPresent >= requiredHeads;
-                        const isMilReached = groupMillesimiPresent >= (requiredMil - 0.01);
+                        const isMilReached = parseFloat((groupMillesimiPresent || 0).toFixed(2)) >= parseFloat((requiredMil || 0).toFixed(2));
                         const isQuorumReached = isHeadsReached && isMilReached;
 
                         return {
@@ -24367,22 +24619,66 @@ ${renderBottomNavigation()}
 
                 // RENDERING SONDAGGI-STYLE ODG LIST (#room-odg-poll-list) CON DETTAGLIO VOTANTI E DELEGHE
                 renderOdgPollList = (staticData) => {
-                    if (staticData) {
-                        if (staticData.tableData) tableData = staticData.tableData;
-                        if (staticData.allUsers) allUsers = staticData.allUsers;
-                        if (staticData.partialCondosList) partialCondosList = staticData.partialCondosList;
-                        const hObj = getTableHeaders(tableData);
-                        nominativoHeader = hObj.nominativoHeader;
-                        millesimiHeader = hObj.millesimiHeader;
-                        groupHeader = hObj.groupHeader;
-                        unitaHeader = hObj.unitaHeader;
-                    }
+                    try {
+                        if (staticData) {
+                            if (Array.isArray(staticData.tableData)) tableData = staticData.tableData;
+                            if (Array.isArray(staticData.allUsers)) allUsers = staticData.allUsers;
+                            if (Array.isArray(staticData.partialCondosList)) partialCondosList = staticData.partialCondosList;
+                            const hObj = getTableHeaders(tableData);
+                            nominativoHeader = hObj.nominativoHeader;
+                            millesimiHeader = hObj.millesimiHeader;
+                            groupHeader = hObj.groupHeader;
+                            unitaHeader = hObj.unitaHeader;
+                        }
 
-                    window._liveAssemblyStaticCache = {
-                        tableData: tableData || [],
-                        allUsers: allUsers || [],
-                        partialCondosList: partialCondosList || []
-                    };
+                        if (!Array.isArray(tableData)) tableData = [];
+                        if (!Array.isArray(allUsers)) allUsers = [];
+                        if (!Array.isArray(partialCondosList)) partialCondosList = [];
+
+                        window._liveAssemblyStaticCache = {
+                            assemblyId: assemblyId,
+                            tableData: tableData || [],
+                            allUsers: allUsers || [],
+                            partialCondosList: partialCondosList || []
+                        };
+
+                        // Garantisci che currentTotalBuildingUsers e currentTotalBuildingMillesimi siano sempre definiti e validi
+                        if (!currentTotalBuildingUsers || currentTotalBuildingUsers <= 0 || !currentTotalBuildingMillesimi || currentTotalBuildingMillesimi <= 0) {
+                            let distinctCondos = new Set();
+                            let computedMil = 0;
+                            const hObj = (typeof getTableHeaders === 'function') ? getTableHeaders(tableData) : null;
+                            const nomH = hObj?.nominativoHeader;
+                            const milH = hObj?.millesimiHeader;
+                            if (tableData.length > 0) {
+                                tableData.forEach(row => {
+                                    if (nomH && row[nomH]) {
+                                        const nom = row[nomH].toString().trim().toLowerCase();
+                                        if (nom) distinctCondos.add(nom);
+                                    }
+                                    if (milH && row[milH] !== undefined && row[milH] !== null) {
+                                        const rawMil = row[milH].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                                        computedMil += (parseFloat(rawMil) || 0);
+                                    }
+                                });
+                                currentTotalBuildingUsers = distinctCondos.size > 0 ? distinctCondos.size : tableData.length;
+                                currentTotalBuildingMillesimi = computedMil;
+                            }
+                            if (!currentTotalBuildingUsers || currentTotalBuildingUsers <= 0 || !currentTotalBuildingMillesimi || currentTotalBuildingMillesimi <= 0) {
+                                let fallbackUsers = 0;
+                                let fallbackMil = 0;
+                                (allUsers || []).forEach(u => {
+                                    if (['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)) {
+                                        fallbackUsers++;
+                                        fallbackMil += (parseFloat(u.millesimiTotali) || 0);
+                                    }
+                                });
+                                currentTotalBuildingUsers = currentTotalBuildingUsers || fallbackUsers || (allUsers && allUsers.length > 0 ? allUsers.length : 20);
+                                currentTotalBuildingMillesimi = currentTotalBuildingMillesimi > 0 ? currentTotalBuildingMillesimi : (fallbackMil > 0 ? fallbackMil : 1000.00);
+                            }
+                            if (!currentTotalBuildingMillesimi || currentTotalBuildingMillesimi <= 0) currentTotalBuildingMillesimi = 1000.00;
+                            totalBuildingUsers = currentTotalBuildingUsers;
+                            totalBuildingMillesimi = currentTotalBuildingMillesimi;
+                        }
 
                     // Auto-riparazione immediata dei millesimi dell'assemblea da tableData
                     if (tableData && tableData.length > 0 && typeof window.extractPropsFromTableData === 'function') {
@@ -24514,32 +24810,39 @@ ${renderBottomNavigation()}
                         `;
                         }
 
-                        odgPollContainer.innerHTML = odgLockedBanner + odgStatusBanner + assembly.agenda.map((item, idx) => {
-                            const itemStatus = item.status || 'pending';
-                            const prevItemClosed = idx === 0 || ((assembly.agenda[idx - 1]?.status || 'pending') === 'closed');
-                            const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
+                        const renderedPointsHtml = (assembly.agenda || []).map((item, idx) => {
+                            try {
+                                if (!item) return '';
+                                const itemStatus = item.status || 'pending';
+                                const prevItemClosed = idx === 0 || ((assembly.agenda[idx - 1]?.status || 'pending') === 'closed');
+                                const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
 
-                            const tally = {};
-                            voteOptions.forEach(opt => { tally[opt] = { mil: 0, teste: 0, voters: [] }; });
-                            let totalVotesMil = 0;
+                                const tally = {};
+                                voteOptions.forEach(opt => { tally[opt] = { mil: 0, teste: 0, voters: [] }; });
+                                let totalVotesMil = 0;
 
-                            (item.votes || []).forEach(v => {
-                                const optKey = voteOptions.includes(v.choice) ? v.choice : (tally[v.choice] ? v.choice : voteOptions[0]);
-                                if (!tally[optKey]) tally[optKey] = { mil: 0, teste: 0, voters: [] };
-                                if (!Array.isArray(tally[optKey].voters)) tally[optKey].voters = [];
-                                tally[optKey].mil += (v.millesimi || 0);
-                                tally[optKey].teste += (v.heads || 1);
-                                tally[optKey].voters.push({
-                                    voterId: v.voterId,
-                                    voterName: v.voterName,
-                                    millesimi: (v.millesimi || 0),
-                                    heads: v.heads || 1,
-                                    isProxyVote: v.isProxyVote,
-                                    delegateId: v.delegateId,
-                                    proxyId: v.proxyId
+                                (item.votes || []).forEach(v => {
+                                    if (!v) return;
+                                    const choice = (v.choice || '').toString().trim();
+                                    const optKey = voteOptions.includes(choice) ? choice : (choice || voteOptions[0] || 'Favorevole');
+                                    if (!tally[optKey]) tally[optKey] = { mil: 0, teste: 0, voters: [] };
+                                    if (!Array.isArray(tally[optKey].voters)) tally[optKey].voters = [];
+                                    tally[optKey].mil += (parseFloat(v.millesimi) || 0);
+                                    tally[optKey].teste += (parseInt(v.heads, 10) || 1);
+                                    tally[optKey].voters.push({
+                                        voterId: v.voterId || v.uid || '',
+                                        voterName: v.voterName || v.name || '',
+                                        millesimi: (parseFloat(v.millesimi) || 0),
+                                        heads: parseInt(v.heads, 10) || 1,
+                                        isProxyVote: !!v.isProxyVote,
+                                        delegateId: v.delegateId || null,
+                                        proxyId: v.proxyId || null
+                                    });
+                                    totalVotesMil += (parseFloat(v.millesimi) || 0);
                                 });
-                                totalVotesMil += (v.millesimi || 0);
-                            });
+                                voteOptions.forEach(opt => {
+                                    if (!tally[opt]) tally[opt] = { mil: 0, teste: 0, voters: [] };
+                                });
 
                             const quorumInfo = (typeof window.calculateSubcondominiumsQuorum === 'function')
                                 ? window.calculateSubcondominiumsQuorum(item, assembly, tableData, allUsers, partialCondosList)
@@ -24595,7 +24898,7 @@ ${renderBottomNavigation()}
 
                                     // Calcolo voti espressi per questo specifico sottocondominio
                                     const scTally = {};
-                                    voteOptions.forEach(opt => { scTally[opt] = { mil: 0, teste: 0 }; });
+                                    voteOptions.forEach(opt => { scTally[opt] = { mil: 0, teste: 0, voters: [] }; });
                                     let scTotalVotedMil = 0;
                                     let scTotalVotedHeads = 0;
 
@@ -24767,7 +25070,7 @@ ${renderBottomNavigation()}
                                             const favTeste = scTally[leadingOpt]?.teste || 0;
                                             scDelibPassed = (typeof window.isDeliberativeQuorumPassed === 'function')
                                                 ? window.isDeliberativeQuorumPassed(item, favTeste, favMil, sc.presentHeads, sc.totalMil, sc.totalBuildingUsers || sc.presentHeads)
-                                                : ((favMil >= ((sc.totalMil / 3) - 0.01)) && (favTeste >= Math.ceil(sc.presentHeads / 2) || (scTotalVotedMil > 0 && favMil > (scTotalVotedMil / 2))));
+                                                : ((parseFloat((favMil || 0).toFixed(2)) >= parseFloat(((sc.totalMil / 3)).toFixed(2))) && (favTeste >= Math.ceil(sc.presentHeads / 2) || (scTotalVotedMil > 0 && favMil > (scTotalVotedMil / 2))));
 
                                             if (isFav && scDelibPassed) {
                                                 scOutcomeBadge = `<span class="badge" style="background:#065F46; color:#D1FAE5; border:1px solid #10B981; font-weight:800; font-size:0.7rem; padding:0.18rem 0.5rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(12)} APPROVATO (${favMil.toFixed(2)} ‰)</span>`;
@@ -24880,9 +25183,112 @@ ${renderBottomNavigation()}
                                 baseMillesimi = totMillesimi > 0 ? totMillesimi : 1000;
                             }
 
-                            const delibDesc = (item.deliberativeQuorum && item.deliberativeQuorum.description)
+                            // BOX QUORUM DELIBERATIVO INTERO CONDOMINIO (CR-01)
+                            let interCondoQuorumBoxHtml = '';
+                            if (!isGroupScope) {
+                                const bMil = (typeof currentTotalBuildingMillesimi !== 'undefined' && currentTotalBuildingMillesimi > 0)
+                                    ? currentTotalBuildingMillesimi
+                                    : ((typeof totalBuildingMillesimi !== 'undefined' && totalBuildingMillesimi > 0) ? totalBuildingMillesimi : 1000.00);
+
+                                const ptDelibReq = (typeof window.calculateDeliberativeQuorumRequirements === 'function')
+                                    ? window.calculateDeliberativeQuorumRequirements(item, bMil, totalPresences, currentTotalBuildingUsers)
+                                    : { requiredMil: (bMil * 0.5), requiredHeads: Math.floor(totalPresences / 2) + 1, description: "Maggioranza degli intervenuti e 1/2 del valore dell'edificio (500‰)", shortLabel: "Maggioranza + 500‰" };
+                                const req = ptDelibReq;
+
+                                let favOptKey = voteOptions.find(opt => {
+                                    const l = (opt || '').toString().toLowerCase().trim();
+                                    return l.includes('favorevole') || l === 'sì' || l === 'si' || l.startsWith('sì') || l.startsWith('si ') || l.includes('approv');
+                                });
+                                if (!favOptKey) {
+                                    let maxM = -1;
+                                    voteOptions.forEach(opt => {
+                                        if ((tally[opt]?.mil || 0) > maxM) {
+                                            maxM = tally[opt]?.mil || 0;
+                                            favOptKey = opt;
+                                        }
+                                    });
+                                    if (!favOptKey) favOptKey = voteOptions[0] || 'Favorevole';
+                                }
+
+                                const favMil = tally[favOptKey]?.mil || 0;
+                                const favTeste = tally[favOptKey]?.teste || 0;
+                                const favHeads = favTeste;
+
+                                const isHeadsReached = favHeads >= req.requiredHeads;
+                                const isMilReached = parseFloat((favMil || 0).toFixed(2)) >= parseFloat((req.requiredMil || 0).toFixed(2));
+                                const ptDelibPassed = (typeof window.isDeliberativeQuorumPassed === 'function')
+                                    ? window.isDeliberativeQuorumPassed(item, favHeads, favMil, totalPresences, bMil, currentTotalBuildingUsers)
+                                    : (isHeadsReached && isMilReached);
+                                const isQuorumReached = ptDelibPassed;
+
+                                const favMilPercent = bMil > 0 ? ((favMil / bMil) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                                const reqMilPercent = bMil > 0 ? ((req.requiredMil / bMil) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+
+                                const ptMissingHeads = Math.max(0, req.requiredHeads - favHeads);
+                                const ptMissingMil = Math.max(0, req.requiredMil - favMil);
+                                const ptMissingPercent = bMil > 0 ? ((ptMissingMil / bMil) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                                const missingHeads = ptMissingHeads;
+                                const missingMil = ptMissingMil;
+                                const missingMilPercent = ptMissingPercent;
+
+                                const badgeColor = ptDelibPassed ? '#065F46' : '#7F1D1D';
+                                const badgeBorder = ptDelibPassed ? '#10B981' : '#EF4444';
+                                const badgeText = ptDelibPassed ? '#D1FAE5' : '#FEE2E2';
+                                const badgeIcon = ptDelibPassed ? THEME_ICONS.checkSuccess(12) : THEME_ICONS.crossDanger(12);
+                                const statusLabel = ptDelibPassed ? 'RAGGIUNTO' : 'NON RAGGIUNTO';
+
+                                interCondoQuorumBoxHtml = `
+                                <div style="background: rgba(255, 255, 255, 0.02); border: 1.5px solid ${ptDelibPassed ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.45)'}; border-radius: 10px; padding: 0.75rem 0.85rem; margin-top: 0.6rem; margin-bottom: 0.6rem; text-align: left;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.55rem; flex-wrap: wrap; gap: 0.35rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.4rem; min-width: 0;">
+                                            <span style="display: inline-flex; align-items: center; justify-content: center; color: var(--accent-color); flex-shrink: 0;">
+                                                ${THEME_ICONS.scale(16)}
+                                            </span>
+                                            <span style="font-size: 0.78rem; font-weight: 800; color: var(--primary-text); text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">
+                                                QUORUM DELIB. INTERO CONDOMINIO
+                                            </span>
+                                        </div>
+                                        <span class="badge" style="background: ${badgeColor}; color: ${badgeText}; border: 1px solid ${badgeBorder}; font-weight: 800; font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                            ${badgeIcon} <span>${statusLabel}</span>
+                                        </span>
+                                    </div>
+
+                                    <div style="background: var(--surface-color); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; padding: 0.6rem 0.75rem;">
+                                        <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; line-height: 1.4;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                                <span style="color: var(--secondary-text); font-weight: 600;">Favorevoli:</span>
+                                                <strong style="color: ${isHeadsReached ? '#10B981' : 'var(--danger)'}; font-weight: 800;">
+                                                    ${favHeads} ${favHeads === 1 ? 'testa' : 'teste'} su ${req.requiredHeads} minime
+                                                </strong>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                                <span style="color: var(--secondary-text); font-weight: 600;">Quota favorevoli:</span>
+                                                <strong style="color: ${isMilReached ? '#10B981' : 'var(--danger)'}; font-weight: 800;">
+                                                    ${favMil.toFixed(2)} ‰ (${favMilPercent}%) su min. ${req.requiredMil.toFixed(2)} ‰ (${reqMilPercent}%)
+                                                </strong>
+                                            </div>
+                                        </div>
+
+                                        ${!ptDelibPassed ? `
+                                        <div style="margin-top: 0.5rem; padding: 0.45rem 0.6rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; font-size: 0.76rem; color: #F87171; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; line-height: 1.35;">
+                                            <span style="flex-shrink: 0; font-size: 0.85rem;">⚠️</span>
+                                            <span>Mancano: ${ptMissingHeads} ${ptMissingHeads === 1 ? 'testa' : 'teste'} e ${ptMissingMil.toFixed(2)} ‰ (${ptMissingPercent}%)</span>
+                                        </div>
+                                        ` : `
+                                        <div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; font-size: 0.76rem; color: #34D399; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; line-height: 1.35;">
+                                            <span style="flex-shrink: 0;">${THEME_ICONS.checkSuccess(13)}</span>
+                                            <span>Quorum deliberativo raggiunto per l'approvazione del punto.</span>
+                                        </div>
+                                        `}
+                                    </div>
+                                </div>
+                                `;
+                            }
+
+                            const rawDelibDesc = (item?.deliberativeQuorum && item.deliberativeQuorum.description)
                                 ? item.deliberativeQuorum.description
-                                : "Maggioranza intervenuti e 1/2 valore edificio (500‰)";
+                                : "Maggioranza degli intervenuti e 1/2 del valore dell'edificio (500‰)";
+                            const delibDesc = (rawDelibDesc || '').toString().replace(/667\s*(?:‰|%°|%)/g, '666,67‰');
                             const delibQuorumBadge = `<span class="badge" style="background:rgba(59, 130, 246, 0.12); color:#3B82F6; border:1px solid rgba(59, 130, 246, 0.3); font-weight:700; font-size:0.72rem; white-space:normal; word-break:break-word; line-height:1.35; padding:0.25rem 0.55rem; border-radius:6px; display:inline-flex; align-items:center; gap:0.3rem;" title="Quorum deliberativo di legge">${THEME_ICONS.scale(13)} <span>Quorum: ${escapeHtml(delibDesc)}</span></span>`;
 
                             const optionsProgressHtml = voteOptions.map((opt, optIdx) => {
@@ -25010,9 +25416,12 @@ ${renderBottomNavigation()}
                                     const isFav = leadingOpt.toLowerCase().includes('favorevole') || leadingOpt.toLowerCase().includes('sì') || leadingOpt.toLowerCase().includes('approvato');
                                     const favMil = tally[leadingOpt]?.mil || 0;
                                     const favTeste = tally[leadingOpt]?.teste || 0;
+                                    const bMil = (typeof currentTotalBuildingMillesimi !== 'undefined' && currentTotalBuildingMillesimi > 0)
+                                        ? currentTotalBuildingMillesimi
+                                        : ((typeof totalBuildingMillesimi !== 'undefined' && totalBuildingMillesimi > 0) ? totalBuildingMillesimi : 1000.00);
                                     const quorumPassed = (typeof window.isDeliberativeQuorumPassed === 'function')
-                                        ? window.isDeliberativeQuorumPassed(item, favTeste, favMil, totalPresences, baseMillesimi, totalBuildingUsers)
-                                        : ((favMil >= ((baseMillesimi / 3) - 0.01)) && (favTeste >= Math.ceil(totalPresences / 2) || (totalVotesMil > 0 && favMil > (totalVotesMil / 2))));
+                                        ? window.isDeliberativeQuorumPassed(item, favTeste, favMil, totalPresences, bMil, currentTotalBuildingUsers)
+                                        : ((parseFloat((favMil || 0).toFixed(2)) >= parseFloat(((bMil / 3)).toFixed(2))) && (favTeste >= Math.ceil(totalPresences / 2) || (totalVotesMil > 0 && favMil > (totalVotesMil / 2))));
 
                                     if (isFav && quorumPassed) {
                                         itemBadge = `<span class="badge" style="background-color: #1DB954; color: black; font-weight:700; font-size:0.75rem; white-space:nowrap; padding:0.25rem 0.6rem; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.checkSuccess(14)} APPROVATO (${favMil.toFixed(2)} ‰) ${THEME_ICONS.circleGreen(11)}</span>`;
@@ -25949,6 +26358,9 @@ ${renderBottomNavigation()}
                                     <!-- BOX QUORUM COND. PARZIALE SUL PUNTO -->
                                     ${groupQuorumBoxHtml}
 
+                                    <!-- BOX QUORUM DELIBERATIVO INTERO CONDOMINIO SUL PUNTO -->
+                                    ${interCondoQuorumBoxHtml}
+
                                     ${adminActionHtml}
 
                                     ${voteButtonsHtml}
@@ -25968,7 +26380,28 @@ ${renderBottomNavigation()}
                                 </div>
                             </div>
                         `;
+                            } catch (itemErr) {
+                                console.error(`[renderOdgPollList] Errore nel rendering del punto OdG #${idx + 1}:`, itemErr, item);
+                                const cardItemId = item?.id || `item_${idx}`;
+                                const pointDisplayNum = (window.getPointDisplayNumber ? window.getPointDisplayNumber(assembly.agenda, idx) : `${idx + 1}`);
+                                const cleanTitle = (window.cleanPointTitle ? window.cleanPointTitle(item?.title) : (item?.title || 'Punto all\'Ordine del Giorno'));
+                                return `
+                                <div id="odg-card-${escapeHtml(cardItemId)}" class="card odg-point-card" style="background: var(--surface-color); border: 1.5px solid rgba(239, 68, 68, 0.4); padding: 0.8rem 0.85rem; margin-bottom: 0.65rem; border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                                        <h4 style="font-size: 0.92rem; font-weight: 700; margin: 0; color: var(--primary-text);">
+                                            Punto ${pointDisplayNum}: ${escapeHtml(cleanTitle)}
+                                        </h4>
+                                        <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--danger); font-size: 0.7rem; font-weight: 700;">Dati non validi</span>
+                                    </div>
+                                    <div style="font-size: 0.76rem; color: var(--secondary-text); margin-top: 0.35rem;">
+                                        Non è stato possibile elaborare questo punto. Gli altri punti restano regolarmente accessibili.
+                                    </div>
+                                </div>
+                                `;
+                            }
                         }).join('');
+
+                        odgPollContainer.innerHTML = odgLockedBanner + odgStatusBanner + renderedPointsHtml;
 
                         if (window._openNonVotersModalIndex !== null && typeof window._openNonVotersModalIndex === 'number') {
                             if (window._currentNonVotersByPoint && window._currentNonVotersByPoint[window._openNonVotersModalIndex]) {
@@ -25982,10 +26415,24 @@ ${renderBottomNavigation()}
                             }
                         }
                     }
-                };
+                } catch (err) {
+                    console.error("[renderOdgPollList] Errore critico durante renderOdgPollList:", err);
+                    const odgPollContainer = document.getElementById('room-odg-poll-list');
+                    if (odgPollContainer && (!odgPollContainer.innerHTML || odgPollContainer.innerHTML.includes('Caricamento questioni OdG'))) {
+                        odgPollContainer.innerHTML = `
+                            <div style="padding: 1rem; text-align: center; color: var(--danger); background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                                <strong>Errore durante il caricamento dei punti OdG.</strong>
+                                <div style="font-size: 0.8rem; color: var(--secondary-text); margin-top: 0.3rem;">
+                                    ${escapeHtml(err?.message || 'Eccezione imprevista')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            };
 
-                _lastLiveRenderOdg = renderOdgPollList;
-                renderOdgPollList();
+            _lastLiveRenderOdg = renderOdgPollList;
+            renderOdgPollList();
             });
 
             const btnConclude = document.getElementById('btn-room-conclude');
@@ -27132,6 +27579,20 @@ ${renderBottomNavigation()}
 
             if (stepNumber === 2) {
                 const checkedCbs = Array.from(document.querySelectorAll('.proxy-delegator-checkbox:checked'));
+                const blockedCb = checkedCbs.find(cb => cb.getAttribute('data-blocked'));
+                if (blockedCb) {
+                    blockedCb.checked = false;
+                    const bType = blockedCb.getAttribute('data-blocked');
+                    const nominativo = blockedCb.getAttribute('data-delegator-name') || 'Il condòmino';
+                    const delegato = blockedCb.getAttribute('data-delegate-name') || 'un delegato';
+                    if (bType === 'present') {
+                        customAlert(`⚠️ Impossibile selezionare delegante: ${nominativo} è già registrato come presente di persona in aula.`);
+                    } else {
+                        customAlert(`⚠️ Impossibile selezionare delegante: ${nominativo} ha già conferito delega a ${delegato}.`);
+                    }
+                    window.onProxyDelegatorsChanged();
+                    return;
+                }
                 if (checkedCbs.length === 0) {
                     customAlert("Seleziona almeno un condòmino delegante prima di proseguire.");
                     return;
@@ -27215,6 +27676,19 @@ ${renderBottomNavigation()}
 
         window.onProxyDelegatorsChanged = (changedCb) => {
             if (changedCb && changedCb.checked) {
+                const blocked = changedCb.getAttribute('data-blocked');
+                if (blocked) {
+                    changedCb.checked = false;
+                    const nominativo = changedCb.getAttribute('data-delegator-name') || 'Il condòmino';
+                    const delegato = changedCb.getAttribute('data-delegate-name') || 'un delegato';
+                    if (blocked === 'present') {
+                        customAlert(`⚠️ Impossibile selezionare delegante: ${nominativo} è già registrato come presente di persona in aula.`);
+                    } else if (blocked === 'delegated') {
+                        customAlert(`⚠️ Impossibile selezionare delegante: ${nominativo} ha già conferito delega a ${delegato}.`);
+                    }
+                    return;
+                }
+
                 const searchDelegatorInput = document.getElementById('input-search-proxy-delegator');
                 if (searchDelegatorInput && searchDelegatorInput.value) {
                     searchDelegatorInput.value = '';
@@ -27626,8 +28100,74 @@ ${renderBottomNavigation()}
                     return false;
                 };
 
+                const currentAttendees = assemblyData.attendees || [];
+                const currentProxies = assemblyData.proxies || [];
+
                 const delegatorCardsHtml = allDelegators.map((d) => {
                     const dDisplayName = d.nominativo || `${d.cognome || ''} ${d.nome || ''}`.trim();
+                    const dCleanName = dDisplayName.toLowerCase().trim();
+
+                    // Controllo A: Ha già conferito delega attiva?
+                    let hasDelegated = false;
+                    let delegatedToName = '';
+
+                    const activeProxy = currentProxies.find(p => {
+                        if (p.status === 'rejected') return false;
+                        if (p.delegatorId && (p.delegatorId === d.id || (d.registeredUid && p.delegatorId === d.registeredUid))) return true;
+                        if (p.delegatorUid && (p.delegatorUid === d.id || (d.registeredUid && p.delegatorUid === d.registeredUid))) return true;
+                        const pDelName = (p.delegatorName || '').toLowerCase().trim();
+                        if (pDelName && dCleanName && (pDelName === dCleanName || pDelName.replace(/\s+/g, ' ') === dCleanName.replace(/\s+/g, ' '))) return true;
+                        return false;
+                    });
+
+                    const delegatedAttendee = currentAttendees.find(a => {
+                        if (!a || a.status === 'uscito') return false;
+                        if (a.status !== 'delegato' && !a.isDelegated) return false;
+                        if (a.uid && (a.uid === d.id || (d.registeredUid && a.uid === d.registeredUid))) return true;
+                        if (a.id && (a.id === d.id || (d.registeredUid && a.id === d.registeredUid))) return true;
+                        const aCleanName = (a.nome || '').replace(/\s*\(\+.*?\)/g, '').toLowerCase().trim();
+                        if (aCleanName && dCleanName && aCleanName === dCleanName) return true;
+                        return false;
+                    });
+
+                    if (activeProxy) {
+                        hasDelegated = true;
+                        delegatedToName = activeProxy.delegateName || delegatedAttendee?.delegatedToName || 'un delegato';
+                    } else if (delegatedAttendee) {
+                        hasDelegated = true;
+                        delegatedToName = delegatedAttendee.delegatedToName || 'un delegato';
+                    }
+
+                    // Controllo B: È già presente fisicamente in aula? (status !== 'uscito' e non delegato)
+                    let isPhysicallyPresent = false;
+                    if (!hasDelegated) {
+                        const presentAttendee = currentAttendees.find(a => {
+                            if (!a || a.status === 'uscito' || a.status === 'delegato' || a.isDelegated) return false;
+                            if (a.uid && (a.uid === d.id || (d.registeredUid && a.uid === d.registeredUid))) return true;
+                            if (a.id && (a.id === d.id || (d.registeredUid && a.id === d.registeredUid))) return true;
+                            const aCleanName = (a.nome || '').replace(/\s*\(\+.*?\)/g, '').toLowerCase().trim();
+                            if (aCleanName && dCleanName && aCleanName === dCleanName) return true;
+                            return false;
+                        });
+                        if (presentAttendee) {
+                            isPhysicallyPresent = true;
+                        }
+                    }
+
+                    let presenceOrProxyBadge = '';
+                    let isBlocked = false;
+                    let blockedReason = '';
+
+                    if (isPhysicallyPresent) {
+                        isBlocked = true;
+                        blockedReason = 'present';
+                        presenceOrProxyBadge = `<span class="badge" style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.35); padding:0.12rem 0.45rem; border-radius:4px; font-weight:800; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.userCheck ? THEME_ICONS.userCheck(12) : '✓'} Già presente in aula</span>`;
+                    } else if (hasDelegated) {
+                        isBlocked = true;
+                        blockedReason = 'delegated';
+                        presenceOrProxyBadge = `<span class="badge" style="font-size:0.68rem; color:#F59E0B; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.35); padding:0.12rem 0.45rem; border-radius:4px; font-weight:800; white-space:nowrap; display:inline-flex; align-items:center; gap:0.25rem;" title="Delega conferita a: ${escapeHtml(delegatedToName)}">${THEME_ICONS.scroll ? THEME_ICONS.scroll(12) : '📜'} Ha già delegato</span>`;
+                    }
+
                     const isConsigliere = checkIsUserConsigliere(d);
                     const dRole = isConsigliere ? 'consigliere' : (d.tipoUtente || 'condomino');
                     d.isConsigliere = isConsigliere;
@@ -27638,17 +28178,18 @@ ${renderBottomNavigation()}
                     const regBadge = d.isRegistered
                         ? `<span style="font-size:0.68rem; color:#10B981; background:rgba(16,185,129,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.smartphone(13)} App</span>`
                         : `<span style="font-size:0.68rem; color:var(--warning); background:rgba(243,156,18,0.15); padding:0.12rem 0.4rem; border-radius:4px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center;">${THEME_ICONS.clipboard(13)} Anagrafica</span>`;
-                    const searchText = ((dDisplayName || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + (d.unitaStr || '') + (isConsigliere ? ' consigliere' : '')).toLowerCase();
+                    const searchText = ((dDisplayName || '') + ' ' + (d.cognome || '') + ' ' + (d.nome || '') + ' ' + (d.email || '') + ' ' + (d.unitaStr || '') + (isConsigliere ? ' consigliere' : '') + (isPhysicallyPresent ? ' presente in aula' : '') + (hasDelegated ? ' ha delegato' : '')).toLowerCase();
 
                     return `
-                    <label class="proxy-delegator-card" style="cursor:pointer; background:var(--surface-color-light); margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:56px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid rgba(255,255,255,0.06); flex-shrink:0; box-sizing:border-box; transition: all 0.15s ease;" data-search-text="${escapeHtml(searchText)}">
+                    <label class="proxy-delegator-card" style="cursor:pointer; background:${isBlocked ? 'rgba(255,255,255,0.02)' : 'var(--surface-color-light)'}; margin:0 !important; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; min-height:56px; padding:0.6rem 0.75rem !important; border-radius:10px; border:1px solid ${isBlocked ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.06)'}; flex-shrink:0; box-sizing:border-box; transition: all 0.15s ease;" data-search-text="${escapeHtml(searchText)}">
                         <div style="display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0;">
-                            <input type="checkbox" name="proxy-delegator-checkbox" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" onchange="onProxyDelegatorsChanged(this)" class="proxy-delegator-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
+                            <input type="checkbox" name="proxy-delegator-checkbox" value="${d.id}" data-delegator-json="${escapeHtml(JSON.stringify(d))}" data-blocked="${blockedReason}" data-delegator-name="${escapeHtml(dDisplayName)}" data-delegate-name="${escapeHtml(delegatedToName)}" onchange="onProxyDelegatorsChanged(this)" class="proxy-delegator-checkbox" style="accent-color:var(--accent-color); width:18px; height:18px; flex-shrink:0; cursor:pointer;">
                             <div style="flex:1; min-width:0; overflow:hidden;">
                                 <div style="font-weight:700; font-size:0.88rem; color:var(--text-color); line-height:1.25; margin-bottom:0.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     ${escapeHtml(dDisplayName)}
                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.35rem; margin-bottom:0.15rem; flex-wrap:wrap;">
+                                    ${presenceOrProxyBadge}
                                     ${regBadge}
                                     ${consigliereBadge}
                                 </div>
@@ -27718,6 +28259,34 @@ ${renderBottomNavigation()}
                                         ${allDelegators.length} disponibili
                                     </span>
                                 </div>
+
+                                <!-- BANNER QUORUM DELIBERATIVO INTERO CONDOMINIO -->
+                                ${(() => {
+                                    try {
+                                        if (typeof window.getAssemblyConstitutiveQuorumInfo === 'function') {
+                                            const q = window.getAssemblyConstitutiveQuorumInfo(assemblyData, currentAttendees, currentProxies, registeredUsers || []);
+                                            const presPct = q.totalBuildingMillesimi > 0 ? ((q.presentMillesimi / q.totalBuildingMillesimi) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                                            const reqPct = q.totalBuildingMillesimi > 0 ? ((q.requiredMillesimi / q.totalBuildingMillesimi) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+                                            return `
+                                            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid ${q.isReached ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)'}; border-radius: 8px; padding: 0.45rem 0.65rem; font-size: 0.74rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;">
+                                                    <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
+                                                        <span style="color: var(--accent-color); display: inline-flex; align-items: center;">${THEME_ICONS.scale(13)}</span>
+                                                        <strong style="color: var(--primary-text); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.3px;">QUORUM DELIB. INTERO CONDOMINIO:</strong>
+                                                    </div>
+                                                    <span class="badge" style="font-size: 0.65rem; font-weight: 800; padding: 0.12rem 0.45rem; border-radius: 4px; background: ${q.isReached ? '#10B981' : 'var(--danger)'}; color: white; white-space: nowrap;">
+                                                        ${q.isReached ? 'RAGGIUNTO' : 'SOTTO QUORUM'}
+                                                    </span>
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; color: var(--secondary-text); font-size: 0.72rem; flex-wrap: wrap;">
+                                                    <span>Teste: <strong style="color: ${q.isHeadsReached ? '#10B981' : 'var(--danger)'};">${q.presentHeads} presenti</strong> su min. ${q.requiredHeads}</span>
+                                                    <span>Millesimi: <strong style="color: ${q.isMilReached ? '#10B981' : 'var(--danger)'};">${q.presentMillesimi.toFixed(2)} ‰ (${presPct}%)</strong> su min. ${q.requiredMillesimi.toFixed(2)} ‰ (${reqPct}%)</span>
+                                                </div>
+                                            </div>`;
+                                        }
+                                    } catch(e) { }
+                                    return '';
+                                })()}
 
                                 <div style="position: relative;">
                                     <input type="text" id="input-search-proxy-delegator" placeholder="Cerca delegante..." oninput="filterProxyDelegatorsList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; font-size: 0.85rem; padding: 0.45rem 0.65rem; border-radius: 8px;" autofocus autocomplete="off">
@@ -27977,19 +28546,6 @@ ${renderBottomNavigation()}
                 // VERIFICA SE UNO DEI DELEGANTI È GIÀ PRESENTE DI PERSONA O HA GIÀ CONFERITO DELEGA
                 for (const d of delegatorsData) {
                     const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
-                    const isDelegatorPresent = (assembly.attendees || []).some(a => {
-                        if (a.status === 'uscito') return false;
-                        if (a.uid === d.id) return true;
-                        if (d.registeredUid && a.uid === d.registeredUid) return true;
-                        if (a.nome && delegatorFullName && a.nome.toLowerCase().trim() === delegatorFullName.toLowerCase().trim()) return true;
-                        return false;
-                    });
-
-                    if (isDelegatorPresent) {
-                        await customAlert(`Impossibile registrare delega: il condomino delegante ${delegatorFullName} è già registrato come presente di persona in aula.`);
-                        return;
-                    }
-
                     const existingProxy = (assembly.proxies || []).find(p =>
                         p.status !== 'rejected' && (
                             p.delegatorId === d.id ||
@@ -27998,7 +28554,20 @@ ${renderBottomNavigation()}
                         )
                     );
                     if (existingProxy) {
-                        await customAlert(`Il condomino ${delegatorFullName} ha già conferito una delega a ${existingProxy.delegateName}.`);
+                        await customAlert(`⚠️ Impossibile selezionare delegante: ${delegatorFullName} ha già conferito delega a ${existingProxy.delegateName}.`);
+                        return;
+                    }
+
+                    const isDelegatorPresent = (assembly.attendees || []).some(a => {
+                        if (a.status === 'uscito' || a.status === 'delegato' || a.isDelegated) return false;
+                        if (a.uid === d.id) return true;
+                        if (d.registeredUid && a.uid === d.registeredUid) return true;
+                        if (a.nome && delegatorFullName && a.nome.toLowerCase().trim() === delegatorFullName.toLowerCase().trim()) return true;
+                        return false;
+                    });
+
+                    if (isDelegatorPresent) {
+                        await customAlert(`⚠️ Impossibile selezionare delegante: ${delegatorFullName} è già registrato come presente di persona in aula.`);
                         return;
                     }
                 }
@@ -30559,15 +31128,16 @@ ${renderBottomNavigation()}
                 const csvString = csvLines.join('\n');
                 const blob = new Blob(["\ufeff" + csvString], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
+                const filename = `Report_Assemblea_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.csv`;
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `Report_Assemblea_${(assembly.title || 'Assemblea').replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.csv`;
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                await customAlert("Report completo dell'assemblea esportato in CSV con successo!");
+                await customAlert("Esito assemblea esportato con successo!\n\n📄 File: " + filename + "\n📁 Posizione: Il file è stato salvato nella cartella 'Download' del tuo dispositivo / browser.");
             } catch (err) {
                 console.error("Errore esportazione report assemblea:", err);
                 await customAlert("Errore durante l'esportazione del report dell'assemblea.");
@@ -31431,8 +32001,9 @@ ${renderBottomNavigation()}
 
             if (qType === '2_3_valore_e_maggioranza') {
                 requiredHeads = Math.floor(totalBuildingUsers / 2) + 1; // maggioranza dei partecipanti (>50%)
-                requiredMillesimi = totalBuildingMillesimi * (2 / 3); // 666.67 ‰
-                description = "2/3 del valore dell'edificio (667‰) e maggioranza dei partecipanti";
+                const baseMillesimi = totalBuildingMillesimi;
+                requiredMillesimi = (baseMillesimi === 1000.00 || Math.abs(baseMillesimi - 1000) < 0.1) ? 666.67 : Math.ceil((baseMillesimi * (2 / 3)) * 100) / 100;
+                description = "2/3 del valore dell'edificio (666,67‰) e maggioranza dei partecipanti";
             } else if (qType === 'unanimita') {
                 requiredHeads = totalBuildingUsers; // totalità dei condòmini (19)
                 requiredMillesimi = totalBuildingMillesimi; // 1000.00 ‰
@@ -31449,7 +32020,7 @@ ${renderBottomNavigation()}
             }
 
             const isHeadsReached = presentHeads >= requiredHeads;
-            const isMilReached = presentMillesimi >= (requiredMillesimi - 0.01);
+            const isMilReached = parseFloat((presentMillesimi || 0).toFixed(2)) >= parseFloat((requiredMillesimi || 0).toFixed(2));
             const isReached = isHeadsReached && isMilReached;
 
             return {
@@ -31484,10 +32055,10 @@ ${renderBottomNavigation()}
                 description = "Maggioranza degli intervenuti e 1/3 del valore dell'edificio (333‰)";
                 shortLabel = "Maggioranza + 333‰";
             } else if (dType === 'maggioranza_667') {
-                requiredMil = baseMillesimi * (2 / 3);
+                requiredMil = (baseMillesimi === 1000.00 || Math.abs(baseMillesimi - 1000) < 0.1) ? 666.67 : Math.ceil((baseMillesimi * (2 / 3)) * 100) / 100;
                 requiredHeads = maggioranzaIntervenutiHeads;
-                description = "Maggioranza degli intervenuti e 2/3 del valore dell'edificio (667‰)";
-                shortLabel = "Maggioranza + 667‰";
+                description = "Maggioranza degli intervenuti e 2/3 del valore dell'edificio (666,67‰)";
+                shortLabel = "Maggioranza + 666,67‰";
             } else if (dType === 'unanimita') {
                 requiredMil = baseMillesimi;
                 requiredHeads = Math.max(totalBuildingUsers, totalPresences);
@@ -31516,7 +32087,7 @@ ${renderBottomNavigation()}
 
         window.isDeliberativeQuorumPassed = (item = {}, favHeads = 0, favMil = 0, totalPresences = 1, baseMillesimi = 1000.00, totalBuildingUsers = 1) => {
             const req = window.calculateDeliberativeQuorumRequirements(item, baseMillesimi, totalPresences, totalBuildingUsers);
-            const milPassed = (favMil + 0.01) >= req.requiredMil;
+            const milPassed = parseFloat((favMil || 0).toFixed(2)) >= parseFloat((req.requiredMil || 0).toFixed(2));
             const headsPassed = favHeads >= req.requiredHeads;
             return milPassed && headsPassed;
         };
@@ -35957,6 +36528,10 @@ ${renderBottomNavigation()}
         };
 
         window._manualVoteActiveTab = window._manualVoteActiveTab || 'vote'; // 'vote' | 'summary'
+        window._savedManualVoteScrollTop = window._savedManualVoteScrollTop || 0;
+        window._savedManualVoteSearchQuery = window._savedManualVoteSearchQuery || '';
+        window._savedManualVoteFilter = window._savedManualVoteFilter || 'all'; // 'all' | 'pending' | 'voted'
+        window._lastVotedVoterId = window._lastVotedVoterId || null;
 
         window.switchManualVoteTab = (tab, assemblyId, itemId) => {
             window._manualVoteActiveTab = tab;
@@ -36048,6 +36623,35 @@ ${renderBottomNavigation()}
 
                 const votes = item.votes || [];
 
+                // Helper badge grafico per la scelta effettuata (CR-03)
+                const renderVoteChoiceBadge = (choice) => {
+                    if (!choice) return '';
+                    const chLower = choice.toLowerCase().trim();
+                    let bg = 'rgba(59, 130, 246, 0.15)';
+                    let color = '#3B82F6';
+                    let border = 'rgba(59, 130, 246, 0.35)';
+                    let iconSvg = '';
+
+                    if (chLower === 'favorevole') {
+                        bg = 'rgba(16, 185, 129, 0.15)';
+                        color = '#10B981';
+                        border = 'rgba(16, 185, 129, 0.35)';
+                        iconSvg = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    } else if (chLower === 'contrario') {
+                        bg = 'rgba(239, 68, 68, 0.15)';
+                        color = '#EF4444';
+                        border = 'rgba(239, 68, 68, 0.35)';
+                        iconSvg = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                    } else if (chLower === 'astenuto') {
+                        bg = 'rgba(245, 158, 11, 0.15)';
+                        color = '#F59E0B';
+                        border = 'rgba(245, 158, 11, 0.35)';
+                        iconSvg = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
+                    }
+
+                    return `<span class="badge manual-vote-choice-badge" style="background:${bg}; color:${color}; border:1px solid ${border}; font-size:0.68rem; font-weight:800; padding:0.06rem 0.38rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem; white-space:nowrap;">${iconSvg}<span>${escapeHtml(choice)}</span></span>`;
+                };
+
                 const renderAdminManualVoteDropdown = (voterId, currentChoice, arg3 = 'self', arg4 = null, arg5 = null, arg6 = null, arg7 = null, arg8 = '', arg9 = 0) => {
                     let vType = 'self';
                     let delId = null;
@@ -36094,7 +36698,7 @@ ${renderBottomNavigation()}
                 let conMil = 0, conHeads = 0;
                 let astMil = 0, astHeads = 0;
 
-                const pendingVotersRows = [];
+                const registrationVotersRows = [];
                 const alreadyVotedRows = [];
 
                 const voteOptions = (item.voteOptions && item.voteOptions.length > 0) ? item.voteOptions : ["Favorevole", "Contrario", "Astenuto"];
@@ -36140,35 +36744,39 @@ ${renderBottomNavigation()}
                     // CASO A: Condòmino singolo senza deleghe
                     if (attendeeProxies.length === 0) {
                         const searchName = ((cleanName || '') + ' ' + (cleanUnitaStr || '') + ' ' + (a.email || '') + ' manuale').toLowerCase();
+                        const hasVoted = !!existingVoteSelf;
+                        const currentChoice = hasVoted ? existingVoteSelf.choice : null;
+                        const cardVoteStatus = hasVoted ? 'voted' : 'pending';
 
-                        if (!existingVoteSelf) {
-                            pendingVotersRows.push(`
-                                <div class="manual-voter-item card" data-search-name="${escapeHtml(searchName)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #10B981; border-radius:8px; padding:0.5rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.25rem; width:100%; box-sizing:border-box; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:left;">
-                                    <!-- Riga 1: Nome su riga intera -->
-                                    <div style="font-weight:700; font-size:0.88rem; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
-                                        ${formatLongName(cleanName)}
+                        registrationVotersRows.push(`
+                            <div class="manual-voter-item card" data-search-name="${escapeHtml(searchName)}" data-vote-status="${cardVoteStatus}" data-voter-id="${escapeHtml(a.uid)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid ${hasVoted ? '#3B82F6' : '#10B981'}; border-radius:8px; padding:0.5rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.25rem; width:100%; box-sizing:border-box; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:left;">
+                                <!-- Riga 1: Nome su riga intera -->
+                                <div style="font-weight:700; font-size:0.88rem; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                    ${formatLongName(cleanName)}
+                                </div>
+
+                                <!-- Riga 2: Unità pulita -->
+                                ${cleanUnitaStr ? `
+                                    <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
+                                        ${escapeHtml(cleanUnitaStr)}
                                     </div>
+                                ` : ''}
 
-                                    <!-- Riga 2: Unità pulita -->
-                                    ${cleanUnitaStr ? `
-                                        <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
-                                            ${escapeHtml(cleanUnitaStr)}
-                                        </div>
-                                    ` : ''}
-
-                                    <!-- Riga 3: Metodo + Millesimi a sinistra, Icona voto a destra -->
-                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
-                                        <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                            <span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
-                                            <strong style="color:var(--warning); font-size:0.84rem; font-weight:800; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
-                                        </div>
-                                        <div style="flex-shrink:0;">
-                                            ${renderAdminManualVoteDropdown(a.uid, null, 'self', null, null, cleanName, selfMil)}
-                                        </div>
+                                <!-- Riga 3: Metodo + Millesimi + Badge Scelta a sinistra, Icona voto a destra -->
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                        <span class="badge" style="background:${hasVoted ? 'rgba(255,255,255,0.06)' : '#10B981'}; color:${hasVoted ? 'var(--secondary-text)' : 'white'}; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
+                                        <strong style="color:${hasVoted ? 'var(--secondary-text)' : 'var(--warning)'}; font-size:0.84rem; font-weight:800; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
+                                        ${hasVoted ? renderVoteChoiceBadge(currentChoice) : ''}
+                                    </div>
+                                    <div style="flex-shrink:0;">
+                                        ${renderAdminManualVoteDropdown(a.uid, currentChoice, 'self', null, null, cleanName, selfMil)}
                                     </div>
                                 </div>
-                            `);
-                        } else {
+                            </div>
+                        `);
+
+                        if (hasVoted) {
                             alreadyVotedRows.push(`
                                 <div class="manual-voter-item card" data-search-name="${escapeHtml(searchName)}" style="background:var(--surface-color); border:1px solid var(--surface-color-light); border-left:3.5px solid #10B981; border-radius:8px; padding:0.5rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.25rem; width:100%; box-sizing:border-box; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:left;">
                                     <!-- Riga 1: Nome su riga intera -->
@@ -36183,16 +36791,15 @@ ${renderBottomNavigation()}
                                         </div>
                                     ` : ''}
 
-                                    <!-- Riga 3: Metodo + Già votato + Millesimi + Scelta a sinistra, Icona modifica a destra -->
+                                    <!-- Riga 3: Metodo + Millesimi + Scelta a sinistra, Icona modifica a destra -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                             <span class="badge" style="background:rgba(255,255,255,0.06); color:var(--secondary-text); font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
-                                            <span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
                                             <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
-                                            <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
+                                            ${renderVoteChoiceBadge(currentChoice)}
                                         </div>
                                         <div style="flex-shrink:0;">
-                                            ${renderAdminManualVoteDropdown(a.uid, existingVoteSelf.choice, 'self', null, null, cleanName, selfMil)}
+                                            ${renderAdminManualVoteDropdown(a.uid, currentChoice, 'self', null, null, cleanName, selfMil)}
                                         </div>
                                     </div>
                                 </div>
@@ -36230,146 +36837,143 @@ ${renderBottomNavigation()}
                     const totalGroupMil = selfMil + proxiesTotalMil;
                     const searchNameWithProxies = ((cleanName || '') + ' ' + (cleanUnitaStr || '') + ' ' + (a.email || '') + ' ' + delegatorsSearchTerms.join(' ') + ' delegato delega').toLowerCase();
 
-                    // 1. Scheda nel Tab "1. Da Votare" se c'è almeno una voce non ancora votata (Votazione 1 a 1 senza Quota gruppo nè checkbox)
                     const hasUnvotedSelf = !isExt && !existingVoteSelf && (selfMil > 0 || !isGroupScope);
                     const hasUnvotedProxies = attendeeProxies.some(p => {
                         const pDelId = p.delegatorId || p.delegatorUid || p.id;
                         return !votes.some(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
                     });
+                    const hasAnyUnvoted = hasUnvotedSelf || hasUnvotedProxies;
 
-                    if (hasUnvotedSelf || hasUnvotedProxies) {
-                        const isSelfFuori = isGroupScope && selfMil <= 0;
-                        const isSelfVoted = !!existingVoteSelf;
-
-                        pendingVotersRows.push(`
-                            <div class="manual-voter-item manual-delegate-group card" data-search-name="${escapeHtml(searchNameWithProxies)}" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; box-sizing:border-box; width:100%;">
-                                
-                                <!-- 1. Quota personale del delegato (3 righe: Nome / Unità / Quota+Millesimi+Icona) -->
-                                ${(() => {
-                                if (isExt) {
-                                    return `
-                                        <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
-                                            <!-- Riga 1: Nome soggetto terzo -->
-                                            <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
-                                                ${formatLongName(cleanName)}
-                                            </div>
-
-                                            <!-- Riga 2: Badge Soggetto Terzo -->
-                                            <div style="font-size:0.74rem; color:#8b5cf6; font-weight:700; line-height:1.25; word-break:break-word; width:100%;">
-                                                ${THEME_ICONS.user(11)} Soggetto Terzo / Esterno (Art. 67 disp. att. c.c.)
-                                            </div>
-
-                                            <!-- Riga 3: Quota personale 0.00 ‰ Nessun voto -->
-                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
-                                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                                    <span class="badge" style="background:rgba(139,92,246,0.15); color:#8b5cf6; border:1px solid rgba(139,92,246,0.3); font-weight:800; font-size:0.62rem; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.user(9)} Delegato Terzo</span>
-                                                    <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                                    <strong style="font-size:0.84rem; font-weight:700; color:var(--secondary-text); white-space:nowrap;">0.00 ‰</strong>
-                                                </div>
-                                                <div style="flex-shrink:0;">
-                                                    <span class="badge" style="background:rgba(139,92,246,0.08); color:#8b5cf6; border:1px solid rgba(139,92,246,0.25); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:5px;">Nessun voto</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }
-                                return `
-                                        <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
-                                            <!-- Riga 1: Nome condòmino delegato -->
-                                            <div style="font-size:0.9rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
-                                                ${formatLongName(cleanName)}
-                                            </div>
-
-                                            <!-- Riga 2: Unità immobiliare -->
-                                            ${cleanUnitaStr ? `
-                                                <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
-                                                    ${escapeHtml(cleanUnitaStr)}
-                                                </div>
-                                            ` : ''}
-
-                                            <!-- Riga 3: Quota personale con millesimi a sinistra, icona voto a destra -->
-                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
-                                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                                    <span class="badge" style="background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : '#10B981'}; color:${isSelfVoted ? 'var(--secondary-text)' : 'white'}; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
-                                                    <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
-                                                    ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
-                                                    ${isSelfFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700; flex-shrink:0;">Fuori scala</span>` : ''}
-                                                    <strong style="font-size:0.84rem; font-weight:700; color:${isSelfVoted || isSelfFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
-                                                        ${isSelfFuori ? '0.00' : selfMil.toFixed(2)} ‰
-                                                    </strong>
-                                                    ${isSelfVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>` : ''}
-                                                </div>
-                                                <div style="flex-shrink:0;">
-                                                    ${isSelfFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : renderAdminManualVoteDropdown(a.uid, isSelfVoted ? existingVoteSelf.choice : null, 'self', null, null, cleanName, selfMil)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
-                            })()}
-
-                                <!-- 2. Deleghe a suo nome (Votazione 1 a 1: 3 righe per ciascun delegante con icona matita) -->
-                                <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
-                                    <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
-                                        ${THEME_ICONS.scroll(11)} Deleghe a suo nome (${attendeeProxies.length}):
-                                    </div>
-                                    ${attendeeProxies.map(p => {
-                                const pDelId = p.delegatorId || p.delegatorUid || p.id;
-                                const pDelName = window.getDelegatorOfficialName ? window.getDelegatorOfficialName(p) : (p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante');
-                                const pMil = isGroupScope ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
-                                const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
-                                const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
-                                const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
-                                const hasVoted = !!existingVoteProxy;
-
-                                return `
-                                            <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
-                                                <!-- Riga 1: Nome Delegante -->
-                                                <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
-                                                    <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${formatLongName(pDelName)}
-                                                </div>
-
-                                                <!-- Riga 2: Unità pulita -->
-                                                ${cleanPUnit ? `
-                                                    <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
-                                                        ${escapeHtml(cleanPUnit)}
-                                                    </div>
-                                                ` : ''}
-
-                                                <!-- Riga 3: Delega con millesimi a sinistra, icona voto a destra -->
-                                                <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
-                                                    <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
-                                                        <span class="badge" style="font-size:0.58rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
-                                                        ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
-                                                        <strong style="color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
-                                                            ${pMil.toFixed(2)} ‰
-                                                        </strong>
-                                                        ${hasVoted ? `<span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>` : ''}
-                                                    </div>
-                                                    <div style="flex-shrink:0;">
-                                                        ${renderAdminManualVoteDropdown(pDelId, hasVoted ? existingVoteProxy.choice : null, 'proxy', a.uid, p.id || '', pDelName, pMil)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `;
-                            }).join('')}
-                                    <!-- Riga con Totale Con Deleghe (rosso) -->
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
-                                        <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
-                                        <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.88rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        `);
-                    }
-
-                    // 2. Scheda nel Tab "2. Riepilogo" se c'è almeno una voce già votata
                     const hasVotedSelf = !isExt && !!existingVoteSelf && (selfMil > 0 || !isGroupScope);
                     const hasVotedProxies = attendeeProxies.some(p => {
                         const pDelId = p.delegatorId || p.delegatorUid || p.id;
                         return votes.some(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
                     });
+                    const hasAnyVoted = hasVotedSelf || hasVotedProxies;
 
-                    if (hasVotedSelf || hasVotedProxies) {
+                    const cardVoteStatus = (!hasAnyUnvoted && hasAnyVoted) ? 'voted' : ((hasAnyUnvoted && hasAnyVoted) ? 'partial' : 'pending');
+                    const isSelfFuori = isGroupScope && selfMil <= 0;
+                    const isSelfVoted = !!existingVoteSelf;
+
+                    registrationVotersRows.push(`
+                        <div class="manual-voter-item manual-delegate-group card" data-search-name="${escapeHtml(searchNameWithProxies)}" data-vote-status="${cardVoteStatus}" data-voter-id="${escapeHtml(a.uid)}" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.35); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; box-sizing:border-box; width:100%;">
+                            
+                            <!-- 1. Quota personale del delegato -->
+                            ${(() => {
+                            if (isExt) {
+                                return `
+                                    <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
+                                        <!-- Riga 1: Nome soggetto terzo -->
+                                        <div style="font-size:0.9rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
+                                            ${formatLongName(cleanName)}
+                                        </div>
+
+                                        <!-- Riga 2: Badge Soggetto Terzo -->
+                                        <div style="font-size:0.74rem; color:#8b5cf6; font-weight:700; line-height:1.25; word-break:break-word; width:100%;">
+                                            ${THEME_ICONS.user(11)} Soggetto Terzo / Esterno (Art. 67 disp. att. c.c.)
+                                        </div>
+
+                                        <!-- Riga 3: Quota personale 0.00 ‰ Nessun voto -->
+                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                                <span class="badge" style="background:rgba(139,92,246,0.15); color:#8b5cf6; border:1px solid rgba(139,92,246,0.3); font-weight:800; font-size:0.62rem; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.user(9)} Delegato Terzo</span>
+                                                <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
+                                                <strong style="font-size:0.84rem; font-weight:700; color:var(--secondary-text); white-space:nowrap;">0.00 ‰</strong>
+                                            </div>
+                                            <div style="flex-shrink:0;">
+                                                <span class="badge" style="background:rgba(139,92,246,0.08); color:#8b5cf6; border:1px solid rgba(139,92,246,0.25); font-size:0.7rem; font-weight:700; padding:0.18rem 0.45rem; border-radius:5px;">Nessun voto</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            return `
+                                    <div style="display:flex; flex-direction:column; gap:0.22rem; padding-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.08); width:100%; box-sizing:border-box;">
+                                        <!-- Riga 1: Nome condòmino delegato -->
+                                        <div style="font-size:0.9rem; font-weight:700; color:${isSelfVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                            ${formatLongName(cleanName)}
+                                        </div>
+
+                                        <!-- Riga 2: Unità immobiliare -->
+                                        ${cleanUnitaStr ? `
+                                            <div style="font-size:0.75rem; color:var(--secondary-text); font-weight:500; line-height:1.25; word-break:break-word; width:100%;">
+                                                ${escapeHtml(cleanUnitaStr)}
+                                            </div>
+                                        ` : ''}
+
+                                        <!-- Riga 3: Quota personale con millesimi a sinistra, badge scelta + icona voto a destra -->
+                                        <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                                <span class="badge" style="background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : '#10B981'}; color:${isSelfVoted ? 'var(--secondary-text)' : 'white'}; font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
+                                                <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
+                                                ${isSelfFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700; flex-shrink:0;">Fuori scala</span>` : ''}
+                                                <strong style="font-size:0.84rem; font-weight:700; color:${isSelfVoted || isSelfFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
+                                                    ${isSelfFuori ? '0.00' : selfMil.toFixed(2)} ‰
+                                                </strong>
+                                                ${isSelfVoted ? renderVoteChoiceBadge(existingVoteSelf.choice) : ''}
+                                            </div>
+                                            <div style="flex-shrink:0;">
+                                                ${isSelfFuori ? `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--secondary-text); font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px;">0.00 ‰</span>` : renderAdminManualVoteDropdown(a.uid, isSelfVoted ? existingVoteSelf.choice : null, 'self', null, null, cleanName, selfMil)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                        })()}
+
+                            <!-- 2. Deleghe a suo nome (Votazione 1 a 1: ciascun delegante con eventuale badge scelta + icona matita) -->
+                            <div style="display:flex; flex-direction:column; gap:0.35rem; width:100%; box-sizing:border-box;">
+                                <div style="font-size:0.72rem; font-weight:700; color:var(--accent-color); display:flex; align-items:center; gap:0.25rem; margin-top:0.05rem;">
+                                    ${THEME_ICONS.scroll(11)} Deleghe a suo nome (${attendeeProxies.length}):
+                                </div>
+                                ${attendeeProxies.map(p => {
+                            const pDelId = p.delegatorId || p.delegatorUid || p.id;
+                            const pDelName = window.getDelegatorOfficialName ? window.getDelegatorOfficialName(p) : (p.delegatorName || (p.delegatorProfile ? `${p.delegatorProfile.nome || ''} ${p.delegatorProfile.cognome || ''}`.trim() : '') || 'Delegante');
+                            const pMil = isGroupScope ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : (parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0);
+                            const rawPUnit = window.getVoterUnitString ? window.getVoterUnitString(p, allUsers, targetGroup) : (p.delegatorUnita || p.delegatorUnit || p.unitaImmobiliare || p.unit || (p.delegatorProfile?.unitaImmobiliare) || '');
+                            const cleanPUnit = window.cleanUnitDisplayString ? window.cleanUnitDisplayString(rawPUnit) : rawPUnit;
+                            const existingVoteProxy = votes.find(v => v.voterId === pDelId || (v.delegateId === a.uid && (v.proxyId === p.id || v.voterId === pDelId)));
+                            const hasVoted = !!existingVoteProxy;
+
+                            return `
+                                        <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid ${hasVoted ? 'rgba(156, 163, 175, 0.45)' : 'rgba(59, 130, 246, 0.6)'}; background:${hasVoted ? 'rgba(255, 255, 255, 0.02)' : 'rgba(59, 130, 246, 0.03)'}; border-radius:0 7px 7px 0; border-top:1px solid ${hasVoted ? 'rgba(255, 255, 255, 0.08)' : 'rgba(59, 130, 246, 0.12)'}; width:100%; box-sizing:border-box;">
+                                            <!-- Riga 1: Nome Delegante -->
+                                            <div style="font-size:0.88rem; font-weight:700; color:${hasVoted ? 'var(--secondary-text)' : 'var(--primary-text)'}; line-height:1.25; word-break:break-word; width:100%;">
+                                                <span style="color:${hasVoted ? '#9CA3AF' : 'var(--accent-color)'}; font-weight:800;">↳</span> ${formatLongName(pDelName)}
+                                            </div>
+
+                                            <!-- Riga 2: Unità pulita -->
+                                            ${cleanPUnit ? `
+                                                <div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">
+                                                    ${escapeHtml(cleanPUnit)}
+                                                </div>
+                                            ` : ''}
+
+                                            <!-- Riga 3: Delega con millesimi a sinistra, badge scelta + icona voto a destra -->
+                                            <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
+                                                <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
+                                                    <span class="badge" style="font-size:0.58rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
+                                                    <strong style="color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
+                                                        ${pMil.toFixed(2)} ‰
+                                                    </strong>
+                                                    ${hasVoted ? renderVoteChoiceBadge(existingVoteProxy.choice) : ''}
+                                                </div>
+                                                <div style="flex-shrink:0;">
+                                                    ${renderAdminManualVoteDropdown(pDelId, hasVoted ? existingVoteProxy.choice : null, 'proxy', a.uid, p.id || '', pDelName, pMil)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                        }).join('')}
+                                <!-- Riga con Totale Con Deleghe (rosso) -->
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.25rem; padding-top:0.35rem; padding-right:0.25rem; border-top:1.5px dashed rgba(239,68,68,0.4); font-size:0.78rem;">
+                                    <span style="color:var(--danger, #EF4444); font-weight:800; letter-spacing:0.2px;">Tot. con deleghe:</span>
+                                    <strong style="color:var(--danger, #EF4444); font-weight:900; font-size:0.88rem; white-space:nowrap;">${totalGroupMil.toFixed(2)} ‰</strong>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+
+                    if (hasAnyVoted) {
                         alreadyVotedRows.push(`
                             <div class="manual-voter-item manual-delegate-group card" data-search-name="${escapeHtml(searchNameWithProxies)}" style="background:var(--surface-color); border:1px solid rgba(59, 130, 246, 0.3); border-left:3.5px solid #3B82F6; border-radius:10px; padding:0.55rem 0.65rem; margin:0 !important; display:flex; flex-direction:column; gap:0.4rem; text-align:left; width:100%; box-sizing:border-box;">
                                 
@@ -36417,14 +37021,13 @@ ${renderBottomNavigation()}
                                                     </div>
                                                 ` : ''}
 
-                                                <!-- Riga 3: Metodo + Quota + Già votato + Millesimi + Scelta a sinistra, Icona modifica a destra -->
+                                                <!-- Riga 3: Metodo + Quota + Millesimi + Scelta a sinistra, Icona modifica a destra -->
                                                 <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                         <span class="badge" style="background:rgba(255,255,255,0.06); color:var(--secondary-text); font-size:0.62rem; font-weight:800; padding:0.04rem 0.28rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>
                                                         <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                                        <span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
                                                         <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
-                                                        <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
+                                                        ${renderVoteChoiceBadge(existingVoteSelf.choice)}
                                                     </div>
                                                     <div style="flex-shrink:0;">
                                                         ${renderAdminManualVoteDropdown(a.uid, existingVoteSelf.choice, 'self', null, null, cleanName, selfMil)}
@@ -36461,13 +37064,12 @@ ${renderBottomNavigation()}
                                                     </div>
                                                 ` : ''}
 
-                                                <!-- Riga 3: Delega + Già votato + Millesimi + Scelta a sinistra, Icona modifica a destra -->
+                                                <!-- Riga 3: Delega + Millesimi + Scelta a sinistra, Icona modifica a destra -->
                                                 <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                         <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
-                                                        <span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
                                                         <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${pMil.toFixed(2)} ‰</strong>
-                                                        <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteProxy.choice)}</span>
+                                                        ${renderVoteChoiceBadge(existingVoteProxy.choice)}
                                                     </div>
                                                     <div style="flex-shrink:0;">
                                                         ${renderAdminManualVoteDropdown(pDelId, existingVoteProxy.choice, 'proxy', a.uid, p.id || '', pDelName, pMil)}
@@ -36488,40 +37090,50 @@ ${renderBottomNavigation()}
                 });
 
                 const activeTab = window._manualVoteActiveTab || 'vote';
+                const savedSearchQuery = window._savedManualVoteSearchQuery || '';
+                const currentFilter = window._savedManualVoteFilter || 'all';
 
-                let pageVoteContent = '';
-                if (unvotedHeadsCount === 0) {
-                    pageVoteContent = `
-                        <div style="padding:1.5rem 1rem; text-align:center; background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.25); border-radius:10px; margin:0.5rem 0;">
-                            <div style="width:44px; height:44px; border-radius:50%; background:rgba(16, 185, 129, 0.15); color:#10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 0.5rem auto;">
-                                ${THEME_ICONS.check(22, 2.5)}
+                let pageVoteContent = `
+                    <!-- BARRA DI RICERCA RAPIDA DA VOTARE -->
+                    <div style="position: relative; flex-shrink: 0;">
+                        <div style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
+                        <input type="text" id="input-search-manual-voters" placeholder="Cerca condòmino o delega..." oninput="window.filterManualVotersList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.38rem 2rem 0.38rem 2.1rem; font-size: 0.84rem; border-radius: 7px;" autocomplete="off" value="${escapeHtml(savedSearchQuery)}">
+                        <button type="button" id="btn-clear-search-manual-voters" onclick="document.getElementById('input-search-manual-voters').value = ''; window.filterManualVotersList(''); this.style.display = 'none';" style="${savedSearchQuery ? 'display: block;' : 'display: none;'} position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
+                    </div>
+
+                    <!-- BARRA FILTRI RAPIDI: TUTTI / DA VOTARE / VOTATI (CR-03) -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; flex-shrink: 0;">
+                        <button type="button" onclick="window.setManualVoteFilter('all')" id="manual-filter-btn-all" class="btn" style="height: 29px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; border: 1px solid ${currentFilter === 'all' ? 'var(--accent-color)' : 'rgba(255,255,255,0.12)'}; background: ${currentFilter === 'all' ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)'}; color: ${currentFilter === 'all' ? 'var(--accent-color)' : 'var(--secondary-text)'}; cursor: pointer; padding: 0 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.25rem; transition: all 0.15s ease;">
+                            <span>Tutti (${totalEligibleHeads})</span>
+                        </button>
+                        <button type="button" onclick="window.setManualVoteFilter('pending')" id="manual-filter-btn-pending" class="btn" style="height: 29px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; border: 1px solid ${currentFilter === 'pending' ? '#F59E0B' : 'rgba(255,255,255,0.12)'}; background: ${currentFilter === 'pending' ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.04)'}; color: ${currentFilter === 'pending' ? '#F59E0B' : 'var(--secondary-text)'}; cursor: pointer; padding: 0 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.25rem; transition: all 0.15s ease;">
+                            <span>Da votare (${unvotedHeadsCount})</span>
+                        </button>
+                        <button type="button" onclick="window.setManualVoteFilter('voted')" id="manual-filter-btn-voted" class="btn" style="height: 29px; font-size: 0.74rem; font-weight: 700; border-radius: 6px; border: 1px solid ${currentFilter === 'voted' ? '#10B981' : 'rgba(255,255,255,0.12)'}; background: ${currentFilter === 'voted' ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.04)'}; color: ${currentFilter === 'voted' ? '#10B981' : 'var(--secondary-text)'}; cursor: pointer; padding: 0 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.25rem; transition: all 0.15s ease;">
+                            <span>Votati (${votedHeadsCount})</span>
+                        </button>
+                    </div>
+
+                    ${unvotedHeadsCount === 0 ? `
+                        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 7px; padding: 0.3rem 0.6rem; display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; flex-shrink: 0;">
+                            <div style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; color: #10B981;">
+                                ${THEME_ICONS.check(13, 2.5)} Tutti i voti manuali registrati (${votedHeadsCount} teste)
                             </div>
-                            <strong style="font-size:0.95rem; color:#10B981; display:block; margin-bottom:0.25rem;">Tutti i voti manuali registrati</strong>
-                            <p style="font-size:0.8rem; color:var(--secondary-text); margin:0 0 0.75rem 0;">Voti completati per questo punto.</p>
-                            <button type="button" onclick="window.switchManualVoteTab('summary', '${assemblyId}', '${itemId}')" class="btn btn-primary" style="height:36px; padding:0 1.1rem; font-weight:700; font-size:0.84rem; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;">
-                                <span>Visualizza Riepilogo Voti</span>
+                            <button type="button" onclick="window.switchManualVoteTab('summary', '${assemblyId}', '${itemId}')" class="btn btn-primary" style="height: 26px; padding: 0 0.6rem; font-size: 0.72rem; font-weight: 700; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center;">
+                                <span>Vedi Riepilogo</span>
                             </button>
                         </div>
-                    `;
-                } else {
-                    pageVoteContent = `
-                        <!-- BARRA DI RICERCA RAPIDA DA VOTARE -->
-                        <div style="position: relative; flex-shrink: 0;">
-                            <div style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--secondary-text); pointer-events: none; display: flex; align-items: center;">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            </div>
-                            <input type="text" id="input-search-manual-voters" placeholder="Cerca condòmino o delega..." oninput="window.filterManualVotersList(this.value)" class="form-input" style="width: 100%; box-sizing: border-box; padding: 0.38rem 2rem 0.38rem 2.1rem; font-size: 0.84rem; border-radius: 7px;" autofocus autocomplete="off">
-                            <button type="button" id="btn-clear-search-manual-voters" onclick="document.getElementById('input-search-manual-voters').value = ''; window.filterManualVotersList(''); this.style.display = 'none';" style="display: none; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--secondary-text); cursor: pointer; padding: 0.2rem; font-size: 0.9rem; line-height: 1;" title="Cancella ricerca">✕</button>
-                        </div>
+                    ` : ''}
 
-                        <div id="manual-voters-no-match-msg" class="message-box error hidden" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; margin: 0; flex-shrink: 0;">${THEME_ICONS.alertWarning(15)} Nessun condòmino da votare trovato.</div>
+                    <div id="manual-voters-no-match-msg" class="message-box error hidden" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; margin: 0; flex-shrink: 0;">${THEME_ICONS.alertWarning(15)} Nessun condòmino corrispondente ai filtri.</div>
 
-                        <!-- LISTA CONDOMINI DA VOTARE SCROLLABILE -->
-                        <div id="manual-voters-list-container" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
-                            ${pendingVotersRows.join('')}
-                        </div>
-                    `;
-                }
+                    <!-- LISTA CONDOMINI SCROLLABILE CON SALVATAGGIO SCROLL (CR-03) -->
+                    <div id="manual-voters-list-container" onscroll="window._savedManualVoteScrollTop = this.scrollTop;" style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.15rem; display: flex; flex-direction: column; gap: 0.35rem; -webkit-overflow-scrolling: touch;">
+                        ${registrationVotersRows.join('')}
+                    </div>
+                `;
 
                 let pageSummaryContent = '';
                 if (votedHeadsCount === 0) {
@@ -36599,6 +37211,25 @@ ${renderBottomNavigation()}
                     </div>
                 `;
                 showModal('Registrazione voti manuali', modalContent, true);
+
+                if (activeTab === 'vote') {
+                    // Ripristina filtri e ricerca testuale
+                    if (typeof window.applyManualVotersFilters === 'function') {
+                        window.applyManualVotersFilters();
+                    }
+
+                    // Ripristina posizione esatta di scorrimento del container
+                    const listEl = document.getElementById('manual-voters-list-container');
+                    if (listEl && typeof window._savedManualVoteScrollTop === 'number' && window._savedManualVoteScrollTop > 0) {
+                        listEl.scrollTop = window._savedManualVoteScrollTop;
+                        requestAnimationFrame(() => {
+                            const lEl = document.getElementById('manual-voters-list-container');
+                            if (lEl && typeof window._savedManualVoteScrollTop === 'number' && window._savedManualVoteScrollTop > 0) {
+                                lEl.scrollTop = window._savedManualVoteScrollTop;
+                            }
+                        });
+                    }
+                }
             } catch (err) {
                 console.error("Errore apertura modal registrazione voti manuali admin:", err);
                 await customAlert("Si è verificato un errore durante l'apertura della schermata.");
@@ -36608,6 +37239,19 @@ ${renderBottomNavigation()}
         window.submitAdminManualVoteSingle = async (assemblyId, itemId, voterId, choice, voterType = 'self', delegateId = null, proxyId = null, voterName = 'Condòmino', voterMil = 0) => {
             try {
                 if (!choice) return;
+
+                // Cattura scroll position, query di ricerca e ID votato PRIMA del salvataggio (CR-03)
+                const listEl = document.getElementById('manual-voters-list-container');
+                if (listEl) {
+                    window._savedManualVoteScrollTop = listEl.scrollTop;
+                }
+                const searchInput = document.getElementById('input-search-manual-voters');
+                if (searchInput) {
+                    window._savedManualVoteSearchQuery = searchInput.value;
+                }
+                window._lastVotedVoterId = voterId;
+                window._manualVoteActiveTab = 'vote'; // Tassativamente su tab registrazione (CR-03)
+
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
                 if (!docSnap.exists()) return;
@@ -36668,7 +37312,40 @@ ${renderBottomNavigation()}
         window.updateManualVotersSelectedCount = () => { };
 
         window.filterManualVotersList = (queryVal) => {
-            const q = (queryVal || '').toLowerCase().trim();
+            window._savedManualVoteSearchQuery = queryVal || '';
+            if (typeof window.applyManualVotersFilters === 'function') {
+                window.applyManualVotersFilters();
+            }
+        };
+
+        window.setManualVoteFilter = (filterType) => {
+            window._savedManualVoteFilter = filterType || 'all';
+            ['all', 'pending', 'voted'].forEach(ft => {
+                const btn = document.getElementById(`manual-filter-btn-${ft}`);
+                if (btn) {
+                    const isActive = ft === window._savedManualVoteFilter;
+                    let activeColor = 'var(--accent-color)';
+                    let activeBg = 'rgba(59,130,246,0.2)';
+                    if (ft === 'pending') { activeColor = '#F59E0B'; activeBg = 'rgba(245,158,11,0.2)'; }
+                    if (ft === 'voted') { activeColor = '#10B981'; activeBg = 'rgba(16,185,129,0.2)'; }
+
+                    btn.style.borderColor = isActive ? activeColor : 'rgba(255,255,255,0.12)';
+                    btn.style.background = isActive ? activeBg : 'rgba(255,255,255,0.04)';
+                    btn.style.color = isActive ? activeColor : 'var(--secondary-text)';
+                }
+            });
+            if (typeof window.applyManualVotersFilters === 'function') {
+                window.applyManualVotersFilters();
+            }
+        };
+
+        window.applyManualVotersFilters = () => {
+            const searchInput = document.getElementById('input-search-manual-voters');
+            if (searchInput && searchInput.value !== (window._savedManualVoteSearchQuery || '')) {
+                searchInput.value = window._savedManualVoteSearchQuery || '';
+            }
+            const q = (window._savedManualVoteSearchQuery || '').toLowerCase().trim();
+            const filter = window._savedManualVoteFilter || 'all';
             const items = document.querySelectorAll('#manual-voters-list-container .manual-voter-item');
             const noMatchMsg = document.getElementById('manual-voters-no-match-msg');
             const clearBtn = document.getElementById('btn-clear-search-manual-voters');
@@ -36676,7 +37353,18 @@ ${renderBottomNavigation()}
             let visibleCount = 0;
             items.forEach(item => {
                 const name = (item.getAttribute('data-search-name') || '').toLowerCase();
-                const isMatch = !q || name.includes(q);
+                const voteStatus = item.getAttribute('data-vote-status') || 'pending';
+                const isJustVoted = window._lastVotedVoterId && (item.getAttribute('data-voter-id') === window._lastVotedVoterId || item.getAttribute('data-search-name')?.includes(window._lastVotedVoterId));
+
+                const matchSearch = !q || name.includes(q);
+                let matchFilter = true;
+                if (filter === 'pending') {
+                    matchFilter = (voteStatus === 'pending' || voteStatus === 'partial' || isJustVoted);
+                } else if (filter === 'voted') {
+                    matchFilter = (voteStatus === 'voted' || voteStatus === 'partial' || isJustVoted);
+                }
+
+                const isMatch = matchSearch && matchFilter;
                 item.style.display = isMatch ? 'flex' : 'none';
                 if (isMatch) visibleCount++;
             });
@@ -36759,7 +37447,7 @@ ${renderBottomNavigation()}
                                 <label class="form-label" for="modal-constitutive-quorum-type" style="font-size: 0.82rem; font-weight: 700; margin-bottom: 0.25rem; display: block;">Quorum costitutivo</label>
                                 <select id="modal-constitutive-quorum-type" required class="form-select" style="padding: 0.4rem 0.55rem; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
                                     <option value="1_3_valore_e_partecipanti" selected>1/3 del valore dell'edificio (333‰) e 1/3 dei partecipanti</option>
-                                    <option value="2_3_valore_e_maggioranza">2/3 del valore dell'edificio (667‰) e maggioranza dei partecipanti</option>
+                                    <option value="2_3_valore_e_maggioranza">2/3 del valore dell'edificio (666,67‰) e maggioranza dei partecipanti</option>
                                     <option value="unanimita">Unanimità (1000‰ e totalità dei condomini)</option>
                                     <option value="modificabile">Quorum modificabile</option>
                                 </select>
@@ -36939,7 +37627,7 @@ ${renderBottomNavigation()}
                                 <select class="form-select odg-delib-quorum-select" style="padding:0.32rem 1.6rem 0.32rem 0.5rem; font-size:0.82rem; width:100%; box-sizing:border-box;">
                                     <option value="maggioranza_500" ${delibType === 'maggioranza_500' ? 'selected' : ''}>Maggioranza degli intervenuti e 1/2 del valore dell'edificio (500‰)</option>
                                     <option value="maggioranza_333" ${delibType === 'maggioranza_333' ? 'selected' : ''}>Maggioranza degli intervenuti e 1/3 del valore dell'edificio (333‰)</option>
-                                    <option value="maggioranza_667" ${delibType === 'maggioranza_667' ? 'selected' : ''}>Maggioranza degli intervenuti e 2/3 del valore dell'edificio (667‰)</option>
+                                    <option value="maggioranza_667" ${delibType === 'maggioranza_667' ? 'selected' : ''}>Maggioranza degli intervenuti e 2/3 del valore dell'edificio (666,67‰)</option>
                                     <option value="unanimita" ${delibType === 'unanimita' ? 'selected' : ''}>Unanimità (1000‰ e totalità dei condomini)</option>
                                     <option value="modificabile" ${delibType === 'modificabile' ? 'selected' : ''}>Quorum modificabile</option>
                                 </select>
@@ -37028,7 +37716,7 @@ ${renderBottomNavigation()}
                     if (constitutiveQuorumType === '1_3_valore_e_partecipanti') {
                         constitutiveQuorumConfig.description = "1/3 del valore dell'edificio (333‰) e 1/3 dei partecipanti";
                     } else if (constitutiveQuorumType === '2_3_valore_e_maggioranza') {
-                        constitutiveQuorumConfig.description = "2/3 del valore dell'edificio (667‰) e maggioranza dei partecipanti";
+                        constitutiveQuorumConfig.description = "2/3 del valore dell'edificio (666,67‰) e maggioranza dei partecipanti";
                     } else if (constitutiveQuorumType === 'unanimita') {
                         constitutiveQuorumConfig.description = "Unanimità (1000‰ e totalità dei condomini)";
                     } else if (constitutiveQuorumType === 'modificabile') {
@@ -37118,7 +37806,7 @@ ${renderBottomNavigation()}
                         } else if (delibTypeVal === 'maggioranza_333') {
                             deliberativeQuorumConfig.description = "Maggioranza degli intervenuti e 1/3 del valore dell'edificio (333‰)";
                         } else if (delibTypeVal === 'maggioranza_667') {
-                            deliberativeQuorumConfig.description = "Maggioranza degli intervenuti e 2/3 del valore dell'edificio (667‰)";
+                            deliberativeQuorumConfig.description = "Maggioranza degli intervenuti e 2/3 del valore dell'edificio (666,67‰)";
                         } else if (delibTypeVal === 'unanimita') {
                             deliberativeQuorumConfig.description = "Unanimità (1000‰ e totalità dei condomini)";
                         } else if (delibTypeVal === 'modificabile') {
@@ -38066,6 +38754,8 @@ ${renderBottomNavigation()}
         window.switchManualVoteTab = switchManualVoteTab;
         window.filterManualVotersList = filterManualVotersList;
         window.filterManualVotersSummaryList = filterManualVotersSummaryList;
+        window.setManualVoteFilter = setManualVoteFilter;
+        window.applyManualVotersFilters = applyManualVotersFilters;
         window.submitAdminManualVoteSingle = submitAdminManualVoteSingle;
         window.submitAdminManualVoteSelected = submitAdminManualVoteSelected;
         window.toggleSelectAllInDelegateGroup = toggleSelectAllInDelegateGroup;
