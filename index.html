@@ -23032,24 +23032,24 @@ ${renderBottomNavigation()}
                     if (!constQuorumEl && proxyLimitBadgeEl?.parentElement) {
                         constQuorumEl = document.createElement('div');
                         constQuorumEl.id = 'room-constitutive-quorum-badge';
-                        constQuorumEl.style.cssText = 'margin-top:0.45rem; padding:0.45rem 0.65rem; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:0.45rem; font-size:0.76rem; line-height:1.35; flex-wrap:wrap;';
                         proxyLimitBadgeEl.parentElement.insertBefore(constQuorumEl, proxyLimitBadgeEl);
                     }
                     if (constQuorumEl && typeof window.getAssemblyConstitutiveQuorumInfo === 'function') {
                         const qInfo = window.getAssemblyConstitutiveQuorumInfo(assembly, activeAttendees, activeProxies, allUsers, tableData);
-                        constQuorumEl.style.background = qInfo.isReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.12)';
-                        constQuorumEl.style.border = qInfo.isReached ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.35)';
+                        constQuorumEl.style.cssText = `margin-top:0.5rem; padding:0.6rem 0.75rem; border-radius:8px; display:flex; flex-direction:column; gap:0.35rem; font-size:0.76rem; line-height:1.35; background:${qInfo.isReached ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.12)'}; border:1px solid ${qInfo.isReached ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.35)'};`;
                         constQuorumEl.innerHTML = `
-                            <div style="display:flex; align-items:center; gap:0.35rem; color:var(--primary-text); min-width:0; word-break:break-word;">
-                                <span style="color:${qInfo.isReached ? '#10B981' : 'var(--danger)'};">${qInfo.isReached ? THEME_ICONS.checkSuccess(14) : THEME_ICONS.alertWarning(14)}</span>
-                                <div>
-                                    <strong style="color:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; font-weight:700;">Quorum Costitutivo:</strong>
-                                    <span style="color:var(--secondary-text); font-size:0.72rem; display:block;">${escapeHtml(qInfo.description)}</span>
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%;">
+                                <div style="display:flex; align-items:center; gap:0.4rem; min-width:0;">
+                                    <span style="color:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; display:inline-flex; align-items:center; flex-shrink:0;">${qInfo.isReached ? THEME_ICONS.checkSuccess(14) : THEME_ICONS.alertWarning(14)}</span>
+                                    <strong style="color:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; font-weight:700; font-size:0.8rem; line-height:1.2;">Quorum Costitutivo:</strong>
                                 </div>
+                                <span class="badge" style="font-size:0.68rem; font-weight:800; background:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; color:white; padding:0.18rem 0.5rem; border-radius:4px; white-space:nowrap; flex-shrink:0;">
+                                    ${qInfo.isReached ? 'RAGGIUNTO' : `SOTTO QUORUM (min. ${qInfo.requiredHeads}T / ${qInfo.requiredMillesimi.toFixed(2)}‰)`}
+                                </span>
                             </div>
-                            <span class="badge" style="font-size:0.68rem; font-weight:800; background:${qInfo.isReached ? '#10B981' : 'var(--danger)'}; color:white; padding:0.15rem 0.45rem; border-radius:4px; white-space:nowrap;">
-                                ${qInfo.isReached ? 'RAGGIUNTO' : `SOTTO QUORUM (min. ${qInfo.requiredHeads}T / ${qInfo.requiredMillesimi.toFixed(2)}‰)`}
-                            </span>
+                            <div style="padding-left:1.3rem; color:var(--secondary-text); font-size:0.72rem; line-height:1.35; word-break:break-word;">
+                                ${escapeHtml(qInfo.description)}
+                            </div>
                         `;
                     }
 
