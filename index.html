@@ -10718,6 +10718,163 @@ ${renderBottomNavigation()}
             return tableData;
         };
 
+        window.syncMillesimiFromTableData = async (tableData) => {
+            if (!tableData || !Array.isArray(tableData) || tableData.length === 0) return;
+            try {
+                const headers = Object.keys(tableData[0] || {});
+                const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+                const findH = (keys) => {
+                    let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                    if (found) return found;
+                    return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
+                };
+
+                const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'anagrafica']);
+                const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
+                const milH = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+                const grpH = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
+
+                if (!milH) return;
+
+                // 1. Sincronizza tutti gli utenti registrati
+                const usersSnap = await getDocs(collection(db, "users"));
+                const userBatch = writeBatch(db);
+                let usersUpdatedCount = 0;
+                const updatedUsersMap = new Map();
+
+                usersSnap.docs.forEach(uDoc => {
+                    const u = uDoc.data();
+                    const uUid = uDoc.id;
+                    const uUnits = (u.proprieta && Array.isArray(u.proprieta)) ? u.proprieta.map(p => (p.interno || '').toString().trim().toLowerCase()).filter(Boolean) : [];
+                    if (u.unitaImmobiliare) {
+                        const rawU = Array.isArray(u.unitaImmobiliare) ? u.unitaImmobiliare : [u.unitaImmobiliare];
+                        rawU.forEach(un => { if (un) uUnits.push(un.toString().trim().toLowerCase()); });
+                    }
+
+                    const uNom = `${u.cognome || ''} ${u.nome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                    const uRevNom = `${u.nome || ''} ${u.cognome || ''}`.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+
+                    let matchedRows = [];
+                    if (unitH && uUnits.length > 0) {
+                        matchedRows = tableData.filter(row => {
+                            const rUnit = (row[unitH] || '').toString().trim().toLowerCase();
+                            return rUnit && uUnits.includes(rUnit);
+                        });
+                    }
+                    if (matchedRows.length === 0 && nomH) {
+                        matchedRows = tableData.filter(row => {
+                            const rNom = (row[nomH] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                            if (!rNom) return false;
+                            if (rNom === uNom || rNom === uRevNom) return true;
+                            const rWords = rNom.split(' ').filter(w => w.length > 2);
+                            return rWords.length > 0 && rWords.every(w => uNom.includes(w) || uRevNom.includes(w));
+                        });
+                    }
+
+                    if (matchedRows.length > 0) {
+                        let newTotalMil = 0;
+                        const newProps = matchedRows.map(row => {
+                            const rawM = (row[milH] || '').toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                            const mVal = parseFloat(rawM) || 0;
+                            newTotalMil += mVal;
+                            return {
+                                interno: unitH && row[unitH] ? row[unitH].toString().trim() : '',
+                                millesimi: mVal,
+                                gruppo: grpH && row[grpH] ? row[grpH].toString().trim() : (u.gruppo || '')
+                            };
+                        });
+                        newTotalMil = parseFloat(newTotalMil.toFixed(2));
+                        updatedUsersMap.set(uUid, { millesimiTotali: newTotalMil, proprieta: newProps });
+
+                        const curTotal = parseFloat(u.millesimiTotali) || 0;
+                        if (Math.abs(curTotal - newTotalMil) > 0.001) {
+                            userBatch.update(doc(db, "users", uUid), {
+                                millesimiTotali: newTotalMil,
+                                proprieta: newProps
+                            });
+                            usersUpdatedCount++;
+                        }
+                    }
+                });
+
+                if (usersUpdatedCount > 0) {
+                    await userBatch.commit();
+                }
+
+                // 2. Sincronizza tutte le assemblee esistenti non concluse
+                const assembliesSnap = await getDocs(query(collection(db, "assemblies"), where("status", "in", ["programmata", "in_corso"])));
+                for (const aDoc of assembliesSnap.docs) {
+                    const assembly = aDoc.data();
+                    const aRef = doc(db, "assemblies", aDoc.id);
+                    let changed = false;
+
+                    let updatedProxies = (assembly.proxies || []).map(p => {
+                        const delId = p.delegatorId || p.id;
+                        let newMil = null;
+                        if (delId && updatedUsersMap.has(delId)) {
+                            newMil = updatedUsersMap.get(delId).millesimiTotali;
+                        }
+                        if (newMil === null && typeof window.extractPropsFromTableData === 'function') {
+                            const prProps = window.extractPropsFromTableData(tableData, delId, p.delegatorName);
+                            if (prProps && prProps.length > 0) {
+                                newMil = parseFloat(prProps.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
+                            }
+                        }
+                        if (newMil !== null && Math.abs((parseFloat(p.delegatorMillesimi) || 0) - newMil) > 0.001) {
+                            changed = true;
+                            return { ...p, delegatorMillesimi: newMil };
+                        }
+                        return p;
+                    });
+
+                    let updatedAttendees = (assembly.attendees || []).map(a => {
+                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        let newBaseMil = isExt ? 0 : null;
+                        if (!isExt) {
+                            if (a.uid && updatedUsersMap.has(a.uid)) {
+                                newBaseMil = updatedUsersMap.get(a.uid).millesimiTotali;
+                            } else if (typeof window.extractPropsFromTableData === 'function') {
+                                const aProps = window.extractPropsFromTableData(tableData, a.uid, a.nome);
+                                if (aProps && aProps.length > 0) {
+                                    newBaseMil = parseFloat(aProps.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
+                                }
+                            }
+                        }
+                        if (newBaseMil === null) {
+                            newBaseMil = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0);
+                        }
+
+                        const held = updatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
+                        let heldMilSum = 0;
+                        held.forEach(p => { heldMilSum += (parseFloat(p.delegatorMillesimi) || 0); });
+                        const totalAttendeeMil = parseFloat((newBaseMil + heldMilSum).toFixed(2));
+
+                        const curMil = parseFloat(a.millesimi) || 0;
+                        const curBase = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : null;
+                        if (Math.abs(curMil - totalAttendeeMil) > 0.001 || (curBase !== null && Math.abs(curBase - newBaseMil) > 0.001)) {
+                            changed = true;
+                            return { ...a, baseMillesimi: newBaseMil, millesimi: totalAttendeeMil };
+                        }
+                        return a;
+                    });
+
+                    if (changed) {
+                        await updateDoc(aRef, {
+                            proxies: updatedProxies,
+                            attendees: updatedAttendees
+                        });
+                    }
+                }
+
+                if (typeof window.invalidateUnifiedCondominiumRegistryCache === 'function') {
+                    window.invalidateUnifiedCondominiumRegistryCache();
+                }
+                window._liveAssemblyStaticCache = null;
+            } catch (err) {
+                console.error("Errore durante sync automatico millesimi:", err);
+            }
+        };
+
         const setupImportazioneHandlers = async () => {
             let partialCondosList = [];
             let activeRules = [];
@@ -10864,10 +11021,14 @@ ${renderBottomNavigation()}
                         uploadedAt: serverTimestamp()
                     });
                     await logActivity("data_imported", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { fileName: millesimiFileName });
+
+                    // Sincronizzazione automatica immediata di utenti e assemblee
+                    await window.syncMillesimiFromTableData(tableData);
+
                     fileInputMillesimi.value = '';
                     saveBtnContainerMillesimi.classList.add('hidden');
                     messageBoxMillesimi.className = 'message-box success';
-                    messageBoxMillesimi.textContent = 'Dati salvati con successo!';
+                    messageBoxMillesimi.textContent = 'Dati salvati e millesimi sincronizzati automaticamente!';
                     messageBoxMillesimi.style.display = 'block';
                     setTimeout(() => { messageBoxMillesimi.style.display = 'none'; }, 3000);
                     await loadLatestMillesimiData();
@@ -11096,6 +11257,9 @@ ${renderBottomNavigation()}
                             });
                             latestDocRef = newDoc;
                         }
+
+                        // Sincronizzazione automatica
+                        window.syncMillesimiFromTableData(updatedTable);
 
                         await logActivity("imported_unit_added", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { entry: newEntry });
 
@@ -11339,6 +11503,7 @@ ${renderBottomNavigation()}
                     updatedTable[index] = updatedRow;
 
                     await updateDoc(docRef, { tableData: updatedTable });
+                    window.syncMillesimiFromTableData(updatedTable);
                     const currentUid = (currentUser && currentUser.uid) || (auth && auth.currentUser && auth.currentUser.uid) || 'admin';
                     const currentName = userProfile ? `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim() : 'Amministratore';
                     try {
@@ -20148,6 +20313,18 @@ ${renderBottomNavigation()}
                 targetGroup.trim().toLowerCase() === 'intero' ||
                 targetGroup.trim().toLowerCase() === 'tutti';
 
+            const tDataLive = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
+            if (tDataLive && tDataLive.length > 0 && typeof window.extractPropsFromTableData === 'function') {
+                const freshP = window.extractPropsFromTableData(tDataLive, userOrAttendee.uid || userOrAttendee.id, userOrAttendee.nome || userOrAttendee.nominativo);
+                if (freshP && freshP.length > 0) {
+                    if (isGlobal) {
+                        return freshP.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                    }
+                    const matchingFresh = freshP.filter(p => window.isScaleInTargetGroup(p.gruppo, targetGroup));
+                    return matchingFresh.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+            }
+
             if (isGlobal) {
                 if (userOrAttendee.baseMillesimi !== undefined && userOrAttendee.baseMillesimi !== null) {
                     return parseFloat(userOrAttendee.baseMillesimi) || 0;
@@ -20247,6 +20424,18 @@ ${renderBottomNavigation()}
                 targetGroup === 'Intero Condominio' ||
                 targetGroup === 'Intero condominio' ||
                 targetGroup.trim().toLowerCase() === 'intero';
+
+            const tDataLive = (tableData && tableData.length > 0) ? tableData : (window._liveAssemblyStaticCache?.tableData || window._currentTableData);
+            if (tDataLive && tDataLive.length > 0 && typeof window.extractPropsFromTableData === 'function') {
+                const freshP = window.extractPropsFromTableData(tDataLive, proxy.delegatorId || proxy.id, proxy.delegatorName);
+                if (freshP && freshP.length > 0) {
+                    if (isGlobal) {
+                        return freshP.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                    }
+                    const matchingFresh = freshP.filter(p => window.isScaleInTargetGroup(p.gruppo, targetGroup));
+                    return matchingFresh.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+            }
 
             if (isGlobal) {
                 return parseFloat(proxy.delegatorMillesimi) || parseFloat(proxy.millesimi) || 0;
@@ -22711,6 +22900,56 @@ ${renderBottomNavigation()}
                         unitaHeader = hObj.unitaHeader;
                     }
 
+                    // Auto-riparazione immediata dei millesimi dell'assemblea da tableData
+                    if (tableData && tableData.length > 0 && typeof window.extractPropsFromTableData === 'function') {
+                        let needsAssemblyDbSync = false;
+                        let syncUpdatedProxies = (assembly.proxies || []).map(p => {
+                            const pProps = window.extractPropsFromTableData(tableData, p.delegatorId || p.id, p.delegatorName);
+                            if (pProps && pProps.length > 0) {
+                                const realPVal = parseFloat(pProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
+                                if (Math.abs((parseFloat(p.delegatorMillesimi) || 0) - realPVal) > 0.001) {
+                                    needsAssemblyDbSync = true;
+                                    p.delegatorMillesimi = realPVal;
+                                    return { ...p, delegatorMillesimi: realPVal };
+                                }
+                            }
+                            return p;
+                        });
+
+                        activeAttendees.forEach(a => {
+                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                            let realBaseMil = isExt ? 0 : null;
+                            if (!isExt) {
+                                const aProps = window.extractPropsFromTableData(tableData, a.uid, a.nome);
+                                if (aProps && aProps.length > 0) {
+                                    realBaseMil = parseFloat(aProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
+                                }
+                            }
+                            if (realBaseMil !== null) {
+                                a.baseMillesimi = realBaseMil;
+                            } else {
+                                realBaseMil = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0);
+                            }
+
+                            const held = syncUpdatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
+                            let totalHeld = 0;
+                            held.forEach(p => { totalHeld += (parseFloat(p.delegatorMillesimi) || 0); });
+                            const expectedTotalMil = parseFloat((realBaseMil + totalHeld).toFixed(2));
+
+                            if (Math.abs((parseFloat(a.millesimi) || 0) - expectedTotalMil) > 0.001) {
+                                needsAssemblyDbSync = true;
+                                a.millesimi = expectedTotalMil;
+                            }
+                        });
+
+                        if (needsAssemblyDbSync && isUserAdmin) {
+                            updateDoc(assemblyRef, {
+                                attendees: assembly.attendees || [],
+                                proxies: syncUpdatedProxies
+                            }).catch(err => console.warn("Auto-sync assemblea non critico:", err));
+                        }
+                    }
+
                     totMillesimi = 0;
                     activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
 
@@ -24142,6 +24381,56 @@ ${renderBottomNavigation()}
                         allUsers: allUsers || [],
                         partialCondosList: partialCondosList || []
                     };
+
+                    // Auto-riparazione immediata dei millesimi dell'assemblea da tableData
+                    if (tableData && tableData.length > 0 && typeof window.extractPropsFromTableData === 'function') {
+                        let needsAssemblyDbSync = false;
+                        let syncUpdatedProxies = (assembly.proxies || []).map(p => {
+                            const pProps = window.extractPropsFromTableData(tableData, p.delegatorId || p.id, p.delegatorName);
+                            if (pProps && pProps.length > 0) {
+                                const realPVal = parseFloat(pProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
+                                if (Math.abs((parseFloat(p.delegatorMillesimi) || 0) - realPVal) > 0.001) {
+                                    needsAssemblyDbSync = true;
+                                    p.delegatorMillesimi = realPVal;
+                                    return { ...p, delegatorMillesimi: realPVal };
+                                }
+                            }
+                            return p;
+                        });
+
+                        activeAttendees.forEach(a => {
+                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                            let realBaseMil = isExt ? 0 : null;
+                            if (!isExt) {
+                                const aProps = window.extractPropsFromTableData(tableData, a.uid, a.nome);
+                                if (aProps && aProps.length > 0) {
+                                    realBaseMil = parseFloat(aProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
+                                }
+                            }
+                            if (realBaseMil !== null) {
+                                a.baseMillesimi = realBaseMil;
+                            } else {
+                                realBaseMil = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0);
+                            }
+
+                            const held = syncUpdatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
+                            let totalHeld = 0;
+                            held.forEach(p => { totalHeld += (parseFloat(p.delegatorMillesimi) || 0); });
+                            const expectedTotalMil = parseFloat((realBaseMil + totalHeld).toFixed(2));
+
+                            if (Math.abs((parseFloat(a.millesimi) || 0) - expectedTotalMil) > 0.001) {
+                                needsAssemblyDbSync = true;
+                                a.millesimi = expectedTotalMil;
+                            }
+                        });
+
+                        if (needsAssemblyDbSync && isUserAdmin) {
+                            updateDoc(assemblyRef, {
+                                attendees: assembly.attendees || [],
+                                proxies: syncUpdatedProxies
+                            }).catch(err => console.warn("Auto-sync assemblea non critico:", err));
+                        }
+                    }
 
                     totMillesimi = 0;
                     activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
