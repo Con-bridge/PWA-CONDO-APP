@@ -22759,19 +22759,21 @@ ${renderBottomNavigation()}
 
                 const getTableHeaders = (data) => {
                     const headers = Object.keys((data && data[0]) || {});
+                    const cleanH = (h) => (h || '').toString().trim().toLowerCase();
                     const findH = (keys) => {
-                        let found = headers.find(h => keys.some(k => (h || '').toString().trim().toLowerCase() === k.toLowerCase()));
+                        let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
                         if (found) return found;
-                        found = headers.find(h => keys.some(k => (h || '').toString().trim().toLowerCase().includes(k.toLowerCase())));
+                        found = headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase())));
                         return found || null;
                     };
                     return {
-                        nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente']),
+                        nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']),
                         millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']),
                         groupHeader: findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']),
-                        unitaHeader: findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui'])
+                        unitaHeader: findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano'])
                     };
                 };
+                window.getTableHeaders = getTableHeaders;
                 let { nominativoHeader, millesimiHeader, groupHeader, unitaHeader } = getTableHeaders(tableData);
 
                 const headerSubtitleEl = document.getElementById('page-header-subtitle');
@@ -31329,67 +31331,99 @@ ${renderBottomNavigation()}
             const config = assembly?.constitutiveQuorum || { type: '1_3_valore_e_partecipanti' };
             const qType = config.type || '1_3_valore_e_partecipanti';
 
-            const qHObj = (typeof window.getTableHeaders === 'function') ? window.getTableHeaders(tableData) : {};
-            const nominativoHeader = qHObj.nominativoHeader;
-            const millesimiHeader = qHObj.millesimiHeader;
+            // Recupera tableData e allUsers dai dati passati o dai contesti statici memorizzati
+            const tData = (tableData && Array.isArray(tableData) && tableData.length > 0)
+                ? tableData
+                : (window._liveAssemblyStaticCache?.tableData || window._currentTableData || window._unifiedCondominiumRegistryCache?.data?.tableData || []);
+
+            const uList = (allUsers && Array.isArray(allUsers) && allUsers.length > 0)
+                ? allUsers
+                : (window._liveAssemblyStaticCache?.allUsers || window._cachedAllUsers || window._unifiedCondominiumRegistryCache?.data?.registeredUsers || []);
+
+            const qHObj = (typeof window.getTableHeaders === 'function')
+                ? window.getTableHeaders(tData)
+                : (typeof getTableHeaders === 'function' ? getTableHeaders(tData) : (function (data) {
+                    const headers = Object.keys((data && data[0]) || {});
+                    const cleanH = (h) => (h || '').toString().trim().toLowerCase();
+                    const findH = (keys) => {
+                        let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
+                        if (found) return found;
+                        found = headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase())));
+                        return found || null;
+                    };
+                    return {
+                        nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']),
+                        millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico'])
+                    };
+                })(tData));
+
+            const nominativoHeader = qHObj?.nominativoHeader;
+            const millesimiHeader = qHObj?.millesimiHeader;
 
             let totalBuildingUsers = 0;
             let totalBuildingMillesimi = 0;
             const distinctCondomini = new Set();
 
-            if (tableData && tableData.length > 0) {
-                tableData.forEach(row => {
-                    if (nominativoHeader) {
-                        const nom = (row[nominativoHeader] || '').toString().trim().toLowerCase();
-                        if (nom) distinctCondomini.add(nom);
+            if (tData && tData.length > 0) {
+                tData.forEach(row => {
+                    if (nominativoHeader && row[nominativoHeader]) {
+                        const rawNom = row[nominativoHeader].toString().trim();
+                        const cleanNom = window.cleanCandidateName ? window.cleanCandidateName(rawNom) : rawNom;
+                        const nomKey = cleanNom.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+                        if (nomKey) distinctCondomini.add(nomKey);
                     }
-                    if (millesimiHeader) {
-                        const rawMil = (row[millesimiHeader] || '').toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                    if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
+                        const rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
                         const milVal = parseFloat(rawMil) || 0;
                         totalBuildingMillesimi += milVal;
                     }
                 });
-                totalBuildingUsers = distinctCondomini.size > 0 ? distinctCondomini.size : tableData.length;
             }
 
-            if (totalBuildingUsers === 0 || totalBuildingMillesimi <= 0) {
-                let fallbackUsers = 0;
-                let fallbackMil = 0;
-                (allUsers || []).forEach(u => {
-                    if (['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)) {
-                        fallbackUsers++;
-                        fallbackMil += (parseFloat(u.millesimiTotali) || 0);
-                    }
-                });
-                totalBuildingUsers = totalBuildingUsers || fallbackUsers || 1;
-                totalBuildingMillesimi = totalBuildingMillesimi > 0 ? totalBuildingMillesimi : (fallbackMil > 0 ? fallbackMil : 1000.00);
+            // Calcolo teste totali effettive del condominio
+            if (distinctCondomini.size > 0) {
+                totalBuildingUsers = distinctCondomini.size;
+            } else {
+                const allCondo = window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || [];
+                if (allCondo.length > 0) {
+                    totalBuildingUsers = allCondo.length;
+                } else if (uList.length > 0) {
+                    const filteredUsers = uList.filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0));
+                    totalBuildingUsers = filteredUsers.length || 1;
+                } else {
+                    totalBuildingUsers = tData.length || 1;
+                }
             }
-            if (totalBuildingMillesimi <= 0) totalBuildingMillesimi = 1000.00;
 
+            // Millesimi complessivi dell'edificio (per legge 1000.00 ‰)
+            if (totalBuildingMillesimi <= 0 || Math.abs(totalBuildingMillesimi - 1000) < 5) {
+                totalBuildingMillesimi = 1000.00;
+            } else {
+                totalBuildingMillesimi = parseFloat(totalBuildingMillesimi.toFixed(2));
+            }
+
+            // Calcolo presenze in aula (teste e millesimi effettivi)
             const presentHeadsSet = new Set();
             let presentMillesimi = 0;
 
             (activeAttendees || []).forEach(a => {
                 const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
                 if (!isExternal) {
-                    if (a.uid || a.id) {
-                        presentHeadsSet.add(a.uid || a.id);
-                    }
-                    const aMil = (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0));
-                    presentMillesimi += aMil;
+                    const hId = a.uid || a.id || a.nome;
+                    if (hId) presentHeadsSet.add(hId);
                 }
+                presentMillesimi += (parseFloat(a.millesimi) || 0);
             });
 
             (activeProxies || []).forEach(p => {
-                const delId = p.delegatorId || p.delegatorUid || p.id;
+                const delId = p.delegatorId || p.delegatorUid || p.id || p.delegatorName;
                 if (delId) {
                     presentHeadsSet.add(delId);
                 }
-                const pMil = parseFloat(p.delegatorMillesimi) || parseFloat(p.millesimi) || 0;
-                presentMillesimi += pMil;
             });
 
             const presentHeads = presentHeadsSet.size;
+            presentMillesimi = parseFloat(presentMillesimi.toFixed(2));
 
             let requiredHeads = 0;
             let requiredMillesimi = 0;
@@ -31400,8 +31434,8 @@ ${renderBottomNavigation()}
                 requiredMillesimi = totalBuildingMillesimi * (2 / 3); // 666.67 ‰
                 description = "2/3 del valore dell'edificio (667‰) e maggioranza dei partecipanti";
             } else if (qType === 'unanimita') {
-                requiredHeads = totalBuildingUsers; // totalità dei condòmini
-                requiredMillesimi = totalBuildingMillesimi; // 1000 ‰
+                requiredHeads = totalBuildingUsers; // totalità dei condòmini (19)
+                requiredMillesimi = totalBuildingMillesimi; // 1000.00 ‰
                 description = "Unanimità (1000‰ e totalità dei condomini)";
             } else if (qType === 'modificabile') {
                 requiredHeads = (config.customHeads && config.customHeads > 0) ? parseInt(config.customHeads, 10) : Math.ceil(totalBuildingUsers / 3);
@@ -34209,7 +34243,7 @@ ${renderBottomNavigation()}
                         assembly,
                         activeAttendees,
                         activeProxies,
-                        window._cachedAllUsers || [],
+                        window._liveAssemblyStaticCache?.allUsers || window._cachedAllUsers || [],
                         window._liveAssemblyStaticCache?.tableData || []
                     );
                     if (!qInfo.isReached) {
@@ -34260,7 +34294,7 @@ ${renderBottomNavigation()}
                         currentData,
                         activeAttendees,
                         activeProxies,
-                        window._cachedAllUsers || [],
+                        window._liveAssemblyStaticCache?.allUsers || window._cachedAllUsers || [],
                         window._liveAssemblyStaticCache?.tableData || []
                     );
                     if (!qInfo.isReached) {
