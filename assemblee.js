@@ -728,6 +728,18 @@ window.AssembleeModule = {
             targetGroup === 'Intero condominio' ||
             targetGroup.trim().toLowerCase() === 'intero';
 
+        const tDataGlobal = (tableData && tableData.length > 0) ? tableData : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.tableData || window._currentTableData) : null);
+        if (tDataGlobal && tDataGlobal.length > 0) {
+            const freshProps = AssembleeModule.extractPropsFromTableData(tDataGlobal, userOrAttendee.uid || userOrAttendee.id, userOrAttendee.nome || userOrAttendee.nominativo);
+            if (freshProps && freshProps.length > 0) {
+                if (isGlobal) {
+                    return freshProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+                const matchingFresh = freshProps.filter(p => checkGroup(p.gruppo, targetGroup));
+                return matchingFresh.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+            }
+        }
+
         if (isGlobal) {
             if (userOrAttendee.baseMillesimi !== undefined && userOrAttendee.baseMillesimi !== null) {
                 return parseFloat(userOrAttendee.baseMillesimi) || 0;
@@ -799,6 +811,18 @@ window.AssembleeModule = {
             targetGroup === 'Intero Condominio' ||
             targetGroup === 'Intero condominio' ||
             targetGroup.trim().toLowerCase() === 'intero';
+
+        const tDataProxy = (tableData && tableData.length > 0) ? tableData : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.tableData || window._currentTableData) : null);
+        if (tDataProxy && tDataProxy.length > 0) {
+            const freshProxyProps = AssembleeModule.extractPropsFromTableData(tDataProxy, proxy.delegatorId || proxy.id, proxy.delegatorName);
+            if (freshProxyProps && freshProxyProps.length > 0) {
+                if (isGlobal) {
+                    return freshProxyProps.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                }
+                const matchingFresh = freshProxyProps.filter(p => checkGroup(p.gruppo, targetGroup));
+                return matchingFresh.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+            }
+        }
 
         if (isGlobal) {
             return parseFloat(proxy.delegatorMillesimi) || 0;
