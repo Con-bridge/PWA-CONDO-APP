@@ -21,14 +21,14 @@ window.AssembleeModule = {
             </div>
         ` : '';
 
-        // DELEGHE VISIBILI SOLO SE NON SI È AMMINISTRATORI
-        const delegheButton = isCondomino ? `
-            <div onclick="navigateTo('assemblea_deleghe')" class="dashboard-item">
+        const qrCodeVotoButton = isCondomino ? `
+            <div onclick="navigateTo('assemblea_tessera')" class="dashboard-item">
                 <div class="dashboard-card" style="position: relative;">
-                    <span id="deleghe-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
-                    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                    <svg viewBox="0 0 24 24" width="40%" height="40%" fill="currentColor">
+                        <path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm10 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm4 4h2v2h-2v-2zm-2 0h2v2h-2v-2z"/>
+                    </svg>
                 </div>
-                <p>Le mie deleghe</p>
+                <p>QR code per voto</p>
             </div>
         ` : '';
 
@@ -38,6 +38,7 @@ window.AssembleeModule = {
                 <h2 class="section-title">Gestione assemblee</h2>
                 <div class="dashboard-grid">
                     ${adminButtons}
+                    ${qrCodeVotoButton}
                     <div onclick="navigateTo('assemblea_lista')" class="dashboard-item">
                         <div class="dashboard-card" style="position: relative;">
                             <span id="assemblee-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
@@ -45,7 +46,6 @@ window.AssembleeModule = {
                         </div>
                         <p>Tutte le assemblee</p>
                     </div>
-                    ${delegheButton}
                     ${admDeleteAllButton}
                 </div>
             </main>
@@ -192,7 +192,7 @@ window.AssembleeModule = {
                                 </button>
                             </div>
                             <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta esito per quorum costitutivo
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta registro assemblea
                             </button>
 
                             <!-- FOTOCAMERA SCANNER DENTRO LA STANZA -->
