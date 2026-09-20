@@ -2981,6 +2981,10 @@
         let sentRemindersListener = null;
         let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-time del modale
         let userReportUpdateListener = null;
+        let activeVotingListener = null;
+        let pendingProxyListener = null;
+        let returnedReportsListener = null;
+        let urgentReportsListener = null;
         let servicePermissions = null;
         let currentStoragePath = '';
         let selectedUploadPath = ''; // Nuova variabile per il percorso di upload scelto
@@ -3738,22 +3742,121 @@
         };
         const login = async (t, e) => await signInWithEmailAndPassword(auth, t, e);
 
-        // --- FUNZIONE LOGOUT CORRETTA (CON PULIZIA TOKEN PUSH) ---
+        // --- FUNZIONE LOGOUT ROBUSTA E NON-BLOCCANTE ---
         const logout = async () => {
-            communicationsListener && (communicationsListener(), communicationsListener = null);
+            try {
+                // 1. Disiscrizione di tutti i listener real-time per evitare errori di permessi
+                if (communicationsListener) { communicationsListener(); communicationsListener = null; }
+                if (pollsListener) { pollsListener(); pollsListener = null; }
+                if (reportsListener) { reportsListener(); reportsListener = null; }
+                if (sollecitisListener) { sollecitisListener(); sollecitisListener = null; }
+                if (sentRemindersListener) { sentRemindersListener(); sentRemindersListener = null; }
+                if (returnedReportsListener) { returnedReportsListener(); returnedReportsListener = null; }
+                if (urgentReportsListener) { urgentReportsListener(); urgentReportsListener = null; }
+                if (userReportUpdateListener) { userReportUpdateListener(); userReportUpdateListener = null; }
+                if (pendingUsersListener) { pendingUsersListener(); pendingUsersListener = null; }
+                if (assembliesListener) { assembliesListener(); assembliesListener = null; }
+                if (activeVotingListener) { activeVotingListener(); activeVotingListener = null; }
+                if (pendingProxyListener) { pendingProxyListener(); pendingProxyListener = null; }
+                if (window._currentLiveAssemblyUnsubscribe) {
+                    try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
+                    window._currentLiveAssemblyUnsubscribe = null;
+                }
 
-            if (currentUser) {
+                // 2. Pulizia sessione e scanner
+                sessionStorage.clear();
+                if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
+                    window.AssembleeModule.cleanup();
+                }
+                if (typeof window.stopQuickQRScanner === 'function') {
+                    try { window.stopQuickQRScanner(); } catch (e) { }
+                }
+                if (window.html5QrcodeScanner) {
+                    try {
+                        if (typeof window.html5QrcodeScanner.stop === 'function') {
+                            window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
+                                try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                                window.html5QrcodeScanner = null;
+                            });
+                        } else {
+                            try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                            window.html5QrcodeScanner = null;
+                        }
+                    } catch (e) {
+                        window.html5QrcodeScanner = null;
+                    }
+                }
+
+                // 3. Rimozione token FCM non bloccante (con timeout di sicurezza a 800ms)
+                if (currentUser && currentUser.uid) {
+                    const clearTokenPromise = updateDoc(doc(db, "users", currentUser.uid), { fcmToken: null });
+                    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
+                    await Promise.race([clearTokenPromise, timeoutPromise]).catch(e => console.warn("Timeout/errore azzeramento fcmToken:", e));
+                }
+            } catch (err) {
+                console.warn("Avviso durante pre-logout:", err);
+            } finally {
+                // 4. Esecuzione del logout Auth garantita al 100%
                 try {
-                    await updateDoc(doc(db, "users", currentUser.uid), {
-                        fcmToken: null
-                    });
-                } catch (err) {
-                    console.warn("Impossibile rimuovere fcmToken al logout:", err);
+                    await signOut(auth);
+                } catch (signOutErr) {
+                    console.error("Errore signOut:", signOutErr);
+                }
+                // 5. Fallback di sicurezza: forzatura reset variabili e navigazione a login
+                currentUser = null;
+                userProfile = null;
+                currentPage = 'login';
+                history.replaceState({ page: 'login' }, '', '#login');
+                renderCurrentPage();
+            }
+        };
+
+        // Esposizione immediata a window per handler onclick
+        window.logout = logout;
+
+        const exitLiveAssemblyRoom = () => {
+            // Pulisce la sessione della stanza live
+            sessionStorage.removeItem('activeLiveAssemblyId');
+            window._currentLiveAssemblyId = null;
+            window._currentLiveAssemblyPhase = null;
+
+            // Disiscrive il listener dell'assemblea live se attivo
+            if (window._currentLiveAssemblyUnsubscribe) {
+                try {
+                    window._currentLiveAssemblyUnsubscribe();
+                } catch (e) { }
+                window._currentLiveAssemblyUnsubscribe = null;
+            }
+
+            // Chiude scanner e timer QR se attivi
+            if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
+                window.AssembleeModule.cleanup();
+            }
+            if (typeof window.stopQuickQRScanner === 'function') {
+                try { window.stopQuickQRScanner(); } catch (e) { }
+            }
+            if (window.html5QrcodeScanner) {
+                try {
+                    if (typeof window.html5QrcodeScanner.stop === 'function') {
+                        window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
+                            try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                            window.html5QrcodeScanner = null;
+                        });
+                    } else {
+                        try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                        window.html5QrcodeScanner = null;
+                    }
+                } catch (e) {
+                    window.html5QrcodeScanner = null;
                 }
             }
 
-            await signOut(auth);
+            // Torna alla lista delle assemblee
+            navigateTo('assemblea_lista');
         };
+
+        // Esposizione immediata a window per handler onclick
+        window.exitLiveAssemblyRoom = exitLiveAssemblyRoom;
 
         const resetPassword = async t => await sendPasswordResetEmail(auth, t);
         const loadUserProfile = async t => { if (t) { const e = await getDoc(doc(db, "users", t.uid)); e.exists() && (userProfile = e.data()) } };
@@ -9324,6 +9427,10 @@ ${renderBottomNavigation()}
             if (currentPage !== 'assemblea_tessera' && currentPage !== 'assemblea_room' && window.AssembleeModule) {
                 window.AssembleeModule.cleanup();
             }
+            if (currentPage !== 'assemblea_room' && window._currentLiveAssemblyUnsubscribe) {
+                try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
+                window._currentLiveAssemblyUnsubscribe = null;
+            }
             if (currentPage !== 'assemblea_gestione' && window.html5QrcodeScanner) {
                 try { window.html5QrcodeScanner.clear(); window.html5QrcodeScanner = null; } catch (e) { }
             }
@@ -10735,7 +10842,11 @@ ${renderBottomNavigation()}
 
                 const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'anagrafica']);
                 const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
-                const milH = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+                const exactMilKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+                let milH = headers.find(h => exactMilKeys.some(k => cleanH(h) === k.toLowerCase()));
+                if (!milH) {
+                    milH = headers.find(h => cleanH(h).includes('millesim')) || null;
+                }
                 const grpH = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
 
                 if (!milH) return;
@@ -10778,8 +10889,20 @@ ${renderBottomNavigation()}
                     if (matchedRows.length > 0) {
                         let newTotalMil = 0;
                         const newProps = matchedRows.map(row => {
-                            const rawM = (row[milH] || '').toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
-                            const mVal = parseFloat(rawM) || 0;
+                            let rawM = (row[milH] || '').toString().trim();
+                            if (rawM.includes(',') && rawM.includes('.')) {
+                                if (rawM.indexOf('.') < rawM.indexOf(',')) {
+                                    rawM = rawM.replace(/\./g, '').replace(',', '.');
+                                } else {
+                                    rawM = rawM.replace(/,/g, '');
+                                }
+                            } else {
+                                rawM = rawM.replace(',', '.');
+                            }
+                            rawM = rawM.replace(/[^\d.-]/g, '').trim();
+                            let mVal = parseFloat(rawM) || 0;
+                            if (mVal > 1000) mVal = 1000;
+                            if (mVal < 0) mVal = 0;
                             newTotalMil += mVal;
                             return {
                                 interno: unitH && row[unitH] ? row[unitH].toString().trim() : '',
@@ -10845,8 +10968,25 @@ ${renderBottomNavigation()}
                             }
                         }
                         if (newBaseMil === null) {
-                            newBaseMil = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0);
+                            if (a.baseMillesimi !== undefined && a.baseMillesimi !== null) {
+                                newBaseMil = parseFloat(a.baseMillesimi) || 0;
+                            } else if (a.personalMillesimi !== undefined && a.personalMillesimi !== null) {
+                                newBaseMil = parseFloat(a.personalMillesimi) || 0;
+                            } else if (Array.isArray(a.proprieta) && a.proprieta.length > 0) {
+                                const pSum = a.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0);
+                                if (pSum > 0 && pSum <= 1000) newBaseMil = pSum;
+                            }
+                            if (newBaseMil === null) {
+                                const held = updatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
+                                let oldHeld = 0;
+                                held.forEach(p => { oldHeld += (parseFloat(p.delegatorMillesimi) || 0); });
+                                const rawM = parseFloat(a.millesimi) || 0;
+                                newBaseMil = (rawM > 0 && rawM <= 1000) ? Math.max(0, rawM - oldHeld) : 0;
+                            }
                         }
+                        if (newBaseMil > 1000) newBaseMil = 1000;
+                        if (newBaseMil < 0) newBaseMil = 0;
+                        newBaseMil = parseFloat(newBaseMil.toFixed(2));
 
                         const held = updatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
                         let heldMilSum = 0;
@@ -10855,7 +10995,7 @@ ${renderBottomNavigation()}
 
                         const curMil = parseFloat(a.millesimi) || 0;
                         const curBase = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : null;
-                        if (Math.abs(curMil - totalAttendeeMil) > 0.001 || (curBase !== null && Math.abs(curBase - newBaseMil) > 0.001)) {
+                        if (Math.abs(curMil - totalAttendeeMil) > 0.001 || (curBase !== null && Math.abs(curBase - newBaseMil) > 0.001) || a.baseMillesimi === undefined) {
                             changed = true;
                             return { ...a, baseMillesimi: newBaseMil, millesimi: totalAttendeeMil };
                         }
@@ -19577,11 +19717,38 @@ ${renderBottomNavigation()}
                                     </div>
                                 `;
                             } else if (pStatus === 'accepted') {
-                                userDelegateBtnHtml = `
-                                    <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-color-light); border-radius: 8px; font-size: 0.85rem; color: var(--accent-color);">
-                                        ${THEME_ICONS.lock(15)} Delega ACCETTATA da <strong>${escapeHtml(existingProxy.delegateName)}</strong>
-                                    </div>
-                                `;
+                                const adminStatus = existingProxy.adminApprovalStatus || 'pending_admin';
+                                if (adminStatus === 'approved') {
+                                    userDelegateBtnHtml = `
+                                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; font-size: 0.85rem; color: var(--accent-color, #10B981); display: flex; align-items: center; gap: 0.45rem;">
+                                            ${THEME_ICONS.check(15, 2.4)} Delega <strong>convalidata dall'Amministratore all'ingresso</strong> per <strong>${escapeHtml(existingProxy.delegateName)}</strong>
+                                        </div>
+                                    `;
+                                } else if (adminStatus === 'rejected') {
+                                    userDelegateBtnHtml = `
+                                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(231, 76, 60, 0.12); border: 1.5px solid rgba(231, 76, 60, 0.35); border-radius: 10px; display: flex; flex-direction: column; gap: 0.5rem;">
+                                            <div style="font-size: 0.88rem; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 0.4rem;">
+                                                ${THEME_ICONS.cross(15, 2.4)} Delega non convalidata dall'Amministratore all'ingresso
+                                            </div>
+                                            <div style="font-size: 0.8rem; color: var(--primary-text); font-style: italic;">
+                                                Motivazione: "${escapeHtml(existingProxy.adminRejectionReason || 'Non specificata')}"
+                                            </div>
+                                            <div style="font-size: 0.78rem; color: var(--secondary-text);">
+                                                Puoi partecipare direttamente con il tuo QR personale o conferire una nuova delega.
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                                                <button onclick="navigateTo('assemblea_tessera')" class="btn btn-primary" style="font-size: 0.8rem; font-weight: 700; flex: 1; padding: 0.45rem; justify-content: center; border-radius: 6px;">${THEME_ICONS.qrcode(13)} Il Mio QR</button>
+                                                <button onclick="openUserDelegateModal('${docSnap.id}')" class="btn btn-secondary" style="font-size: 0.8rem; font-weight: 700; flex: 1; padding: 0.45rem; justify-content: center; border-radius: 6px;">${THEME_ICONS.handshake(13)} Nuova Delega</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    userDelegateBtnHtml = `
+                                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; font-size: 0.85rem; color: #d97706; display: flex; align-items: center; gap: 0.45rem;">
+                                            ${THEME_ICONS.hourglass(15, 2.2)} Delega accettata da <strong>${escapeHtml(existingProxy.delegateName)}</strong> (In attesa di benestare dell'Amministratore all'ingresso)
+                                        </div>
+                                    `;
+                                }
                             } else if (pStatus === 'rejected') {
                                 userDelegateBtnHtml = `
                                         <div style="margin-top: 1rem; padding: 1.1rem 1rem; background: rgba(231, 76, 60, 0.12); border: 1.5px solid rgba(231, 76, 60, 0.3); border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
@@ -19805,6 +19972,386 @@ ${renderBottomNavigation()}
             return `${num}`;
         };
 
+        window.isProxyApproved = (p) => {
+            if (!p) return false;
+            if (p.status === 'rejected') return false;
+            if (p.adminApprovalStatus === 'rejected') return false;
+            if (p.adminApprovalStatus === 'approved') return true;
+            if (!p.adminApprovalStatus && p.isDigital === false && p.status === 'accepted') return true;
+            return false;
+        };
+
+        window.openAdminProxyApprovalModal = async ({
+            assemblyId,
+            assembly,
+            qrUid,
+            user,
+            userFullName,
+            userBaseMillesimi,
+            pendingProxies = [],
+            alreadyApprovedProxies = [],
+            onComplete
+        }) => {
+            const oldOverlay = document.getElementById('admin-proxy-approval-overlay');
+            if (oldOverlay) oldOverlay.remove();
+
+            let totalCondoCount = 20;
+            try {
+                if (typeof window.getUnifiedCondominiumRegistry === 'function') {
+                    const { allCondomini } = await window.getUnifiedCondominiumRegistry();
+                    if (allCondomini && allCondomini.length > 0) totalCondoCount = allCondomini.length;
+                }
+            } catch (e) { }
+
+            const delegateUser = {
+                id: qrUid,
+                uid: qrUid,
+                nominativo: userFullName,
+                tipoUtente: user?.tipoUtente || 'condomino',
+                millesimiTotali: userBaseMillesimi,
+                proprieta: user?.proprieta || []
+            };
+
+            const proxyDecisions = {};
+            pendingProxies.forEach(p => {
+                proxyDecisions[p.id] = { status: 'pending', reason: '', showReasonForm: false };
+            });
+
+            const overlay = document.createElement('div');
+            overlay.id = 'admin-proxy-approval-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(6px);
+                z-index: 3500;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                box-sizing: border-box;
+                overflow-y: auto;
+            `;
+
+            const renderModalContent = () => {
+                const currentApprovedProxies = [...alreadyApprovedProxies];
+                pendingProxies.forEach(p => {
+                    if (proxyDecisions[p.id]?.status === 'approved') {
+                        currentApprovedProxies.push(p);
+                    }
+                });
+
+                const currentApprovedMil = currentApprovedProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                const finalProjectedMil = userBaseMillesimi + currentApprovedMil;
+
+                const approvedCount = pendingProxies.filter(p => proxyDecisions[p.id]?.status === 'approved').length + alreadyApprovedProxies.length;
+                const rejectedCount = pendingProxies.filter(p => proxyDecisions[p.id]?.status === 'rejected').length;
+
+                overlay.innerHTML = `
+                    <div style="background: var(--surface-color, #1E293B); border: 2px solid var(--accent-color, #3B82F6); border-radius: 14px; width: 100%; max-width: 500px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.7); animation: slideUp 0.25s ease;">
+                        <!-- HEADER -->
+                        <div style="padding: 1.1rem 1.25rem 0.9rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: rgba(59, 130, 246, 0.08);">
+                            <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
+                                <span style="color: var(--accent-color); display: inline-flex; flex-shrink: 0;">${THEME_ICONS.scroll(22)}</span>
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--primary-text); line-height: 1.25;">Richiesta Benestare Deleghe</h3>
+                                    <span style="font-size: 0.76rem; color: var(--secondary-text);">Convalida all'ingresso dell'assemblea</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BODY -->
+                        <div style="padding: 1.1rem 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; flex: 1;">
+                            <!-- DELEGATO CARD -->
+                            <div style="background: var(--surface-color-light, rgba(255,255,255,0.05)); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.85rem 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                                    <div style="min-width: 0;">
+                                        <span style="font-size: 0.72rem; font-weight: 800; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px;">Condòmino inquadrato</span>
+                                        <h4 style="margin: 0.2rem 0 0.35rem 0; font-size: 1.05rem; font-weight: 800; color: var(--primary-text); word-break: break-word;">${escapeHtml(userFullName)}</h4>
+                                        <div style="font-size: 0.82rem; color: var(--secondary-text);">
+                                            Millesimi personali: <strong style="color: var(--warning);">${userBaseMillesimi.toFixed(2)} ‰</strong>
+                                        </div>
+                                    </div>
+                                    <span class="badge" style="background: #064E3B; color: #A7F3D0; border: 1px solid #10B981; font-size: 0.74rem; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 6px; flex-shrink: 0; white-space: nowrap;">
+                                        ${THEME_ICONS.checkSuccess(13)} Presente
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- ISTRUZIONI -->
+                            <div style="font-size: 0.84rem; color: var(--secondary-text); line-height: 1.45;">
+                                Il condòmino porta con sé <strong>${pendingProxies.length}</strong> ${pendingProxies.length === 1 ? 'delega' : 'deleghe'} in attesa di convalida. Esprimi il benestare per ciascuna prima di includerla nel quorum in aula:
+                            </div>
+
+                            <!-- LISTA DELEGHE -->
+                            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                                ${pendingProxies.map((p, idx) => {
+                                    const decision = proxyDecisions[p.id] || { status: 'pending' };
+                                    const delMil = parseFloat(p.delegatorMillesimi) || 0;
+                                    const delUnit = p.delegatorUnita || (window.getVoterUnitString ? window.getVoterUnitString(p, window._cachedAllUsers || []) : '');
+
+                                    const validation = window.AssembleeModule?.validateProxyLimit
+                                        ? window.AssembleeModule.validateProxyLimit(assembly, delegateUser, alreadyApprovedProxies, [p], totalCondoCount)
+                                        : { valid: true };
+
+                                    const art67Badge = validation.valid
+                                        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.25rem;">${THEME_ICONS.checkSuccess(11)} Conforme Art. 67</span>`
+                                        : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.25rem;" title="${escapeHtml(validation.errorMessage)}">${THEME_ICONS.alertWarning(11)} Supera limite Art. 67</span>`;
+
+                                    let actionBlock = '';
+                                    if (decision.status === 'approved') {
+                                        actionBlock = `
+                                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.12); border: 1.5px solid #10B981; border-radius: 8px; padding: 0.45rem 0.75rem;">
+                                                <span style="color: #10B981; font-weight: 800; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                                    ${THEME_ICONS.checkSuccess(16)} Delega Approvata (+${delMil.toFixed(2)} ‰)
+                                                </span>
+                                                <button type="button" class="btn btn-secondary" onclick="window._resetProxyDecision('${p.id}')" style="padding: 0.2rem 0.55rem; font-size: 0.74rem; font-weight: 700; border-radius: 6px;">Modifica</button>
+                                            </div>
+                                        `;
+                                    } else if (decision.status === 'rejected') {
+                                        actionBlock = `
+                                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.12); border: 1.5px solid var(--danger); border-radius: 8px; padding: 0.45rem 0.75rem;">
+                                                <div style="min-width: 0;">
+                                                    <span style="color: var(--danger); font-weight: 800; font-size: 0.84rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                                        ${THEME_ICONS.crossDanger(16)} Delega Rifiutata
+                                                    </span>
+                                                    <div style="font-size: 0.75rem; color: var(--secondary-text); margin-top: 0.15rem; word-break: break-word;">
+                                                        Motivo: <strong>${escapeHtml(decision.reason || 'Non convalidata')}</strong>
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="btn btn-secondary" onclick="window._resetProxyDecision('${p.id}')" style="padding: 0.2rem 0.55rem; font-size: 0.74rem; font-weight: 700; border-radius: 6px; margin-left: 0.5rem; flex-shrink: 0;">Modifica</button>
+                                            </div>
+                                        `;
+                                    } else if (decision.showReasonForm) {
+                                        actionBlock = `
+                                            <div style="background: rgba(239, 68, 68, 0.08); border: 1px dashed var(--danger); border-radius: 8px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                                <label style="font-size: 0.78rem; font-weight: 700; color: var(--danger); margin: 0;">Motivo del rifiuto della delega:</label>
+                                                <select id="select-reject-reason-${p.id}" class="form-select" style="font-size: 0.82rem; padding: 0.4rem 0.6rem;" onchange="window._onRejectReasonChange('${p.id}', this.value)">
+                                                    <option value="Superamento limiti di legge (Art. 67 disp. att. c.c.)">Superamento limiti di legge (Art. 67 c.c.)</option>
+                                                    <option value="Delega non conforme o incompleta">Delega non conforme o incompleta</option>
+                                                    <option value="Delegante presente di persona in assemblea">Delegante presente di persona in assemblea</option>
+                                                    <option value="Delega revocata dal delegante">Delega revocata dal delegante</option>
+                                                    <option value="custom">Altra motivazione (personalizzata)...</option>
+                                                </select>
+                                                <input type="text" id="input-reject-custom-${p.id}" class="form-input hidden" placeholder="Specifica motivazione del rifiuto..." style="font-size: 0.82rem; padding: 0.4rem 0.6rem;">
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.25rem;">
+                                                    <button type="button" class="btn btn-secondary" onclick="window._cancelRejectForm('${p.id}')" style="font-size: 0.78rem; padding: 0.45rem;">Annulla</button>
+                                                    <button type="button" class="btn btn-danger" onclick="window._confirmRejectProxy('${p.id}')" style="font-size: 0.78rem; font-weight: 700; padding: 0.45rem; background-color: var(--danger); color: white; border: none; border-radius: 6px;">Conferma Rifiuto</button>
+                                                </div>
+                                            </div>
+                                        `;
+                                    } else {
+                                        actionBlock = `
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
+                                                <button type="button" onclick="window._approveProxy('${p.id}')" class="btn btn-primary" style="background-color: #10B981; border: none; font-size: 0.84rem; font-weight: 700; padding: 0.55rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer;">
+                                                    ${THEME_ICONS.checkSuccess(15)} Approva Delega
+                                                </button>
+                                                <button type="button" onclick="window._openRejectForm('${p.id}')" class="btn" style="background-color: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1.5px solid var(--danger); font-size: 0.84rem; font-weight: 700; padding: 0.55rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer;">
+                                                    ${THEME_ICONS.crossDanger(15)} Rifiuta Delega
+                                                </button>
+                                            </div>
+                                        `;
+                                    }
+
+                                    return `
+                                        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                                                <div style="min-width: 0;">
+                                                    <div style="font-size: 0.72rem; color: var(--secondary-text); font-weight: 700; text-transform: uppercase;">Delegante (#${idx + 1})</div>
+                                                    <strong style="font-size: 0.98rem; color: var(--primary-text); display: block; margin-top: 0.1rem; line-height: 1.3;">${escapeHtml(p.delegatorName)}</strong>
+                                                    ${delUnit ? `<div style="font-size: 0.78rem; color: var(--secondary-text); margin-top: 0.15rem;">Unità: <strong style="color: var(--primary-text);">${escapeHtml(delUnit)}</strong></div>` : ''}
+                                                </div>
+                                                <div style="text-align: right; flex-shrink: 0;">
+                                                    <strong style="display: block; font-size: 1.05rem; color: var(--warning); font-weight: 800;">${delMil.toFixed(2)} ‰</strong>
+                                                    <div style="margin-top: 0.2rem;">${art67Badge}</div>
+                                                </div>
+                                            </div>
+                                            ${!validation.valid ? `<div style="font-size: 0.73rem; color: var(--danger); line-height: 1.3; background: rgba(239, 68, 68, 0.08); padding: 0.35rem 0.5rem; border-radius: 4px;">${escapeHtml(validation.errorMessage)}</div>` : ''}
+                                            <div style="margin-top: 0.2rem;">
+                                                ${actionBlock}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+
+                            <!-- RIEPILOGO FINALE -->
+                            <div style="background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 0.75rem 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                                <span style="font-size: 0.82rem; color: var(--secondary-text);">Carico millesimale risultante:</span>
+                                <strong style="font-size: 1.05rem; color: var(--accent-color); font-weight: 800;">${finalProjectedMil.toFixed(2)} ‰</strong>
+                            </div>
+                        </div>
+
+                        <!-- FOOTER -->
+                        <div style="padding: 0.85rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 0.5rem; background: var(--surface-color);">
+                            <button type="button" id="btn-save-proxy-approvals" onclick="window._submitProxyApprovals()" class="btn btn-primary" style="width: 100%; height: 42px; font-weight: 800; font-size: 0.9rem; background-color: #10B981; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.45rem; cursor: pointer;">
+                                <span>✓ Conferma e Concludi Accredito (${approvedCount} appr.${rejectedCount > 0 ? `, ${rejectedCount} rif.` : ''})</span>
+                            </button>
+                            <button type="button" onclick="window._closeProxyApprovalModalWithoutChanges()" class="btn btn-secondary" style="width: 100%; height: 36px; font-size: 0.82rem; border-radius: 8px; cursor: pointer;">
+                                Chiudi senza modificare deleghe
+                            </button>
+                        </div>
+                    </div>
+                `;
+            };
+
+            window._approveProxy = (proxyId) => {
+                proxyDecisions[proxyId] = { status: 'approved', reason: '', showReasonForm: false };
+                renderModalContent();
+            };
+
+            window._openRejectForm = (proxyId) => {
+                proxyDecisions[proxyId] = { status: 'pending', reason: '', showReasonForm: true };
+                renderModalContent();
+            };
+
+            window._cancelRejectForm = (proxyId) => {
+                proxyDecisions[proxyId] = { status: 'pending', reason: '', showReasonForm: false };
+                renderModalContent();
+            };
+
+            window._onRejectReasonChange = (proxyId, val) => {
+                const customInput = document.getElementById(`input-reject-custom-${proxyId}`);
+                if (customInput) {
+                    customInput.classList.toggle('hidden', val !== 'custom');
+                    if (val === 'custom') customInput.focus();
+                }
+            };
+
+            window._confirmRejectProxy = (proxyId) => {
+                const select = document.getElementById(`select-reject-reason-${proxyId}`);
+                const customInput = document.getElementById(`input-reject-custom-${proxyId}`);
+                let reason = select ? select.value : '';
+                if (reason === 'custom') {
+                    reason = (customInput?.value || '').trim() || 'Non convalidata all\'ingresso';
+                }
+                proxyDecisions[proxyId] = { status: 'rejected', reason: reason, showReasonForm: false };
+                renderModalContent();
+            };
+
+            window._resetProxyDecision = (proxyId) => {
+                proxyDecisions[proxyId] = { status: 'pending', reason: '', showReasonForm: false };
+                renderModalContent();
+            };
+
+            window._closeProxyApprovalModalWithoutChanges = () => {
+                overlay.remove();
+                if (typeof onComplete === 'function') {
+                    onComplete({
+                        approvedCount: alreadyApprovedProxies.length,
+                        rejectedCount: 0,
+                        finalMillesimi: userBaseMillesimi + alreadyApprovedProxies.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0)
+                    });
+                }
+            };
+
+            window._submitProxyApprovals = async () => {
+                const btnSave = document.getElementById('btn-save-proxy-approvals');
+                if (btnSave) {
+                    btnSave.disabled = true;
+                    btnSave.textContent = "Salvataggio in corso...";
+                }
+
+                try {
+                    const assemblyRef = doc(db, "assemblies", assemblyId);
+                    const docSnap = await getDoc(assemblyRef);
+                    if (!docSnap.exists()) throw new Error("Assemblea non trovata.");
+
+                    const freshAssembly = docSnap.data();
+                    const nowIso = new Date().toISOString();
+
+                    let newlyApproved = [];
+                    let newlyRejected = [];
+
+                    const updatedProxies = (freshAssembly.proxies || []).map(p => {
+                        if (proxyDecisions[p.id]) {
+                            const dec = proxyDecisions[p.id];
+                            if (dec.status === 'approved') {
+                                newlyApproved.push(p);
+                                return {
+                                    ...p,
+                                    adminApprovalStatus: 'approved',
+                                    adminApprovalDate: nowIso,
+                                    status: 'accepted',
+                                    adminRejectionReason: ''
+                                };
+                            } else if (dec.status === 'rejected') {
+                                newlyRejected.push({ ...p, rejectionReason: dec.reason });
+                                return {
+                                    ...p,
+                                    adminApprovalStatus: 'rejected',
+                                    adminApprovalDate: nowIso,
+                                    status: 'rejected',
+                                    adminRejectionReason: dec.reason || 'Non convalidata all\'ingresso'
+                                };
+                            }
+                        }
+                        return p;
+                    });
+
+                    const allApprovedForDelegate = updatedProxies.filter(p =>
+                        p.delegateId === qrUid &&
+                        p.status !== 'rejected' &&
+                        p.adminApprovalStatus === 'approved'
+                    );
+                    const totalApprovedMil = allApprovedForDelegate.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                    const finalAttendeeMillesimi = userBaseMillesimi + totalApprovedMil;
+                    const finalNotice = allApprovedForDelegate.length > 0 ? ` (+${allApprovedForDelegate.length} deleghe ricevute)` : '';
+
+                    let updatedAttendees = freshAssembly.attendees ? [...freshAssembly.attendees] : [];
+                    const attIndex = updatedAttendees.findIndex(a => a.uid === qrUid);
+                    if (attIndex !== -1) {
+                        updatedAttendees[attIndex] = {
+                            ...updatedAttendees[attIndex],
+                            status: 'presente',
+                            isDelegated: false,
+                            nome: `${userFullName}${finalNotice}`,
+                            millesimi: finalAttendeeMillesimi,
+                            baseMillesimi: userBaseMillesimi,
+                            personalMillesimi: userBaseMillesimi,
+                            heldProxiesCount: allApprovedForDelegate.length
+                        };
+                    }
+
+                    await updateDoc(assemblyRef, {
+                        proxies: JSON.parse(JSON.stringify(updatedProxies)),
+                        attendees: JSON.parse(JSON.stringify(updatedAttendees))
+                    });
+
+                    for (const p of newlyApproved) {
+                        const milVal = (parseFloat(p.delegatorMillesimi) || 0).toFixed(2);
+                        await logAssemblyEvent(assemblyId, 'DELEGA_CONVALIDATA', `Delega di ${p.delegatorName} (${milVal} ‰) convalidata all'ingresso dall'amministratore per il delegato ${userFullName}`);
+                    }
+                    for (const p of newlyRejected) {
+                        const milVal = (parseFloat(p.delegatorMillesimi) || 0).toFixed(2);
+                        await logAssemblyEvent(assemblyId, 'DELEGA_RIFIUTATA', `Delega di ${p.delegatorName} (${milVal} ‰) rifiutata all'ingresso dall'amministratore: ${p.rejectionReason}`);
+                    }
+
+                    if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
+
+                    overlay.remove();
+
+                    if (typeof onComplete === 'function') {
+                        onComplete({
+                            approvedCount: allApprovedForDelegate.length,
+                            rejectedCount: newlyRejected.length,
+                            finalMillesimi: finalAttendeeMillesimi
+                        });
+                    }
+                } catch (err) {
+                    console.error("Errore salvataggio benestare deleghe:", err);
+                    await customAlert("Errore durante il salvataggio del benestare alle deleghe: " + err.message);
+                    if (btnSave) {
+                        btnSave.disabled = false;
+                        btnSave.textContent = "Riprova salvataggio";
+                    }
+                }
+            };
+
+            renderModalContent();
+            document.body.appendChild(overlay);
+        };
+
         const initScannerForAssembly = (assemblyId) => {
             const messageBox = document.getElementById("scanner-message");
             const feedbackPopup = document.getElementById("scanner-feedback-popup");
@@ -19881,29 +20428,31 @@ ${renderBottomNavigation()}
                         userBaseMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
                     }
 
-                    let totalMillesimiAccreditati = userBaseMillesimi;
-                    const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === qrUid && p.status !== 'rejected');
+                    const allHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === qrUid && p.status !== 'rejected');
+                    const alreadyApprovedProxies = allHeldProxies.filter(p => p.adminApprovalStatus === 'approved');
+                    const pendingAdminProxies = allHeldProxies.filter(p => p.adminApprovalStatus !== 'approved');
 
-                    let proxyNoticeText = '';
-                    if (heldProxies.length > 0) {
-                        heldProxies.forEach(p => {
-                            totalMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
-                        });
-                        proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
-                    }
+                    // 1. Accreditare subito la presenza personale e i soli millesimi personali base del condòmino inquadrato
+                    let initialMillesimiAccreditati = userBaseMillesimi;
+                    alreadyApprovedProxies.forEach(p => {
+                        initialMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
+                    });
+                    const initialProxyNotice = alreadyApprovedProxies.length > 0 ? ` (+${alreadyApprovedProxies.length} deleghe convalidate)` : '';
 
                     const userFullName = `${user.nome} ${user.cognome}`.trim();
                     let updatedAttendees = [...attendees];
 
                     if (existingIndex !== -1) {
-                        // RIENTRO IN-PLACE: Nessuna riga duplicata né duplicazione millesimi
+                        // RIENTRO IN-PLACE
                         updatedAttendees[existingIndex] = {
                             ...updatedAttendees[existingIndex],
                             status: 'presente',
                             isDelegated: false,
-                            nome: `${userFullName}${proxyNoticeText}`,
-                            millesimi: totalMillesimiAccreditati,
-                            heldProxiesCount: heldProxies.length,
+                            nome: `${userFullName}${initialProxyNotice}`,
+                            millesimi: initialMillesimiAccreditati,
+                            baseMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingIndex].baseMillesimi || 0),
+                            personalMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingIndex].personalMillesimi || 0),
+                            heldProxiesCount: alreadyApprovedProxies.length,
                             reenteredAt: Date.now(),
                             isManual: false,
                             registrationType: 'qr',
@@ -19913,11 +20462,13 @@ ${renderBottomNavigation()}
                         // PRIMO ACCREDITO
                         const newAttendee = {
                             uid: qrUid,
-                            nome: `${userFullName}${proxyNoticeText}`,
+                            nome: `${userFullName}${initialProxyNotice}`,
                             cognome: user.cognome || '',
-                            millesimi: totalMillesimiAccreditati,
+                            millesimi: initialMillesimiAccreditati,
+                            baseMillesimi: userBaseMillesimi,
+                            personalMillesimi: userBaseMillesimi,
                             proprieta: user.proprieta || [],
-                            heldProxiesCount: heldProxies.length,
+                            heldProxiesCount: alreadyApprovedProxies.length,
                             status: 'presente',
                             isManual: false,
                             registrationType: 'qr',
@@ -19931,38 +20482,89 @@ ${renderBottomNavigation()}
                         attendees: JSON.parse(JSON.stringify(updatedAttendees))
                     });
 
-                    await logAssemblyEvent(assemblyId, existingIndex !== -1 ? 'RIENTRO_QR' : 'PRESENZA_QR', `Presenza ${existingIndex !== -1 ? 'riattivata (rientro)' : 'convalidata'} tramite Scanner QR: ${userFullName} (${totalMillesimiAccreditati.toFixed(2)} ‰)`);
+                    await logAssemblyEvent(assemblyId, existingIndex !== -1 ? 'RIENTRO_QR' : 'PRESENZA_QR', `Presenza ${existingIndex !== -1 ? 'riattivata (rientro)' : 'convalidata'} tramite Scanner QR: ${userFullName} (${initialMillesimiAccreditati.toFixed(2)} ‰)`);
 
-                    const fPopup = document.getElementById("scanner-feedback-popup");
-                    if (fPopup) {
-                        fPopup.className = '';
-                        fPopup.style.display = 'flex';
-                        fPopup.classList.remove('hidden');
-                        fPopup.innerHTML = `
-                            <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
-                                <div style="display:flex; justify-content:center; margin-bottom:0.25rem; color:#10B981;">${THEME_ICONS.checkSuccess(32)}</div>
-                                <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza convalidata</div>
-                                <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
-                                    Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                    // 2. Controllo deleghe associate non ancora convalidate dall'amministratore
+                    if (pendingAdminProxies.length > 0) {
+                        // Mette in pausa la scansione successiva ed apre il popup di richiesta benestare
+                        window.openAdminProxyApprovalModal({
+                            assemblyId,
+                            assembly,
+                            qrUid,
+                            user,
+                            userFullName,
+                            userBaseMillesimi,
+                            pendingProxies: pendingAdminProxies,
+                            alreadyApprovedProxies: alreadyApprovedProxies,
+                            onComplete: ({ approvedCount, rejectedCount, finalMillesimi }) => {
+                                const fPopup = document.getElementById("scanner-feedback-popup");
+                                if (fPopup) {
+                                    fPopup.className = '';
+                                    fPopup.style.display = 'flex';
+                                    fPopup.classList.remove('hidden');
+                                    fPopup.innerHTML = `
+                                        <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                            <div style="display:flex; justify-content:center; margin-bottom:0.25rem; color:#10B981;">${THEME_ICONS.checkSuccess(32)}</div>
+                                            <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza e Deleghe Convalidate</div>
+                                            <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
+                                                Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                                            </div>
+                                            <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
+                                                Millesimi totali: <strong style="color:var(--warning); font-size:0.92rem;">${finalMillesimi.toFixed(2)} ‰</strong>
+                                                <div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">
+                                                    ${approvedCount > 0 ? `+${approvedCount} deleghe approvate` : 'Nessuna delega approvata'}${rejectedCount > 0 ? ` (${rejectedCount} rifiutate)` : ''}
+                                                </div>
+                                            </div>
+                                            <button type="button" onclick="dismissScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                                <span>Chiudi / prossima scansione</span>
+                                            </button>
+                                        </div>
+                                    `;
+                                } else if (messageBox) {
+                                    messageBox.className = 'message-box success';
+                                    messageBox.innerHTML = `
+                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem;"><span style="color:#10B981; display:inline-flex;">${THEME_ICONS.checkSuccess(16)}</span> Presenza convalidata per <strong>${escapeHtml(userFullName)}</strong> (${finalMillesimi.toFixed(2)} ‰)</div>
+                                            <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Chiudi</button>
+                                        </div>
+                                    `;
+                                    messageBox.style.display = 'block';
+                                }
+                            }
+                        });
+                    } else {
+                        // Nessuna delega in attesa di benestare: mostra subito il feedback di presenza
+                        const fPopup = document.getElementById("scanner-feedback-popup");
+                        if (fPopup) {
+                            fPopup.className = '';
+                            fPopup.style.display = 'flex';
+                            fPopup.classList.remove('hidden');
+                            fPopup.innerHTML = `
+                                <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                    <div style="display:flex; justify-content:center; margin-bottom:0.25rem; color:#10B981;">${THEME_ICONS.checkSuccess(32)}</div>
+                                    <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza convalidata</div>
+                                    <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
+                                        Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                                    </div>
+                                    <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
+                                        Millesimi: <strong style="color:var(--warning); font-size:0.92rem;">${initialMillesimiAccreditati.toFixed(2)} ‰</strong>
+                                        ${initialProxyNotice ? `<div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">${escapeHtml(initialProxyNotice.trim())}</div>` : ''}
+                                    </div>
+                                    <button type="button" onclick="dismissScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                        <span>Chiudi / prossima scansione</span>
+                                    </button>
                                 </div>
-                                <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
-                                    Millesimi: <strong style="color:var(--warning); font-size:0.92rem;">${totalMillesimiAccreditati.toFixed(2)} ‰</strong>
-                                    ${proxyNoticeText ? `<div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
+                            `;
+                        } else if (messageBox) {
+                            messageBox.className = 'message-box success';
+                            messageBox.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem;"><span style="color:#10B981; display:inline-flex;">${THEME_ICONS.checkSuccess(16)}</span> Il condòmino <strong>${escapeHtml(userFullName)}</strong> è presente (${initialMillesimiAccreditati.toFixed(2)} ‰)</div>
+                                    <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Chiudi</button>
                                 </div>
-                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
-                                    <span>Chiudi / prossima scansione</span>
-                                </button>
-                            </div>
-                        `;
-                    } else if (messageBox) {
-                        messageBox.className = 'message-box success';
-                        messageBox.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                                <div style="display:flex; align-items:center; gap:0.35rem;"><span style="color:#10B981; display:inline-flex;">${THEME_ICONS.checkSuccess(16)}</span> Il condòmino <strong>${escapeHtml(userFullName)}</strong> è presente (${totalMillesimiAccreditati.toFixed(2)} ‰)</div>
-                                <button type="button" onclick="dismissScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Chiudi</button>
-                            </div>
-                        `;
-                        messageBox.style.display = 'block';
+                            `;
+                            messageBox.style.display = 'block';
+                        }
                     }
 
                 } catch (error) {
@@ -20268,6 +20870,9 @@ ${renderBottomNavigation()}
         };
 
         window.extractPropsFromTableData = (tableData, nominativoOrId, rawNom) => {
+            if (window.AssembleeModule && typeof window.AssembleeModule.extractPropsFromTableData === 'function') {
+                return window.AssembleeModule.extractPropsFromTableData(tableData, nominativoOrId, rawNom);
+            }
             if (!tableData || !Array.isArray(tableData) || tableData.length === 0) return [];
             const headers = Object.keys(tableData[0] || {});
             const cleanHeader = (h) => (h || '').toString().trim().toLowerCase();
@@ -20277,31 +20882,58 @@ ${renderBottomNavigation()}
                 return headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase()))) || null;
             };
 
-            const nomHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome']);
-            const unitHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
-            const milHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+            const nomHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+            const unitHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
+
+            const exactKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+            let milHeader = headers.find(h => exactKeys.some(k => cleanHeader(h) === k.toLowerCase()));
+            if (!milHeader) {
+                milHeader = headers.find(h => cleanHeader(h).includes('millesim')) || null;
+            }
             const grpHHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
 
             if (!nomHeader) return [];
 
-            const cleanTarget = (rawNom || nominativoOrId || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+            let cleanCandidate = (rawNom || nominativoOrId || '').toString();
+            cleanCandidate = cleanCandidate.replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '');
+            cleanCandidate = cleanCandidate.replace(/\s*\([^)]*\)/g, '');
+            cleanCandidate = cleanCandidate.replace(/\b(consigliere|presidente|segretario|delegato\s+terzo|delegato|amministratore)\b/gi, '');
+            const cleanTarget = cleanCandidate.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
             if (!cleanTarget) return [];
+
+            const stopWords = new Set(['delega', 'deleghe', 'ricevute', 'ricevuta', 'terzo', 'condomino', 'sig', 'sig.ra', 'dott', 'dott.ssa']);
 
             const matchedRows = tableData.filter(row => {
                 const rNom = (row[nomHeader] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
                 if (!rNom) return false;
                 if (rNom === cleanTarget) return true;
-                const rWords = rNom.split(' ').filter(w => w.length > 2);
-                const tWords = cleanTarget.split(' ').filter(w => w.length > 2);
+                const rWords = rNom.split(' ').filter(w => w.length > 2 && !stopWords.has(w));
+                const tWords = cleanTarget.split(' ').filter(w => w.length > 2 && !stopWords.has(w));
                 return (rWords.length > 0 && rWords.every(w => cleanTarget.includes(w))) ||
                     (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
             });
 
             return matchedRows.map(row => {
-                const rawMil = milHeader && row[milHeader] ? row[milHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
+                let parsedMil = 0;
+                if (milHeader && row[milHeader] !== undefined && row[milHeader] !== null) {
+                    let rawMilStr = row[milHeader].toString().trim();
+                    if (rawMilStr.includes(',') && rawMilStr.includes('.')) {
+                        if (rawMilStr.indexOf('.') < rawMilStr.indexOf(',')) {
+                            rawMilStr = rawMilStr.replace(/\./g, '').replace(',', '.');
+                        } else {
+                            rawMilStr = rawMilStr.replace(/,/g, '');
+                        }
+                    } else {
+                        rawMilStr = rawMilStr.replace(',', '.');
+                    }
+                    rawMilStr = rawMilStr.replace(/[^\d.-]/g, '').trim();
+                    parsedMil = parseFloat(rawMilStr) || 0;
+                    if (parsedMil > 1000) parsedMil = 1000;
+                    if (parsedMil < 0) parsedMil = 0;
+                }
                 return {
                     interno: unitHeader && row[unitHeader] ? row[unitHeader].toString().trim() : '',
-                    millesimi: parseFloat(rawMil) || 0,
+                    millesimi: parsedMil,
                     gruppo: grpHHeader && row[grpHHeader] ? row[grpHHeader].toString().trim() : ''
                 };
             });
@@ -20750,9 +21382,66 @@ ${renderBottomNavigation()}
                 }
             }
             if (heldProxies && heldProxies.length > 0) {
-                return Math.max(0, totMil - totalHeldMil);
+                return (totMil > 0 && totMil <= 1000) ? Math.max(0, totMil - totalHeldMil) : 0;
             }
-            return totMil;
+            return (totMil > 0 && totMil <= 1000) ? totMil : 0;
+        };
+
+        window.resolveAttendeePersonalMillesimi = (attendee, heldProxies = []) => {
+            if (!attendee) return 0;
+            const isExt = attendee.isExternalDelegate === true || attendee.isExternal === true || attendee.tipoUtente === 'terzo_delegato' || (attendee.uid && attendee.uid.toString().startsWith('ext_'));
+            if (isExt) return 0;
+
+            // 1. baseMillesimi valido (<= 1000)
+            if (attendee.baseMillesimi !== undefined && attendee.baseMillesimi !== null) {
+                const bm = parseFloat(attendee.baseMillesimi);
+                if (!isNaN(bm) && bm > 0 && bm <= 1000) return parseFloat(bm.toFixed(2));
+            }
+
+            // 2. personalMillesimi valido (<= 1000)
+            if (attendee.personalMillesimi !== undefined && attendee.personalMillesimi !== null) {
+                const pm = parseFloat(attendee.personalMillesimi);
+                if (!isNaN(pm) && pm > 0 && pm <= 1000) return parseFloat(pm.toFixed(2));
+            }
+
+            // 3. Proprietà registrate nell'attendee
+            if (Array.isArray(attendee.proprieta) && attendee.proprieta.length > 0) {
+                const pSum = attendee.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                if (pSum > 0 && pSum <= 1000) return parseFloat(pSum.toFixed(2));
+            }
+
+            // 4. getAttendeePersonalMillesimi
+            const allUsers = window._liveAssemblyStaticCache?.allUsers || window._cachedAllUsers || window._unifiedCondominiumRegistryCache?.data?.allCondomini || [];
+            if (typeof window.getAttendeePersonalMillesimi === 'function') {
+                const gMil = window.getAttendeePersonalMillesimi(attendee, heldProxies, null, allUsers, false);
+                if (gMil > 0 && gMil <= 1000) return parseFloat(gMil.toFixed(2));
+            }
+
+            // 5. Cerca direttamente in allUsers / anagrafica
+            const uId = attendee.uid || attendee.id;
+            const cleanA = window.cleanCandidateName ? window.cleanCandidateName(attendee.nome || attendee.nominativo || '') : (attendee.nome || '');
+            const matchedUser = allUsers.find(u =>
+                (uId && (u.id === uId || u.uid === uId || u.registeredUid === uId)) ||
+                (cleanA && u.nominativo && (window.cleanCandidateName ? window.cleanCandidateName(u.nominativo).toLowerCase() === cleanA.toLowerCase() : u.nominativo.toLowerCase() === cleanA.toLowerCase())) ||
+                (cleanA && `${u.nome || ''} ${u.cognome || ''}`.trim().toLowerCase() === cleanA.toLowerCase())
+            );
+            if (matchedUser) {
+                const uMil = parseFloat(matchedUser.millesimiTotali) || (Array.isArray(matchedUser.proprieta) ? matchedUser.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0) : 0);
+                if (uMil > 0 && uMil <= 1000) return parseFloat(uMil.toFixed(2));
+            }
+
+            // 6. Se millesimi è ragionevole (<= 1000)
+            const rawM = parseFloat(attendee.millesimi) || 0;
+            if (rawM > 0 && rawM <= 1000) {
+                const totalHeld = (heldProxies || []).reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                if (totalHeld > 0 && rawM > totalHeld) {
+                    return parseFloat((rawM - totalHeld).toFixed(2));
+                } else if (totalHeld === 0) {
+                    return parseFloat(rawM.toFixed(2));
+                }
+            }
+
+            return 0;
         };
 
         window.getOfficialImportNominativo = (entity, userObj = null, tableData = null, allCondomini = null) => {
@@ -21805,7 +22494,8 @@ ${renderBottomNavigation()}
 
                 const proxies = (assembly.proxies || []).filter(p =>
                     (p.delegateId === delegateUid || p.delegateId === attendee.id || (attendee.registeredUid && p.delegateId === attendee.registeredUid)) &&
-                    p.status !== 'rejected'
+                    p.status !== 'rejected' &&
+                    window.isProxyApproved(p)
                 );
 
                 // Filtra solo le deleghe selezionate tramite checkbox
@@ -22051,7 +22741,8 @@ ${renderBottomNavigation()}
 
                 let proxies = (assembly.proxies || []).filter(p =>
                     (p.delegateId === delegateUid || p.delegateId === attendee.id || (attendee.registeredUid && p.delegateId === attendee.registeredUid)) &&
-                    p.status !== 'rejected'
+                    p.status !== 'rejected' &&
+                    window.isProxyApproved(p)
                 );
                 if (isGroupScope) {
                     proxies = proxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
@@ -22777,9 +23468,14 @@ ${renderBottomNavigation()}
                         found = headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase())));
                         return found || null;
                     };
+                    const exactMilKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+                    let mFound = headers.find(h => exactMilKeys.some(k => cleanH(h) === k.toLowerCase()));
+                    if (!mFound) {
+                        mFound = headers.find(h => cleanH(h).includes('millesim')) || null;
+                    }
                     return {
                         nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']),
-                        millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico'])
+                        millesimiHeader: mFound
                     };
                 })(tData));
 
@@ -22835,18 +23531,23 @@ ${renderBottomNavigation()}
                     const hId = a.uid || a.id || a.nome;
                     if (hId) presentHeadsSet.add(hId);
                 }
-                presentMillesimi += (parseFloat(a.millesimi) || 0);
+                const held = (activeProxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid)) && window.isProxyApproved(p));
+                const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExternal ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
+                const heldMil = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                presentMillesimi += (personalMil + heldMil);
             });
 
             (activeProxies || []).forEach(p => {
-                const delId = p.delegatorId || p.delegatorUid || p.id || p.delegatorName;
-                if (delId) {
-                    presentHeadsSet.add(delId);
+                if (window.isProxyApproved(p)) {
+                    const delId = p.delegatorId || p.delegatorUid || p.id || p.delegatorName;
+                    if (delId) {
+                        presentHeadsSet.add(delId);
+                    }
                 }
             });
 
             const presentHeads = presentHeadsSet.size;
-            presentMillesimi = parseFloat(presentMillesimi.toFixed(2));
+            presentMillesimi = Math.min(totalBuildingMillesimi, Math.min(1000.00, parseFloat(presentMillesimi.toFixed(2))));
 
             let requiredHeads = 0;
             let requiredMillesimi = 0;
@@ -22974,7 +23675,11 @@ ${renderBottomNavigation()}
             });
 
             const assemblyRef = doc(db, "assemblies", assemblyId);
-            onSnapshot(assemblyRef, (docSnap) => {
+            if (window._currentLiveAssemblyUnsubscribe) {
+                try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
+                window._currentLiveAssemblyUnsubscribe = null;
+            }
+            window._currentLiveAssemblyUnsubscribe = onSnapshot(assemblyRef, (docSnap) => {
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
                 window._lastLiveAssemblySnapshot = { id: docSnap.id, ...assembly };
@@ -22999,9 +23704,14 @@ ${renderBottomNavigation()}
                         found = headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase())));
                         return found || null;
                     };
+                    const exactMilKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+                    let mHeader = headers.find(h => exactMilKeys.some(k => cleanH(h) === k.toLowerCase()));
+                    if (!mHeader) {
+                        mHeader = headers.find(h => cleanH(h).includes('millesim')) || null;
+                    }
                     return {
                         nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']),
-                        millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']),
+                        millesimiHeader: mHeader,
                         groupHeader: findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']),
                         unitaHeader: findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano'])
                     };
@@ -23023,11 +23733,18 @@ ${renderBottomNavigation()}
                 });
                 const attendees = Array.from(uniqueAttendeesMap.values());
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
-                const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && activeAttendees.some(a => a.uid === p.delegateId));
+                const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && window.isProxyApproved(p) && activeAttendees.some(a => a.uid === p.delegateId));
                 const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
                 const totalPresences = activeAttendeesPersonalHeads + activeProxies.length;
                 let totMillesimi = 0;
-                activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
+                activeAttendees.forEach(a => {
+                    const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                    const held = activeProxies.filter(p => p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid));
+                    const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExternal ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
+                    const heldProxiesMillesimi = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                    totMillesimi += (personalMil + heldProxiesMillesimi);
+                });
+                totMillesimi = Math.min(1000.00, parseFloat(totMillesimi.toFixed(2)));
 
                 const totTesteEl = document.getElementById('room-tot-teste');
                 const totMillesimiEl = document.getElementById('room-tot-millesimi');
@@ -23135,58 +23852,15 @@ ${renderBottomNavigation()}
                         unitaHeader = hObj.unitaHeader;
                     }
 
-                    // Auto-riparazione immediata dei millesimi dell'assemblea da tableData
-                    if (tableData && tableData.length > 0 && typeof window.extractPropsFromTableData === 'function') {
-                        let needsAssemblyDbSync = false;
-                        let syncUpdatedProxies = (assembly.proxies || []).map(p => {
-                            const pProps = window.extractPropsFromTableData(tableData, p.delegatorId || p.id, p.delegatorName);
-                            if (pProps && pProps.length > 0) {
-                                const realPVal = parseFloat(pProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
-                                if (Math.abs((parseFloat(p.delegatorMillesimi) || 0) - realPVal) > 0.001) {
-                                    needsAssemblyDbSync = true;
-                                    p.delegatorMillesimi = realPVal;
-                                    return { ...p, delegatorMillesimi: realPVal };
-                                }
-                            }
-                            return p;
-                        });
-
-                        activeAttendees.forEach(a => {
-                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
-                            let realBaseMil = isExt ? 0 : null;
-                            if (!isExt) {
-                                const aProps = window.extractPropsFromTableData(tableData, a.uid, a.nome);
-                                if (aProps && aProps.length > 0) {
-                                    realBaseMil = parseFloat(aProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
-                                }
-                            }
-                            if (realBaseMil !== null) {
-                                a.baseMillesimi = realBaseMil;
-                            } else {
-                                realBaseMil = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0);
-                            }
-
-                            const held = syncUpdatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
-                            let totalHeld = 0;
-                            held.forEach(p => { totalHeld += (parseFloat(p.delegatorMillesimi) || 0); });
-                            const expectedTotalMil = parseFloat((realBaseMil + totalHeld).toFixed(2));
-
-                            if (Math.abs((parseFloat(a.millesimi) || 0) - expectedTotalMil) > 0.001) {
-                                needsAssemblyDbSync = true;
-                                a.millesimi = expectedTotalMil;
-                            }
-                        });
-
-                        if (needsAssemblyDbSync && isUserAdmin) {
-                            updateDoc(assemblyRef, {
-                                attendees: assembly.attendees || [],
-                                proxies: syncUpdatedProxies
-                            }).catch(err => console.warn("Auto-sync assemblea non critico:", err));
-                        }
-                    }
-
                     totMillesimi = 0;
-                    activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
+                    activeAttendees.forEach(a => {
+                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const held = activeProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid)));
+                        const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExt ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
+                        const heldProxiesMillesimi = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                        totMillesimi += (personalMil + heldProxiesMillesimi);
+                    });
+                    totMillesimi = Math.min(1000.00, parseFloat(totMillesimi.toFixed(2)));
 
                     // Se 'Tutte le scale' è presente nei punti OdG, includi tutti i gruppi registrati
                     agendaList.forEach(item => {
@@ -24007,7 +24681,7 @@ ${renderBottomNavigation()}
                     const seenDelegatorKeys = new Set();
 
                     (assembly.proxies || []).forEach(p => {
-                        if (p.status !== 'rejected') {
+                        if (p.status !== 'rejected' && window.isProxyApproved(p)) {
                             if (isDelegatePresentInRoom(p.delegateId, p.delegateName)) {
                                 const dKey = (p.delegatorId || p.delegatorName || '').trim().toLowerCase();
                                 if (dKey && !seenDelegatorKeys.has(dKey)) {
@@ -24069,24 +24743,15 @@ ${renderBottomNavigation()}
                             presentiHtml = '<p style="color:var(--secondary-text); font-size:0.8rem; text-align:center; padding:0.4rem 0; margin:0;">Nessun condòmino presente in aula.</p>';
                         } else {
                             presentiHtml = presentiList.map(a => {
-                                const heldProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || (a.registeredUid && p.delegateId === a.registeredUid)));
+                                const heldProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && window.isProxyApproved(p) && (p.delegateId === a.uid || (a.registeredUid && p.delegateId === a.registeredUid)));
                                 const isLeft = a.status === 'uscito';
                                 const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
                                 const isManual = isExternal || a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
                                 const attendeeUnit = isExternal ? '' : (window.getVoterUnitString ? window.getVoterUnitString(a, window._cachedAllUsers || []) : ((Array.isArray(a.proprieta) && a.proprieta.length > 0 ? a.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || a.unitaImmobiliare || a.units || ''));
 
-                                let baseMil = 0;
                                 const totalHeldMil = heldProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
-                                if (isExternal) {
-                                    baseMil = 0;
-                                } else if (a.baseMillesimi !== undefined) {
-                                    baseMil = parseFloat(a.baseMillesimi) || 0;
-                                } else if (heldProxies.length > 0) {
-                                    baseMil = Math.max(0, (parseFloat(a.millesimi) || 0) - totalHeldMil);
-                                } else {
-                                    baseMil = parseFloat(a.millesimi) || 0;
-                                }
-                                const totalWithDelegateMil = baseMil + totalHeldMil;
+                                const personalMil = isExternal ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0));
+                                const totalWithDelegateMil = personalMil + totalHeldMil;
 
                                 let proxyInfo = '';
                                 if (heldProxies.length > 0) {
@@ -24170,7 +24835,7 @@ ${renderBottomNavigation()}
                                 const unitNames = attendeeUnit || ((a.proprieta && Array.isArray(a.proprieta)) ? a.proprieta.map(p => p.interno || '').join(' ') : (a.unitaImmobiliare || a.units || ''));
                                 const statusText = isLeft ? 'uscito' : 'presente in aula';
                                 const typeText = isManual ? 'manuale' : 'qr app';
-                                const searchText = `${displayName} ${attExtRole} ${proxyNames} ${unitNames} ${statusText} ${typeText} ${baseMil.toFixed(2)} ${(parseFloat(a.millesimi) || 0).toFixed(2)}`.toLowerCase();
+                                const searchText = `${displayName} ${attExtRole} ${proxyNames} ${unitNames} ${statusText} ${typeText} ${personalMil.toFixed(2)} ${totalWithDelegateMil.toFixed(2)}`.toLowerCase();
 
                                 return `
                                     <div class="room-attendee-card room-presenti-card" data-search-text="${escapeHtml(searchText)}" style="background:var(--surface-color-light); padding:0.75rem 0.9rem; border-radius:10px; font-size:0.85rem; margin-bottom:0.45rem; ${isLeft ? 'opacity:0.85; border-left:3.5px solid var(--danger, #EF4444);' : (isExternal ? 'border-left:3.5px solid #8b5cf6;' : 'border-left:3.5px solid #1DB954;')}">
@@ -24184,12 +24849,16 @@ ${renderBottomNavigation()}
                                                 </div>
                                             </div>
                                             <div style="flex-shrink:0; text-align:right;">
-                                                <strong style="color:var(--warning); font-size:0.92rem; font-weight:800; white-space:nowrap;">${(parseFloat(a.millesimi) || 0).toFixed(2)} ‰</strong>
+                                                <strong style="color:var(--warning); font-size:0.92rem; font-weight:800; white-space:nowrap;">${totalWithDelegateMil.toFixed(2)} ‰</strong>
                                                 ${isExternal ? `
                                                     <div style="font-size:0.72rem; color:var(--secondary-text); font-weight:600;">
                                                         Quota personale: <strong style="color:var(--primary-text);">0.00 ‰</strong>
                                                     </div>
-                                                ` : ''}
+                                                ` : (heldProxies.length > 0 ? `
+                                                    <div style="font-size:0.72rem; color:var(--secondary-text); font-weight:600;">
+                                                        Quota personale: <strong style="color:var(--primary-text);">${personalMil.toFixed(2)} ‰</strong>
+                                                    </div>
+                                                ` : '')}
                                             </div>
                                         </div>
                                         <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
@@ -24460,7 +25129,7 @@ ${renderBottomNavigation()}
 
                     const activeAttendees = (assembly?.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                     const activeAttendeeIds = new Set(activeAttendees.map(a => a.uid || a.id).filter(Boolean));
-                    const activeProxies = (assembly?.proxies || []).filter(p => p.status !== 'rejected' && (activeAttendeeIds.has(p.delegateId) || activeAttendeeIds.has(p.delegateUid)));
+                    const activeProxies = (assembly?.proxies || []).filter(p => p.status !== 'rejected' && window.isProxyApproved(p) && (activeAttendeeIds.has(p.delegateId) || activeAttendeeIds.has(p.delegateUid)));
 
                     let nominativoHeader = null;
                     let millesimiHeader = null;
@@ -24683,58 +25352,15 @@ ${renderBottomNavigation()}
                             totalBuildingMillesimi = currentTotalBuildingMillesimi;
                         }
 
-                        // Auto-riparazione immediata dei millesimi dell'assemblea da tableData
-                        if (tableData && tableData.length > 0 && typeof window.extractPropsFromTableData === 'function') {
-                            let needsAssemblyDbSync = false;
-                            let syncUpdatedProxies = (assembly.proxies || []).map(p => {
-                                const pProps = window.extractPropsFromTableData(tableData, p.delegatorId || p.id, p.delegatorName);
-                                if (pProps && pProps.length > 0) {
-                                    const realPVal = parseFloat(pProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
-                                    if (Math.abs((parseFloat(p.delegatorMillesimi) || 0) - realPVal) > 0.001) {
-                                        needsAssemblyDbSync = true;
-                                        p.delegatorMillesimi = realPVal;
-                                        return { ...p, delegatorMillesimi: realPVal };
-                                    }
-                                }
-                                return p;
-                            });
-
-                            activeAttendees.forEach(a => {
-                                const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
-                                let realBaseMil = isExt ? 0 : null;
-                                if (!isExt) {
-                                    const aProps = window.extractPropsFromTableData(tableData, a.uid, a.nome);
-                                    if (aProps && aProps.length > 0) {
-                                        realBaseMil = parseFloat(aProps.reduce((sum, pr) => sum + (parseFloat(pr.millesimi) || 0), 0).toFixed(2));
-                                    }
-                                }
-                                if (realBaseMil !== null) {
-                                    a.baseMillesimi = realBaseMil;
-                                } else {
-                                    realBaseMil = a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0);
-                                }
-
-                                const held = syncUpdatedProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id));
-                                let totalHeld = 0;
-                                held.forEach(p => { totalHeld += (parseFloat(p.delegatorMillesimi) || 0); });
-                                const expectedTotalMil = parseFloat((realBaseMil + totalHeld).toFixed(2));
-
-                                if (Math.abs((parseFloat(a.millesimi) || 0) - expectedTotalMil) > 0.001) {
-                                    needsAssemblyDbSync = true;
-                                    a.millesimi = expectedTotalMil;
-                                }
-                            });
-
-                            if (needsAssemblyDbSync && isUserAdmin) {
-                                updateDoc(assemblyRef, {
-                                    attendees: assembly.attendees || [],
-                                    proxies: syncUpdatedProxies
-                                }).catch(err => console.warn("Auto-sync assemblea non critico:", err));
-                            }
-                        }
-
                         totMillesimi = 0;
-                        activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
+                        activeAttendees.forEach(a => {
+                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                            const held = activeProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid)));
+                            const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExt ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
+                            const heldProxiesMillesimi = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                            totMillesimi += (personalMil + heldProxiesMillesimi);
+                        });
+                        totMillesimi = Math.min(1000.00, parseFloat(totMillesimi.toFixed(2)));
                         const formatLongName = (str) => escapeHtml(str || '').replace(/\s*\/\s*/g, ' / ');
                         const odgPollContainer = document.getElementById('room-odg-poll-list');
                         if (odgPollContainer && assembly.agenda) {
@@ -26036,7 +26662,7 @@ ${renderBottomNavigation()}
                                         isGroupScope: isGroupScope,
                                         nonVotersMilSum: nonVotersMilSum,
                                         nonVoters: pointNonVoters.map(a => {
-                                            let heldProxies = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
+                                            let heldProxies = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected' && window.isProxyApproved(p));
                                             if (isGroupScope) {
                                                 heldProxies = heldProxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
                                             }
@@ -26565,7 +27191,11 @@ ${renderBottomNavigation()}
                 const cognomeHeader = findH(['cognome']);
                 const nomeHeader = findH(['nome']);
                 const unitaHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
-                const millesimiHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+                const exactMilKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+                let millesimiHeader = headers.find(h => exactMilKeys.some(k => cleanHeader(h) === k.toLowerCase()));
+                if (!millesimiHeader) {
+                    millesimiHeader = headers.find(h => cleanHeader(h).includes('millesim')) || null;
+                }
                 const groupHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
 
                 importedRows.forEach((row) => {
@@ -26587,9 +27217,21 @@ ${renderBottomNavigation()}
 
                     let rawMil = '0';
                     if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
-                        rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                        let rawStr = row[millesimiHeader].toString().trim();
+                        if (rawStr.includes(',') && rawStr.includes('.')) {
+                            if (rawStr.indexOf('.') < rawStr.indexOf(',')) {
+                                rawStr = rawStr.replace(/\./g, '').replace(',', '.');
+                            } else {
+                                rawStr = rawStr.replace(/,/g, '');
+                            }
+                        } else {
+                            rawStr = rawStr.replace(',', '.');
+                        }
+                        rawMil = rawStr.replace(/[^\d.-]/g, '').trim();
                     }
-                    const milVal = parseFloat(rawMil) || 0;
+                    let milVal = parseFloat(rawMil) || 0;
+                    if (milVal > 1000) milVal = 1000;
+                    if (milVal < 0) milVal = 0;
                     const unitaVal = unitaHeader && row[unitaHeader] !== undefined && row[unitaHeader] !== null ? row[unitaHeader].toString().trim() : '';
                     const rowGroup = groupHeader && row[groupHeader] ? row[groupHeader].toString().trim() : '';
 
@@ -28653,6 +29295,9 @@ ${renderBottomNavigation()}
                         isDigital: false,
                         isExternalDelegate: isExternal,
                         status: 'accepted',
+                        adminApprovalStatus: 'approved',
+                        adminApprovalDate: new Date().toISOString(),
+                        adminRejectionReason: '',
                         createdAt: new Date().toISOString()
                     };
                 });
@@ -28670,7 +29315,7 @@ ${renderBottomNavigation()}
                 });
 
                 const allHeldProxies = updatedProxies.filter(p =>
-                    p.status !== 'rejected' && (
+                    window.isProxyApproved(p) && (
                         p.delegateId === delegateId ||
                         (p.delegateName && isExternal && p.delegateName.toLowerCase().trim() === fullExtName.toLowerCase().trim()) ||
                         (delegateData.registeredUid && p.delegateId === delegateData.registeredUid)
@@ -29821,6 +30466,9 @@ ${renderBottomNavigation()}
                     isDigital: true,
                     isExternalDelegate: isExternalDelegate,
                     status: isExternalDelegate ? 'accepted' : 'pending',
+                    adminApprovalStatus: 'pending_admin',
+                    adminApprovalDate: null,
+                    adminRejectionReason: '',
                     createdAt: new Date().toISOString()
                 };
 
@@ -29843,7 +30491,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        let activeVotingListener = null;
+        activeVotingListener = null;
 
         window.toggleCondoDelegateGroup = (itemId, isChecked) => {
             const members = document.querySelectorAll(`.condo-member-${itemId}`);
@@ -30933,6 +31581,43 @@ ${renderBottomNavigation()}
                     console.warn("Lettura utenti fall-back su attendees:", e);
                 }
 
+                let tableData = window._liveAssemblyStaticCache?.tableData || window._currentTableData || [];
+                let partialCondosList = window._liveAssemblyStaticCache?.partialCondosList || [];
+
+                if (tableData.length === 0 && typeof window.fetchLiveAssemblyStaticData === 'function') {
+                    try {
+                        const staticData = await window.fetchLiveAssemblyStaticData();
+                        if (staticData?.tableData && staticData.tableData.length > 0) {
+                            tableData = staticData.tableData;
+                        }
+                        if ((!allUsers || allUsers.length === 0) && staticData?.allUsers) {
+                            allUsers = staticData.allUsers;
+                        }
+                        if (staticData?.partialCondosList) {
+                            partialCondosList = staticData.partialCondosList;
+                        }
+                    } catch (e) {
+                        console.warn("Recupero staticData in exportAssemblyResults:", e);
+                    }
+                }
+
+                if (tableData.length === 0) {
+                    try {
+                        const importedSnap = await getDocs(collection(db, "importedData"));
+                        if (!importedSnap.empty) {
+                            const sortedDocs = importedSnap.docs.map(d => d.data()).sort((a, b) => {
+                                const tA = a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : (a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0);
+                                const tB = b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : (b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0);
+                                if (tB !== tA) return tB - tA;
+                                return (b.tableData?.length || 0) - (a.tableData?.length || 0);
+                            });
+                            tableData = sortedDocs[0]?.tableData || [];
+                        }
+                    } catch (e) {
+                        console.warn("Lettura importedData fallita:", e);
+                    }
+                }
+
                 const attendees = assembly.attendees || [];
                 const proxies = assembly.proxies || [];
                 const agenda = assembly.agenda || [];
@@ -30951,6 +31636,40 @@ ${renderBottomNavigation()}
                 const startedAtStr = formatTimestamp(assembly.startedAt);
                 const concludedAtStr = formatTimestamp(assembly.concludedAt || assembly.endedAt);
 
+                // Calcolo Presenze Attive e Deleghe
+                const rawAttendees = assembly.attendees || [];
+                const uniqueAttendeesMap = new Map();
+                rawAttendees.forEach(a => {
+                    const key = a.uid || a.id || (a.nome ? a.nome.trim().toLowerCase() : null);
+                    if (key && !uniqueAttendeesMap.has(key)) {
+                        uniqueAttendeesMap.set(key, a);
+                    }
+                });
+                const attendeesList = Array.from(uniqueAttendeesMap.values());
+                const activeAttendees = attendeesList.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
+                const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && (window.isProxyApproved ? window.isProxyApproved(p) : true) && activeAttendees.some(a => a.uid === p.delegateId || a.id === p.delegateId || (a.registeredUid && a.registeredUid === p.delegateId)));
+
+                const physicalPresentHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
+                const proxyHeads = activeProxies.length;
+
+                // Calcolo Quorum Costitutivo Edificio
+                const qInfo = (typeof window.getAssemblyConstitutiveQuorumInfo === 'function')
+                    ? window.getAssemblyConstitutiveQuorumInfo(assembly, activeAttendees, activeProxies, allUsers, tableData)
+                    : {
+                        totalBuildingUsers: allUsers.filter(u => ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0)).length || 1,
+                        totalBuildingMillesimi: 1000.00,
+                        presentHeads: physicalPresentHeads + proxyHeads,
+                        presentMillesimi: 0,
+                        requiredHeads: Math.ceil((allUsers.length || 1) / 3),
+                        requiredMillesimi: 333.33,
+                        description: "1/3 del valore dell'edificio (333,33‰) e 1/3 dei partecipanti",
+                        isReached: false
+                    };
+
+                const constitutiveOutcomeStr = qInfo.isReached
+                    ? "VALIDAMENTE COSTITUITA (QUORUM RAGGIUNTO)"
+                    : "NON COSTITUITA (SOTTO QUORUM)";
+
                 let csvLines = [];
 
                 // --- SEZIONE 1: DATI GENERALI ASSEMBLEA ---
@@ -30962,10 +31681,35 @@ ${renderBottomNavigation()}
                 csvLines.push(`"Data programmata","${scheduledDateStr}"`);
                 csvLines.push(`"Data e ora avvio formale","${startedAtStr}"`);
                 csvLines.push(`"Data e ora conclusione","${concludedAtStr}"`);
+
+                const presidentName = assembly.president?.nome || assembly.president?.name || 'Non eletto';
+                let presidentModeStr = '-';
+                if (assembly.president?.nome || assembly.president?.name) {
+                    if (assembly.president.mode === 'acclamazione') {
+                        presidentModeStr = 'Acclamazione';
+                    } else if (assembly.president.mode === 'votazione') {
+                        presidentModeStr = 'Votazione';
+                    } else {
+                        presidentModeStr = assembly.president.mode || 'Acclamazione';
+                    }
+                }
+                csvLines.push(`"Presidente dell'assemblea","${presidentName.replace(/"/g, '""')}"`);
+                csvLines.push(`"Modalità elezione presidente","${presidentModeStr.replace(/"/g, '""')}"`);
                 csvLines.push(``);
 
                 // --- SEZIONE 2: QUORUM COSTITUTIVO E REGISTRO PRESENZE ---
                 csvLines.push(`"--- REGISTRO PRESENZE E QUORUM COSTITUTIVO ---"`);
+                csvLines.push(`"RIEPILOGO GENERALE QUORUM COSTITUTIVO:"`);
+                csvLines.push(`"Totale condòmini del fabbricato (teste totali)","${qInfo.totalBuildingUsers} teste"`);
+                csvLines.push(`"Totale millesimi condominiali (valore complessivo edificio)","${qInfo.totalBuildingMillesimi.toFixed(2)} ‰"`);
+                csvLines.push(`"Condòmini presenti fisicamente in aula","${physicalPresentHeads} teste"`);
+                csvLines.push(`"Condòmini rappresentati per delega","${proxyHeads} teste"`);
+                csvLines.push(`"Totale presenze costitutive (teste presenti + deleghe)","${qInfo.presentHeads} teste"`);
+                csvLines.push(`"Totale millesimi presenti e rappresentati in assemblea","${qInfo.presentMillesimi.toFixed(2)} ‰"`);
+                csvLines.push(`"Quorum costitutivo richiesto","${qInfo.description} [Min. ${qInfo.requiredHeads} teste e ${qInfo.requiredMillesimi.toFixed(2)} ‰]"`);
+                csvLines.push(`"ESITO QUORUM COSTITUTIVO","${constitutiveOutcomeStr}"`);
+                csvLines.push(``);
+                csvLines.push(`"ELENCO DETTAGLIATO CONDÒMINI E PRESENZE:"`);
                 csvLines.push(`"Unità immobiliare","Intestatario / condòmino","Millesimi","Stato presenza","Eventuale delegato / delegante"`);
 
                 let attendanceRows = [];
@@ -30999,7 +31743,7 @@ ${renderBottomNavigation()}
                         attendanceRows.push({
                             unita: u.unitaImmobiliare || '-',
                             personName: personName,
-                            millesimi: (u.millesimiTotali || 0).toFixed(2),
+                            millesimi: `${(u.millesimiTotali || 0).toFixed(2)} ‰`,
                             status: statusStr,
                             delegateName: delegateName
                         });
@@ -31014,7 +31758,7 @@ ${renderBottomNavigation()}
                             attendanceRows.push({
                                 unita: '-',
                                 personName: `${a.nome || 'Delegato Terzo'} [Delegato Terzo / Esterno]`,
-                                millesimi: (a.millesimi || 0).toFixed(2),
+                                millesimi: `${(a.millesimi || 0).toFixed(2)} ‰`,
                                 status: a.status === 'uscito' ? "Uscito dall'aula" : "Presente in aula",
                                 delegateName: delNames ? `Rappresenta per delega: ${delNames}` : 'Delegato Terzo'
                             });
@@ -31036,7 +31780,7 @@ ${renderBottomNavigation()}
                         attendanceRows.push({
                             unita: a.unitaImmobiliare || '-',
                             personName: personName,
-                            millesimi: (a.millesimi || 0).toFixed(2),
+                            millesimi: `${(a.millesimi || 0).toFixed(2)} ‰`,
                             status: statusStr,
                             delegateName: delegateName
                         });
@@ -31052,51 +31796,151 @@ ${renderBottomNavigation()}
                 // --- SEZIONE 3: DETTAGLIO ESITO VOTAZIONI PER OGNI PUNTO ODG ---
                 csvLines.push(`"--- ESITO DETTAGLIATO VOTAZIONI ORDINE DEL GIORNO ---"`);
                 agenda.forEach((item, idx) => {
-                    const itemScope = item.scope || 'intero';
-                    const targetGroup = item.targetGroup || '';
-                    const isGroupScope = (itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup !== 'Intero condominio';
-
                     const pointDisplayNum = window.getPointDisplayNumber ? window.getPointDisplayNumber(agenda, idx) : `${idx + 1}`;
                     const pointTitleStr = (item.title || '').replace(/"/g, '""');
                     const pointLabel = item.isScopeModification
                         ? `Punto ${pointDisplayNum} (Modifica ambito)`
                         : `Punto ${pointDisplayNum}`;
-                    csvLines.push(`"${pointLabel}","${pointTitleStr}${item.isScopeModification ? ' [MODIFICA AMBITO]' : ''}"`);
-                    csvLines.push(`"Ambito votazione","${isGroupScope ? `Condominio parziale (${targetGroup.replace(/"/g, '""')})` : 'Intero condominio'}${item.isScopeModification ? ' [Modifica ambito]' : ''}"`);
 
-                    let baseMillesimaleStr = "1000.00 ‰";
+                    // 1. Ambito della votazione
+                    const quorumInfo = (typeof window.calculateSubcondominiumsQuorum === 'function')
+                        ? window.calculateSubcondominiumsQuorum(item, assembly, tableData, allUsers, partialCondosList)
+                        : { isPartial: false, subconds: [], anyUnderQuorum: false, allUnderQuorum: false, failedNames: [] };
+
+                    const itemScope = (item.scope || item.votingScope || 'intero').toLowerCase();
+                    const targetGroup = (item.targetGroup || '').trim();
+                    const isGroupScope = (quorumInfo.isPartial && quorumInfo.subconds.length > 0) ||
+                        ((itemScope === 'gruppo' || itemScope === 'scale') && !!targetGroup && targetGroup.toLowerCase() !== 'intero condominio' && targetGroup.toLowerCase() !== 'intero');
+
+                    let scopeStr = "Intero Condominio";
+                    let baseMillesimiVal = qInfo.totalBuildingMillesimi || 1000.00;
+                    let itemPresences = qInfo.presentHeads;
+                    let itemBuildingUsers = qInfo.totalBuildingUsers;
+
                     if (isGroupScope) {
-                        let groupBaseMil = 0;
-                        allUsers.forEach(u => {
-                            groupBaseMil += window.getEffectiveUnitMillesimi(u, targetGroup);
-                        });
-                        if (groupBaseMil <= 0) groupBaseMil = 1000.00;
-                        baseMillesimaleStr = `${groupBaseMil.toFixed(2)} ‰`;
-                        csvLines.push(`"Base millesimale scala/gruppo","${baseMillesimaleStr}"`);
+                        let subcondLabels = [];
+                        if (quorumInfo.subconds.length > 0) {
+                            subcondLabels = quorumInfo.subconds.map(s => s.name);
+                            baseMillesimiVal = quorumInfo.subconds.reduce((sum, s) => sum + (s.totalMil || 0), 0);
+                            itemPresences = quorumInfo.subconds.reduce((sum, s) => sum + (s.presentHeads || 0), 0);
+                            itemBuildingUsers = quorumInfo.subconds.reduce((sum, s) => sum + (s.totalHeads || 0), 0);
+                        } else if (targetGroup) {
+                            subcondLabels = targetGroup.split(',').map(s => s.trim()).filter(Boolean);
+                            let groupBaseMil = 0;
+                            allUsers.forEach(u => {
+                                groupBaseMil += (typeof window.getEffectiveUnitMillesimi === 'function')
+                                    ? window.getEffectiveUnitMillesimi(u, targetGroup)
+                                    : 0;
+                            });
+                            if (groupBaseMil > 0) baseMillesimiVal = groupBaseMil;
+                        }
+                        if (baseMillesimiVal <= 0) baseMillesimiVal = 1000.00;
+                        scopeStr = `Condominio Parziale (Scale/Gruppi: ${subcondLabels.join(', ')})`;
+                    }
+                    if (item.isScopeModification) {
+                        scopeStr += ' [Modifica ambito]';
                     }
 
+                    const baseMillesimaleStr = `${baseMillesimiVal.toFixed(2)} ‰`;
+
+                    // 2. Quorum Deliberativo richiesto
+                    const delibReq = (typeof window.calculateDeliberativeQuorumRequirements === 'function')
+                        ? window.calculateDeliberativeQuorumRequirements(item, baseMillesimiVal, itemPresences, itemBuildingUsers)
+                        : {
+                            type: 'maggioranza_500',
+                            requiredMil: baseMillesimiVal * 0.5,
+                            requiredHeads: Math.floor(itemPresences / 2) + 1,
+                            description: "Maggioranza degli intervenuti e 1/2 del valore dell'edificio (500‰)"
+                        };
+
+                    let delibReqDesc = delibReq.description || '';
+                    if (delibReq.type === 'maggioranza_500' && !delibReqDesc.includes('1136')) {
+                        delibReqDesc += ' (ex art. 1136 c. 2 c.c.)';
+                    } else if (delibReq.type === 'maggioranza_333' && !delibReqDesc.includes('1136')) {
+                        delibReqDesc += ' (ex art. 1136 c. 3 c.c.)';
+                    } else if (delibReq.type === 'maggioranza_667' && !delibReqDesc.includes('1136')) {
+                        delibReqDesc += ' (ex art. 1136 c. 5 c.c.)';
+                    } else if (delibReq.type === 'unanimita' && !delibReqDesc.includes('1108')) {
+                        delibReqDesc += ' (ex art. 1108 c. 3 c.c.)';
+                    }
+                    const quorumDeliberativoStr = `${delibReqDesc} [Min. ${delibReq.requiredHeads} teste e ${delibReq.requiredMil.toFixed(2)} ‰]`;
+
+                    // 3. Riassunto voti (Favorevoli, Contrari, Astenuti)
                     const votes = item.votes || [];
-                    let voteSummary = {};
+                    let favHeads = 0, favMil = 0;
+                    let conHeads = 0, conMil = 0;
+                    let astHeads = 0, astMil = 0;
                     let totalVotedMillesimi = 0;
                     let totalVotedHeads = 0;
 
                     votes.forEach(v => {
-                        const c = v.choice || 'Non espresso';
-                        if (!voteSummary[c]) voteSummary[c] = { heads: 0, millesimi: 0 };
-                        voteSummary[c].heads += (v.heads || 1);
-                        voteSummary[c].millesimi += (v.millesimi || 0);
-                        totalVotedMillesimi += (v.millesimi || 0);
-                        totalVotedHeads += (v.heads || 1);
+                        const c = (v.choice || '').toString().trim();
+                        const cLower = c.toLowerCase();
+                        const h = parseInt(v.heads, 10) || 1;
+                        const m = parseFloat(v.millesimi) || 0;
+
+                        totalVotedMillesimi += m;
+                        totalVotedHeads += h;
+
+                        if (cLower === 'favorevole' || cLower === 'sì' || cLower === 'si' || cLower.includes('favorevol') || cLower.includes('approv')) {
+                            favHeads += h;
+                            favMil += m;
+                        } else if (cLower === 'contrario' || cLower === 'no' || cLower.includes('contrar') || cLower.includes('respint')) {
+                            conHeads += h;
+                            conMil += m;
+                        } else if (cLower === 'astenuto' || cLower.includes('astenut')) {
+                            astHeads += h;
+                            astMil += m;
+                        } else {
+                            favHeads += h;
+                            favMil += m;
+                        }
                     });
 
+                    const favPct = baseMillesimiVal > 0 ? ((favMil / baseMillesimiVal) * 100).toFixed(2) : '0.00';
+                    const conPct = baseMillesimiVal > 0 ? ((conMil / baseMillesimiVal) * 100).toFixed(2) : '0.00';
+                    const astPct = baseMillesimiVal > 0 ? ((astMil / baseMillesimiVal) * 100).toFixed(2) : '0.00';
+
+                    // 4. & 5. Esito finale delibera
+                    let finalOutcomeStr = "";
+                    if (item.cancelledNoQuorum) {
+                        finalOutcomeStr = "ANNULLATO PER MANCATO QUORUM COSTITUTIVO";
+                    } else if (isGroupScope && quorumInfo.anyUnderQuorum) {
+                        finalOutcomeStr = "NON DELIBERATO (MANCANZA QUORUM COSTITUTIVO O DELIBERATIVO)";
+                    } else if (totalVotedHeads === 0 && (!item.votes || item.votes.length === 0)) {
+                        finalOutcomeStr = "NON DELIBERATO (MANCANZA QUORUM COSTITUTIVO O DELIBERATIVO)";
+                    } else {
+                        const isQuorumPassed = (typeof window.isDeliberativeQuorumPassed === 'function')
+                            ? window.isDeliberativeQuorumPassed(item, favHeads, favMil, itemPresences, baseMillesimiVal, itemBuildingUsers)
+                            : (favHeads >= delibReq.requiredHeads && parseFloat(favMil.toFixed(2)) >= parseFloat(delibReq.requiredMil.toFixed(2)));
+
+                        if (favMil > conMil && favHeads >= delibReq.requiredHeads && isQuorumPassed) {
+                            finalOutcomeStr = "APPROVATO";
+                        } else if (conMil > favMil || (conMil === favMil && conHeads >= favHeads)) {
+                            finalOutcomeStr = "RESPINTO";
+                        } else if (!isQuorumPassed) {
+                            finalOutcomeStr = "NON DELIBERATO (MANCANZA QUORUM COSTITUTIVO O DELIBERATIVO)";
+                        } else {
+                            finalOutcomeStr = "RESPINTO";
+                        }
+                    }
+
+                    csvLines.push(`"${pointLabel}","${pointTitleStr}${item.isScopeModification ? ' [MODIFICA AMBITO]' : ''}"`);
+                    csvLines.push(`"Ambito votazione","${scopeStr.replace(/"/g, '""')}"`);
+                    if (isGroupScope) {
+                        csvLines.push(`"Base millesimale scala/gruppo","${baseMillesimaleStr}"`);
+                    } else {
+                        csvLines.push(`"Base millesimale edificio","${baseMillesimaleStr}"`);
+                    }
+                    csvLines.push(`"Quorum deliberativo richiesto","${quorumDeliberativoStr.replace(/"/g, '""')}"`);
                     csvLines.push(`"Totale votanti","${totalVotedHeads} teste","${totalVotedMillesimi.toFixed(2)} ‰ su ${baseMillesimaleStr}"`);
-                    Object.keys(voteSummary).forEach(choice => {
-                        const s = voteSummary[choice];
-                        csvLines.push(`"Espressione: ${choice}","${s.heads} teste","${s.millesimi.toFixed(2)} ‰"`);
-                    });
-
+                    csvLines.push(`"Favorevoli","${favHeads} teste","${favMil.toFixed(2)} ‰","(${favPct}% su base millesimale)"`);
+                    csvLines.push(`"Contrari","${conHeads} teste","${conMil.toFixed(2)} ‰","(${conPct}% su base millesimale)"`);
+                    csvLines.push(`"Astenuti","${astHeads} teste","${astMil.toFixed(2)} ‰","(${astPct}% su base millesimale)"`);
+                    csvLines.push(`"ESITO FINALE DELIBERA","${finalOutcomeStr}"`);
                     csvLines.push(`"Dettaglio voti espressi:"`);
                     csvLines.push(`"Votante / condòmino","Espressione di voto","Millesimi","Teste","Tipologia voto","Data/ora voto"`);
+
                     let sortedExportVotes = [...votes];
                     if (isGroupScope) {
                         sortedExportVotes.sort((a, b) => {
@@ -31115,7 +31959,7 @@ ${renderBottomNavigation()}
                         if (isProxy && delegateName) {
                             voterNameStr += ` (Delega a ${delegateName})`;
                         }
-                        csvLines.push(`"${voterNameStr.replace(/"/g, '""')}","${v.choice}","${(v.millesimi || 0).toFixed(2)}","${v.heads || 1}","${voteType}","${voteTimeStr}"`);
+                        csvLines.push(`"${voterNameStr.replace(/"/g, '""')}","${v.choice}","${(v.millesimi || 0).toFixed(2)} ‰","${v.heads || 1}","${voteType}","${voteTimeStr}"`);
                     });
                     csvLines.push(``);
                 });
@@ -31924,9 +32768,14 @@ ${renderBottomNavigation()}
                         found = headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase())));
                         return found || null;
                     };
+                    const exactMilKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+                    let mFound = headers.find(h => exactMilKeys.some(k => cleanH(h) === k.toLowerCase()));
+                    if (!mFound) {
+                        mFound = headers.find(h => cleanH(h).includes('millesim')) || null;
+                    }
                     return {
                         nominativoHeader: findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']),
-                        millesimiHeader: findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico'])
+                        millesimiHeader: mFound
                     };
                 })(tData));
 
@@ -31948,7 +32797,7 @@ ${renderBottomNavigation()}
                     if (millesimiHeader && row[millesimiHeader] !== undefined && row[millesimiHeader] !== null) {
                         const rawMil = row[millesimiHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim();
                         const milVal = parseFloat(rawMil) || 0;
-                        totalBuildingMillesimi += milVal;
+                        if (milVal > 0 && milVal <= 1000) totalBuildingMillesimi += milVal;
                     }
                 });
             }
@@ -31985,7 +32834,10 @@ ${renderBottomNavigation()}
                     const hId = a.uid || a.id || a.nome;
                     if (hId) presentHeadsSet.add(hId);
                 }
-                presentMillesimi += (parseFloat(a.millesimi) || 0);
+                const held = (activeProxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid)) && p.status !== 'rejected');
+                const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExternal ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
+                const heldMil = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
+                presentMillesimi += (personalMil + heldMil);
             });
 
             (activeProxies || []).forEach(p => {
@@ -31996,7 +32848,7 @@ ${renderBottomNavigation()}
             });
 
             const presentHeads = presentHeadsSet.size;
-            presentMillesimi = parseFloat(presentMillesimi.toFixed(2));
+            presentMillesimi = Math.min(totalBuildingMillesimi, Math.min(1000.00, parseFloat(presentMillesimi.toFixed(2))));
 
             let requiredHeads = 0;
             let requiredMillesimi = 0;
@@ -38131,19 +38983,21 @@ ${renderBottomNavigation()}
                             if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
 
                             const user = userDoc.data();
-                            let userMillesimi = parseFloat(user.millesimiTotali) || 0;
-                            if (userMillesimi <= 0 && Array.isArray(user.proprieta)) {
-                                userMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
+                            let userBaseMillesimi = parseFloat(user.millesimiTotali) || 0;
+                            if (userBaseMillesimi <= 0 && Array.isArray(user.proprieta)) {
+                                userBaseMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
                             }
 
-                            const heldProxies = (assembly.proxies || []).filter(p => p.delegateId === qrUid && p.status !== 'rejected');
-                            let proxyNoticeText = '';
-                            if (heldProxies.length > 0) {
-                                heldProxies.forEach(p => {
-                                    userMillesimi += (parseFloat(p.delegatorMillesimi) || 0);
-                                });
-                                proxyNoticeText = ` (+${heldProxies.length} deleghe ricevute)`;
-                            }
+                            const allHeldProxies = (assembly.proxies || []).filter(p => p.delegateId === qrUid && p.status !== 'rejected');
+                            const alreadyApprovedProxies = allHeldProxies.filter(p => p.adminApprovalStatus === 'approved');
+                            const pendingAdminProxies = allHeldProxies.filter(p => p.adminApprovalStatus !== 'approved');
+
+                            // 1. Accreditare subito la presenza personale e i soli millesimi base del condòmino
+                            let initialMillesimiAccreditati = userBaseMillesimi;
+                            alreadyApprovedProxies.forEach(p => {
+                                initialMillesimiAccreditati += (parseFloat(p.delegatorMillesimi) || 0);
+                            });
+                            const initialProxyNotice = alreadyApprovedProxies.length > 0 ? ` (+${alreadyApprovedProxies.length} deleghe convalidate)` : '';
 
                             const userFullName = `${user.nome} ${user.cognome}`.trim();
                             let updatedAttendees = [...currentAttendees];
@@ -38153,9 +39007,12 @@ ${renderBottomNavigation()}
                                 updatedAttendees[existingIndex] = {
                                     ...updatedAttendees[existingIndex],
                                     status: 'presente',
-                                    nome: `${userFullName}${proxyNoticeText}`,
-                                    millesimi: userMillesimi,
-                                    heldProxiesCount: heldProxies.length,
+                                    isDelegated: false,
+                                    nome: `${userFullName}${initialProxyNotice}`,
+                                    millesimi: initialMillesimiAccreditati,
+                                    baseMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingIndex].baseMillesimi || 0),
+                                    personalMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingIndex].personalMillesimi || 0),
+                                    heldProxiesCount: alreadyApprovedProxies.length,
                                     reenteredAt: Date.now(),
                                     isManual: false,
                                     registrationType: 'qr',
@@ -38164,9 +39021,13 @@ ${renderBottomNavigation()}
                             } else {
                                 const newAttendee = {
                                     uid: qrUid,
-                                    nome: `${userFullName}${proxyNoticeText}`,
-                                    millesimi: userMillesimi,
-                                    heldProxiesCount: heldProxies.length,
+                                    nome: `${userFullName}${initialProxyNotice}`,
+                                    cognome: user.cognome || '',
+                                    millesimi: initialMillesimiAccreditati,
+                                    baseMillesimi: userBaseMillesimi,
+                                    personalMillesimi: userBaseMillesimi,
+                                    proprieta: user.proprieta || [],
+                                    heldProxiesCount: alreadyApprovedProxies.length,
                                     status: 'presente',
                                     isManual: false,
                                     registrationType: 'qr',
@@ -38180,39 +39041,90 @@ ${renderBottomNavigation()}
                                 attendees: JSON.parse(JSON.stringify(updatedAttendees))
                             });
 
+                            await logAssemblyEvent(targetAssemblyId, existingIndex !== -1 ? 'RIENTRO_QR' : 'PRESENZA_QR', `Presenza ${existingIndex !== -1 ? 'riattivata (rientro)' : 'convalidata'} tramite Scanner QR: ${userFullName} (${initialMillesimiAccreditati.toFixed(2)} ‰)`);
+
                             // Invalida cache anagrafica accreditamento su scansione QR presenza
                             if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
-                            const fPopup = document.getElementById("quick-scanner-feedback-popup");
-                            if (fPopup) {
-                                fPopup.className = '';
-                                fPopup.style.display = 'flex';
-                                fPopup.classList.remove('hidden');
-                                fPopup.innerHTML = `
-                                    <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
-                                        <div style="display:flex; justify-content:center; margin-bottom:0.25rem; color:#10B981;">${THEME_ICONS.checkSuccess(32)}</div>
-                                        <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza convalidata</div>
-                                        <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
-                                            Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                            // 2. Controllo deleghe associate non ancora convalidate dall'amministratore
+                            if (pendingAdminProxies.length > 0) {
+                                window.openAdminProxyApprovalModal({
+                                    assemblyId: targetAssemblyId,
+                                    assembly,
+                                    qrUid,
+                                    user,
+                                    userFullName,
+                                    userBaseMillesimi,
+                                    pendingProxies: pendingAdminProxies,
+                                    alreadyApprovedProxies: alreadyApprovedProxies,
+                                    onComplete: ({ approvedCount, rejectedCount, finalMillesimi }) => {
+                                        const fPopup = document.getElementById("quick-scanner-feedback-popup");
+                                        if (fPopup) {
+                                            fPopup.className = '';
+                                            fPopup.style.display = 'flex';
+                                            fPopup.classList.remove('hidden');
+                                            fPopup.innerHTML = `
+                                                <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                                    <div style="display:flex; justify-content:center; margin-bottom:0.25rem; color:#10B981;">${THEME_ICONS.checkSuccess(32)}</div>
+                                                    <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza e Deleghe Convalidate</div>
+                                                    <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
+                                                        Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                                                    </div>
+                                                    <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
+                                                        Millesimi totali: <strong style="color:var(--warning); font-size:0.92rem;">${finalMillesimi.toFixed(2)} ‰</strong>
+                                                        <div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">
+                                                            ${approvedCount > 0 ? `+${approvedCount} deleghe approvate` : 'Nessuna delega approvata'}${rejectedCount > 0 ? ` (${rejectedCount} rifiutate)` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                                        <span>Chiudi / prossima scansione</span>
+                                                    </button>
+                                                </div>
+                                            `;
+                                        } else if (messageBox) {
+                                            messageBox.className = "message-box success";
+                                            messageBox.innerHTML = `
+                                                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                                    <div style="display:flex; align-items:center; gap:0.35rem;"><span style="color:#10B981; display:inline-flex;">${THEME_ICONS.checkSuccess(16)}</span> Presenza convalidata per <strong>${escapeHtml(userFullName)}</strong> (${finalMillesimi.toFixed(2)} ‰)</div>
+                                                    <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Chiudi</button>
+                                                </div>
+                                            `;
+                                            messageBox.style.display = "block";
+                                        }
+                                    }
+                                });
+                            } else {
+                                const fPopup = document.getElementById("quick-scanner-feedback-popup");
+                                if (fPopup) {
+                                    fPopup.className = '';
+                                    fPopup.style.display = 'flex';
+                                    fPopup.classList.remove('hidden');
+                                    fPopup.innerHTML = `
+                                        <div style="background:var(--surface-color); border:2px solid #10B981; border-radius:12px; padding:1.1rem; box-shadow:0 8px 24px rgba(0,0,0,0.6); text-align:center; width:100%; max-width:280px; box-sizing:border-box;">
+                                            <div style="display:flex; justify-content:center; margin-bottom:0.25rem; color:#10B981;">${THEME_ICONS.checkSuccess(32)}</div>
+                                            <div style="font-size:0.75rem; font-weight:800; color:#10B981; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.3rem;">Presenza convalidata</div>
+                                            <div style="font-size:1rem; font-weight:800; color:var(--primary-text); margin-bottom:0.3rem; line-height:1.3;">
+                                                Il condòmino <span style="color:#10B981;">${escapeHtml(userFullName)}</span> è presente
+                                            </div>
+                                            <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
+                                                Millesimi: <strong style="color:var(--warning); font-size:0.92rem;">${initialMillesimiAccreditati.toFixed(2)} ‰</strong>
+                                                ${initialProxyNotice ? `<div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">${escapeHtml(initialProxyNotice.trim())}</div>` : ''}
+                                            </div>
+                                            <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
+                                                <span>Chiudi / prossima scansione</span>
+                                            </button>
                                         </div>
-                                        <div style="font-size:0.82rem; color:var(--secondary-text); margin-bottom:0.85rem;">
-                                            Millesimi: <strong style="color:var(--warning); font-size:0.92rem;">${userMillesimi.toFixed(2)} ‰</strong>
-                                            ${proxyNoticeText ? `<div style="font-size:0.75rem; color:var(--accent-color); font-weight:600; margin-top:0.2rem;">${escapeHtml(proxyNoticeText.trim())}</div>` : ''}
+                                    `;
+                                } else if (messageBox) {
+                                    messageBox.className = "message-box success";
+                                    messageBox.innerHTML = `
+                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem;"><span style="color:#10B981; display:inline-flex;">${THEME_ICONS.checkSuccess(16)}</span> Il condòmino <strong>${escapeHtml(userFullName)}</strong> è presente (${initialMillesimiAccreditati.toFixed(2)} ‰)</div>
+                                            <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Chiudi</button>
                                         </div>
-                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-primary" style="width:100%; height:38px; font-weight:700; font-size:0.85rem; background-color:#10B981; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.4rem; cursor:pointer;">
-                                            <span>Chiudi / prossima scansione</span>
-                                        </button>
-                                    </div>
-                                `;
-                            } else if (messageBox) {
-                                messageBox.className = "message-box success";
-                                messageBox.innerHTML = `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                                        <div style="display:flex; align-items:center; gap:0.35rem;"><span style="color:#10B981; display:inline-flex;">${THEME_ICONS.checkSuccess(16)}</span> Il condòmino <strong>${escapeHtml(userFullName)}</strong> è presente (${userMillesimi.toFixed(2)} ‰)</div>
-                                        <button type="button" onclick="dismissQuickScannerFeedback()" class="btn btn-secondary" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Chiudi</button>
-                                    </div>
-                                `;
-                                messageBox.style.display = "block";
+                                    `;
+                                    messageBox.style.display = "block";
+                                }
                             }
 
                         } catch (err) {
@@ -38359,15 +39271,15 @@ ${renderBottomNavigation()}
                 let updatedAttendees = assembly.attendees || [];
                 const delegateAttendeeIndex = updatedAttendees.findIndex(a => a.uid === currentUser.uid);
                 if (delegateAttendeeIndex !== -1) {
-                    const acceptedProxies = updatedProxies.filter(p => p.delegateId === currentUser.uid && (p.status === 'accepted' || !p.status));
-                    let totalMillesimi = userProfile?.millesimiTotali || 0;
-                    acceptedProxies.forEach(p => { totalMillesimi += (p.delegatorMillesimi || 0); });
+                    const approvedProxies = updatedProxies.filter(p => p.delegateId === currentUser.uid && window.isProxyApproved(p));
+                    let totalMillesimi = parseFloat(updatedAttendees[delegateAttendeeIndex].baseMillesimi ?? (userProfile?.millesimiTotali || 0)) || 0;
+                    approvedProxies.forEach(p => { totalMillesimi += (parseFloat(p.delegatorMillesimi) || 0); });
 
                     updatedAttendees[delegateAttendeeIndex] = {
                         ...updatedAttendees[delegateAttendeeIndex],
-                        nome: `${userProfile.nome} ${userProfile.cognome}${acceptedProxies.length > 0 ? ` (+${acceptedProxies.length} deleghe)` : ''}`,
+                        nome: `${userProfile.nome} ${userProfile.cognome}${approvedProxies.length > 0 ? ` (+${approvedProxies.length} deleghe)` : ''}`,
                         millesimi: totalMillesimi,
-                        heldProxiesCount: acceptedProxies.length
+                        heldProxiesCount: approvedProxies.length
                     };
                 }
 
@@ -38395,7 +39307,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        let pendingProxyListener = null;
+        pendingProxyListener = null;
         const listenForPendingProxies = () => {
             if (pendingProxyListener) pendingProxyListener();
             if (!currentUser) return;
@@ -38497,16 +39409,48 @@ ${renderBottomNavigation()}
                             const pStatus = sentProxy.status || 'accepted';
                             let statusBadge = '';
                             let actionBtn = '';
+                            let guidanceHtml = '';
 
                             if (pStatus === 'pending') {
-                                statusBadge = `<span class="badge" style="background-color: var(--warning); color: black; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0;">${THEME_ICONS.hourglass(14, 2.2)} In Attesa</span>`;
-                                actionBtn = `<button type="button" onclick="revokeProxy('${assemblyId}', '${sentProxy.id || sentProxy.delegatorId}')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; border:none; cursor:pointer;">${THEME_ICONS.trash(14)} Ritira Delega</button>`;
-                            } else if (pStatus === 'accepted') {
-                                statusBadge = `<span class="badge status-aperta" style="display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0;">${THEME_ICONS.check(14, 2.4)} Accettata</span>`;
+                                statusBadge = `<span class="badge" style="background-color: var(--warning); color: black; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0;">${THEME_ICONS.hourglass(14, 2.2)} In Attesa Accettazione</span>`;
                                 actionBtn = `<button type="button" onclick="revokeProxy('${assemblyId}', '${sentProxy.id || sentProxy.delegatorId}')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; border:none; cursor:pointer;">${THEME_ICONS.trash(14)} Ritira Delega</button>`;
                             } else if (pStatus === 'rejected') {
-                                statusBadge = `<span class="badge status-chiusa" style="display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0;">${THEME_ICONS.cross(14, 2.4)} Rifiutata</span>`;
+                                statusBadge = `<span class="badge status-chiusa" style="display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0;">${THEME_ICONS.cross(14, 2.4)} Rifiutata dal Delegato</span>`;
                                 actionBtn = `<button type="button" onclick="openUserDelegateModal('${assemblyId}')" class="btn btn-secondary" style="font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; cursor:pointer;">${THEME_ICONS.handshake(15)} Invia Nuova</button>`;
+                            } else if (sentProxy.adminApprovalStatus === 'approved') {
+                                statusBadge = `<span class="badge" style="background-color: #10B981; color: white; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; text-align:center; margin:0;">${THEME_ICONS.check(14, 2.4)} Convalidata Ingresso</span>`;
+                                guidanceHtml = `
+                                    <div style="margin-top: 0.55rem; padding: 0.55rem 0.75rem; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10B981; border-radius: 6px; font-size: 0.8rem; color: var(--primary-text); line-height: 1.35;">
+                                        <strong style="color: #10B981; display: flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.check(13, 2)} Convalidata dall'Amministratore all'ingresso</strong>
+                                        <span style="color: var(--secondary-text); font-size: 0.76rem;">Il delegato è accreditato in aula e rappresenta regolarmente i tuoi millesimi.</span>
+                                    </div>
+                                `;
+                                if (assembly.status !== 'in_corso' && assembly.status !== 'conclusa') {
+                                    actionBtn = `<button type="button" onclick="revokeProxy('${assemblyId}', '${sentProxy.id || sentProxy.delegatorId}')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; border:none; cursor:pointer;">${THEME_ICONS.trash(14)} Ritira Delega</button>`;
+                                }
+                            } else if (sentProxy.adminApprovalStatus === 'rejected') {
+                                const rejReason = sentProxy.adminRejectionReason ? `: ${escapeHtml(sentProxy.adminRejectionReason)}` : '';
+                                statusBadge = `<span class="badge" style="background-color: var(--danger, #EF4444); color: white; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; text-align:center; margin:0;">${THEME_ICONS.cross(14, 2.4)} Non Convalidata</span>`;
+                                guidanceHtml = `
+                                    <div style="margin-top: 0.65rem; padding: 0.65rem 0.85rem; background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--danger, #EF4444); border-radius: 6px; font-size: 0.82rem; line-height: 1.4;">
+                                        <strong style="color: var(--danger, #EF4444); display: block; margin-bottom: 0.25rem;">✕ Non convalidata dall'Amministratore${rejReason}</strong>
+                                        <span style="color: var(--primary-text);">Puoi partecipare direttamente di persona oppure tramite app con il tuo account, oppure conferire una nuova delega.</span>
+                                    </div>
+                                `;
+                                const participateBtn = assembly.status === 'in_corso'
+                                    ? `<button type="button" onclick="enterLiveRoom('${assemblyId}')" class="btn btn-primary" style="font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; cursor:pointer;">${THEME_ICONS.door(14)} Entra in Aula</button>`
+                                    : `<button type="button" onclick="window.showMyQrModal ? window.showMyQrModal() : (window.loadMyTesseraPage ? window.loadMyTesseraPage() : null)" class="btn" style="background: var(--surface-color-light); border: 1px solid var(--accent-color); color: var(--accent-color); font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; cursor:pointer;">${THEME_ICONS.qrcode(14)} Mostra Tessera</button>`;
+                                const newProxyBtn = `<button type="button" onclick="openUserDelegateModal('${assemblyId}')" class="btn btn-secondary" style="font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; cursor:pointer;">${THEME_ICONS.handshake(15)} Invia Nuova</button>`;
+                                actionBtn = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; width:100%;">${participateBtn}${newProxyBtn}</div>`;
+                            } else {
+                                statusBadge = `<span class="badge" style="background-color: var(--warning); color: black; display:flex; align-items:center; justify-content:center; gap:0.35rem; font-size:0.8rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; box-sizing:border-box; text-align:center; margin:0;">${THEME_ICONS.hourglass(14, 2.2)} In attesa benestare</span>`;
+                                guidanceHtml = `
+                                    <div style="margin-top: 0.55rem; padding: 0.55rem 0.75rem; background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--warning); border-radius: 6px; font-size: 0.8rem; color: var(--primary-text); line-height: 1.35;">
+                                        <strong style="color: var(--warning); display: flex; align-items: center; gap: 0.35rem;">${THEME_ICONS.hourglass(13, 2)} In attesa di benestare dell'Amministratore</strong>
+                                        <span style="color: var(--secondary-text); font-size: 0.76rem;">Il delegato ha accettato. La delega verrà verificata e convalidata all'ingresso in assemblea.</span>
+                                    </div>
+                                `;
+                                actionBtn = `<button type="button" onclick="revokeProxy('${assemblyId}', '${sentProxy.id || sentProxy.delegatorId}')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight:700; height:38px; width:100%; padding:0 0.5rem; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.35rem; box-sizing:border-box; white-space:nowrap; text-align:center; margin:0; border:none; cursor:pointer;">${THEME_ICONS.trash(14)} Ritira Delega</button>`;
                             }
 
                             sentSectionHtml = `
@@ -38525,10 +39469,11 @@ ${renderBottomNavigation()}
                                             ` : '';
                                 })()}
                                     </div>
-                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem; width:100%; margin-top:0.85rem; box-sizing:border-box;">
+                                    <div style="display:grid; grid-template-columns: ${actionBtn.includes('grid-template-columns') ? '1fr' : (actionBtn ? '1fr 1fr' : '1fr')}; gap:0.6rem; width:100%; margin-top:0.85rem; box-sizing:border-box;">
                                         ${statusBadge}
                                         ${actionBtn}
                                     </div>
+                                    ${guidanceHtml}
                                 </div>
                             `;
                         } else if (assembly.status === 'programmata') {
@@ -38557,22 +39502,28 @@ ${renderBottomNavigation()}
                             let actionButtons = '';
 
                             if (pStatus === 'pending') {
-                                badge = `<span class="badge" style="background-color: var(--warning); color: black; display:inline-flex; align-items:center; gap:0.3rem; font-weight: 700;">${THEME_ICONS.hourglass(13, 2.2)} In Attesa</span>`;
+                                badge = `<span class="badge" style="background-color: var(--warning); color: black; display:inline-flex; align-items:center; gap:0.3rem; font-weight: 700;">${THEME_ICONS.hourglass(13, 2.2)} In Attesa di tua accettazione</span>`;
                                 actionButtons = `
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%;">
                                         <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.cross(14, 2.4)} Rifiuta</button>
                                         <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta</button>
                                     </div>
                                 `;
-                            } else if (pStatus === 'accepted') {
-                                badge = `<span class="badge status-aperta" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.check(14, 2.4)} Accettata (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
-                                actionButtons = `
-                                    <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; border: none; font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; border-radius: 8px;">${THEME_ICONS.undo(13, 2)} Rimanda indietro</button>
-                                `;
                             } else if (pStatus === 'rejected') {
                                 badge = `<span class="badge status-chiusa" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.cross(14, 2.4)} Rifiutata / Rimandata</span>`;
                                 actionButtons = `
                                     <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta Ora</button>
+                                `;
+                            } else if (p.adminApprovalStatus === 'approved') {
+                                badge = `<span class="badge" style="background-color: #10B981; color: white; font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.check(14, 2.4)} Convalidata all'Ingresso (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
+                                actionButtons = ``;
+                            } else if (p.adminApprovalStatus === 'rejected') {
+                                badge = `<span class="badge" style="background-color: var(--danger, #EF4444); color: white; font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.cross(14, 2.4)} Non Convalidata Admin${p.adminRejectionReason ? `: ${escapeHtml(p.adminRejectionReason)}` : ''}</span>`;
+                                actionButtons = ``;
+                            } else {
+                                badge = `<span class="badge status-aperta" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.check(14, 2.4)} Accettata (In attesa benestare ingresso)</span>`;
+                                actionButtons = `
+                                    <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; border: none; font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; border-radius: 8px;">${THEME_ICONS.undo(13, 2)} Rimanda indietro</button>
                                 `;
                             }
 
@@ -38663,7 +39614,7 @@ ${renderBottomNavigation()}
                         const isExt = delAtt.isExternalDelegate === true || delAtt.isExternal === true || delAtt.tipoUtente === 'terzo_delegato' || (delAtt.uid && delAtt.uid.toString().startsWith('ext_')) || oldProxy.isExternalDelegate;
                         const acceptedProxies = updatedProxies.filter(p =>
                             (p.delegateId === oldProxy.delegateId || (delAtt.uid && p.delegateId === delAtt.uid)) &&
-                            p.status !== 'rejected' && (p.status === 'accepted' || !p.status)
+                            window.isProxyApproved(p)
                         );
 
                         if (isExt && acceptedProxies.length === 0) {
@@ -38676,7 +39627,7 @@ ${renderBottomNavigation()}
                                     if (delegateDoc.exists()) delegateUser = delegateDoc.data();
                                 } catch (e) { }
                             }
-                            let totalMillesimi = isExt ? 0 : (delegateUser?.millesimiTotali || parseFloat(delAtt.baseMillesimi) || 0);
+                            let totalMillesimi = isExt ? 0 : (parseFloat(delAtt.baseMillesimi) || delegateUser?.millesimiTotali || 0);
                             acceptedProxies.forEach(p => { totalMillesimi += (parseFloat(p.delegatorMillesimi) || 0); });
 
                             const cleanDelName = (delAtt.nome || '').replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
@@ -38771,6 +39722,7 @@ ${renderBottomNavigation()}
 
         window.navigateTo = navigateTo;
         window.logout = logout;
+        window.exitLiveAssemblyRoom = exitLiveAssemblyRoom;
         window.toggleTheme = toggleTheme;
         window.refreshApplication = refreshApplication;
         window.voteOnPoll = voteOnPoll;
@@ -39335,8 +40287,8 @@ ${renderBottomNavigation()}
             }
         };
 
-        let returnedReportsListener = null;
-        let urgentReportsListener = null;
+        returnedReportsListener = null;
+        urgentReportsListener = null;
 
         const setupReturnedReportsListener = () => {
             // Rimuovi il listener precedente se esiste
@@ -39624,6 +40576,22 @@ ${renderBottomNavigation()}
                 if (pendingUsersListener) {
                     pendingUsersListener();
                     pendingUsersListener = null;
+                }
+                if (assembliesListener) {
+                    assembliesListener();
+                    assembliesListener = null;
+                }
+                if (activeVotingListener) {
+                    activeVotingListener();
+                    activeVotingListener = null;
+                }
+                if (pendingProxyListener) {
+                    pendingProxyListener();
+                    pendingProxyListener = null;
+                }
+                if (window._currentLiveAssemblyUnsubscribe) {
+                    try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
+                    window._currentLiveAssemblyUnsubscribe = null;
                 }
 
                 currentUser = null;
