@@ -2981,10 +2981,6 @@
         let sentRemindersListener = null;
         let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-time del modale
         let userReportUpdateListener = null;
-        let activeVotingListener = null;
-        let pendingProxyListener = null;
-        let returnedReportsListener = null;
-        let urgentReportsListener = null;
         let servicePermissions = null;
         let currentStoragePath = '';
         let selectedUploadPath = ''; // Nuova variabile per il percorso di upload scelto
@@ -3742,121 +3738,22 @@
         };
         const login = async (t, e) => await signInWithEmailAndPassword(auth, t, e);
 
-        // --- FUNZIONE LOGOUT ROBUSTA E NON-BLOCCANTE ---
+        // --- FUNZIONE LOGOUT CORRETTA (CON PULIZIA TOKEN PUSH) ---
         const logout = async () => {
-            try {
-                // 1. Disiscrizione di tutti i listener real-time per evitare errori di permessi
-                if (communicationsListener) { communicationsListener(); communicationsListener = null; }
-                if (pollsListener) { pollsListener(); pollsListener = null; }
-                if (reportsListener) { reportsListener(); reportsListener = null; }
-                if (sollecitisListener) { sollecitisListener(); sollecitisListener = null; }
-                if (sentRemindersListener) { sentRemindersListener(); sentRemindersListener = null; }
-                if (returnedReportsListener) { returnedReportsListener(); returnedReportsListener = null; }
-                if (urgentReportsListener) { urgentReportsListener(); urgentReportsListener = null; }
-                if (userReportUpdateListener) { userReportUpdateListener(); userReportUpdateListener = null; }
-                if (pendingUsersListener) { pendingUsersListener(); pendingUsersListener = null; }
-                if (assembliesListener) { assembliesListener(); assembliesListener = null; }
-                if (activeVotingListener) { activeVotingListener(); activeVotingListener = null; }
-                if (pendingProxyListener) { pendingProxyListener(); pendingProxyListener = null; }
-                if (window._currentLiveAssemblyUnsubscribe) {
-                    try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
-                    window._currentLiveAssemblyUnsubscribe = null;
-                }
+            communicationsListener && (communicationsListener(), communicationsListener = null);
 
-                // 2. Pulizia sessione e scanner
-                sessionStorage.clear();
-                if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
-                    window.AssembleeModule.cleanup();
-                }
-                if (typeof window.stopQuickQRScanner === 'function') {
-                    try { window.stopQuickQRScanner(); } catch (e) { }
-                }
-                if (window.html5QrcodeScanner) {
-                    try {
-                        if (typeof window.html5QrcodeScanner.stop === 'function') {
-                            window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
-                                try { window.html5QrcodeScanner.clear(); } catch (e) { }
-                                window.html5QrcodeScanner = null;
-                            });
-                        } else {
-                            try { window.html5QrcodeScanner.clear(); } catch (e) { }
-                            window.html5QrcodeScanner = null;
-                        }
-                    } catch (e) {
-                        window.html5QrcodeScanner = null;
-                    }
-                }
-
-                // 3. Rimozione token FCM non bloccante (con timeout di sicurezza a 800ms)
-                if (currentUser && currentUser.uid) {
-                    const clearTokenPromise = updateDoc(doc(db, "users", currentUser.uid), { fcmToken: null });
-                    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 800));
-                    await Promise.race([clearTokenPromise, timeoutPromise]).catch(e => console.warn("Timeout/errore azzeramento fcmToken:", e));
-                }
-            } catch (err) {
-                console.warn("Avviso durante pre-logout:", err);
-            } finally {
-                // 4. Esecuzione del logout Auth garantita al 100%
+            if (currentUser) {
                 try {
-                    await signOut(auth);
-                } catch (signOutErr) {
-                    console.error("Errore signOut:", signOutErr);
+                    await updateDoc(doc(db, "users", currentUser.uid), {
+                        fcmToken: null
+                    });
+                } catch (err) {
+                    console.warn("Impossibile rimuovere fcmToken al logout:", err);
                 }
-                // 5. Fallback di sicurezza: forzatura reset variabili e navigazione a login
-                currentUser = null;
-                userProfile = null;
-                currentPage = 'login';
-                history.replaceState({ page: 'login' }, '', '#login');
-                renderCurrentPage();
             }
+
+            await signOut(auth);
         };
-
-        // Esposizione immediata a window per handler onclick
-        window.logout = logout;
-
-        const exitLiveAssemblyRoom = () => {
-            // Pulisce la sessione della stanza live
-            sessionStorage.removeItem('activeLiveAssemblyId');
-            window._currentLiveAssemblyId = null;
-            window._currentLiveAssemblyPhase = null;
-
-            // Disiscrive il listener dell'assemblea live se attivo
-            if (window._currentLiveAssemblyUnsubscribe) {
-                try {
-                    window._currentLiveAssemblyUnsubscribe();
-                } catch (e) { }
-                window._currentLiveAssemblyUnsubscribe = null;
-            }
-
-            // Chiude scanner e timer QR se attivi
-            if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
-                window.AssembleeModule.cleanup();
-            }
-            if (typeof window.stopQuickQRScanner === 'function') {
-                try { window.stopQuickQRScanner(); } catch (e) { }
-            }
-            if (window.html5QrcodeScanner) {
-                try {
-                    if (typeof window.html5QrcodeScanner.stop === 'function') {
-                        window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
-                            try { window.html5QrcodeScanner.clear(); } catch (e) { }
-                            window.html5QrcodeScanner = null;
-                        });
-                    } else {
-                        try { window.html5QrcodeScanner.clear(); } catch (e) { }
-                        window.html5QrcodeScanner = null;
-                    }
-                } catch (e) {
-                    window.html5QrcodeScanner = null;
-                }
-            }
-
-            // Torna alla lista delle assemblee
-            navigateTo('assemblea_lista');
-        };
-
-        // Esposizione immediata a window per handler onclick
-        window.exitLiveAssemblyRoom = exitLiveAssemblyRoom;
 
         const resetPassword = async t => await sendPasswordResetEmail(auth, t);
         const loadUserProfile = async t => { if (t) { const e = await getDoc(doc(db, "users", t.uid)); e.exists() && (userProfile = e.data()) } };
@@ -9426,10 +9323,6 @@ ${renderBottomNavigation()}
             // Pulizia del timer del QR o dello Scanner se si cambia pagina
             if (currentPage !== 'assemblea_tessera' && currentPage !== 'assemblea_room' && window.AssembleeModule) {
                 window.AssembleeModule.cleanup();
-            }
-            if (currentPage !== 'assemblea_room' && window._currentLiveAssemblyUnsubscribe) {
-                try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
-                window._currentLiveAssemblyUnsubscribe = null;
             }
             if (currentPage !== 'assemblea_gestione' && window.html5QrcodeScanner) {
                 try { window.html5QrcodeScanner.clear(); window.html5QrcodeScanner = null; } catch (e) { }
@@ -23675,11 +23568,7 @@ ${renderBottomNavigation()}
             });
 
             const assemblyRef = doc(db, "assemblies", assemblyId);
-            if (window._currentLiveAssemblyUnsubscribe) {
-                try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
-                window._currentLiveAssemblyUnsubscribe = null;
-            }
-            window._currentLiveAssemblyUnsubscribe = onSnapshot(assemblyRef, (docSnap) => {
+            onSnapshot(assemblyRef, (docSnap) => {
                 if (!docSnap.exists()) return;
                 const assembly = docSnap.data();
                 window._lastLiveAssemblySnapshot = { id: docSnap.id, ...assembly };
@@ -30491,7 +30380,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        activeVotingListener = null;
+        let activeVotingListener = null;
 
         window.toggleCondoDelegateGroup = (itemId, isChecked) => {
             const members = document.querySelectorAll(`.condo-member-${itemId}`);
@@ -39307,7 +39196,7 @@ ${renderBottomNavigation()}
             }
         };
 
-        pendingProxyListener = null;
+        let pendingProxyListener = null;
         const listenForPendingProxies = () => {
             if (pendingProxyListener) pendingProxyListener();
             if (!currentUser) return;
@@ -39722,7 +39611,6 @@ ${renderBottomNavigation()}
 
         window.navigateTo = navigateTo;
         window.logout = logout;
-        window.exitLiveAssemblyRoom = exitLiveAssemblyRoom;
         window.toggleTheme = toggleTheme;
         window.refreshApplication = refreshApplication;
         window.voteOnPoll = voteOnPoll;
@@ -40287,8 +40175,8 @@ ${renderBottomNavigation()}
             }
         };
 
-        returnedReportsListener = null;
-        urgentReportsListener = null;
+        let returnedReportsListener = null;
+        let urgentReportsListener = null;
 
         const setupReturnedReportsListener = () => {
             // Rimuovi il listener precedente se esiste
@@ -40576,22 +40464,6 @@ ${renderBottomNavigation()}
                 if (pendingUsersListener) {
                     pendingUsersListener();
                     pendingUsersListener = null;
-                }
-                if (assembliesListener) {
-                    assembliesListener();
-                    assembliesListener = null;
-                }
-                if (activeVotingListener) {
-                    activeVotingListener();
-                    activeVotingListener = null;
-                }
-                if (pendingProxyListener) {
-                    pendingProxyListener();
-                    pendingProxyListener = null;
-                }
-                if (window._currentLiveAssemblyUnsubscribe) {
-                    try { window._currentLiveAssemblyUnsubscribe(); } catch (e) { }
-                    window._currentLiveAssemblyUnsubscribe = null;
                 }
 
                 currentUser = null;
