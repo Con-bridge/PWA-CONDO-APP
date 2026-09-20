@@ -147,7 +147,7 @@ window.AssembleeModule = {
 
                     <!-- PULSANTE ESCI -->
                     <div>
-                        <button type="button" onclick="window.exitLiveAssemblyRoom()" class="btn btn-secondary" style="font-size: 0.84rem; padding: 0.55rem 1.2rem; border-radius: 8px; width: 100%; max-width: 260px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                        <button type="button" onclick="navigateTo('assemblea_lista')" class="btn btn-secondary" style="font-size: 0.84rem; padding: 0.55rem 1.2rem; border-radius: 8px; width: 100%; max-width: 260px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                             <span>Esci dall'assemblea</span>
                         </button>
@@ -191,10 +191,6 @@ window.AssembleeModule = {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
                                 </button>
                             </div>
-                            <button type="button" onclick="window.exitLiveAssemblyRoom()" class="btn btn-secondary" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:0.75rem; border-radius:8px;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                                <span>Esci dall'assemblea</span>
-                            </button>
                             <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta registro assemblea
                             </button>
@@ -413,14 +409,6 @@ window.AssembleeModule = {
                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             </span>
                         </div>
-                    </div>
-
-                    <!-- PULSANTE ESCI DALL'ASSEMBLEA PER TUTTI I PARTECIPANTI (ADMIN E CONDOMINI) -->
-                    <div style="margin-bottom: 1rem;">
-                        <button type="button" onclick="window.exitLiveAssemblyRoom()" class="btn btn-secondary w-full" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1rem; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                            <span>Esci dall'assemblea</span>
-                        </button>
                     </div>
                 </div>
             </main>
@@ -1032,47 +1020,4 @@ window.getProxyLimitConfig = window.AssembleeModule.getProxyLimitConfig.bind(win
 window.getProxyLimitDescription = window.AssembleeModule.getProxyLimitDescription.bind(window.AssembleeModule);
 window.validateProxyLimit = window.AssembleeModule.validateProxyLimit.bind(window.AssembleeModule);
 
-window.exitLiveAssemblyRoom = () => {
-    // Pulisce la sessione della stanza live
-    sessionStorage.removeItem('activeLiveAssemblyId');
-    window._currentLiveAssemblyId = null;
-    window._currentLiveAssemblyPhase = null;
 
-    // Disiscrive il listener dell'assemblea live se attivo
-    if (window._currentLiveAssemblyUnsubscribe) {
-        try {
-            window._currentLiveAssemblyUnsubscribe();
-        } catch (e) { }
-        window._currentLiveAssemblyUnsubscribe = null;
-    }
-
-    // Chiude scanner e timer QR se attivi
-    if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
-        window.AssembleeModule.cleanup();
-    }
-    if (typeof window.stopQuickQRScanner === 'function') {
-        try { window.stopQuickQRScanner(); } catch (e) { }
-    }
-    if (window.html5QrcodeScanner) {
-        try {
-            if (typeof window.html5QrcodeScanner.stop === 'function') {
-                window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
-                    try { window.html5QrcodeScanner.clear(); } catch (e) { }
-                    window.html5QrcodeScanner = null;
-                });
-            } else {
-                try { window.html5QrcodeScanner.clear(); } catch (e) { }
-                window.html5QrcodeScanner = null;
-            }
-        } catch (e) {
-            window.html5QrcodeScanner = null;
-        }
-    }
-
-    // Torna alla lista delle assemblee
-    if (typeof navigateTo === 'function') {
-        navigateTo('assemblea_lista');
-    } else if (typeof window.navigateTo === 'function') {
-        window.navigateTo('assemblea_lista');
-    }
-};
