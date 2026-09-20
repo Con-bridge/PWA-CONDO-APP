@@ -147,7 +147,7 @@ window.AssembleeModule = {
 
                     <!-- PULSANTE ESCI -->
                     <div>
-                        <button type="button" onclick="navigateTo('assemblea_lista')" class="btn btn-secondary" style="font-size: 0.84rem; padding: 0.55rem 1.2rem; border-radius: 8px; width: 100%; max-width: 260px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                        <button type="button" onclick="window.exitLiveAssemblyRoom()" class="btn btn-secondary" style="font-size: 0.84rem; padding: 0.55rem 1.2rem; border-radius: 8px; width: 100%; max-width: 260px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                             <span>Esci dall'assemblea</span>
                         </button>
@@ -191,6 +191,10 @@ window.AssembleeModule = {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Inizia
                                 </button>
                             </div>
+                            <button type="button" onclick="window.exitLiveAssemblyRoom()" class="btn btn-secondary" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:0.75rem; border-radius:8px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                <span>Esci dall'assemblea</span>
+                            </button>
                             <button onclick="exportAssemblyResults(sessionStorage.getItem('activeLiveAssemblyId'))" class="btn" style="width:100%; font-size:0.85rem; font-weight:700; padding:0.65rem 1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-bottom:1rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); color:white; border:none; border-radius:8px; box-shadow:0 4px 12px rgba(37, 99, 235, 0.35); cursor:pointer;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Esporta registro assemblea
                             </button>
@@ -410,6 +414,14 @@ window.AssembleeModule = {
                             </span>
                         </div>
                     </div>
+
+                    <!-- PULSANTE ESCI DALL'ASSEMBLEA PER TUTTI I PARTECIPANTI (ADMIN E CONDOMINI) -->
+                    <div style="margin-bottom: 1rem;">
+                        <button type="button" onclick="window.exitLiveAssemblyRoom()" class="btn btn-secondary w-full" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem 1rem; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                            <span>Esci dall'assemblea</span>
+                        </button>
+                    </div>
                 </div>
             </main>
             ${renderBottomNavigation()}
@@ -540,6 +552,15 @@ window.AssembleeModule = {
         const heads = config.maxHeads !== null && config.maxHeads !== undefined ? config.maxHeads : (totalCondoCount ? Math.floor(totalCondoCount / 5) : 0);
         const headsPart = heads > 0 ? ` - Max ${heads} ${heads === 1 ? 'testa' : 'teste'} / 200.00 ‰` : ' - Max 200.00 ‰';
         return `Legge (Max 1/5 teste e 1/5 millesimi - Art. 67 disp. att. c.c.${headsPart})`;
+    },
+
+    isProxyApproved: function (proxy) {
+        if (!proxy) return false;
+        if (proxy.status === 'rejected') return false;
+        if (proxy.adminApprovalStatus === 'rejected') return false;
+        if (proxy.adminApprovalStatus === 'approved') return true;
+        if (!proxy.adminApprovalStatus && proxy.isDigital === false && proxy.status === 'accepted') return true;
+        return false;
     },
 
     validateProxyLimit: function (assembly, delegate, existingHeldProxies = [], newDelegators = [], totalCondoCount = 20) {
@@ -688,31 +709,63 @@ window.AssembleeModule = {
             return headers.find(h => keys.some(k => cleanHeader(h).includes(k.toLowerCase()))) || null;
         };
 
-        const nomHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'intestatario', 'cognome e nome', 'nome e cognome']);
-        const unitHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui']);
-        const milHeader = findH(['millesimi', 'millesimo', 'quota', 'valore', 'quota millesimale', 'valore millesimale', 'mm', 'carico']);
+        const nomHeader = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
+        const unitHeader = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
+
+        // Ricerca intestazione millesimi: priorità esatta, mai 'carico' o 'quota' generica a meno che non contengano 'millesim'
+        const findMilHeader = () => {
+            const exactKeys = ['millesimi', 'millesimo', 'quota millesimale', 'valore millesimale', 'mm'];
+            let found = headers.find(h => exactKeys.some(k => cleanHeader(h) === k.toLowerCase()));
+            if (found) return found;
+            return headers.find(h => cleanHeader(h).includes('millesim')) || null;
+        };
+        const milHeader = findMilHeader();
         const grpHHeader = findH(['raggruppamento', 'gruppo', 'scala', 'palazzina', 'fabbricato']);
 
         if (!nomHeader) return [];
 
-        const cleanTarget = (rawNom || nominativoOrId || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
+        // Pulizia rawNom da deleghe ricevute es. (+1 deleghe ricevute), ruoli aggiuntivi o note tra parentesi
+        let cleanCandidate = (rawNom || nominativoOrId || '').toString();
+        cleanCandidate = cleanCandidate.replace(/\s*\(\+?\d+\s*deleghe?[^\)]*\)/gi, '');
+        cleanCandidate = cleanCandidate.replace(/\s*\([^)]*\)/g, '');
+        cleanCandidate = cleanCandidate.replace(/\b(consigliere|presidente|segretario|delegato\s+terzo|delegato|amministratore)\b/gi, '');
+        const cleanTarget = cleanCandidate.toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
         if (!cleanTarget) return [];
+
+        const stopWords = new Set(['delega', 'deleghe', 'ricevute', 'ricevuta', 'terzo', 'condomino', 'sig', 'sig.ra', 'dott', 'dott.ssa']);
 
         const matchedRows = tableData.filter(row => {
             const rNom = (row[nomHeader] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
             if (!rNom) return false;
             if (rNom === cleanTarget) return true;
-            const rWords = rNom.split(' ').filter(w => w.length > 2);
-            const tWords = cleanTarget.split(' ').filter(w => w.length > 2);
+            const rWords = rNom.split(' ').filter(w => w.length > 2 && !stopWords.has(w));
+            const tWords = cleanTarget.split(' ').filter(w => w.length > 2 && !stopWords.has(w));
             return (rWords.length > 0 && rWords.every(w => cleanTarget.includes(w))) ||
                 (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
         });
 
         return matchedRows.map(row => {
-            const rawMil = milHeader && row[milHeader] ? row[milHeader].toString().replace(',', '.').replace(/[^\d.-]/g, '').trim() : '0';
+            let parsedMil = 0;
+            if (milHeader && row[milHeader] !== undefined && row[milHeader] !== null) {
+                let rawMilStr = row[milHeader].toString().trim();
+                if (rawMilStr.includes(',') && rawMilStr.includes('.')) {
+                    if (rawMilStr.indexOf('.') < rawMilStr.indexOf(',')) {
+                        rawMilStr = rawMilStr.replace(/\./g, '').replace(',', '.');
+                    } else {
+                        rawMilStr = rawMilStr.replace(/,/g, '');
+                    }
+                } else {
+                    rawMilStr = rawMilStr.replace(',', '.');
+                }
+                rawMilStr = rawMilStr.replace(/[^\d.-]/g, '').trim();
+                parsedMil = parseFloat(rawMilStr) || 0;
+                // Massimo 1000 per singola unità immobiliare
+                if (parsedMil > 1000) parsedMil = 1000;
+                if (parsedMil < 0) parsedMil = 0;
+            }
             return {
                 interno: unitHeader && row[unitHeader] ? row[unitHeader].toString().trim() : '',
-                millesimi: parseFloat(rawMil) || 0,
+                millesimi: parsedMil,
                 gruppo: grpHHeader && row[grpHHeader] ? row[grpHHeader].toString().trim() : ''
             };
         });
@@ -979,4 +1032,47 @@ window.getProxyLimitConfig = window.AssembleeModule.getProxyLimitConfig.bind(win
 window.getProxyLimitDescription = window.AssembleeModule.getProxyLimitDescription.bind(window.AssembleeModule);
 window.validateProxyLimit = window.AssembleeModule.validateProxyLimit.bind(window.AssembleeModule);
 
+window.exitLiveAssemblyRoom = () => {
+    // Pulisce la sessione della stanza live
+    sessionStorage.removeItem('activeLiveAssemblyId');
+    window._currentLiveAssemblyId = null;
+    window._currentLiveAssemblyPhase = null;
 
+    // Disiscrive il listener dell'assemblea live se attivo
+    if (window._currentLiveAssemblyUnsubscribe) {
+        try {
+            window._currentLiveAssemblyUnsubscribe();
+        } catch (e) { }
+        window._currentLiveAssemblyUnsubscribe = null;
+    }
+
+    // Chiude scanner e timer QR se attivi
+    if (window.AssembleeModule && typeof window.AssembleeModule.cleanup === 'function') {
+        window.AssembleeModule.cleanup();
+    }
+    if (typeof window.stopQuickQRScanner === 'function') {
+        try { window.stopQuickQRScanner(); } catch (e) { }
+    }
+    if (window.html5QrcodeScanner) {
+        try {
+            if (typeof window.html5QrcodeScanner.stop === 'function') {
+                window.html5QrcodeScanner.stop().catch(() => { }).finally(() => {
+                    try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                    window.html5QrcodeScanner = null;
+                });
+            } else {
+                try { window.html5QrcodeScanner.clear(); } catch (e) { }
+                window.html5QrcodeScanner = null;
+            }
+        } catch (e) {
+            window.html5QrcodeScanner = null;
+        }
+    }
+
+    // Torna alla lista delle assemblee
+    if (typeof navigateTo === 'function') {
+        navigateTo('assemblea_lista');
+    } else if (typeof window.navigateTo === 'function') {
+        window.navigateTo('assemblea_lista');
+    }
+};
