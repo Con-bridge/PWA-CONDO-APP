@@ -27543,11 +27543,12 @@ ${renderBottomNavigation()}
                     existing.id = u.id;
                     if (existing.nominativo) {
                         existing.anagraficaNominativo = existing.nominativo.trim();
-                        existing.officialNominativo = existing.nominativo.trim();
+                        existing.officialNominativo = userFullName || existing.nominativo.trim();
                     }
                     existing.appProfileName = userFullName;
-                    existing.nome = u.nome || existing.nome;
-                    existing.cognome = u.cognome || existing.cognome;
+                    existing.nominativo = userFullName; // Preserva il nome effettivo dell'utente registrato
+                    existing.nome = u.nome || '';
+                    existing.cognome = u.cognome || '';
                     existing.email = u.email || existing.email || '';
                     existing.isRegistered = true;
                     const uIsConsigliere = isUserConsigliere(u) || existing.isConsigliere === true;
@@ -27639,8 +27640,9 @@ ${renderBottomNavigation()}
                 if (matchingApp) {
                     if (anag.nominativo && anag.nominativo.trim()) {
                         matchingApp.anagraficaNominativo = anag.nominativo.trim();
-                        matchingApp.officialNominativo = anag.nominativo.trim();
-                        matchingApp.nominativo = anag.nominativo.trim();
+                        if (!matchingApp.nominativo || matchingApp.nominativo === 'Condòmino') {
+                            matchingApp.nominativo = anag.nominativo.trim();
+                        }
                     }
                     if ((!matchingApp.millesimiTotali || matchingApp.millesimiTotali <= 0) && anag.millesimiTotali > 0) {
                         matchingApp.millesimiTotali = anag.millesimiTotali;
@@ -29126,8 +29128,9 @@ ${renderBottomNavigation()}
                     let delegatedToName = '';
 
                     const activeProxy = currentProxies.find(p => {
-                        if (p.status === 'rejected' || p.adminApprovalStatus === 'rejected') return false;
-                        if (p.adminApprovalStatus !== 'approved' && p.status !== 'accepted') return false;
+                        if (p.status === 'rejected' || p.status === 'revoked_by_presence' || p.adminApprovalStatus === 'rejected') return false;
+                        // Risulta "Ha già delegato" SOLO se formalmente approvata dall'amministratore all'ingresso
+                        if (p.adminApprovalStatus !== 'approved') return false;
                         if (p.delegatorId && (p.delegatorId === d.id || (d.registeredUid && p.delegatorId === d.registeredUid))) return true;
                         if (p.delegatorUid && (p.delegatorUid === d.id || (d.registeredUid && p.delegatorUid === d.registeredUid))) return true;
                         const pDelName = (p.delegatorName || '').trim().toLowerCase();
@@ -29583,8 +29586,8 @@ ${renderBottomNavigation()}
                 for (const d of delegatorsData) {
                     const delegatorFullName = (d.nominativo || `${d.cognome || ''} ${d.nome || ''}`).trim();
                     const existingProxy = (assembly.proxies || []).find(p =>
-                        p.status !== 'rejected' && p.adminApprovalStatus !== 'rejected' &&
-                        (p.adminApprovalStatus === 'approved' || p.status === 'accepted') && (
+                        p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.adminApprovalStatus !== 'rejected' &&
+                        p.adminApprovalStatus === 'approved' && (
                             p.delegatorId === d.id ||
                             (d.registeredUid && p.delegatorId === d.registeredUid) ||
                             (p.delegatorName && delegatorFullName && p.delegatorName.toLowerCase().trim() === delegatorFullName.toLowerCase().trim())
@@ -39451,23 +39454,57 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                             if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
 
                             const user = userDoc.data();
-
-                            // Verifica se il condòmino ha già una delega formalmente convalidata dall'amministratore
-                            const hasApprovedProxyAsDelegator = (assembly.proxies || []).some(p =>
-                                p.status !== 'rejected' && p.adminApprovalStatus === 'approved' &&
-                                (p.delegatorId === qrUid || (user.registeredUid && p.delegatorId === user.registeredUid))
-                            );
-                            if (hasApprovedProxyAsDelegator) {
-                                throw new Error("Il condòmino ha già una delega convalidata all'ingresso con il delegato presente.");
-                            }
+                            const userFullName = `${user.nome} ${user.cognome}`.trim();
 
                             let userBaseMillesimi = parseFloat(user.millesimiTotali) || 0;
                             if (userBaseMillesimi <= 0 && Array.isArray(user.proprieta)) {
                                 userBaseMillesimi = user.proprieta.reduce((sum, p) => sum + (parseFloat(p.millesimi) || 0), 0);
                             }
 
+                            // Controllo revoca delega per presenza personale ex Art. 67 disp. att. c.c.
+                            const activeProxyAsDelegator = (assembly.proxies || []).find(p =>
+                                p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.status !== 'revoked' &&
+                                (p.adminApprovalStatus === 'approved' || p.status === 'accepted') &&
+                                (
+                                    p.delegatorId === qrUid || (user.registeredUid && p.delegatorId === user.registeredUid) ||
+                                    (p.delegatorUid && (p.delegatorUid === qrUid || p.delegatorUid === user.registeredUid)) ||
+                                    (p.delegatorName && userFullName && p.delegatorName.toLowerCase().trim() === userFullName.toLowerCase().trim())
+                                )
+                            );
+
+                            let updatedProxies = assembly.proxies ? [...assembly.proxies] : [];
+                            let updatedAttendees = assembly.attendees ? [...assembly.attendees] : [];
+                            let updatedAgenda = assembly.agenda ? [...assembly.agenda] : [];
+                            let hasRevocation = false;
+
+                            if (activeProxyAsDelegator) {
+                                const delegateDisplay = activeProxyAsDelegator.delegateName || 'Delegato';
+                                const confirmRevocation = await window.customConfirm(
+                                    `Il condòmino ${userFullName} ha precedentemente conferito delega a ${delegateDisplay}.\n\n` +
+                                    `La sua presenza personale in aula comporta la REVOCA IMMEDIATA della delega ai sensi dell'art. 67 disp. att. c.c.\n\n` +
+                                    `Confermi l'ingresso del condòmino e la revoca della delega?`,
+                                    'Conferma ingresso e revoca',
+                                    'Annulla'
+                                );
+                                if (!confirmRevocation) {
+                                    isProcessingScan = false;
+                                    return;
+                                }
+
+                                const realignRes = window.revokeProxyAndRealignDelegate({
+                                    assembly,
+                                    delegatorUid: qrUid,
+                                    delegatorName: userFullName,
+                                    delegatorBaseMillesimi: userBaseMillesimi
+                                });
+                                updatedProxies = realignRes.updatedProxies;
+                                updatedAttendees = realignRes.updatedAttendees;
+                                updatedAgenda = realignRes.updatedAgenda;
+                                hasRevocation = true;
+                            }
+
                             // Considera ESCLUSIVAMENTE le deleghe che il delegato ha esplicitamente accettato
-                            const allHeldProxies = (assembly.proxies || []).filter(p =>
+                            const allHeldProxies = (updatedProxies || []).filter(p =>
                                 (p.delegateId === qrUid || (user.registeredUid && p.delegateId === user.registeredUid)) &&
                                 p.status === 'accepted'
                             );
@@ -39481,21 +39518,21 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                             });
                             const initialProxyNotice = alreadyApprovedProxies.length > 0 ? ` (+${alreadyApprovedProxies.length} deleghe convalidate)` : '';
 
-                            const userFullName = `${user.nome} ${user.cognome}`.trim();
-                            let updatedAttendees = [...currentAttendees];
+                            const existingAttendeeIdxInUpdated = updatedAttendees.findIndex(a => a.uid === qrUid);
 
-                            if (existingIndex !== -1) {
+                            if (existingAttendeeIdxInUpdated !== -1) {
                                 // Rientro in-place o conversione da delegato a presente
-                                updatedAttendees[existingIndex] = {
-                                    ...updatedAttendees[existingIndex],
+                                updatedAttendees[existingAttendeeIdxInUpdated] = {
+                                    ...updatedAttendees[existingAttendeeIdxInUpdated],
                                     status: 'presente',
                                     isDelegated: false,
                                     delegatedTo: null,
                                     delegatedToName: null,
+                                    proxyId: null,
                                     nome: `${userFullName}${initialProxyNotice}`,
                                     millesimi: initialMillesimiAccreditati,
-                                    baseMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingIndex].baseMillesimi || 0),
-                                    personalMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingIndex].personalMillesimi || 0),
+                                    baseMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingAttendeeIdxInUpdated].baseMillesimi || 0),
+                                    personalMillesimi: userBaseMillesimi > 0 ? userBaseMillesimi : (updatedAttendees[existingAttendeeIdxInUpdated].personalMillesimi || 0),
                                     heldProxiesCount: alreadyApprovedProxies.length,
                                     reenteredAt: Date.now(),
                                     isManual: false,
@@ -39521,11 +39558,24 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                 updatedAttendees.push(newAttendee);
                             }
 
-                            await updateDoc(assemblyRef, {
+                            const updatePayload = {
                                 attendees: JSON.parse(JSON.stringify(updatedAttendees))
-                            });
+                            };
+                            if (hasRevocation) {
+                                updatePayload.proxies = JSON.parse(JSON.stringify(updatedProxies));
+                                updatePayload.agenda = JSON.parse(JSON.stringify(updatedAgenda));
+                            }
+                            await updateDoc(assemblyRef, updatePayload);
 
-                            await logAssemblyEvent(targetAssemblyId, existingIndex !== -1 ? 'RIENTRO_QR' : 'PRESENZA_QR', `Presenza ${existingIndex !== -1 ? 'riattivata (rientro)' : 'convalidata'} tramite Scanner QR: ${userFullName} (${initialMillesimiAccreditati.toFixed(2)} ‰)`);
+                            if (hasRevocation && activeProxyAsDelegator) {
+                                await logAssemblyEvent(
+                                    targetAssemblyId,
+                                    'REVOCA_DELEGA_PRESENZA',
+                                    `Il condòmino ${userFullName} è entrato personalmente in assemblea. La delega conferita a ${activeProxyAsDelegator.delegateName || 'Delegato'} (${(parseFloat(activeProxyAsDelegator.delegatorMillesimi) || userBaseMillesimi).toFixed(2)} millesimi) è stata revocata di diritto (Art. 67 disp. att. c.c.).`
+                                );
+                            } else {
+                                await logAssemblyEvent(targetAssemblyId, existingAttendeeIdxInUpdated !== -1 ? 'RIENTRO_QR' : 'PRESENZA_QR', `Presenza ${existingAttendeeIdxInUpdated !== -1 ? 'riattivata (rientro)' : 'convalidata'} tramite Scanner QR: ${userFullName} (${initialMillesimiAccreditati.toFixed(2)} ‰)`);
+                            }
 
                             // Invalida cache anagrafica accreditamento su scansione QR presenza
                             if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
@@ -39534,7 +39584,12 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                             if (pendingAdminProxies.length > 0) {
                                 window.openAdminProxyApprovalModal({
                                     assemblyId: targetAssemblyId,
-                                    assembly,
+                                    assembly: {
+                                        ...assembly,
+                                        proxies: updatedProxies,
+                                        attendees: updatedAttendees,
+                                        agenda: updatedAgenda
+                                    },
                                     qrUid,
                                     user,
                                     userFullName,
