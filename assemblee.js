@@ -544,7 +544,7 @@ window.AssembleeModule = {
 
     isProxyApproved: function (proxy) {
         if (!proxy) return false;
-        if (proxy.status === 'rejected') return false;
+        if (proxy.status === 'rejected' || proxy.status === 'revoked_by_presence' || proxy.status === 'revoked') return false;
         if (proxy.adminApprovalStatus === 'rejected') return false;
         if (proxy.adminApprovalStatus === 'approved') return true;
         if (!proxy.adminApprovalStatus && proxy.isDigital === false && proxy.status === 'accepted') return true;
@@ -726,10 +726,16 @@ window.AssembleeModule = {
             const rNom = (row[nomHeader] || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
             if (!rNom) return false;
             if (rNom === cleanTarget) return true;
-            const rWords = rNom.split(' ').filter(w => w.length > 2 && !stopWords.has(w));
-            const tWords = cleanTarget.split(' ').filter(w => w.length > 2 && !stopWords.has(w));
-            return (rWords.length > 0 && rWords.every(w => cleanTarget.includes(w))) ||
-                (tWords.length > 0 && tWords.every(w => rNom.includes(w)));
+            const rWords = rNom.split(' ').filter(w => w.length > 1 && !stopWords.has(w));
+            const tWords = cleanTarget.split(' ').filter(w => w.length > 1 && !stopWords.has(w));
+            if (tWords.length === 0 || rWords.length === 0) return false;
+            // Match esatto parole invertite (es. "Nome Cognome" vs "Cognome Nome")
+            if (tWords.length === rWords.length && tWords.length >= 2 && tWords.every(w => rWords.includes(w))) return true;
+            // Target con almeno 2 parole completamente presente come parole esatte nella riga (es. comproprietà)
+            if (tWords.length >= 2 && tWords.every(w => rWords.includes(w))) return true;
+            // Riga con almeno 2 parole completamente presente nel target
+            if (rWords.length >= 2 && rWords.every(w => tWords.includes(w))) return true;
+            return false;
         });
 
         return matchedRows.map(row => {
@@ -916,19 +922,53 @@ window.AssembleeModule = {
         const cleanUnit = (u) => (u || '').toString().trim().toLowerCase().replace(/\s+/g, '');
         const cleanName = (n) => (n || '').toString().toLowerCase().replace(/[^a-z0-9]/gi, ' ').replace(/\s+/g, ' ').trim();
 
-        // 1. Cerca direttamente nelle righe del file/dataset importato (tableData)
+        // Priority 0: Anagrafica nominativo esplicita
+        if (entity && typeof entity === 'object') {
+            if (entity.anagraficaNominativo && entity.anagraficaNominativo.trim()) return entity.anagraficaNominativo.trim();
+            if (entity.officialNominativo && entity.officialNominativo.trim()) return entity.officialNominativo.trim();
+        }
+        if (userObj && typeof userObj === 'object') {
+            if (userObj.anagraficaNominativo && userObj.anagraficaNominativo.trim()) return userObj.anagraficaNominativo.trim();
+            if (userObj.officialNominativo && userObj.officialNominativo.trim()) return userObj.officialNominativo.trim();
+        }
+
         const tData = (tableData && tableData.length > 0)
             ? tableData
-            : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.tableData || window._currentTableData || []) : []);
+            : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.tableData || window._unifiedCondominiumRegistryCache?.data?.tableData || window._currentTableData || []) : []);
 
         const condominiList = (allCondomini && allCondomini.length > 0)
             ? allCondomini
             : (typeof window !== 'undefined' ? (window._liveAssemblyStaticCache?.allCondomini || window._unifiedCondominiumRegistryCache?.data?.allCondomini || []) : []);
 
-        // Priority 1: Se l'entità specifica una singola unità immobiliare (interno / unita / appartamento)
-        const singleUnit = entity.interno || entity.unitaImmobiliare || entity.unita || entity.apartment || (typeof entity === 'string' ? entity : null);
+        // Priority 1: Cerca per ID utente registrato nella cache unificata allCondomini
+        const targetId = (entity && typeof entity === 'object') ? (entity.uid || entity.id || entity.delegatorId || entity.registeredUid) : null;
+        const resolvedTargetId = targetId || (userObj && typeof userObj === 'object' ? (userObj.uid || userObj.id) : null);
+        if (resolvedTargetId && condominiList.length > 0) {
+            const matchById = condominiList.find(c => c.id === resolvedTargetId || c.registeredUid === resolvedTargetId);
+            if (matchById) {
+                const res = matchById.anagraficaNominativo || matchById.officialNominativo || matchById.nominativo;
+                if (res && res.trim() && res.toLowerCase() !== 'condòmino' && res.toLowerCase() !== 'condomino') {
+                    return res.trim();
+                }
+            }
+        }
 
-        if (singleUnit && typeof singleUnit === 'string' && tData.length > 0) {
+        // Estrazione nominativi candidati
+        const rawRawName = (
+            (entity && typeof entity === 'object' ? (entity.delegatorName || entity.nominativo || (entity.cognome || entity.nome ? `${entity.cognome || ''} ${entity.nome || ''}`.trim() : '') || entity.nome) : '') ||
+            (userObj && typeof userObj === 'object' ? (userObj.nominativo || `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome) : '') ||
+            (typeof entity === 'string' ? entity : '')
+        );
+        const targetName = rawRawName.replace(/\s*\(\+?\d+\s+deleghe?.*?\)/gi, '').trim();
+        const normTarget = cleanName(targetName);
+        const targetSurname = cleanName((entity && entity.cognome) || userObj?.cognome || '');
+        const targetFirstName = cleanName((entity && entity.nome) || userObj?.nome || '');
+        const normDirect = (targetSurname && targetFirstName) ? cleanName(`${targetSurname} ${targetFirstName}`) : '';
+        const normReverse = (targetFirstName && targetSurname) ? cleanName(`${targetFirstName} ${targetSurname}`) : '';
+        const targetWords = normTarget ? normTarget.split(' ').filter(Boolean) : [];
+
+        // Priority 2: Cerca in tableData
+        if (tData.length > 0) {
             const headers = Object.keys(tData[0] || {});
             const cleanH = (h) => (h || '').toString().trim().toLowerCase();
             const findH = (keys) => {
@@ -939,74 +979,103 @@ window.AssembleeModule = {
             const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
             const unitH = findH(['interno', 'appartamento', 'unita', 'unità', 'sub', 'immobile', 'ui', 'piano']);
 
-            if (unitH && nomH) {
-                const targetU = cleanUnit(singleUnit);
-                // Match ESATTO sull'unità
-                const matchedRow = tData.find(r => cleanUnit(r[unitH]) === targetU);
-                if (matchedRow && matchedRow[nomH]) {
-                    return matchedRow[nomH].toString().trim();
+            if (nomH) {
+                // A) Match esatto 100% stringa normalizzata
+                if (normTarget) {
+                    const exactRow = tData.find(r => {
+                        const rNom = cleanName(r[nomH]);
+                        if (!rNom) return false;
+                        if (rNom === normTarget) return true;
+                        if (normDirect && rNom === normDirect) return true;
+                        if (normReverse && rNom === normReverse) return true;
+                        return false;
+                    });
+                    if (exactRow && exactRow[nomH]) return exactRow[nomH].toString().trim();
+                }
+
+                // B) Verifica congiunta Unità + Nome/Cognome
+                let unitsToCheck = [];
+                const rawUnitProp = (entity && typeof entity === 'object') ? (entity.delegatorUnita || entity.delegatorUnit || entity.unitaStr || entity.interno || entity.unitaImmobiliare || entity.unita || entity.apartment) : (typeof entity === 'string' && entity.length <= 10 ? entity : null);
+                if (Array.isArray(rawUnitProp)) unitsToCheck.push(...rawUnitProp.filter(Boolean));
+                else if (rawUnitProp && typeof rawUnitProp === 'string') unitsToCheck.push(...rawUnitProp.split(/[,;\/]/).map(u => u.trim()).filter(Boolean));
+                if (entity && Array.isArray(entity.proprieta)) {
+                    entity.proprieta.forEach(p => { if (p.interno) unitsToCheck.push(p.interno.trim()); });
+                }
+
+                if (unitH && unitsToCheck.length > 0) {
+                    for (const candidateUnit of unitsToCheck) {
+                        const targetU = cleanUnit(candidateUnit);
+                        if (!targetU) continue;
+                        const matchedRow = tData.find(r => {
+                            const rowU = cleanUnit(r[unitH]);
+                            if (!rowU) return false;
+                            const unitMatch = rowU === targetU || (targetU.includes('/') && targetU.split('/').some(part => part && cleanUnit(part) === rowU)) || (rowU.includes('/') && rowU.split('/').some(part => part && cleanUnit(part) === targetU));
+                            if (!unitMatch) return false;
+
+                            // Verifica congiunta: deve combaciare il cognome esatto (o tutte le parole del nominativo)
+                            const rNom = cleanName(r[nomH]);
+                            if (!rNom) return false;
+                            const rWords = rNom.split(' ').filter(Boolean);
+                            if (targetSurname && targetSurname.length >= 2) {
+                                if (!rWords.includes(targetSurname)) return false;
+                                if (targetFirstName && targetFirstName.length >= 2) {
+                                    return rWords.includes(targetFirstName);
+                                }
+                                return true;
+                            }
+                            if (targetWords.length > 0) {
+                                return targetWords.every(w => rWords.includes(w));
+                            }
+                            return false;
+                        });
+                        if (matchedRow && matchedRow[nomH]) {
+                            return matchedRow[nomH].toString().trim();
+                        }
+                    }
+                }
+
+                // C) Match con tutte le parole del nominativo composto (almeno 2 parole esatte)
+                if (targetWords.length >= 2) {
+                    const allWordsRow = tData.find(r => {
+                        const rNom = cleanName(r[nomH]);
+                        if (!rNom) return false;
+                        const rWords = rNom.split(' ').filter(Boolean);
+                        return targetWords.every(w => rWords.includes(w));
+                    });
+                    if (allWordsRow && allWordsRow[nomH]) return allWordsRow[nomH].toString().trim();
                 }
             }
         }
 
-        // Priority 2: Cerca per ID utente registrato nella cache unificata allCondomini
-        const targetId = entity.uid || entity.id || entity.delegatorId;
-        if (targetId && condominiList.length > 0) {
-            const matchById = condominiList.find(c => c.id === targetId || c.registeredUid === targetId);
-            if (matchById && matchById.nominativo) {
-                return matchById.nominativo.trim();
-            }
-        }
-
-        // Priority 3: Cerca per Nome/Cognome in tableData
-        const rawRawName = (entity.delegatorName || entity.nominativo || `${userObj?.cognome || ''} ${userObj?.nome || ''}` || `${entity.cognome || ''} ${entity.nome || ''}` || entity.nome || '');
-        const targetName = rawRawName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
-        const normTarget = cleanName(targetName);
-        const targetWords = normTarget.split(' ').filter(w => w.length >= 2);
-
-        if (tData.length > 0 && targetWords.length > 0) {
-            const headers = Object.keys(tData[0] || {});
-            const cleanH = (h) => (h || '').toString().trim().toLowerCase();
-            const findH = (keys) => {
-                let found = headers.find(h => keys.some(k => cleanH(h) === k.toLowerCase()));
-                if (found) return found;
-                return headers.find(h => keys.some(k => cleanH(h).includes(k.toLowerCase()))) || null;
-            };
-            const nomH = findH(['nominativo', 'condomino', 'condòmino', 'proprietario', 'proprietario/a', 'intestatario', 'cognome e nome', 'nome e cognome', 'cognome nome', 'anagrafica', 'utente', 'cliente', 'intestazione']);
-
-            if (nomH) {
-                // Match esatto stringa nome
-                const exactRow = tData.find(r => cleanName(r[nomH]) === normTarget);
-                if (exactRow && exactRow[nomH]) return exactRow[nomH].toString().trim();
-
-                // Match tutte le parole significative del nome
-                const allWordsRow = tData.find(r => {
-                    const rNom = cleanName(r[nomH]);
-                    return rNom && targetWords.every(w => rNom.includes(w));
-                });
-                if (allWordsRow && allWordsRow[nomH]) return allWordsRow[nomH].toString().trim();
-            }
-        }
-
-        // Priority 4: Cerca per Nome in condominiList
-        if (condominiList.length > 0 && targetWords.length > 0) {
+        // Priority 3: Cerca per Nome in condominiList
+        if (condominiList.length > 0 && normTarget) {
             const matchByName = condominiList.find(c => {
-                const cNom = cleanName(c.nominativo);
-                if (cNom && (cNom === normTarget || targetWords.every(w => cNom.includes(w)))) return true;
+                const cNom = cleanName(c.anagraficaNominativo || c.officialNominativo || c.nominativo);
+                if (cNom && (cNom === normTarget || (normDirect && cNom === normDirect) || (normReverse && cNom === normReverse))) return true;
                 const cFull = cleanName(`${c.cognome || ''} ${c.nome || ''}`);
-                if (cFull && (cFull === normTarget || targetWords.every(w => cFull.includes(w)))) return true;
+                const cRev = cleanName(`${c.nome || ''} ${c.cognome || ''}`);
+                if (cFull && (cFull === normTarget || (normDirect && cFull === normDirect) || (normReverse && cFull === normReverse))) return true;
+                if (cRev && (cRev === normTarget || (normDirect && cRev === normDirect) || (normReverse && cRev === normReverse))) return true;
+                if (targetWords.length >= 2) {
+                    const cWords = (cNom || cFull).split(' ').filter(Boolean);
+                    if (targetWords.every(w => cWords.includes(w))) return true;
+                }
                 return false;
             });
-            if (matchByName && matchByName.nominativo) {
-                return matchByName.nominativo.trim();
+            if (matchByName) {
+                const res = matchByName.anagraficaNominativo || matchByName.officialNominativo || matchByName.nominativo;
+                if (res && res.trim() && res.toLowerCase() !== 'condòmino' && res.toLowerCase() !== 'condomino') {
+                    return res.trim();
+                }
             }
         }
 
-        // Priority 5: Fallback
-        if (entity.delegatorName) return entity.delegatorName.replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
-        if (entity.nominativo) return entity.nominativo.trim();
-        if (userObj) return `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome || 'Condòmino';
-        if (entity.cognome || entity.nome) return `${entity.cognome || ''} ${entity.nome || ''}`.trim() || 'Condòmino';
+        // Priority 4: Fallback
+        if (entity && entity.delegatorName) return entity.delegatorName.replace(/\s*\(\+?\d+\s+deleghe?.*?\)/gi, '').trim();
+        if (entity && entity.nominativo) return entity.nominativo.trim();
+        if (userObj && (userObj.cognome || userObj.nome)) return `${userObj.cognome || ''} ${userObj.nome || ''}`.trim() || userObj.nome || 'Condòmino';
+        if (entity && (entity.cognome || entity.nome)) return `${entity.cognome || ''} ${entity.nome || ''}`.trim() || 'Condòmino';
+        if (typeof entity === 'string' && entity.trim()) return entity.trim();
         return 'Condòmino';
     }
 };
@@ -1019,5 +1088,6 @@ window.getOfficialImportNominativo = window.AssembleeModule.getOfficialImportNom
 window.getProxyLimitConfig = window.AssembleeModule.getProxyLimitConfig.bind(window.AssembleeModule);
 window.getProxyLimitDescription = window.AssembleeModule.getProxyLimitDescription.bind(window.AssembleeModule);
 window.validateProxyLimit = window.AssembleeModule.validateProxyLimit.bind(window.AssembleeModule);
+window.isProxyApproved = window.AssembleeModule.isProxyApproved.bind(window.AssembleeModule);
 
 
