@@ -3130,6 +3130,7 @@
         };
 
         const hideModal = (fromPopState = false) => {
+            window._isProxyModalOpen = false;
             window.isPresidentVotingModalOpen = false;
             window.isOdgApprovalModalOpen = false;
             window._openNonVotersModalIndex = null;
@@ -19333,10 +19334,8 @@ ${renderBottomNavigation()}
 
                     // Deleghe pendenti per l'utente loggato
                     if (data.proxies && Array.isArray(data.proxies)) {
-                        const userPendingProxy = data.proxies.find(p => p.delegateId === currentUser.uid && p.status === 'pending');
-                        if (userPendingProxy) {
-                            pendingDelegheCount++;
-                        }
+                        const userPendingList = data.proxies.filter(p => p.delegateId === currentUser.uid && p.status === 'pending');
+                        pendingDelegheCount += userPendingList.length;
                     }
                 });
 
@@ -19687,17 +19686,46 @@ ${renderBottomNavigation()}
                     // NOTIFICA DELEGA RICEVUTA PER IL DELEGATO
                     let receivedProxyHtml = '';
                     if (!isAdmin) {
-                        const receivedProxy = assembly.proxies?.find(p => p.delegateId === currentUser.uid && p.status === 'pending');
-                        if (receivedProxy) {
+                        const pendingReceivedProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status === 'pending');
+                        if (pendingReceivedProxies.length > 0) {
+                            const count = pendingReceivedProxies.length;
+                            const isScrollable = count > 1;
                             receivedProxyHtml = `
-                                <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(241, 196, 15, 0.15); border-left: 4px solid var(--warning); border-radius: 6px;">
-                                    <strong style="color: var(--warning); font-size: 0.85rem; text-transform: uppercase; display: block;">${THEME_ICONS.handshake(16)} Delega di Voto Ricevuta!</strong>
-                                    <p style="margin: 0.25rem 0 0.5rem 0; font-size: 0.85rem; color: var(--primary-text);">
-                                        <strong>${escapeHtml(receivedProxy.delegatorName)}</strong> ti ha conferito la sua delega di voto (${(receivedProxy.delegatorMillesimi || 0).toFixed(2)} ‰).
-                                    </p>
-                                    <div class="flex gap-2">
-                                        <button onclick="respondToProxy('${docSnap.id}', '${receivedProxy.id || receivedProxy.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">${THEME_ICONS.check(14, 2.4)} Accetta Delega</button>
-                                        <button onclick="respondToProxy('${docSnap.id}', '${receivedProxy.id || receivedProxy.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.75rem; padding: 0.35rem 0.7rem;">${THEME_ICONS.cross(14, 2.4)} Rifiuta / Rimanda indietro</button>
+                                <div style="margin-top: 1rem; padding: 0.85rem; background: rgba(241, 196, 15, 0.12); border-left: 4px solid var(--warning); border-radius: 8px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+                                        <strong style="color: var(--warning); font-size: 0.85rem; text-transform: uppercase; display: flex; align-items: center; gap: 0.4rem;">
+                                            ${THEME_ICONS.handshake(16)} ${count === 1 ? 'Delega di Voto Ricevuta' : `Deleghe di Voto Ricevute (${count})`}
+                                        </strong>
+                                        ${count > 1 ? `<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: var(--warning); font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 99px;">${count} in attesa</span>` : ''}
+                                    </div>
+                                    <div style="${isScrollable ? 'max-height: 250px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 0.25rem;' : ''} display: flex; flex-direction: column; gap: 0.55rem;">
+                                        ${pendingReceivedProxies.map(p => {
+                                const pId = p.id || p.delegatorId;
+                                const dName = window.getDelegatorOfficialName ? window.getDelegatorOfficialName(p) : (p.delegatorName || 'Condòmino');
+                                const dUnit = (p.delegatorUnita || p.delegatorUnit) || (window.getVoterUnitString ? window.getVoterUnitString(p, window._cachedAllUsers || []) : '');
+                                const dMil = (parseFloat(p.delegatorMillesimi) || 0).toFixed(2);
+                                return `
+                                                <div style="background: var(--surface-color-light); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 8px; padding: 0.65rem 0.8rem;">
+                                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.45rem; gap: 0.5rem;">
+                                                        <div style="min-width: 0;">
+                                                            <strong style="font-size: 0.92rem; color: var(--primary-text); display: block; line-height: 1.3;">${escapeHtml(dName)}</strong>
+                                                            ${dUnit ? `<div style="font-size: 0.78rem; color: var(--secondary-text); margin-top: 0.1rem;">Unità: <strong style="color: var(--primary-text);">${escapeHtml(dUnit)}</strong></div>` : ''}
+                                                        </div>
+                                                        <span style="font-size: 0.82rem; font-weight: 800; color: var(--warning); background: rgba(245, 158, 11, 0.15); padding: 0.15rem 0.45rem; border-radius: 5px; flex-shrink: 0;">
+                                                            ${dMil} ‰
+                                                        </span>
+                                                    </div>
+                                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; width: 100%;">
+                                                        <button type="button" onclick="respondToProxy('${docSnap.id}', '${pId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.5rem; justify-content: center; border-radius: 6px; border: none; cursor: pointer; white-space: nowrap;">
+                                                            ${THEME_ICONS.cross(13, 2.2)} Rifiuta
+                                                        </button>
+                                                        <button type="button" onclick="respondToProxy('${docSnap.id}', '${pId}', 'accepted')" class="btn btn-primary" style="font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.5rem; justify-content: center; border-radius: 6px; cursor: pointer; white-space: nowrap;">
+                                                            ${THEME_ICONS.check(13, 2.2)} Accetta
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `;
+                            }).join('')}
                                     </div>
                                 </div>
                             `;
@@ -39756,52 +39784,78 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     if (!confirmed) return;
                 }
 
+                // Disabilita temporaneamente i pulsanti dell'azione per evitare doppi click
+                const actionContainer = document.getElementById(`proxy-actions-${proxyId}`);
+                if (actionContainer) {
+                    actionContainer.style.opacity = '0.5';
+                    actionContainer.style.pointerEvents = 'none';
+                }
+
                 const assemblyRef = doc(db, "assemblies", assemblyId);
                 const docSnap = await getDoc(assemblyRef);
-                if (!docSnap.exists()) return;
+                if (!docSnap.exists()) {
+                    if (actionContainer) {
+                        actionContainer.style.opacity = '1';
+                        actionContainer.style.pointerEvents = 'auto';
+                    }
+                    return;
+                }
 
                 const assembly = docSnap.data();
 
+                // Identificazione univoca e tassativa della singola delega da proxyId
+                const proxyToAccept = (assembly.proxies || []).find(p => p.id ? p.id === proxyId : p.delegatorId === proxyId);
+                if (!proxyToAccept) {
+                    if (actionContainer) {
+                        actionContainer.style.opacity = '1';
+                        actionContainer.style.pointerEvents = 'auto';
+                    }
+                    return;
+                }
+
                 if (newStatus === 'accepted') {
-                    const proxyToAccept = (assembly.proxies || []).find(p => p.id === proxyId || p.delegatorId === proxyId);
-                    if (proxyToAccept) {
-                        let totalCondoCount = 0;
-                        try {
-                            const { allCondomini } = await window.getUnifiedCondominiumRegistry();
-                            if (allCondomini && allCondomini.length > 0) totalCondoCount = allCondomini.length;
-                        } catch (e) { }
-                        if (totalCondoCount === 0) totalCondoCount = 20;
+                    let totalCondoCount = 0;
+                    try {
+                        const { allCondomini } = await window.getUnifiedCondominiumRegistry();
+                        if (allCondomini && allCondomini.length > 0) totalCondoCount = allCondomini.length;
+                    } catch (e) { }
+                    if (totalCondoCount === 0) totalCondoCount = 20;
 
-                        const otherAcceptedHeldProxies = (assembly.proxies || []).filter(p =>
-                            p.status === 'accepted' &&
-                            p.id !== proxyToAccept.id &&
-                            p.delegatorId !== proxyToAccept.delegatorId &&
-                            p.delegateId === currentUser.uid
-                        );
+                    // Controlla solo le deleghe già accettate detenute dal delegato, escludendo quella corrente
+                    const otherAcceptedHeldProxies = (assembly.proxies || []).filter(p =>
+                        p.status === 'accepted' &&
+                        p.delegateId === currentUser.uid &&
+                        (proxyToAccept.id ? p.id !== proxyToAccept.id : p.delegatorId !== proxyToAccept.delegatorId)
+                    );
 
-                        const newDelegatorData = [{
-                            id: proxyToAccept.delegatorId,
-                            nominativo: proxyToAccept.delegatorName,
-                            millesimiTotali: proxyToAccept.delegatorMillesimi || 0
-                        }];
+                    const newDelegatorData = [{
+                        id: proxyToAccept.delegatorId,
+                        nominativo: window.getDelegatorOfficialName ? window.getDelegatorOfficialName(proxyToAccept) : (proxyToAccept.delegatorName || 'Condòmino'),
+                        millesimiTotali: parseFloat(proxyToAccept.delegatorMillesimi) || 0
+                    }];
 
-                        const validation = window.AssembleeModule.validateProxyLimit(
-                            assembly,
-                            userProfile,
-                            otherAcceptedHeldProxies,
-                            newDelegatorData,
-                            totalCondoCount
-                        );
+                    const validation = window.AssembleeModule.validateProxyLimit(
+                        assembly,
+                        userProfile,
+                        otherAcceptedHeldProxies,
+                        newDelegatorData,
+                        totalCondoCount
+                    );
 
-                        if (!validation.valid) {
-                            await customAlert(validation.errorMessage);
-                            return;
+                    if (!validation.valid) {
+                        if (actionContainer) {
+                            actionContainer.style.opacity = '1';
+                            actionContainer.style.pointerEvents = 'auto';
                         }
+                        await customAlert(validation.errorMessage);
+                        return;
                     }
                 }
 
+                // Aggiornamento dello stato tassativamente sulla sola delega identificata
                 const updatedProxies = (assembly.proxies || []).map(p => {
-                    if (p.id === proxyId || p.delegatorId === proxyId) {
+                    const isMatch = proxyToAccept.id ? (p.id === proxyToAccept.id) : (p.delegatorId === proxyToAccept.delegatorId);
+                    if (isMatch) {
                         return { ...p, status: newStatus, respondedAt: new Date().toISOString() };
                     }
                     return p;
@@ -39827,21 +39881,66 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     attendees: updatedAttendees
                 });
 
-                hideModal();
-                if (newStatus === 'accepted') {
-                    await customAlert(`Delega accettata con successo!
+                // Registra lo stato gestito nella sessione corrente
+                window._handledProxies = window._handledProxies || {};
+                window._handledProxies[proxyId] = newStatus;
+                if (proxyToAccept.id) window._handledProxies[proxyToAccept.id] = newStatus;
 
-PROMEMORIA: Ricordati di farti consegnare dal delegante la delega cartacea firmata in originale e di esibirla all'amministratore all'ingresso dell'assemblea. La tua rappresentanza sarà attiva solo dopo la convalida dell'amministratore.`);
+                const modalList = document.getElementById('proxy-modal-list');
+                const modalActionsEl = document.getElementById(`proxy-actions-${proxyId}`) || (proxyToAccept.id ? document.getElementById(`proxy-actions-${proxyToAccept.id}`) : null);
+
+                if (modalList && modalActionsEl) {
+                    // Siamo all'interno del modale di notifica deleghe: non chiudere il modale se ci sono altre deleghe pendenti
+                    modalActionsEl.style.opacity = '1';
+                    modalActionsEl.style.pointerEvents = 'auto';
+                    modalActionsEl.classList.remove('proxy-actions-pending');
+                    if (newStatus === 'accepted') {
+                        modalActionsEl.innerHTML = `
+                            <div style="background-color: #10B981; color: white; padding: 0.55rem 0.75rem; font-weight: 700; border-radius: 8px; font-size: 0.85rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.35rem; box-sizing: border-box;">
+                                ${THEME_ICONS.check(15, 2.4)} Accettata ✓
+                            </div>
+                        `;
+                    } else {
+                        modalActionsEl.innerHTML = `
+                            <div style="background-color: var(--danger, #EF4444); color: white; padding: 0.55rem 0.75rem; font-weight: 700; border-radius: 8px; font-size: 0.85rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.35rem; box-sizing: border-box;">
+                                ${THEME_ICONS.cross(15, 2.4)} Rifiutata ✕
+                            </div>
+                        `;
+                    }
+
+                    const remainingPending = modalList.querySelectorAll('.proxy-actions-pending');
+                    const modalFooterCloseBtn = document.getElementById('proxy-modal-close-btn');
+
+                    if (remainingPending.length === 0) {
+                        if (modalFooterCloseBtn) {
+                            modalFooterCloseBtn.classList.remove('btn-secondary');
+                            modalFooterCloseBtn.classList.add('btn-primary');
+                            modalFooterCloseBtn.textContent = 'Chiudi';
+                        }
+                        const statusHeaderMsg = document.getElementById('proxy-modal-header-msg');
+                        if (statusHeaderMsg) {
+                            statusHeaderMsg.innerHTML = `<div style="color: #10B981; font-weight: 700; font-size: 0.88rem; margin-top: 0.35rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">${THEME_ICONS.check(15, 2.4)} Tutte le deleghe per questa assemblea sono state gestite.</div>`;
+                        }
+                    }
                 } else {
-                    await customAlert("Delega rifiutata e rimandata indietro al delegante.");
+                    // Azione eseguita dall'esterno del modale (es. elenco assemblee o mie deleghe)
+                    hideModal();
+                    if (newStatus === 'accepted') {
+                        await customAlert(`Delega accettata con successo!
+
+PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegante la delega cartacea firmata in originale e di esibirla all'amministratore all'ingresso dell'assemblea. La tua rappresentanza sarà attiva solo dopo la convalida dell'amministratore.`);
+                    } else {
+                        await customAlert("Delega rifiutata e rimandata indietro al delegante.");
+                    }
                 }
 
-                // Aggiorna la pagina per riflettere il cambio (rimuove la delega dalla sezione)
+                // Aggiorna le viste aperte per riflettere il cambio
                 if (currentPage === 'assemblea_deleghe') {
                     loadUserDeleghePage();
-                } else {
+                } else if (currentPage === 'assemblee' || currentPage === 'assemblee_menu') {
                     loadAssembleeList();
                 }
+                checkForNewAssemblies();
             } catch (error) {
                 console.error("Errore risposta delega:", error);
                 await customAlert("Errore durante l'aggiornamento della delega: " + error.message);
@@ -39855,47 +39954,133 @@ PROMEMORIA: Ricordati di farti consegnare dal delegante la delega cartacea firma
 
             const q = query(collection(db, "assemblies"), where("status", "in", ["programmata", "in_corso"]));
             pendingProxyListener = onSnapshot(q, snapshot => {
+                // Non sovrascrivere il modale mentre l'utente sta interagendo
+                if (window._isProxyModalOpen && !modalContainer.classList.contains('hidden')) {
+                    return;
+                }
+
                 snapshot.docs.forEach(docSnap => {
                     const assembly = docSnap.data();
                     const assemblyId = docSnap.id;
-                    const pendingProxy = assembly.proxies?.find(p => p.delegateId === currentUser.uid && p.status === 'pending');
+                    const pendingProxies = (assembly.proxies || []).filter(p => p.delegateId === currentUser.uid && p.status === 'pending');
 
-                    if (pendingProxy) {
-                        showProxyNotificationModal(assemblyId, pendingProxy, assembly.title);
+                    if (pendingProxies.length > 0) {
+                        showProxyNotificationModal(assemblyId, pendingProxies, assembly.title);
                     }
                 });
             });
         };
 
-        const showProxyNotificationModal = (assemblyId, proxy, assemblyTitle) => {
-            const proxyKey = proxy.id || (proxy.delegatorId + '_' + assemblyId);
-            if (window.lastNotifiedProxyId === proxyKey) return;
-            window.lastNotifiedProxyId = proxyKey;
+        const showProxyNotificationModal = (assemblyId, pendingProxiesList, assemblyTitle) => {
+            const proxies = Array.isArray(pendingProxiesList) ? pendingProxiesList : [pendingProxiesList];
+            if (proxies.length === 0) return;
+
+            const pendingKeys = proxies.map(p => p.id || p.delegatorId).sort().join('_') + '_' + assemblyId;
+            if (window.lastNotifiedProxyKey === pendingKeys && !modalContainer.classList.contains('hidden')) {
+                return;
+            }
+            window.lastNotifiedProxyKey = pendingKeys;
+
+            const isMultiple = proxies.length > 1;
+            const modalTitleText = isMultiple ? `Deleghe di Voto Ricevute (${proxies.length})` : 'Delega di Voto Ricevuta';
+
+            const cardsHtml = proxies.map(proxy => {
+                const proxyId = proxy.id || proxy.delegatorId;
+                const delegatorName = window.getDelegatorOfficialName ? window.getDelegatorOfficialName(proxy) : (proxy.delegatorName || 'Condòmino');
+                const delegatorUnit = (proxy.delegatorUnita || proxy.delegatorUnit) || (window.getVoterUnitString ? window.getVoterUnitString(proxy, window._cachedAllUsers || []) : '');
+                const millesimi = (parseFloat(proxy.delegatorMillesimi) || 0).toFixed(2);
+                const handledStatus = window._handledProxies && window._handledProxies[proxyId];
+
+                let actionContentHtml = '';
+                if (handledStatus === 'accepted') {
+                    actionContentHtml = `
+                        <div style="background-color: #10B981; color: white; padding: 0.55rem 0.75rem; font-weight: 700; border-radius: 8px; font-size: 0.85rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.35rem; box-sizing: border-box;">
+                            ${THEME_ICONS.check(15, 2.4)} Accettata ✓
+                        </div>
+                    `;
+                } else if (handledStatus === 'rejected') {
+                    actionContentHtml = `
+                        <div style="background-color: var(--danger, #EF4444); color: white; padding: 0.55rem 0.75rem; font-weight: 700; border-radius: 8px; font-size: 0.85rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.35rem; box-sizing: border-box;">
+                            ${THEME_ICONS.cross(15, 2.4)} Rifiutata ✕
+                        </div>
+                    `;
+                } else {
+                    actionContentHtml = `
+                        <div id="proxy-actions-${proxyId}" class="proxy-actions-pending" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%; margin-top: 0.35rem;">
+                            <button type="button" onclick="respondToProxy('${assemblyId}', '${proxyId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; font-weight: 700; width: 100%; padding: 0.6rem 0.35rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 8px; border: none; cursor: pointer; white-space: nowrap;">
+                                ${THEME_ICONS.cross(15, 2.4)} RIFIUTA
+                            </button>
+                            <button type="button" onclick="respondToProxy('${assemblyId}', '${proxyId}', 'accepted')" class="btn btn-primary" style="font-weight: 700; width: 100%; padding: 0.6rem 0.35rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 8px; cursor: pointer; white-space: nowrap;">
+                                ${THEME_ICONS.check(15, 2.4)} ACCETTA
+                            </button>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div id="proxy-card-${proxyId}" style="background: var(--surface-color-light); border: 1px solid var(--border-color, rgba(255,255,255,0.08)); border-radius: 10px; padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.45rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                            <div style="min-width: 0;">
+                                <div style="font-weight: 700; font-size: 0.95rem; color: var(--primary-text); line-height: 1.3;">
+                                    ${escapeHtml(delegatorName)}
+                                </div>
+                                ${delegatorUnit ? `
+                                <div style="font-size: 0.8rem; color: var(--secondary-text); margin-top: 0.15rem;">
+                                    Unità: <strong style="color: var(--primary-text);">${escapeHtml(delegatorUnit)}</strong>
+                                </div>
+                                ` : ''}
+                            </div>
+                            <div style="text-align: right; flex-shrink: 0;">
+                                <span style="display: inline-block; background: rgba(245, 158, 11, 0.15); color: var(--warning, #F59E0B); font-weight: 800; font-size: 0.85rem; padding: 0.2rem 0.55rem; border-radius: 6px;">
+                                    ${millesimi} ‰
+                                </span>
+                            </div>
+                        </div>
+                        ${actionContentHtml}
+                    </div>
+                `;
+            }).join('');
 
             const modalContent = `
-                <div class="space-y-4 text-center">
-                    <div style="font-size: 0.85rem; color: var(--accent-color); font-weight: 700; text-transform: uppercase;">${THEME_ICONS.handshake(16)} DELEGA RICEVUTA</div>
-                    <h3 style="font-size: 1.1rem; font-weight: 700;">${escapeHtml(assemblyTitle || 'Assemblea')}</h3>
-                    <p style="color: var(--secondary-text); font-size: 0.9rem;">
-                        Il condomino <strong>${escapeHtml(proxy.delegatorName)}</strong> ti ha conferito la sua delega di voto (${(proxy.delegatorMillesimi || 0).toFixed(2)} ‰).
-                    </p>
-                    <p style="color: var(--primary-text); font-size: 0.85rem; background: var(--surface-color-light); padding: 0.75rem; border-radius: 8px;">
-                        Vuoi accettare la delega per votare a suo nome o rifiutarla/rimandarla indietro?
-                    </p>
-                    <div style="background: rgba(245, 158, 11, 0.09); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 0.65rem 0.75rem; text-align: left; font-size: 0.78rem; line-height: 1.4; color: var(--primary-text); margin: 0.5rem 0;">
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.82rem; color: var(--accent-color); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                            ${THEME_ICONS.handshake(16)} DELEGHE RICEVUTE
+                        </div>
+                        <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0.25rem 0 0.15rem 0; color: var(--primary-text);">
+                            ${escapeHtml(assemblyTitle || 'Assemblea')}
+                        </h3>
+                        <div id="proxy-modal-header-msg" style="color: var(--secondary-text); font-size: 0.85rem; line-height: 1.35;">
+                            ${isMultiple
+                                ? `Hai ricevuto <strong>${proxies.length} deleghe di voto</strong> per questa assemblea. Puoi accettarle o rifiutarle singolarmente:`
+                                : `Hai ricevuto una delega di voto per questa assemblea. Puoi accettarla o rifiutarla:`
+                            }
+                        </div>
+                    </div>
+
+                    <div id="proxy-modal-list" style="max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 0.65rem; padding: 0.15rem 0.25rem; text-align: left;">
+                        ${cardsHtml}
+                    </div>
+
+                    <div style="background: rgba(245, 158, 11, 0.09); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 0.65rem 0.75rem; text-align: left; font-size: 0.78rem; line-height: 1.4; color: var(--primary-text);">
                         <strong style="color: #F59E0B; display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.2rem;">
-                            ${THEME_ICONS.alertWarning(15)} PROMEMORIA:
+                            ${THEME_ICONS.alertWarning(15)} PROMEMORIA (Art. 67 disp. att. c.c.):
                         </strong>
                         <span>Ricordati di farti consegnare dal delegante la delega cartacea firmata in originale e di esibirla all'amministratore all'ingresso dell'assemblea. La tua rappresentanza sarà attiva solo dopo la convalida dell'amministratore.</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; width: 100%; box-sizing: border-box; padding-top: 0.5rem;">
-                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-weight: 700; width: 100%; padding: 0.75rem 0.35rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap;">${THEME_ICONS.cross(16, 2.4)} RIFIUTA</button>
-                        <button onclick="respondToProxy('${assemblyId}', '${proxy.id || proxy.delegatorId}', 'accepted')" class="btn btn-primary" style="font-weight: 700; width: 100%; padding: 0.75rem 0.35rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap;">${THEME_ICONS.check(16, 2.4)} ACCETTA</button>
+
+                    <div style="margin-top: 0.25rem; width: 100%;">
+                        <button id="proxy-modal-close-btn" type="button" onclick="hideModal()" class="btn btn-secondary" style="width: 100%; padding: 0.65rem; font-weight: 700; border-radius: 8px; justify-content: center;">
+                            Chiudi
+                        </button>
                     </div>
                 </div>
             `;
-            showModal('Delega di voto ricevuta', modalContent, false);
+
+            window._isProxyModalOpen = true;
+            showModal(modalTitleText, modalContent, false);
         };
+        window.showProxyNotificationModal = showProxyNotificationModal;
 
         const filterAssembleeList = () => {
             const selectedStatus = document.getElementById('assembly-search-status')?.value || 'tutti';
@@ -40044,12 +40229,18 @@ PROMEMORIA: Ricordati di farti consegnare dal delegante la delega cartacea firma
 
                     let receivedSectionHtml = '';
                     if (receivedProxies.length > 0) {
+                        const isScrollableReceived = receivedProxies.length > 2;
                         receivedSectionHtml = `
                             <div style="margin-top: 1rem;">
-                                <strong style="font-size: 0.85rem; color: var(--accent-color); text-transform: uppercase;">${THEME_ICONS.scroll(16)} Deleghe Ricevute (${receivedProxies.length}):</strong>
-                                <div class="space-y-2" style="margin-top: 0.5rem;">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="font-size: 0.85rem; color: var(--accent-color); text-transform: uppercase;">${THEME_ICONS.scroll(16)} Deleghe Ricevute (${receivedProxies.length}):</strong>
+                                    ${isScrollableReceived ? `<span style="font-size: 0.75rem; color: var(--secondary-text);">${receivedProxies.length} deleghe</span>` : ''}
+                                </div>
+                                <div class="space-y-2" style="margin-top: 0.5rem; ${isScrollableReceived ? 'max-height: 460px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 0.25rem;' : ''}">
                                     ${receivedProxies.map(p => {
+                            const pId = p.id || p.delegatorId;
                             const pStatus = p.status || 'accepted';
+                            const delegatorOfficial = window.getDelegatorOfficialName ? window.getDelegatorOfficialName(p) : (p.delegatorName || 'Condòmino');
                             const delegatorUnitStr = (p.delegatorUnita || p.delegatorUnit) || (window.getVoterUnitString ? window.getVoterUnitString(p, window._cachedAllUsers || []) : '');
                             let badge = '';
                             let actionButtons = '';
@@ -40058,14 +40249,14 @@ PROMEMORIA: Ricordati di farti consegnare dal delegante la delega cartacea firma
                                 badge = `<span class="badge" style="background-color: var(--warning); color: black; display:inline-flex; align-items:center; gap:0.3rem; font-weight: 700;">${THEME_ICONS.hourglass(13, 2.2)} In Attesa di tua accettazione</span>`;
                                 actionButtons = `
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%;">
-                                        <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.cross(14, 2.4)} Rifiuta</button>
-                                        <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta</button>
+                                        <button onclick="respondToProxy('${assemblyId}', '${pId}', 'rejected')" class="btn" style="background-color: var(--danger); color: white; font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.cross(14, 2.4)} Rifiuta</button>
+                                        <button onclick="respondToProxy('${assemblyId}', '${pId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta</button>
                                     </div>
                                 `;
                             } else if (pStatus === 'rejected') {
                                 badge = `<span class="badge status-chiusa" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.cross(14, 2.4)} Rifiutata / Rimandata</span>`;
                                 actionButtons = `
-                                    <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta Ora</button>
+                                    <button onclick="respondToProxy('${assemblyId}', '${pId}', 'accepted')" class="btn btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; justify-content: center; border-radius: 8px;">${THEME_ICONS.check(14, 2.4)} Accetta Ora</button>
                                 `;
                             } else if (p.adminApprovalStatus === 'approved') {
                                 badge = `<span class="badge" style="background-color: #10B981; color: white; font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.check(14, 2.4)} Convalidata all'Ingresso (${(p.delegatorMillesimi || 0).toFixed(2)} ‰)</span>`;
@@ -40076,14 +40267,14 @@ PROMEMORIA: Ricordati di farti consegnare dal delegante la delega cartacea firma
                             } else {
                                 badge = `<span class="badge status-aperta" style="font-size: 0.78rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 99px;">${THEME_ICONS.check(14, 2.4)} Accettata (In attesa benestare ingresso)</span>`;
                                 actionButtons = `
-                                    <button onclick="respondToProxy('${assemblyId}', '${p.id || p.delegatorId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; border: none; font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; border-radius: 8px;">${THEME_ICONS.undo(13, 2)} Rimanda indietro</button>
+                                    <button onclick="respondToProxy('${assemblyId}', '${pId}', 'rejected')" class="btn" style="background-color: var(--danger, #EF4444); color: white; border: none; font-size: 0.82rem; font-weight: 700; padding: 0.55rem 1rem; width: 100%; display:inline-flex; align-items:center; justify-content:center; gap:0.35rem; border-radius: 8px;">${THEME_ICONS.undo(13, 2)} Rimanda indietro</button>
                                 `;
                             }
 
                             return `
                                 <div style="background: var(--surface-color-light); padding: 1.1rem 1rem; border-radius: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.65rem;">
                                     <div>
-                                        <strong style="font-size: 1.05rem; color: var(--primary-text); display: block; line-height: 1.3; margin-bottom: 0.25rem;">${escapeHtml(p.delegatorName)}</strong>
+                                        <strong style="font-size: 1.05rem; color: var(--primary-text); display: block; line-height: 1.3; margin-bottom: 0.25rem;">${escapeHtml(delegatorOfficial)}</strong>
                                         <div style="font-size: 0.85rem; color: var(--secondary-text); font-weight: 600;">
                                             <span style="color: var(--warning); font-weight: 700;">${(p.delegatorMillesimi || 0).toFixed(2)} ‰</span>
                                             ${delegatorUnitStr ? ` • Unità: <strong style="color: var(--primary-text);">${escapeHtml(delegatorUnitStr)}</strong>` : ''}
