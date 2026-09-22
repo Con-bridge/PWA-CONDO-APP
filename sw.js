@@ -1,4 +1,4 @@
-// Definiamo nuovo nome per la nostra cache (BUMP v68 - modale fullscreen uniforma)
+// Definiamo nuovo nome per la cache (BUMP v68 - modale fullscreen uniforma)
 const CACHE_NAME = 'condo-app-pwa-cache-v68';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
