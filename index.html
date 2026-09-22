@@ -1132,56 +1132,66 @@
         /* --- MODIFICA INIZIO: Stili per selezione proprietà in registrazione --- */
         .property-selection-item {
             display: flex;
-            align-items: center;
-            gap: 1rem;
-            background-color: var(--bg-color);
-            padding: 0.75rem;
-            border-radius: var(--radius-sm);
-        }
-
-        .property-selection-item label {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .property-selection-item .group-select,
-        .property-selection-item .plan-select {
-            flex-shrink: 0;
-            font-size: 0.9rem;
-            padding: 0.6rem 0.8rem;
-        }
-
-        .property-selection-item .group-select {
-            flex-basis: 160px;
-        }
-
-        .property-selection-item .plan-select {
-            flex-basis: 120px;
-        }
-
-        /* Stili per il contenitore dei menu a tendina impilati */
-        .property-controls-stack {
-            display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            /* Spazio tra i due menu */
-            flex-shrink: 0;
-            width: 160px;
-            /* Larghezza fissa per il contenitore, come il campo 'gruppo' originale */
+            gap: 0.55rem;
+            background-color: var(--bg-color);
+            padding: 0.75rem 0.85rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            width: 100% !important;
+            box-sizing: border-box !important;
         }
 
-        /* Reset e override per i select all'interno del nuovo contenitore */
+        .property-selection-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .property-selection-header label {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: var(--primary-text);
+            min-width: 0;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .property-millesimi-badge {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .property-controls-stack {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.5rem !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
         .property-controls-stack .group-select,
         .property-controls-stack .plan-select {
-            flex-basis: auto;
-            /* Annulla la base flessibile */
-            width: 100%;
+            width: 100% !important;
+            font-size: 0.82rem !important;
+            padding: 0.45rem 1.8rem 0.45rem 0.6rem !important;
+            border-radius: 6px !important;
+            box-sizing: border-box !important;
         }
-
         /* --- MODIFICA FINE --- */
 
         /* Messaggi di notifica */
@@ -7942,7 +7952,7 @@ ${renderBottomNavigation()}
             // Generiamo l'HTML delle opzioni basandoci sull'array ordinato
             const optionsHtml = orderedOptions.map(option => `
         <div class="form-group">
-            <label class="property-selection-item" style="background-color: var(--surface-color-light); cursor: pointer;">
+            <label class="property-selection-item" style="background-color: var(--surface-color-light); cursor: pointer; flex-direction: row; align-items: center;">
                 <input type="radio" name="pollAuth" value="${option.value}" class="form-check-input" style="width: 18px; height: 18px; accent-color: var(--accent-color); flex-shrink: 0; cursor: pointer; vertical-align: middle; margin: 0;">
                 <span style="flex-grow: 1;">${option.label}</span>
             </label>
@@ -9497,20 +9507,26 @@ ${renderBottomNavigation()}
                 properties.forEach((prop, index) => {
                     const autoGroup = getAutomaticGroupByRules(prop);
                     const isMultiProperty = properties.length > 1;
+                    const rawMil = parseFloat(String(prop[millesimiHeader] || '0').replace(',', '.')) || 0;
+                    const formattedMil = rawMil.toFixed(2);
+                    const aptName = prop[apartmentHeader] || '';
                     const item = document.createElement('div');
                     item.className = 'property-selection-item';
-                    item.dataset.apartment = prop[apartmentHeader];
-                    item.dataset.millesimi = prop[millesimiHeader];
+                    item.dataset.apartment = aptName;
+                    item.dataset.millesimi = rawMil;
                     item.innerHTML = `
-                    <label for="prop-${index}">
-                        ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
-                        <span>${escapeHtml(prop[apartmentHeader])} - ${escapeHtml(prop[millesimiHeader])} ‰</span>
-                    </label>
-                    <div class="property-controls-stack">
-                        <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
-                        <select class="form-select plan-select" disabled><option>Seleziona gruppo</option></select>
-                    </div>
-                `;
+                        <div class="property-selection-header">
+                            <label for="prop-${index}">
+                                ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" class="form-check-input" style="width: 18px; height: 18px; accent-color: var(--accent-color); margin: 0; flex-shrink: 0;">` : ''}
+                                <span>${escapeHtml(aptName)}</span>
+                            </label>
+                            <span class="property-millesimi-badge">${formattedMil} ‰</span>
+                        </div>
+                        <div class="property-controls-stack">
+                            <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
+                            <select class="form-select plan-select" disabled><option>Seleziona gruppo</option></select>
+                        </div>
+                    `;
                     propertyItemsContainer.appendChild(item);
                 });
 
