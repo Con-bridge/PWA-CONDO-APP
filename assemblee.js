@@ -573,11 +573,12 @@ window.AssembleeModule = {
         }
 
         // Conteggio delle deleghe: deleghe già attive/accettate + nuove deleghe da assegnare (esclusa la presenza personale del delegato)
-        const totalProxies = (existingHeldProxies ? existingHeldProxies.length : 0) + (newDelegators ? newDelegators.length : 0);
+        const validExistingHeld = (existingHeldProxies || []).filter(p => p && p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.status !== 'revoked' && p.adminApprovalStatus !== 'rejected');
+        const totalProxies = validExistingHeld.length + (newDelegators ? newDelegators.length : 0);
 
         // Millesimi deleghe già detenute
         let heldProxiesMillesimi = 0;
-        (existingHeldProxies || []).forEach(p => {
+        validExistingHeld.forEach(p => {
             heldProxiesMillesimi += (parseFloat(p.delegatorMillesimi) || 0);
         });
 
@@ -850,7 +851,7 @@ window.AssembleeModule = {
     },
 
     getEffectiveProxyMillesimi: function (proxy, targetGroup, allUsers = null, tableData = null) {
-        if (!proxy || proxy.status === 'rejected') return 0;
+        if (!proxy || proxy.status === 'rejected' || proxy.status === 'revoked_by_presence' || proxy.status === 'revoked' || proxy.adminApprovalStatus === 'rejected') return 0;
 
         const checkGroup = window.isScaleInTargetGroup || AssembleeModule.isScaleInTargetGroup;
         const isGlobal = !targetGroup ||
