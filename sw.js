@@ -1,13 +1,23 @@
-// Definiamo nuovo nome per la cache (BUMP v68 - modale fullscreen uniforma)
-const CACHE_NAME = 'condo-app-pwa-cache-v68';
+// Definiamo nuovo nome per la cache
+const CACHE_NAME = 'condo-hub-v1.5';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
   './',
   './index.html',
   './icons.js',
-  'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  './assemblee.js',
+  './fonts/poppins.css',
+  './fonts/poppins-400.woff2',
+  './fonts/poppins-500.woff2',
+  './fonts/poppins-600.woff2',
+  './fonts/poppins-700.woff2',
+  './fonts/poppins-800.woff2',
+  './libs/jspdf.umd.min.js',
+  './libs/jspdf.plugin.autotable.min.js',
+  './libs/xlsx.full.min.js',
+  './libs/qrcode.min.js',
+  './libs/html5-qrcode.min.js'
 ];
 
 // Quando il service worker viene installato, apriamo la cache e salviamo i file
