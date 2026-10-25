@@ -3832,6 +3832,192 @@
             });
         };
 
+        // ============================================================================
+        // CONTATTI DI RISERVA DELL'AMMINISTRATORE (per categoria di segnalazione)
+        // ============================================================================
+        // Documento settings/adminContacts, modificabile dall'amministratore e dall'adm.
+        // Il condomino vede il contatto corrispondente al genere della segnalazione;
+        // se una categoria è vuota si usa il contatto "Comunicazioni generali".
+        const ADMIN_CONTACT_CATEGORIES = [
+            { key: 'generale', label: 'Comunicazioni generali', hint: 'Contatto predefinito, usato quando una categoria non ha un contatto proprio.', placeholder: 'es. segreteria@studio.it' },
+            { key: 'contabilita', label: 'Contabilità e fatture', hint: 'Per richieste di genere "Contabilità": fatture e documenti contabili.', placeholder: 'es. fatture@studio.it' },
+            { key: 'interventi', label: "Richieste d'intervento", hint: "Per richieste di genere \"Richiesta d'intervento\".", placeholder: 'es. interventi@studio.it' },
+            { key: 'altre', label: 'Altre richieste', hint: 'Per richieste di genere "Altre richieste".', placeholder: 'es. info@studio.it' }
+        ];
+        const ADMIN_CONTACTS_REF = () => doc(db, 'settings', 'adminContacts');
+        let adminContactsCache = null;
+
+        const loadAdminContacts = async (force = false) => {
+            if (adminContactsCache && !force) return adminContactsCache;
+            try {
+                const snap = await getDoc(ADMIN_CONTACTS_REF());
+                adminContactsCache = snap.exists() ? snap.data() : { categories: {} };
+            } catch (e) {
+                adminContactsCache = { categories: {} };
+            }
+            return adminContactsCache;
+        };
+
+        const genreToContactCategory = (genre) => ({
+            'contabilita': 'contabilita',
+            'solo-segnalazione': 'generale',
+            'richiesta-intervento-propria': 'interventi',
+            'richiesta-intervento-danno': 'interventi',
+            'altre-richieste': 'altre'
+        }[genre] || 'generale');
+
+        // Contatto per una categoria, con ripiego su "Comunicazioni generali".
+        const getAdminContactFor = (category) => {
+            const cats = adminContactsCache?.categories || {};
+            const own = cats[category];
+            if (own && (own.email || own.telefono)) return { ...own, category, isFallback: false };
+            const gen = cats.generale;
+            if (gen && (gen.email || gen.telefono)) return { ...gen, category: 'generale', isFallback: category !== 'generale' };
+            return null;
+        };
+
+        const renderAdminContactLinks = (c) => {
+            const parts = [];
+            if (c.email) parts.push(`<a href="${escapeHtml(sanitizeUrl('mailto:' + c.email))}" style="color: var(--accent-color); font-weight: 600; word-break: break-all;">${escapeHtml(c.email)}</a>`);
+            if (c.telefono) parts.push(`<a href="${escapeHtml(sanitizeUrl('tel:' + String(c.telefono).replace(/[^0-9+]/g, '')))}" style="color: var(--accent-color); font-weight: 600;">${escapeHtml(c.telefono)}</a>`);
+            return parts.join(' &nbsp;•&nbsp; ');
+        };
+
+        // Nel modulo "Crea segnalazione": mostra il contatto dell'amministratore per il genere scelto.
+        const updateAdminContactHint = () => {
+            const box = document.getElementById('admin-contact-hint');
+            if (!box) return;
+            const recipient = document.getElementById('report-recipient')?.value;
+            const genre = document.getElementById('report-priority')?.value;
+            const contact = recipient === 'amministratore' && genre ? getAdminContactFor(genreToContactCategory(genre)) : null;
+            if (!contact) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            const label = ADMIN_CONTACT_CATEGORIES.find(c => c.key === contact.category)?.label || '';
+            box.className = '';
+            box.innerHTML = `
+                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.85rem; line-height: 1.45; color: var(--secondary-text); margin-top: 0.5rem;">
+                    <div style="font-weight: 700; color: var(--primary-text); margin-bottom: 0.2rem;">Contatto dell'amministrazione${label ? ` – ${escapeHtml(label)}` : ''}</div>
+                    ${renderAdminContactLinks(contact)}
+                    ${contact.nota ? `<div style="margin-top: 0.3rem;">${escapeHtml(contact.nota)}</div>` : ''}
+                </div>`;
+        };
+
+        // Riepilogo per i condomini (Numeri utili > Amministratore).
+        const renderAdminContactsSummary = async () => {
+            const box = document.getElementById('admin-contacts-summary');
+            if (!box) return;
+            await loadAdminContacts(true);
+            const cats = adminContactsCache?.categories || {};
+            const rows = ADMIN_CONTACT_CATEGORIES
+                .filter(c => cats[c.key]?.email || cats[c.key]?.telefono)
+                .map(c => `
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 0.25rem; background: var(--surface-color-light);">
+                        <div class="title" style="font-weight: 700;">${escapeHtml(c.label)}</div>
+                        <div class="subtitle">${renderAdminContactLinks(cats[c.key])}</div>
+                        ${cats[c.key].nota ? `<div class="subtitle">${escapeHtml(cats[c.key].nota)}</div>` : ''}
+                    </div>`).join('');
+            box.innerHTML = rows || '<p style="color: var(--secondary-text); margin: 0;">L\'amministratore non ha ancora indicato contatti per categoria.</p>';
+        };
+
+        const canEditAdminContacts = () => ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
+
+        const renderContattiAmministratore = () => `
+            ${renderHeader('Contatti di riserva')}
+            <main>
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; line-height: 1.5; margin: 0;">
+                        Indica a quali recapiti i condomini possono rivolgersi in base al genere della segnalazione. Quando un condomino invia una segnalazione all'amministratore, vedrà il contatto della categoria scelta; se una categoria è vuota verrà mostrato quello di "Comunicazioni generali". Tutti i campi sono facoltativi.
+                    </p>
+                    <div id="admin-contacts-meta" style="color: var(--secondary-text); font-size: 0.78rem; margin-top: 0.6rem;"></div>
+                </div>
+                <form id="admin-contacts-form" novalidate>
+                    ${ADMIN_CONTACT_CATEGORIES.map(c => `
+                    <div class="card" style="margin-bottom: 1rem;">
+                        <h3 class="card-title" style="margin-bottom: 0.25rem;">${escapeHtml(c.label)}</h3>
+                        <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0 0 0.85rem;">${escapeHtml(c.hint)}</p>
+                        <div class="form-group">
+                            <label class="form-label" for="ac-${c.key}-email">Email</label>
+                            <input type="email" id="ac-${c.key}-email" class="form-input" maxlength="120" placeholder="${escapeHtml(c.placeholder)}" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ac-${c.key}-telefono">Telefono</label>
+                            <input type="tel" id="ac-${c.key}-telefono" class="form-input" maxlength="30" placeholder="es. 02 1234567" autocomplete="off">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" for="ac-${c.key}-nota">Nota (facoltativa)</label>
+                            <input type="text" id="ac-${c.key}-nota" class="form-input" maxlength="200" placeholder="es. Orari: lun-ven 9-13" autocomplete="off">
+                        </div>
+                    </div>`).join('')}
+                    <div id="admin-contacts-message" class="message-box"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 2rem;">Salva contatti</button>
+                </form>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const ADMIN_CONTACT_EMAIL_RE = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']{2,}$/;
+        const ADMIN_CONTACT_PHONE_RE = /^[0-9+()\s./-]{5,30}$/;
+
+        const setupContattiAmministratoreHandlers = async () => {
+            const form = document.getElementById('admin-contacts-form');
+            if (!form) return;
+            const data = await loadAdminContacts(true);
+            const cats = data.categories || {};
+            ADMIN_CONTACT_CATEGORIES.forEach(c => {
+                ['email', 'telefono', 'nota'].forEach(f => {
+                    const el = document.getElementById(`ac-${c.key}-${f}`);
+                    if (el) el.value = cats[c.key]?.[f] || '';
+                });
+            });
+            const meta = document.getElementById('admin-contacts-meta');
+            if (meta && data.updatedAt?.toDate) {
+                meta.textContent = `Ultima modifica: ${data.updatedAt.toDate().toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}${data.updatedByName ? ` da ${data.updatedByName}` : ''}`;
+            }
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const msg = document.getElementById('admin-contacts-message');
+                const btn = form.querySelector('button[type="submit"]');
+                const categories = {};
+                const errors = [];
+                ADMIN_CONTACT_CATEGORIES.forEach(c => {
+                    const email = document.getElementById(`ac-${c.key}-email`).value.trim();
+                    const telefono = document.getElementById(`ac-${c.key}-telefono`).value.trim();
+                    const nota = document.getElementById(`ac-${c.key}-nota`).value.trim();
+                    if (email && !ADMIN_CONTACT_EMAIL_RE.test(email)) errors.push(`${c.label}: email non valida`);
+                    if (telefono && !ADMIN_CONTACT_PHONE_RE.test(telefono)) errors.push(`${c.label}: numero di telefono non valido`);
+                    categories[c.key] = { email, telefono, nota };
+                });
+                if (errors.length) {
+                    msg.className = 'message-box error';
+                    msg.textContent = errors.join(' • ');
+                    msg.style.display = 'block';
+                    return;
+                }
+                btn.disabled = true;
+                try {
+                    await setDoc(ADMIN_CONTACTS_REF(), {
+                        categories,
+                        updatedAt: serverTimestamp(),
+                        updatedBy: currentUser.uid,
+                        updatedByName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim()
+                    });
+                    adminContactsCache = null;
+                    await logActivity('admin_contacts_updated', currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
+                        categorie: ADMIN_CONTACT_CATEGORIES.filter(c => categories[c.key].email || categories[c.key].telefono).map(c => c.label)
+                    });
+                    msg.className = 'message-box success';
+                    msg.textContent = 'Contatti salvati. I condomini li vedranno subito nelle nuove segnalazioni.';
+                    msg.style.display = 'block';
+                } catch (error) {
+                    msg.className = 'message-box error';
+                    msg.textContent = `Salvataggio non riuscito: ${friendlyError(error)}`;
+                    msg.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        };
+
         const renderFunzioniAmministratoreMenu = () => `
             ${renderHeader('Funzioni amministratore')}
             <main>
@@ -3853,6 +4039,12 @@
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/></svg>
                         </div>
                         <p>Modifica dati unità immobiliari</p>
+                    </div>
+                    <div onclick="navigateTo('contattiAmministratore')" class="dashboard-item">
+                        <div class="dashboard-card">
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                        </div>
+                        <p>Contatti di riserva</p>
                     </div>
                 </div>
             </main>
@@ -4428,6 +4620,13 @@
                 return;
             }
 
+            // Contatti di riserva dell'amministratore: amministratore e adm.
+            if (e === 'contattiAmministratore' && !['amministratore', 'adm'].includes(userType)) {
+                console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
+                navigateTo('dashboard');
+                return;
+            }
+
             // Backup database: riservato ad amministratore e adm.
             if (e === 'backupDatabase' && !['amministratore', 'adm'].includes(userType)) {
                 console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
@@ -4570,6 +4769,7 @@
 
         const getPriorityColor = t => ({
             "solo-segnalazione": "priority-bassa",
+            "contabilita": "priority-bassa",
             "richiesta-intervento-propria": "priority-media",
             "richiesta-intervento-danno": "priority-alta",
             "altre-richieste": "priority-media",
@@ -4581,6 +4781,7 @@
 
         const getPriorityDisplayText = t => ({
             "solo-segnalazione": "Solo segnalazione",
+            "contabilita": "Contabilità",
             "richiesta-intervento-propria": "Richiesta d'intervento",
             "richiesta-intervento-danno": "Richiesta d'intervento per danno propria UI da altre parti",
             "altre-richieste": "Altre richieste",
@@ -5747,6 +5948,7 @@
 </div>
                             
                             <div><label class="form-label">Genere di intervento</label><select id="report-priority" required class="form-select" disabled><option value="">Seleziona prima il destinatario...</option></select></div>
+                            <div id="admin-contact-hint" class="hidden"></div>
                             <div>
                                 <label class="form-label">Categoria</label>
                                 <select id="report-category" required class="form-select">
@@ -7708,6 +7910,12 @@ ${renderBottomNavigation()}
                         </div>
                     </div>
                 </div>
+
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <h3 class="card-title" style="margin-bottom: 0.25rem;">Contatti per categoria</h3>
+                    <p style="color: var(--secondary-text); font-size: 0.82rem; margin: 0 0 0.85rem;">A chi rivolgersi in base al tipo di richiesta.</p>
+                    <div id="admin-contacts-summary" class="list-container"><p style="color: var(--secondary-text); margin: 0;">Caricamento...</p></div>
+                </div>
             </main>
             ${renderBottomNavigation()}
         `;
@@ -7817,6 +8025,12 @@ ${renderBottomNavigation()}
                     <div class="menu-list-item">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 14c-2.67 0-8 1.33-8 4v2h16v-2c0-2.67-5.33-4-8-4zm-9-4V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 2a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" transform="matrix(-1 0 0 1 24 0)"/></svg>
                         <p style="text-align: left; font-size: 1.1rem;">Account senza profilo</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('contattiAmministratore')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Contatti amministratore</p>
                     </div>
                 </div>
                 ` : ''}
@@ -8286,6 +8500,7 @@ ${renderBottomNavigation()}
                 case 'user_created_by_admin': return `ha creato l'utente ${detailsText(details.createdUserEmail)} (${detailsText(details.createdUserType)}).`;
                 case 'user_deleted': return `ha eliminato l'utente ${detailsText(details.deletedUserName)}${details.authAccountDeleted ? " (incluso l'account di accesso)" : ''}.`;
                 case 'user_account_deleted': return `ha eliminato il proprio account.`;
+                case 'admin_contacts_updated': return `ha aggiornato i contatti di riserva dell'amministratore.`;
                 case 'orphan_accounts_deleted': return `ha eliminato ${detailsText(String(details.count))} account di accesso senza profilo.`;
                 case 'user_updated': return `ha aggiornato il profilo di un utente (ID: ${detailsText(details.updatedUserId)}).`;
                 case 'communication_posted': return `ha pubblicato la comunicazione "${detailsText(details.title)}" per il gruppo: ${detailsText(details.targetGroup)}.`;
@@ -10626,6 +10841,10 @@ ${renderBottomNavigation()}
                     if (userProfile?.tipoUtente === 'amministratore') content = renderAbilitaCustode();
                     else navigateTo('dashboard');
                     break;
+                case 'contattiAmministratore':
+                    if (canEditAdminContacts()) content = renderContattiAmministratore();
+                    else navigateTo('dashboard');
+                    break;
                 case 'backupDatabase':
                     if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) content = renderBackupDatabase();
                     else navigateTo('dashboard');
@@ -10762,6 +10981,7 @@ ${renderBottomNavigation()}
                 case 'convalidaCondomini': if (hasSupervisorAccess) setupConvalidaCondominiHandlers(); break;
                 case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
                 case 'backupDatabase': if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) setupBackupDatabaseHandlers(); break;
+                case 'contattiAmministratore': if (canEditAdminContacts()) setupContattiAmministratoreHandlers(); break;
                 case 'registroBackup': if (userProfile?.tipoUtente === 'adm') loadBackupEventsList(); break;
                 case 'archivio':
                 case 'gestione_archivio':
@@ -11957,6 +12177,12 @@ ${renderBottomNavigation()}
                     { value: 'altre-richieste', text: 'Altre richieste' }
                 ];
                 const limitedOptions = [{ value: 'solo-segnalazione', text: 'Segnalazione' }];
+                // Condomino che scrive all'amministratore: "Contabilità" al posto di "Segnalazione".
+                const condominoAdminOptions = [
+                    { value: 'contabilita', text: 'Contabilità' },
+                    { value: 'richiesta-intervento-propria', text: 'Richiesta d’intervento' },
+                    { value: 'altre-richieste', text: 'Altre richieste' }
+                ];
 
                 const updatePriorityOptions = (options) => {
                     prioritySelect.innerHTML = '<option value="">Seleziona genere...</option>' + options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
@@ -11966,11 +12192,14 @@ ${renderBottomNavigation()}
                 if (!recipient) {
                     prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
                     prioritySelect.disabled = true;
+                } else if (recipient === 'amministratore' && userProfile?.tipoUtente === 'condomino') {
+                    updatePriorityOptions(condominoAdminOptions);
                 } else if (['amministratore', 'custode', 'supervisore', 'fornitore'].includes(recipient)) {
                     updatePriorityOptions(allOptions);
                 } else {
                     updatePriorityOptions(limitedOptions);
                 }
+                updateAdminContactHint();
             });
 
             form?.addEventListener("submit", async (event) => {
@@ -12123,7 +12352,10 @@ ${renderBottomNavigation()}
             const phoneCommunicationCheckboxes = document.getElementById("phone-communication-checkboxes");
             const otherUiPhoneCheckbox = document.getElementById("other-ui-phone-checkbox");
 
+            loadAdminContacts().then(updateAdminContactHint);
+
             prioritySelect?.addEventListener("change", function () {
+                updateAdminContactHint();
                 const selectedValue = this.value;
                 otherUiOwnerField?.classList.toggle("hidden", selectedValue !== "richiesta-intervento-danno");
                 // La visibilità delle checkbox di comunicazione è ora gestita dal selettore del destinatario
@@ -14383,6 +14615,7 @@ ${renderBottomNavigation()}
 
         const setupInfoUtiliAmministratoreHandlers = () => {
             loadAndRenderAdminData('admin-data-summary-container', false);
+            renderAdminContactsSummary();
         };
 
         const setupOrariCustodeImportHandlers = async () => {
