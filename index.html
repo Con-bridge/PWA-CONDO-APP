@@ -10133,8 +10133,8 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card" style="margin-bottom: 1.25rem;">
                     <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.5; margin: 0;">
-                        Il backup salva tutti i dati del database (utenti, segnalazioni, assemblee, sondaggi, comunicazioni, impostazioni, dati importati e cronologia) e, se selezionato, tutti i file: archivio documenti e allegati. Le foto di registrazione non vengono mai copiate nei backup (sono temporanee, per privacy). Con i file viene creato un archivio ZIP, altrimenti un file JSON.
-                        ${isAdm ? '' : '<br>Puoi eseguire, scaricare e ricaricare i backup. Il ricaricamento non elimina mai dati: eliminazioni di backup e ripristini completi sono riservati agli account adm.'}
+                        Salva tutti i dati e, se selezionato, archivio e allegati (ZIP; senza file: JSON). Le foto di registrazione non vengono copiate.
+                        ${isAdm ? '' : '<br>Il ricaricamento non elimina dati; eliminazioni e ripristini completi spettano all\'adm.'}
                     </p>
                     <div id="backup-progress" class="message-box" style="margin-top: 1rem;"></div>
                 </div>
@@ -10156,7 +10156,7 @@ ${renderBottomNavigation()}
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin-bottom: 1rem;">
                         ${isAdm
                     ? 'Seleziona un file di backup (.zip o .json) per ripristinare il database. Il ripristino sovrascrive i dati attuali; prima viene creato automaticamente un backup di sicurezza.'
-                    : 'Seleziona un file di backup (.zip o .json): i dati del backup vengono ricaricati senza eliminare nulla. I documenti presenti nel backup tornano allo stato del backup, quelli creati dopo restano; dei file vengono ricaricati solo quelli mancanti. Prima viene creato automaticamente un backup di sicurezza.'}
+                    : 'Seleziona un backup (.zip o .json): i dati vengono ricaricati senza eliminare nulla e solo i file mancanti vengono ripristinati. Prima viene creato un backup di sicurezza.'}
                     </p>
                     <input type="file" id="backup-restore-file" accept=".zip,.json,application/zip,application/json" class="form-input" style="margin-bottom: 0.75rem;">
                     <button type="button" class="btn backup-action-btn" onclick="backupRestoreFromFile()" style="width: 100%; background-color: var(--danger); color: white;">${isAdm ? 'Ripristina database' : 'Ricarica backup'}</button>
@@ -10173,12 +10173,13 @@ ${renderBottomNavigation()}
 
         const backupStatusBadge = (b) => {
             const map = {
-                pending: ['In attesa di conferma adm', 'background:#9c640c; color:#fdebd0;'],
+                pending: ['Da eseguire', 'background:#9c640c; color:#fdebd0;'],
                 approved: ['Confermato', 'background:#145a32; color:#a9dfbf;'],
                 completed: ['Completato', 'background:#145a32; color:#a9dfbf;'],
                 rejected: ['Rifiutato', 'background:#7b241c; color:#f5b7b1;'],
                 failed: ['Non riuscito', 'background:#7b241c; color:#f5b7b1;']
             };
+            if (b.status === 'approved') return '';
             const [label, style] = map[b.status] || [b.status || 'N/D', ''];
             const ready = b.fileReady === false && b.status === 'pending' ? ' (caricamento...)' : '';
             return `<span class="badge" style="${style}">${escapeHtml(label + ready)}</span>`;
