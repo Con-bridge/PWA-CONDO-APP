@@ -3190,8 +3190,9 @@
                 if (permission === 'granted') {
                     const registration = await navigator.serviceWorker.ready;
 
-                    // INCOLLA QUI LA CHIAVE VAPID PRESA DA FIREBASE CONSOLE (PASSO 1)
-                    const VAPID_KEY = "BNq3tozZjXGtyo6BNAq6Kj4N1swwSG7oi2vSdxI3JXyLnhblRbq7icVyMi5D4L4b7JvfHXq3V02giGZnZDsfg-Y";
+                    // Chiave pubblica Web Push (Console Firebase > Cloud Messaging > Certificati web push).
+                    // Rinnovata il 26/10/2026: la coppia precedente resta valida per gli iscritti esistenti.
+                    const VAPID_KEY = "BBvOfDGuN9fi-OYTaqcTT4BOhTh3IxVSC9T2axmIf-ugk4WTl-us7FRW1dk-5Sd3YamPYNEBa8OuUJ5b0yyHlIE";
 
                     const currentToken = await getToken(messaging, {
                         serviceWorkerRegistration: registration,
