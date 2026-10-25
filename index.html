@@ -5226,6 +5226,19 @@
                     `);
             }
 
+            // Backup database: voce principale della Home per amministratore e adm.
+            if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) {
+                dashboardItemsHtml.push(`
+                        <div onclick="navigateTo('backupDatabase')" class="dashboard-item" style="position: relative;">
+                            <span id="home-backup-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
+                            <div class="dashboard-card">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2zm6 12c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V17zm0-5c0 .5-2.13 2-6 2s-6-1.5-6-2V9.77C7.61 10.55 9.72 11 12 11s4.39-.45 6-1.23V12z"/></svg>
+                            </div>
+                            <p>Backup database</p>
+                        </div>
+                    `);
+            }
+
             // Blocco 2: Pulsanti esclusivi per l'utente 'adm'
             if (userProfile?.tipoUtente === 'adm') {
                 // Pulsante "Funzioni Admin" (invariato, senza popup)
@@ -6082,15 +6095,6 @@
                         </div>
                         <p>Gestione account</p>
                     </div>
-
-                    ${['amministratore', 'adm'].includes(userProfile?.tipoUtente) ? `
-                    <div onclick="navigateTo('backupDatabase')" class="dashboard-item" style="position: relative;">
-                        <div class="dashboard-card">
-                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2zm6 12c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V17zm0-5c0 .5-2.13 2-6 2s-6-1.5-6-2V9.77C7.61 10.55 9.72 11 12 11s4.39-.45 6-1.23V12z"/></svg>
-                        </div>
-                        <p>Backup database</p>
-                        <span id="backup-pending-badge" class="hidden" style="position:absolute; top:4px; right:10px; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--danger); color:#fff; font-size:0.72rem; font-weight:700; display:flex; align-items:center; justify-content:center;"></span>
-                    </div>` : ''}
                 </div>
 
                 <div style="margin-top: 2rem;">
@@ -9899,7 +9903,8 @@ ${renderBottomNavigation()}
             const sha = await sha256Hex(json);
             await setDoc(backupRef, {
                 type,
-                status: (isBackupAdm() && type === 'backup') ? 'approved' : 'pending',
+                // I backup sono subito disponibili; "pending" indica solo un ripristino non ancora eseguito.
+                status: type === 'backup' ? 'approved' : 'pending',
                 requestedBy: currentUser.uid,
                 requestedByName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim(),
                 requestedByRole: userProfile.tipoUtente,
@@ -10129,7 +10134,7 @@ ${renderBottomNavigation()}
                 <div class="card" style="margin-bottom: 1.25rem;">
                     <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.5; margin: 0;">
                         Il backup salva tutti i dati del database (utenti, segnalazioni, assemblee, sondaggi, comunicazioni, impostazioni, dati importati e cronologia) e, se selezionato, tutti i file: archivio documenti e allegati. Le foto di registrazione non vengono mai copiate nei backup (sono temporanee, per privacy). Con i file viene creato un archivio ZIP, altrimenti un file JSON.
-                        ${isAdm ? '' : '<br><strong>I backup e i ripristini richiesti dall\'amministratore devono essere confermati da un account adm.</strong>'}
+                        ${isAdm ? '' : '<br>Puoi eseguire, scaricare e ricaricare i backup. Il ricaricamento non elimina mai dati: eliminazioni di backup e ripristini completi sono riservati agli account adm.'}
                     </p>
                     <div id="backup-progress" class="message-box" style="margin-top: 1rem;"></div>
                 </div>
@@ -10137,7 +10142,7 @@ ${renderBottomNavigation()}
                 <div class="card" style="margin-bottom: 1.25rem;">
                     <h3 class="card-title" style="display:flex; align-items:center; gap:0.5rem;">${THEME_ICONS.download(18, 2.2)} Esegui backup</h3>
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin-bottom: 1rem;">
-                        ${isAdm ? 'Il backup sarà subito disponibile per il download.' : 'Il backup verrà creato e sarà scaricabile dopo la conferma di un account adm.'}
+                        Il backup sarà subito disponibile per il download.
                     </p>
                     <label style="display:flex; align-items:center; gap:0.6rem; margin-bottom: 1rem; cursor:pointer; color: var(--primary-text); font-size: 0.9rem;">
                         <input type="checkbox" id="backup-include-files" checked style="width:18px; height:18px; accent-color: var(--accent-color);">
@@ -10147,24 +10152,18 @@ ${renderBottomNavigation()}
                 </div>
 
                 <div class="card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title" style="display:flex; align-items:center; gap:0.5rem;">${THEME_ICONS.upload(18, 2.2)} Carica backup (ripristino)</h3>
+                    <h3 class="card-title" style="display:flex; align-items:center; gap:0.5rem;">${THEME_ICONS.upload(18, 2.2)} ${isAdm ? 'Carica backup (ripristino)' : 'Ricarica backup'}</h3>
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin-bottom: 1rem;">
                         ${isAdm
                     ? 'Seleziona un file di backup (.zip o .json) per ripristinare il database. Il ripristino sovrascrive i dati attuali; prima viene creato automaticamente un backup di sicurezza.'
-                    : 'Seleziona un file di backup (.zip o .json): verrà inviata una richiesta di ripristino che un account adm dovrà confermare ed eseguire.'}
+                    : 'Seleziona un file di backup (.zip o .json): i dati del backup vengono ricaricati senza eliminare nulla. I documenti presenti nel backup tornano allo stato del backup, quelli creati dopo restano; dei file vengono ricaricati solo quelli mancanti. Prima viene creato automaticamente un backup di sicurezza.'}
                     </p>
                     <input type="file" id="backup-restore-file" accept=".zip,.json,application/zip,application/json" class="form-input" style="margin-bottom: 0.75rem;">
-                    <button type="button" class="btn backup-action-btn" onclick="backupRestoreFromFile()" style="width: 100%; background-color: var(--danger); color: white;">${isAdm ? 'Ripristina database' : 'Invia richiesta di ripristino'}</button>
+                    <button type="button" class="btn backup-action-btn" onclick="backupRestoreFromFile()" style="width: 100%; background-color: var(--danger); color: white;">${isAdm ? 'Ripristina database' : 'Ricarica backup'}</button>
                 </div>
 
-                ${isAdm ? `
                 <div class="card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title">Richieste in attesa di conferma</h3>
-                    <div id="backup-pending-list" class="list-container"><p style="color:var(--secondary-text);">Caricamento...</p></div>
-                </div>` : ''}
-
-                <div class="card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title">${isAdm ? 'Tutti i backup e le richieste' : 'I tuoi backup e richieste'}</h3>
+                    <h3 class="card-title">Backup disponibili</h3>
                     <div id="backup-list" class="list-container"><p style="color:var(--secondary-text);">Caricamento...</p></div>
                 </div>
             </main>
@@ -10188,22 +10187,21 @@ ${renderBottomNavigation()}
         const renderBackupItem = (id, b, { inPendingList = false } = {}) => {
             const isAdm = isBackupAdm();
             const isOwner = b.requestedBy === currentUser?.uid;
-            const typeLabel = b.type === 'restore' ? 'Richiesta di ripristino' : 'Backup';
+            const typeLabel = b.type === 'restore' ? 'Ripristino da file' : 'Backup';
             const actions = [];
             const jsId = escapeJsAttr(id);
-            if (b.fileReady) {
-                if (b.type === 'backup' && b.status === 'approved' && (isAdm || isOwner)) {
-                    actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupDownload('${jsId}')">Scarica</button>`);
-                }
-                if (isAdm && b.status === 'pending') {
-                    actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupApprove('${jsId}')">${b.type === 'restore' ? 'Conferma ed esegui' : 'Conferma'}</button>`);
-                    actions.push(`<button class="btn btn-danger-outline backup-action-btn" onclick="backupReject('${jsId}')">Rifiuta</button>`);
-                }
-                if (isAdm && b.type === 'backup' && b.status === 'approved' && !inPendingList) {
-                    actions.push(`<button class="btn btn-danger-solid backup-action-btn" onclick="backupRestoreStored('${jsId}')">Ripristina</button>`);
-                }
+            if (b.fileReady && b.type === 'backup' && b.status === 'approved') {
+                actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupDownload('${jsId}')">Scarica</button>`);
+                actions.push(isAdm
+                    ? `<button class="btn btn-danger-solid backup-action-btn" onclick="backupRestoreStored('${jsId}')">Ripristina</button>`
+                    : `<button class="btn btn-danger-solid backup-action-btn" onclick="backupRestoreNoDelete('${jsId}')">Ricarica</button>`);
             }
-            if (!inPendingList && (isAdm || isOwner)) {
+            // Vecchie richieste in attesa (creato prima che la conferma adm venisse rimossa).
+            if (isAdm && b.fileReady && b.status === 'pending' && b.type === 'restore') {
+                actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupApprove('${jsId}')">Esegui</button>`);
+            }
+            // Eliminare i backup è riservato all'adm.
+            if (isAdm) {
                 actions.push(`<button class="btn btn-danger-outline backup-action-btn" onclick="backupDelete('${jsId}')">Elimina</button>`);
             }
             const details = [
@@ -10231,9 +10229,7 @@ ${renderBottomNavigation()}
             const listEl = document.getElementById('backup-list');
             if (!listEl) return;
             try {
-                const q = isBackupAdm()
-                    ? query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(100))
-                    : query(collection(db, 'backups'), where('requestedBy', '==', currentUser.uid));
+                const q = query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(100));
                 const snap = await getDocs(q);
                 const sorted = snap.docs.sort((a, b) => (b.data().createdAt?.toMillis?.() || Date.now()) - (a.data().createdAt?.toMillis?.() || Date.now()));
                 listEl.innerHTML = sorted.length
@@ -10266,23 +10262,21 @@ ${renderBottomNavigation()}
         window.backupCreate = () => runBackupOperation(async () => {
             const isAdm = isBackupAdm();
             const includeFiles = document.getElementById('backup-include-files')?.checked !== false;
-            if (!await customConfirm(`Eseguire ora il backup completo del database${includeFiles ? ' e dei file' : ''}?${isAdm ? '' : ' Sarà scaricabile dopo la conferma di un account adm.'}`)) return;
+            if (!await customConfirm(`Eseguire ora il backup completo del database${includeFiles ? ' e dei file' : ''}?`)) return;
             const pkg = await buildBackupPackage(includeFiles, setBackupProgress);
             const backupId = await storeBackupRecord({
                 type: 'backup', json: pkg.json, counts: pkg.counts, total: pkg.total,
                 zipBlob: pkg.zipBlob, filesCount: pkg.filesCount, filesBytes: pkg.filesBytes
             }, setBackupProgress);
-            await logBackupAction('created', backupId, { totalDocuments: pkg.total, filesCount: pkg.filesCount, requiresApproval: !isAdm });
+            await logBackupAction('created', backupId, { totalDocuments: pkg.total, filesCount: pkg.filesCount });
             const filesText = includeFiles ? ` e ${pkg.filesCount} file (${formatBytes(pkg.filesBytes)})` : '';
-            setBackupProgress(isAdm
-                ? `Backup completato (${pkg.total} documenti${filesText}). Ora puoi scaricarlo dall'elenco.`
-                : `Backup completato (${pkg.total} documenti${filesText}). Sarà scaricabile dopo la conferma di un account adm.`);
+            setBackupProgress(`Backup completato (${pkg.total} documenti${filesText}). Ora puoi scaricarlo dall'elenco.`);
         });
 
         window.backupDownload = (backupId) => runBackupOperation(async () => {
             const record = await getBackupRecord(backupId);
             if (record.type !== 'backup' || record.status !== 'approved') {
-                throw new Error('questo backup non è ancora stato confermato da un account adm.');
+                throw new Error('questo backup non è scaricabile.');
             }
             setBackupProgress('Preparazione del download...');
             const link = document.createElement('a');
@@ -10328,7 +10322,7 @@ ${renderBottomNavigation()}
                 return;
             }
 
-            if (!await customConfirm(`${describeBackupPayload(payload, pkg.files)} Inviare la richiesta di ripristino all'adm? Il database non verrà modificato finché un adm non conferma.`)) { setBackupProgress(''); return; }
+            if (!await confirmNoDeleteRestore(payload, pkg.files)) { setBackupProgress(''); return; }
             const counts = {};
             Object.keys(payload.collections).filter(c => BACKUP_COLLECTIONS.includes(c)).forEach(c => { counts[c] = Object.keys(payload.collections[c] || {}).length; });
             const total = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -10340,9 +10334,40 @@ ${renderBottomNavigation()}
                 sourceCreatedAt: payload.createdAt || null
             }, setBackupProgress);
             await logBackupAction('uploaded', backupId, uploadDetails);
-            await logBackupAction('restore_requested', backupId, { backupCreatedAt: payload.createdAt || null, totalDocuments: total, requiresApproval: true });
             if (input) input.value = '';
-            setBackupProgress('Richiesta di ripristino inviata. Verrà eseguita dopo la conferma di un account adm.');
+            await runNoDeleteRestore(backupId);
+        });
+
+        const confirmNoDeleteRestore = async (payload, files) => {
+            if (!await customConfirm(`${describeBackupPayload(payload, files)} I dati del backup verranno ricaricati SENZA eliminare nulla: i documenti presenti nel backup torneranno allo stato del backup, quelli creati dopo resteranno; dei file verranno ricaricati solo quelli mancanti. Account adm e permessi non vengono modificati. Prima verrà creato automaticamente un backup di sicurezza. Continuare?`, 'Continua', 'Annulla', true)) {
+                return false;
+            }
+            const typed = await customPrompt('Per confermare digita "RICARICA" nel campo sottostante.');
+            if (typed !== 'RICARICA') {
+                await customAlert('Operazione annullata: la parola di conferma non è corretta.');
+                return false;
+            }
+            return true;
+        };
+
+        // Ricarica senza cancellazioni, eseguita dalla Cloud Function (controlli di sicurezza lato server).
+        const runNoDeleteRestore = async (backupId) => {
+            setBackupProgress('Ricaricamento in corso: creazione del backup di sicurezza e ripristino dei dati. Può richiedere qualche minuto...');
+            const res = await callFunction('restoreBackupNoDelete', { backupId });
+            const summary = `${res.written} documenti ricaricati, ${res.filesRestored} file ricaricati${res.skipped ? `, ${res.skipped} elementi protetti non modificati` : ''}`;
+            setBackupProgress(`Ricaricamento completato: ${summary}.`);
+            await customAlert(`Ricaricamento completato: ${summary}. L'app verrà ricaricata.`);
+            window.location.reload();
+        };
+
+        window.backupRestoreNoDelete = (backupId) => runBackupOperation(async () => {
+            const record = await getBackupRecord(backupId);
+            setBackupProgress('Verifica del backup...');
+            const json = await loadBackupJson(backupId, record);
+            const payload = parseBackupJson(json);
+            const filesInfo = record.hasFiles ? Array.from({ length: record.filesCount || 0 }, () => ({ size: (record.filesBytes || 0) / Math.max(record.filesCount || 1, 1) })) : null;
+            if (!await confirmNoDeleteRestore(payload, filesInfo)) { setBackupProgress(''); return; }
+            await runNoDeleteRestore(backupId);
         });
 
         window.backupApprove = (backupId) => runBackupOperation(async () => {
@@ -10415,10 +10440,12 @@ ${renderBottomNavigation()}
         };
 
         const updateBackupEventsBadge = () => {
-            const badge = document.getElementById('backup-events-badge');
-            if (!badge) return;
-            badge.textContent = String(unreadBackupEventsCount);
-            badge.classList.toggle('hidden', unreadBackupEventsCount === 0);
+            ['backup-events-badge', 'home-backup-badge'].forEach(id => {
+                const badge = document.getElementById(id);
+                if (!badge) return;
+                badge.textContent = String(unreadBackupEventsCount);
+                badge.classList.toggle('hidden', unreadBackupEventsCount === 0);
+            });
         };
 
         // Solo adm: segnala le richieste dell'amministratore in attesa di conferma.
@@ -43345,8 +43372,6 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                     // Rete di sicurezza: elimina le foto di registrazione dei condomini già convalidati
                     cleanupAllValidatedRegistrationPhotos().catch(() => { });
                 }
-                // Adm: avviso richieste di backup/ripristino in attesa di conferma
-                watchPendingBackupRequests();
                 // Adm: notifiche di ogni operazione sui backup (creazione, download, caricamento...)
                 watchBackupEvents();
                 // Listener globale per assemblee e deleghe
