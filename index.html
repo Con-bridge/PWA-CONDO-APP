@@ -17,7 +17,7 @@
          'unsafe-inline' è necessario per gli stili inline e gli handler onclick usati dall'app;
          la protezione principale contro l'XSS è comunque l'escaping dell'output lato JS. -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://*.google.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://us-central1-condo-app-49255.cloudfunctions.net; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://*.google.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Con-bridge</title>
     <link rel="stylesheet" href="fonts/poppins.css">
 
@@ -2757,7 +2757,8 @@
 
     <script type="module">
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
@@ -2890,7 +2891,7 @@
         };
 
         // Funzione per mostrare un prompt personalizzato
-        window.customPrompt = function (message, defaultValue = '') {
+        window.customPrompt = function (message, defaultValue = '', inputType = 'text') {
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
@@ -2903,7 +2904,7 @@
                 messageEl.textContent = message;
 
                 const inputEl = document.createElement('input');
-                inputEl.type = 'text';
+                inputEl.type = inputType;
                 inputEl.className = 'custom-dialog-input';
                 inputEl.value = defaultValue;
 
@@ -2964,6 +2965,15 @@
         const db = getFirestore(app);
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
         const messaging = getMessaging(app);
+        // Cloud Functions (codebase "accounts"): eliminazione completa degli account.
+        const cloudFunctions = getFunctions(app, 'us-central1');
+        const callFunction = (name, data) => httpsCallable(cloudFunctions, name)(data).then(r => r.data);
+        // Messaggio leggibile dagli errori delle funzioni callable.
+        const functionErrorMessage = (error) => {
+            const code = String(error?.code || '').replace('functions/', '');
+            if (code === 'unavailable' || code === 'deadline-exceeded') return 'servizio momentaneamente non raggiungibile, riprova.';
+            return error?.message || 'errore sconosciuto.';
+        };
 
         // Esposizione globale per consentire query e operazioni Firestore in tutto il contesto
         window.db = db;
@@ -3935,6 +3945,9 @@
         };
 
         // Funzione per eliminare l'account dell'utente
+        // L'eliminazione avviene lato server (Cloud Function): account di accesso, foto di
+        // registrazione e profilo vengono rimossi insieme, senza lasciare account "fantasma".
+        // Per sicurezza la funzione richiede un accesso recente: se serve, si chiede la password.
         window.deleteUserAccount = async () => {
             try {
                 if (!currentUser || !userProfile) {
@@ -3942,32 +3955,29 @@
                     return;
                 }
 
-                // Log dell'attività prima dell'eliminazione
-                await logActivity("user_account_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
-                    deletionDate: new Date().toISOString(),
-                    userType: userProfile.tipoUtente
-                });
+                const requestDeletion = () => callFunction('deleteUserAccount', { uid: currentUser.uid });
+                try {
+                    await requestDeletion();
+                } catch (error) {
+                    if (!String(error?.message || '').includes('requires-recent-login')) throw error;
+                    const password = await customPrompt('Per sicurezza conferma la tua password per eliminare l\'account.', '', 'password');
+                    if (!password) return;
+                    await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, password));
+                    await requestDeletion();
+                }
 
-                // Eliminazione del documento utente dal database
-                await deleteDoc(doc(db, "users", currentUser.uid));
-
-                // Eliminazione dell'account di autenticazione
-                await currentUser.delete();
-
-                await customAlert('Il tuo account è stato eliminato con successo.');
-
-                // Reindirizzamento alla pagina di login
+                await signOut(auth).catch(() => { });
                 currentUser = null;
                 userProfile = null;
+                await customAlert('Il tuo account è stato eliminato con successo.');
                 navigateTo('login');
 
             } catch (error) {
                 console.error('Errore durante l\'eliminazione dell\'account:', error);
-
-                if (error.code === 'auth/requires-recent-login') {
-                    await customAlert('Per motivi di sicurezza, devi effettuare nuovamente il login prima di eliminare l\'account. Effettua il logout e accedi di nuovo, poi riprova.');
+                if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(error.code)) {
+                    await customAlert('Password non corretta. L\'account non è stato eliminato.');
                 } else {
-                    await customAlert('Errore durante l\'eliminazione dell\'account. Riprova più tardi o contatta l\'assistenza.');
+                    await customAlert(`Errore durante l'eliminazione dell'account: ${functionErrorMessage(error)} Nessun dato è stato eliminato.`);
                 }
             }
         };
@@ -4289,7 +4299,7 @@
 
             // --- NUOVA LOGICA DI AUTORIZZAZIONE ROBUSTA ---
             const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'modificaDatiImportati', 'verificaTeste', 'orariCustode', 'periodiAmministrativi', 'convalidaCondomini'];
-            const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore', 'registroBackup'];
+            const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore', 'registroBackup', 'accountOrfani'];
             // Aggiunto "assemblea_crea" e "assemblea_gestione" tra le pagine riservate all'amministratore (e ADM)
             const amministratoreOnlyPages = ['funzioniAmministratore', 'creaFornitore', 'abilitaCustode', 'assemblea_crea', 'assemblea_gestione'];
 
@@ -7692,6 +7702,12 @@ ${renderBottomNavigation()}
                         <p style="text-align: left; font-size: 1.1rem;">Registro backup database</p>
                     </div>
                 </div>
+                <div onclick="navigateTo('accountOrfani')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 14c-2.67 0-8 1.33-8 4v2h16v-2c0-2.67-5.33-4-8-4zm-9-4V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 2a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" transform="matrix(-1 0 0 1 24 0)"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Account senza profilo</p>
+                    </div>
+                </div>
                 ` : ''}
                 <div onclick="navigateTo('convalidaCondomini')" class="dashboard-item">
 <div class="menu-list-item">
@@ -8157,7 +8173,9 @@ ${renderBottomNavigation()}
             switch (type) {
                 case 'user_registered': return `si è registrato con il ruolo ${detailsText(details.userType)}.`;
                 case 'user_created_by_admin': return `ha creato l'utente ${detailsText(details.createdUserEmail)} (${detailsText(details.createdUserType)}).`;
-                case 'user_deleted': return `ha eliminato l'utente ${detailsText(details.deletedUserName)}.`;
+                case 'user_deleted': return `ha eliminato l'utente ${detailsText(details.deletedUserName)}${details.authAccountDeleted ? " (incluso l'account di accesso)" : ''}.`;
+                case 'user_account_deleted': return `ha eliminato il proprio account.`;
+                case 'orphan_accounts_deleted': return `ha eliminato ${detailsText(String(details.count))} account di accesso senza profilo.`;
                 case 'user_updated': return `ha aggiornato il profilo di un utente (ID: ${detailsText(details.updatedUserId)}).`;
                 case 'communication_posted': return `ha pubblicato la comunicazione "${detailsText(details.title)}" per il gruppo: ${detailsText(details.targetGroup)}.`;
                 case 'report_created': return `ha creato la segnalazione #${detailsText(details.reportId)}: "${detailsText(details.title)}" (Priorità: ${detailsText(details.priority)}).`;
@@ -10188,6 +10206,95 @@ ${renderBottomNavigation()}
         };
         window.loadBackupEventsList = loadBackupEventsList;
 
+        // ============================================================================
+        // ACCOUNT SENZA PROFILO (solo adm)
+        // ============================================================================
+        // Account di accesso rimasti senza profilo (es. utenti eliminati prima che
+        // l'eliminazione rimuovesse anche l'account). Ricerca ed eliminazione avvengono
+        // tramite Cloud Function; sono esclusi gli account creati nelle ultime 24 ore.
+        const renderAccountOrfani = () => `
+            ${renderHeader('Account senza profilo')}
+            <main>
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; line-height: 1.5; margin: 0 0 1rem;">
+                        Elenca gli account di accesso che non hanno più un profilo nell'app (per esempio utenti eliminati in passato). Non possono usare l'app, ma esistono ancora in Firebase. Gli account creati nelle ultime 24 ore sono esclusi, perché potrebbero essere registrazioni in corso.
+                    </p>
+                    <div id="orphan-message" class="message-box"></div>
+                    <button type="button" id="orphan-search-btn" class="btn btn-primary" onclick="loadOrphanAccounts()" style="width: 100%;">Cerca account senza profilo</button>
+                </div>
+                <div id="orphan-list" class="list-container"></div>
+                <div id="orphan-actions" class="hidden" style="margin-bottom: 2rem;">
+                    <button type="button" id="orphan-delete-btn" class="btn btn-danger-solid" onclick="deleteSelectedOrphanAccounts()" style="width: 100%;" disabled>Elimina selezionati (0)</button>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const setOrphanMessage = (text, isError = false) => {
+            const box = document.getElementById('orphan-message');
+            if (!box) return;
+            box.className = `message-box ${isError ? 'error' : 'success'}`;
+            box.textContent = text;
+            box.style.display = text ? 'block' : 'none';
+        };
+
+        window.updateOrphanSelection = () => {
+            const n = document.querySelectorAll('.orphan-checkbox:checked').length;
+            const btn = document.getElementById('orphan-delete-btn');
+            if (btn) { btn.disabled = n === 0; btn.textContent = `Elimina selezionati (${n})`; }
+        };
+
+        window.loadOrphanAccounts = async () => {
+            const listEl = document.getElementById('orphan-list');
+            const actions = document.getElementById('orphan-actions');
+            const btn = document.getElementById('orphan-search-btn');
+            if (!listEl) return;
+            btn.disabled = true;
+            setOrphanMessage('');
+            listEl.innerHTML = '<p style="color:var(--secondary-text);">Ricerca in corso...</p>';
+            try {
+                const { accounts = [] } = await callFunction('listOrphanAccounts', {});
+                const fmt = (v) => v ? new Date(v).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'mai';
+                if (!accounts.length) {
+                    listEl.innerHTML = '<div class="card" style="text-align:center; padding:1.5rem 1rem;"><p style="color:var(--secondary-text); margin:0;">Nessun account senza profilo.</p></div>';
+                    actions.classList.add('hidden');
+                    return;
+                }
+                listEl.innerHTML = accounts.map(a => `
+                    <label class="list-item" style="background: var(--surface-color-light); cursor: pointer; gap: 0.75rem;">
+                        <input type="checkbox" class="orphan-checkbox" data-uid="${escapeHtml(a.uid)}" onchange="updateOrphanSelection()" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
+                        <div class="list-item-content">
+                            <div class="title">${escapeHtml(a.email || a.uid)}</div>
+                            <div class="subtitle">Creato il ${escapeHtml(fmt(a.createdAt))} • Ultimo accesso: ${escapeHtml(fmt(a.lastSignInAt))}</div>
+                        </div>
+                    </label>`).join('');
+                actions.classList.remove('hidden');
+                window.updateOrphanSelection();
+                setOrphanMessage(`Trovati ${accounts.length} account senza profilo.`);
+            } catch (error) {
+                listEl.innerHTML = '';
+                setOrphanMessage(`Ricerca non riuscita: ${functionErrorMessage(error)}`, true);
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        window.deleteSelectedOrphanAccounts = async () => {
+            const uids = [...document.querySelectorAll('.orphan-checkbox:checked')].map(cb => cb.dataset.uid);
+            if (!uids.length) return;
+            if (!await customConfirm(`Eliminare definitivamente ${uids.length} account di accesso senza profilo? L'operazione è irreversibile.`, 'Elimina', 'Annulla', true)) return;
+            const btn = document.getElementById('orphan-delete-btn');
+            btn.disabled = true;
+            try {
+                const { deleted = 0, skipped = 0 } = await callFunction('deleteOrphanAccounts', { uids });
+                await window.loadOrphanAccounts();
+                setOrphanMessage(`${deleted} account eliminati${skipped ? `, ${skipped} non eliminati (nel frattempo hanno un profilo o sono troppo recenti)` : ''}.`);
+            } catch (error) {
+                setOrphanMessage(`Eliminazione non riuscita: ${functionErrorMessage(error)}`, true);
+                btn.disabled = false;
+            }
+        };
+
         const renderCurrentPage = async () => {
             const app = document.getElementById('app');
             // SICUREZZA: nessuna pagina interna senza sessione e profilo validi (es. tasto
@@ -10414,6 +10521,10 @@ ${renderBottomNavigation()}
                     break;
                 case 'registroBackup':
                     if (userProfile?.tipoUtente === 'adm') content = renderRegistroBackup();
+                    else navigateTo('dashboard');
+                    break;
+                case 'accountOrfani':
+                    if (userProfile?.tipoUtente === 'adm') content = renderAccountOrfani();
                     else navigateTo('dashboard');
                     break;
                 default: content = renderLoginPage();
@@ -18036,17 +18147,18 @@ ${renderBottomNavigation()}
                 return;
             }
             try {
-                await deleteDoc(doc(db, 'users', userId));
-                deleteRegistrationPhotosForUser(userId).catch(() => { });
+                // Cloud Function: elimina account di accesso, foto di registrazione e profilo
+                // (e registra l'operazione nella cronologia). Se l'account non può essere
+                // eliminato, il profilo resta intatto.
+                const result = await callFunction('deleteUserAccount', { uid: userId });
                 syncRegisteredUnitsIndex();
-                await logActivity("user_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { deletedUserId: userId, deletedUserName: userName });
-                // Nota: L'eliminazione dell'utente da Firebase Authentication non può essere eseguita in modo sicuro dal client.
-                // Richiede una Cloud Function o la riautenticazione dell'utente da eliminare.
-                // Eliminando il documento utente da Firestore, l'utente non potrà più caricare il suo profilo e usare l'app.
                 loadUsers(); // Ricarica la lista per riflettere il cambiamento
+                await customAlert(result?.authDeleted === false
+                    ? `Profilo di ${userName} eliminato (l'account di accesso era già stato rimosso).`
+                    : `L'utente ${userName} è stato eliminato definitivamente: non potrà più accedere.`);
             } catch (error) {
                 console.error("Errore durante l'eliminazione dell'utente:", error);
-                await customAlert(`Si è verificato un errore: ${error.message}`);
+                await customAlert(`Eliminazione non riuscita: ${functionErrorMessage(error)}`);
             }
         };
 
