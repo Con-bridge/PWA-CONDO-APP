@@ -17,7 +17,7 @@
          'unsafe-inline' è necessario per gli stili inline e gli handler onclick usati dall'app;
          la protezione principale contro l'XSS è comunque l'escaping dell'output lato JS. -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://us-central1-condo-app-49255.cloudfunctions.net; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://*.google.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.google.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://cdnjs.cloudflare.com https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://us-central1-condo-app-49255.cloudfunctions.net; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://*.google.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Con-bridge</title>
     <link rel="stylesheet" href="fonts/poppins.css">
 
@@ -30,9 +30,7 @@
     <!-- Link al manifest per la PWA -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Librerie jsPDF e AutoTable per generazione PDF -->
-    <script src="libs/jspdf.umd.min.js"></script>
-    <script src="libs/jspdf.plugin.autotable.min.js"></script>
+    <!-- jsPDF, SheetJS (Excel) e lettore QR vengono caricati solo quando servono: vedi window.loadLib -->
     <style>
         /* --- NUOVO DESIGN SYSTEM v4 (Stile App Nativa) --- */
 
@@ -63,7 +61,7 @@
             --surface-color: #e9ecef;
             --surface-color-light: #dee2e6;
             --primary-text: #212529;
-            --secondary-text: #6c757d;
+            --secondary-text: #5a6268;
             --accent-color: #1DB954;
             --accent-color-dark: #19a34a;
             --danger: #dc3545;
@@ -2709,16 +2707,56 @@
                 box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.65), 0 10px 30px rgba(16, 185, 129, 0.4);
             }
         }
+
+        /* Riquadro "nessun elemento da mostrare" */
+        .card.empty-state {
+            text-align: center;
+            padding: 1.5rem 1rem;
+        }
+
+        .card.empty-state > p {
+            color: var(--secondary-text);
+            margin: 0;
+        }
+
+        /* Contorno visibile per chi usa la tastiera */
+        :focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
     </style>
-    <!-- Libreria SheetJS per export Excel -->
-    <script src="libs/xlsx.full.min.js"></script>
     <!-- Libreria per generare i QR Code -->
     <script src="libs/qrcode.min.js"></script>
-    <!-- Libreria per Scansionare i QR Code tramite Fotocamera -->
-    <script src="libs/html5-qrcode.min.js"></script>
     <!-- Icone SVG Outline a tema -->
     <script src="icons.js" onerror="this.onerror=null;this.src='icon.js';"></script>
     <script>
+        // Caricamento al bisogno delle librerie pesanti (circa 1,6 MB): l'app si apre senza
+        // scaricarle e le prende solo quando si genera un PDF, si legge/scrive un Excel o si
+        // apre il lettore QR. Il service worker le tiene comunque in cache per l'uso offline.
+        // Partecipante esterno all'assemblea (delegato terzo, non condomino): unico controllo usato in tutta l'app.
+        window.isExternalAttendee = (a) => !!a && (a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')));
+        window.loadLib = (function () {
+            const SOURCES = {
+                jspdf: ['libs/jspdf.umd.min.js', 'libs/jspdf.plugin.autotable.min.js'],
+                xlsx: ['libs/xlsx.full.min.js'],
+                qrscanner: ['libs/html5-qrcode.min.js']
+            };
+            const pending = {};
+            const loadScript = (src) => new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = () => reject(new Error('Impossibile caricare ' + src + '. Controlla la connessione.'));
+                document.head.appendChild(s);
+            });
+            return (name) => {
+                if (!pending[name]) {
+                    pending[name] = SOURCES[name].reduce((p, src) => p.then(() => loadScript(src)), Promise.resolve())
+                        .catch(err => { delete pending[name]; throw err; });
+                }
+                return pending[name];
+            };
+        })();
         (function () {
             if (!window.THEME_ICONS) window.THEME_ICONS = {};
             window.THEME_ICONS = new Proxy(window.THEME_ICONS, {
@@ -2750,7 +2788,7 @@
 <body>
     <div id="app"></div>
 
-    <div id="modal-container" class="modal-overlay hidden">
+    <div id="modal-container" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-title" class="modal-title"></h3>
@@ -2767,9 +2805,10 @@
 
     <script type="module">
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference, FieldValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js';
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, terminate, clearIndexedDbPersistence, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference, FieldValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
@@ -2933,6 +2972,8 @@
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
+                overlay.setAttribute('role', 'alertdialog');
+                overlay.setAttribute('aria-modal', 'true');
 
                 const content = document.createElement('div');
                 content.className = 'custom-dialog-content';
@@ -2967,6 +3008,8 @@
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
+                overlay.setAttribute('role', 'alertdialog');
+                overlay.setAttribute('aria-modal', 'true');
 
                 const content = document.createElement('div');
                 content.className = 'custom-dialog-content';
@@ -3010,6 +3053,8 @@
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
+                overlay.setAttribute('role', 'alertdialog');
+                overlay.setAttribute('aria-modal', 'true');
 
                 const content = document.createElement('div');
                 content.className = 'custom-dialog-content';
@@ -3076,8 +3121,45 @@
         };
         const app = initializeApp(firebaseConfig);
 
+        // Firebase App Check: ogni richiesta a database, file e accesso porta un attestato
+        // (reCAPTCHA Enterprise, invisibile) che dimostra che arriva da questa app sul suo
+        // dominio. Bot e script esterni che usano le chiavi pubbliche non lo ottengono.
+        // In locale (emulatori) non serve.
+        const APP_CHECK_SITE_KEY = '6Lc82wAuAAAAAJdMQ_HVZZVdP5rKfUfZ30h-Nt3L';
+        const enableAppCheck = (firebaseApp) => {
+            if (['localhost', '127.0.0.1'].includes(window.location.hostname)) return;
+            try {
+                initializeAppCheck(firebaseApp, {
+                    provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
+                    isTokenAutoRefreshEnabled: true
+                });
+            } catch (err) {
+                console.warn("App Check non attivato:", err);
+            }
+        };
+        enableAppCheck(app);
+
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Cache offline: le ultime comunicazioni, segnalazioni e assemblee restano consultabili
+        // anche senza rete (seminterrati, ascensori) e le modifiche partono al ritorno della
+        // connessione. Funziona con più schede aperte; se il browser non lo consente, Firestore
+        // usa la sola memoria come prima. All'uscita la cache viene svuotata (logout).
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+
+        // Dopo l'uscita sul dispositivo non devono restare dati del condominio (e chi accede
+        // dopo non deve vedere, nemmeno per un istante, i dati dell'utente precedente).
+        const clearLocalDataAndReload = async () => {
+            try {
+                await terminate(db);
+                await clearIndexedDbPersistence(db);
+            } catch (err) {
+                console.warn("Pulizia della cache locale non riuscita:", err);
+            }
+            window.location.replace(window.location.pathname + '#login');
+            window.location.reload();
+        };
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
         const messaging = getMessaging(app);
         // Cloud Functions (codebase "accounts"): eliminazione completa degli account.
@@ -3117,7 +3199,6 @@
                     });
 
                     if (currentToken) {
-                        console.log('Token Web Push PWA:', currentToken);
 
                         // Salviamo il token Web Push nel campo fcmToken dell'utente
                         await updateDoc(doc(db, "users", userId), {
@@ -3138,6 +3219,23 @@
 
         let currentUser = null;
         let userProfile = null;
+
+        // ===== RISERVATEZZA DEI PROFILI =====
+        // "users" contiene anche email, telefono e token delle notifiche: lo leggono solo lo
+        // staff e il titolare. Tutti gli altri leggono "publicProfiles", la copia senza dati di
+        // contatto tenuta aggiornata dalla Cloud Function syncPublicProfile (stessi id e campi).
+        const canReadFullUserProfiles = () => !!userProfile
+            && (['adm', 'amministratore', 'supervisore'].includes(userProfile.tipoUtente)
+                || userProfile.canAccessSupervisorFunctions === true);
+        const usersReadCollection = () => collection(db, canReadFullUserProfiles() ? 'users' : 'publicProfiles');
+        const userReadDoc = (uid) => doc(db, (uid === currentUser?.uid || canReadFullUserProfiles()) ? 'users' : 'publicProfiles', uid);
+        // Segnalazioni: un condomino può leggere solo quelle create da lui o indirizzate a lui.
+        // Le query "su tutte le segnalazioni" diventano, per lui, query su quelle a lui indirizzate
+        // (i filtri dell'app restano gli stessi e vengono applicati dopo, come prima).
+        const isReportsRestricted = () => userProfile?.tipoUtente === 'condomino' && !canReadFullUserProfiles();
+        const receivedReportsQuery = (...constraints) => query(collection(db, "reports"),
+            ...(isReportsRestricted() ? [where("specificRecipientId", "==", currentUser.uid)] : []), ...constraints);
+        const reportMillis = (v) => v?.toMillis ? v.toMillis() : (new Date(v || 0).getTime() || 0);
         let currentPage = 'login';
         let communicationsListener = null;
         let pollsListener = null; // NUOVA RIGA
@@ -3632,8 +3730,16 @@
                 allowAdminViewContacts: o.allowAdminViewContacts,
                 privacyAccepted: o.privacyAccepted || false,
                 isValidated: false,
-                registrationPhotoUrl: registrationPhotoUrl
+                registrationPhotoUrl: registrationPhotoUrl,
+                // L'account diventa operativo solo dopo la conferma dell'email (vedi regole).
+                emailVerificationRequired: true
             });
+            try {
+                auth.languageCode = 'it';
+                await sendEmailVerification(a.user);
+            } catch (err) {
+                console.warn("Invio email di verifica non riuscito:", err);
+            }
             // Registra le unità nell'indice pubblico delle unità già registrate
             // (usato per il controllo duplicati senza esporre la collezione utenti).
             await addUnitsToRegisteredIndex((o.proprieta || []).map(p => p.interno));
@@ -3666,7 +3772,7 @@
         // Ricostruisce l'indice a partire dagli utenti (solo profili gestionali, che possono leggerli).
         const syncRegisteredUnitsIndex = async () => {
             try {
-                const usersSnap = await getDocs(collection(db, "users"));
+                const usersSnap = await getDocs(usersReadCollection());
                 const interni = new Set();
                 usersSnap.forEach(d => (d.data().proprieta || []).forEach(p => {
                     const k = normalizeUnitKey(p?.interno);
@@ -3682,6 +3788,7 @@
         const adminCreateUser = async (email, password, profileData) => {
             const tempAppName = `user-creation-${Date.now()}`;
             const secondaryApp = initializeApp(firebaseConfig, tempAppName);
+            enableAppCheck(secondaryApp);
             const secondaryAuth = getAuth(secondaryApp);
 
             try {
@@ -3717,6 +3824,7 @@
         const adminCreateFornitore = async (email, password, fornitoreData) => {
             const tempAppName = `fornitore-creation-${Date.now()}`;
             const secondaryApp = initializeApp(firebaseConfig, tempAppName);
+            enableAppCheck(secondaryApp);
             const secondaryAuth = getAuth(secondaryApp);
 
             try {
@@ -3782,7 +3890,52 @@
             ${renderBottomNavigation()}
         `;
 
-        const renderPendingValidationPage = () => `
+        // Account registrati dall'app (non creati dallo staff): l'email va confermata.
+        const needsEmailVerification = () => userProfile?.emailVerificationRequired === true
+            && !!auth.currentUser && !auth.currentUser.emailVerified;
+        const isWaitingPage = () => (userProfile?.tipoUtente === 'condomino' && !userProfile?.isValidated) || needsEmailVerification();
+
+        window.checkEmailVerified = async () => {
+            try {
+                await auth.currentUser.reload();
+                if (auth.currentUser.emailVerified) {
+                    await auth.currentUser.getIdToken(true); // le regole leggono la conferma dal token
+                    window.location.reload();
+                    return;
+                }
+                await customAlert("L'indirizzo non risulta ancora confermato. Apri il link nell'email che ti abbiamo inviato (controlla anche la posta indesiderata).");
+            } catch (err) {
+                await customAlert(`Verifica non riuscita: ${friendlyError(err)}`);
+            }
+        };
+        window.resendVerificationEmail = async () => {
+            try {
+                auth.languageCode = 'it';
+                await sendEmailVerification(auth.currentUser);
+                await customAlert(`Email inviata a ${auth.currentUser.email}.`);
+            } catch (err) {
+                await customAlert(`Invio non riuscito: ${friendlyError(err)}`);
+            }
+        };
+
+        const renderEmailVerificationPage = () => `
+            <div style="background-color: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 2rem;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 64px; height: 64px; color: var(--accent-color); margin-bottom: 1.5rem;" aria-hidden="true">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path>
+                </svg>
+                <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem;">Conferma il tuo indirizzo email</h1>
+                <p style="color: var(--secondary-text); max-width: 400px; margin-bottom: 2rem;">
+                    Ti abbiamo inviato un link a <strong>${escapeHtml(auth.currentUser?.email || '')}</strong>. Aprilo, poi torna qui e premi "Ho confermato".
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 280px;">
+                    <button onclick="checkEmailVerified()" class="btn btn-primary">Ho confermato</button>
+                    <button onclick="resendVerificationEmail()" class="btn btn-secondary">Invia di nuovo l'email</button>
+                    <button onclick="logout()" class="btn btn-secondary">Esci</button>
+                </div>
+            </div>
+        `;
+
+        const renderPendingValidationPage = () => needsEmailVerification() ? renderEmailVerificationPage() : `
             <div style="background-color: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 2rem;">
                 <svg fill="currentColor" viewBox="0 0 24 24" style="width: 64px; height: 64px; color: var(--warning); margin-bottom: 1.5rem;">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
@@ -4166,6 +4319,7 @@
             userProfile = null;
             currentPage = 'login';
             history.replaceState({ page: 'login' }, '', '#login');
+            await clearLocalDataAndReload();
         };
 
         const resetPassword = async t => await sendPasswordResetEmail(auth, t);
@@ -4273,7 +4427,7 @@
                 currentUser = null;
                 userProfile = null;
                 await customAlert('Il tuo account è stato eliminato con successo.');
-                navigateTo('login');
+                await clearLocalDataAndReload();
 
             } catch (error) {
                 console.error('Errore durante l\'eliminazione dell\'account:', error);
@@ -4295,26 +4449,18 @@
                     limit(1));
 
                 const snapshot = await getDocs(q);
-                console.log('DEBUG: Periodi amministrativi trovati:', snapshot.size);
 
                 if (!snapshot.empty) {
                     const periodDoc = snapshot.docs[0];
                     const periodData = periodDoc.data();
-                    console.log('DEBUG: Periodo più recente:', periodData);
-                    console.log('DEBUG: Data fine periodo:', periodData.endDate.toDate());
-                    console.log('DEBUG: Data corrente:', now);
-                    console.log('DEBUG: Periodo attivo?', periodData.endDate.toDate() >= now);
 
                     if (periodData.endDate.toDate() >= now) {
                         currentAdministrativePeriod = { id: periodDoc.id, ...periodData };
-                        console.log('DEBUG: Periodo amministrativo attivo impostato:', currentAdministrativePeriod.year);
                     } else {
                         currentAdministrativePeriod = null;
-                        console.log('DEBUG: Periodo amministrativo scaduto, impostato a null');
                     }
                 } else {
                     currentAdministrativePeriod = null;
-                    console.log('DEBUG: Nessun periodo amministrativo trovato');
                 }
             } catch (error) {
                 console.error("Errore nel caricamento del periodo amministrativo:", error);
@@ -4463,7 +4609,7 @@
             const q = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"));
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun periodo amministrativo creato.</p></div>';
+                    listContainer.innerHTML = '<div class="card empty-state"><p>Nessun periodo amministrativo creato.</p></div>';
                     return;
                 }
                 listContainer.innerHTML = snapshot.docs.map(docSnap => {
@@ -4487,7 +4633,7 @@
                          <button onclick="openPeriodEditModal('${docSnap.id}', ${periodObjectString})" class="btn-icon" title="Modifica periodo">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                         </button>
-                        <button onclick="deleteAdministrativePeriod('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
+                        <button onclick="deleteAdministrativePeriod('${docSnap.id}')" class="btn-icon" aria-label="Elimina periodo" title="Elimina periodo" style="background:var(--danger); color:white;">
                             <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                         </button>
                     </div>
@@ -4595,7 +4741,6 @@
             const isCustodianAccessingCondoList = userType === 'custode' && e === 'elencoCondomini';
 
             if (requiredService && !isServiceEnabledForCurrentUser(requiredService) && !isCustodianAccessingCondoList) {
-                console.log(`Access to page '${e}' denied by service permissions.`);
                 navigateTo('dashboard'); // Redirect to a safe page
                 return;
             }
@@ -4719,9 +4864,6 @@
                 }
                 if (typeof checkForUserReportUpdates === 'function') {
                     checkForUserReportUpdates();
-                }
-                if (typeof checkForNewArchivioActivity === 'function') {
-                    checkForNewArchivioActivity();
                 }
 
                 // Re-render the current page to show latest data
@@ -5417,7 +5559,7 @@
                 // 1. Fetch all necessary data in parallel
                 const [groupsSnapshot, usersSnapshot, commsSnapshot, reportsSnapshot, pollsSnapshot] = await Promise.all([
                     getDocs(query(collection(db, "partialCondos"), orderBy("name"))),
-                    getDocs(collection(db, "users")),
+                    getDocs(usersReadCollection()),
                     getDocs(buildQueryWithFilters("communications")),
                     getDocs(buildQueryWithFilters("reports")),
                     getDocs(buildQueryWithFilters("polls"))
@@ -6801,7 +6943,7 @@ ${renderBottomNavigation()}
 
             try {
                 const [usersSnapshot, importedDataSnapshot, partialCondosSnapshot] = await Promise.all([
-                    getDocs(query(collection(db, "users"), orderBy("cognome"))),
+                    getDocs(query(usersReadCollection(), orderBy("cognome"))),
                     getDocs(query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1))),
                     getDocs(query(collection(db, "partialCondos"), orderBy("name")))
                 ]);
@@ -6822,7 +6964,7 @@ ${renderBottomNavigation()}
                 if (mode === 'anagrafica') {
                     html = `<h2 class="section-title">Riepilogo anagrafica utenti registrati</h2>`;
                     if (usersSnapshot.empty) {
-                        html += `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente registrato.</p></div>`;
+                        html += `<div class="card empty-state"><p>Nessun utente registrato.</p></div>`;
                     } else {
                         html += `<div class="card" style="padding:0;"><div class="data-table-container"><table class="data-table">
                                     <thead><tr><th>Nominativo anagrafica</th><th>Cognome e nome</th><th>Email</th><th>Proprietà</th><th style="text-align:right;">Millesimi tot.</th></tr></thead>
@@ -6933,16 +7075,28 @@ ${renderBottomNavigation()}
 
             try {
                 const [usersSnapshot, importedDataSnapshot] = await Promise.all([
-                    getDocs(query(collection(db, "users"), where("tipoUtente", "==", "condomino"))),
+                    getDocs(query(usersReadCollection(), where("tipoUtente", "==", "condomino"))),
                     getDocs(query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1)))
                 ]);
 
                 const tableData = !importedDataSnapshot.empty ? importedDataSnapshot.docs[0].data().tableData : [];
 
+                // Il custode vede il telefono solo di chi lo ha consentito ("custodePhones",
+                // tenuta aggiornata dalla Cloud Function) e non vede le email.
+                const custodePhones = new Map();
+                if (!canReadFullUserProfiles()) {
+                    try {
+                        (await getDocs(collection(db, "custodePhones"))).forEach(d => custodePhones.set(d.id, d.data().telefono));
+                    } catch (err) {
+                        console.warn("Telefoni consentiti non disponibili:", err);
+                    }
+                }
+
                 let allProperties = [];
                 usersSnapshot.forEach(doc => {
                     const user = doc.data();
                     const userId = doc.id;
+                    if (!canReadFullUserProfiles()) user.telefono = custodePhones.get(userId);
                     if (user.proprieta && user.proprieta.length > 0) {
                         user.proprieta.forEach(prop => {
                             let officialNom = '';
@@ -6956,7 +7110,7 @@ ${renderBottomNavigation()}
                                 cognome: user.cognome,
                                 officialNominativo: finalOfficialNom,
                                 telefono: user.telefono || 'N/D',
-                                email: user.email,
+                                email: user.email || 'N/D',
                                 ...prop
                             });
                         });
@@ -7004,7 +7158,7 @@ ${renderBottomNavigation()}
                     });
 
                     if (filteredData.length === 0) {
-                        container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun risultato trovato per i filtri applicati.</p></div>';
+                        container.innerHTML = '<div class="card empty-state"><p>Nessun risultato trovato per i filtri applicati.</p></div>';
                         return;
                     }
 
@@ -8578,7 +8732,7 @@ ${renderBottomNavigation()}
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty && !loadMore) {
-                    container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna attività trovata con i filtri applicati.</p></div>';
+                    container.innerHTML = '<div class="card empty-state"><p>Nessuna attività trovata con i filtri applicati.</p></div>';
                     loadMoreBtn.classList.add('hidden');
                     return;
                 }
@@ -8601,7 +8755,7 @@ ${renderBottomNavigation()}
                 if (loadMore) {
                     container.innerHTML += newHtml;
                 } else {
-                    container.innerHTML = newHtml.length > 0 ? newHtml : '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna attività corrisponde ai filtri.</p></div>';
+                    container.innerHTML = newHtml.length > 0 ? newHtml : '<div class="card empty-state"><p>Nessuna attività corrisponde ai filtri.</p></div>';
                 }
 
                 lastVisibleDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
@@ -8664,7 +8818,7 @@ ${renderBottomNavigation()}
 
             try {
                 // MODIFICA: La query ora cerca utenti che sono 'amministratore', 'consigliere', 'adm' o 'supervisore'.
-                const allUsersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "in", ["amministratore", "consigliere", "adm", "supervisore"])));
+                const allUsersSnapshot = await getDocs(query(usersReadCollection(), where("tipoUtente", "in", ["amministratore", "consigliere", "adm", "supervisore"])));
 
                 const usersDocs = allUsersSnapshot.docs
                     .sort((a, b) => {
@@ -8686,7 +8840,7 @@ ${renderBottomNavigation()}
                 };
 
                 if (usersSnapshot.empty) {
-                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente a cui assegnare i permessi.</p></div>';
+                    listContainer.innerHTML = '<div class="card empty-state"><p>Nessun utente a cui assegnare i permessi.</p></div>';
                     return;
                 }
 
@@ -8874,7 +9028,7 @@ ${renderBottomNavigation()}
             const q = query(collection(db, "reportCategories"), orderBy("name", "asc"));
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna categoria creata.</p></div>';
+                    listContainer.innerHTML = '<div class="card empty-state"><p>Nessuna categoria creata.</p></div>';
                     return;
                 }
                 listContainer.innerHTML = snapshot.docs.map(docSnap => {
@@ -8888,7 +9042,7 @@ ${renderBottomNavigation()}
                             <button onclick="openCategoryEditModal('${docSnap.id}', '${escapeJsAttr(category.name)}')" class="btn-icon" title="Modifica categoria">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                             </button>
-                            <button onclick="deleteReportCategory('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
+                            <button onclick="deleteReportCategory('${docSnap.id}')" class="btn-icon" aria-label="Elimina categoria" title="Elimina categoria" style="background:var(--danger); color:white;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
@@ -8994,7 +9148,7 @@ ${renderBottomNavigation()}
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    listContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun elemento trovato in questa categoria.</p></div>`;
+                    listContainer.innerHTML = `<div class="card empty-state"><p>Nessun elemento trovato in questa categoria.</p></div>`;
                     return;
                 }
 
@@ -9179,7 +9333,6 @@ ${renderBottomNavigation()}
                                 });
 
                                 await batch.commit();
-                                console.log(`DEBUG: Rinumerazione completata per periodo ${period}`);
                             }
                         }
                     } catch (error) {
@@ -10072,6 +10225,13 @@ ${renderBottomNavigation()}
             let fileStats = null;
             if (files) fileStats = await restoreStorageFiles(files, onProgress);
 
+            // system/restore: finché è attivo le funzioni di notifica non inviano nulla, così il
+            // ripristino non genera notifiche a raffica per documenti vecchi.
+            const markRestoreWindow = (minutes) => setDoc(doc(db, 'system', 'restore'), {
+                until: Timestamp.fromMillis(Date.now() + minutes * 60000), by: myUid
+            }).catch(err => console.warn('Stato ripristino non salvato:', err));
+            await markRestoreWindow(30);
+
             const ops = [];
             for (const name of BACKUP_COLLECTIONS) {
                 if (!Object.prototype.hasOwnProperty.call(payload.collections, name)) continue; // collezione assente nel backup: lasciata intatta
@@ -10104,6 +10264,7 @@ ${renderBottomNavigation()}
                 count++; bytes += op.size;
             }
             await flush();
+            await markRestoreWindow(3); // margine per le notifiche ancora in arrivo
             stats.safetyBackupId = safetyBackupId;
             stats.safetyTotalDocuments = safety.total;
             stats.safetyFilesCount = safety.filesCount;
@@ -10663,7 +10824,7 @@ ${renderBottomNavigation()}
                 history.replaceState({ page: 'login' }, '', '#login');
             }
             // Un condomino non ancora convalidato vede solo la pagina di attesa.
-            if (currentPage !== 'login' && userProfile?.tipoUtente === 'condomino' && !userProfile?.isValidated) {
+            if (currentPage !== 'login' && isWaitingPage()) {
                 app.innerHTML = renderPendingValidationPage();
                 return;
             }
@@ -11075,7 +11236,6 @@ ${renderBottomNavigation()}
                 checkForNewSolleciti();
                 checkForUserReportUpdates();
                 checkForSentReminderUpdates();
-                checkForNewArchivioActivity();
                 checkForNewAssemblies();
                 listenForLiveVotes();
                 listenForPendingProxies();
@@ -11416,7 +11576,7 @@ ${renderBottomNavigation()}
                         // L'account resta in attesa di convalida: si esce, al prossimo accesso
                         // verrà mostrata la pagina di attesa approvazione.
                         await signOut(auth).catch(() => { });
-                        customAlert("Registrazione completata! Il tuo account è in attesa di approvazione da parte dell'amministratore.");
+                        customAlert("Registrazione completata! Ti abbiamo inviato un'email: apri il link per confermare il tuo indirizzo. Il tuo account è in attesa di approvazione da parte dell'amministratore.");
                         r.textContent = "Registrazione completata! Il tuo account è in attesa di approvazione da parte dell'amministratore."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
@@ -11548,7 +11708,6 @@ ${renderBottomNavigation()}
                             let counterRef;
                             let newCommNumber;
 
-                            console.log('DEBUG: currentAdministrativePeriod:', currentAdministrativePeriod);
 
                             // STEP 1: Determina quale periodo amministrativo usare
                             let selectedPeriod = currentAdministrativePeriod;
@@ -11564,13 +11723,11 @@ ${renderBottomNavigation()}
                                     if (!allPeriodsSnapshot.empty) {
                                         const latestPeriodData = allPeriodsSnapshot.docs[0].data();
                                         selectedPeriod = { id: allPeriodsSnapshot.docs[0].id, ...latestPeriodData };
-                                        console.log('DEBUG: Usando periodo più recente definito dagli utenti:', selectedPeriod.year);
                                     }
                                 } catch (error) {
                                     console.error('Errore nel recupero del periodo più recente:', error);
                                 }
                             } else {
-                                console.log('DEBUG: Usando periodo amministrativo attivo:', selectedPeriod.year);
                             }
 
                             // STEP 2: Trova il numero più alto per il periodo selezionato
@@ -11580,7 +11737,6 @@ ${renderBottomNavigation()}
                             let highestNumber = 0;
                             if (!existingCommsSnapshot.empty && selectedPeriod?.year) {
                                 const selectedYear = selectedPeriod.year;
-                                console.log('DEBUG: Cercando comunicazioni per il periodo:', selectedYear);
 
                                 // Trova il numero più alto tra le comunicazioni del periodo selezionato
                                 existingCommsSnapshot.docs.forEach(doc => {
@@ -11598,8 +11754,6 @@ ${renderBottomNavigation()}
                                 });
                             }
 
-                            console.log('DEBUG: Periodo selezionato finale:', selectedPeriod?.year);
-                            console.log('DEBUG: Numero più alto trovato per questo periodo:', highestNumber);
 
                             if (selectedPeriod && selectedPeriod.year) {
                                 // USA IL PERIODO AMMINISTRATIVO DEFINITO DAGLI UTENTI
@@ -11612,7 +11766,6 @@ ${renderBottomNavigation()}
                                 newCommNumber = newCommNumberInPeriod;
                                 finalCommNumber = `#${newCommNumberInPeriod} - ${adminYear}`; // Formato: #N - ANNO
 
-                                console.log('DEBUG: Nuovo numero comunicazione (periodo definito):', newCommNumberInPeriod, 'Formato:', finalCommNumber);
                             } else {
                                 // LOGICA DI FALLBACK: Se non c'è un periodo attivo, usa il più recente
                                 let fallbackYear = null;
@@ -11627,13 +11780,11 @@ ${renderBottomNavigation()}
                                     if (!fallbackSnapshot.empty) {
                                         const latestPeriod = fallbackSnapshot.docs[0].data();
                                         fallbackYear = latestPeriod.year;
-                                        console.log('DEBUG: Usando periodo amministrativo più recente:', fallbackYear);
                                     } else {
                                         // Se non ci sono periodi amministrativi, usa l'anno corrente
                                         const currentYear = new Date().getFullYear();
                                         const nextYear = currentYear + 1;
                                         fallbackYear = `${currentYear}/${nextYear}`;
-                                        console.log('DEBUG: Nessun periodo amministrativo trovato, usando anno corrente:', fallbackYear);
                                     }
                                 } catch (error) {
                                     console.error('Errore nel recupero del periodo fallback:', error);
@@ -11649,7 +11800,6 @@ ${renderBottomNavigation()}
                                 newCommNumber = highestNumber + 1;
                                 finalCommNumber = `#${newCommNumber} - ${fallbackYear}`;
 
-                                console.log('DEBUG: Nuovo numero comunicazione (fallback):', newCommNumber, 'Formato:', finalCommNumber);
                             }
 
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
@@ -12146,7 +12296,7 @@ ${renderBottomNavigation()}
                 specificRecipientContainer.innerHTML = `<p style="color: var(--secondary-text);">Caricamento...</p>`;
                 try {
                     // Query without ordering to avoid needing a composite index
-                    const q = query(collection(db, "users"), where("tipoUtente", "==", role));
+                    const q = query(usersReadCollection(), where("tipoUtente", "==", role));
                     const snapshot = await getDocs(q);
 
                     if (snapshot.empty) {
@@ -12315,7 +12465,9 @@ ${renderBottomNavigation()}
                         }
 
                         // Trova il numero più alto per il periodo
-                        const existingReportsQuery = query(collection(db, "reports"), orderBy("createdAt", "desc"));
+                        const existingReportsQuery = isReportsRestricted()
+                            ? query(collection(db, "reports"), where("createdById", "==", currentUser.uid))
+                            : query(collection(db, "reports"), orderBy("createdAt", "desc"));
                         const existingReportsSnapshot = await getDocs(existingReportsQuery);
                         let highestNumber = 0;
 
@@ -12345,6 +12497,15 @@ ${renderBottomNavigation()}
 
                         const counterDocName = `reportsCounter_${adminYear.replace('/', '_')}`;
                         counterRef = doc(db, "counters", counterDocName);
+
+                        // Il contatore del periodo garantisce un numero unico anche a chi non vede
+                        // tutte le segnalazioni (e a due segnalazioni inviate nello stesso momento).
+                        const counterSnap = await transaction.get(counterRef);
+                        const counterLast = counterSnap.exists() ? (Number(counterSnap.data().lastNumber) || 0) : 0;
+                        if (counterLast >= newReportNumber) {
+                            newReportNumber = counterLast + 1;
+                            finalReportNumber = `#${newReportNumber} - ${adminYear}`;
+                        }
 
                         reportData = {
                             reportNumber: finalReportNumber,
@@ -12463,6 +12624,7 @@ ${renderBottomNavigation()}
                     reader.onload = async (e) => {
                         try {
                             const data = new Uint8Array(e.target.result);
+                            await window.loadLib('xlsx');
                             const workbook = XLSX.read(data, { type: 'array' });
                             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                             const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -12551,7 +12713,7 @@ ${renderBottomNavigation()}
                 if (!milH) return;
 
                 // 1. Sincronizza tutti gli utenti registrati
-                const usersSnap = await getDocs(collection(db, "users"));
+                const usersSnap = await getDocs(usersReadCollection());
                 const userBatch = writeBatch(db);
                 let usersUpdatedCount = 0;
                 const updatedUsersMap = new Map();
@@ -12654,7 +12816,7 @@ ${renderBottomNavigation()}
                     });
 
                     let updatedAttendees = (assembly.attendees || []).map(a => {
-                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const isExt = isExternalAttendee(a);
                         let newBaseMil = isExt ? 0 : null;
                         if (!isExt) {
                             if (a.uid && updatedUsersMap.has(a.uid)) {
@@ -12800,7 +12962,7 @@ ${renderBottomNavigation()}
                     if (pdfBtn) pdfBtn.style.display = 'flex';
                     millesimiFileName = docData.fileName || 'dati_esistenti.xlsx';
                 } else {
-                    tableContainerMillesimi.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun dato anagrafico ancora importato.</p></div>';
+                    tableContainerMillesimi.innerHTML = '<div class="card empty-state"><p>Nessun dato anagrafico ancora importato.</p></div>';
                     saveBtnContainerMillesimi.classList.add('hidden');
                 }
             };
@@ -12813,9 +12975,10 @@ ${renderBottomNavigation()}
                 millesimiFileName = file.name;
                 tableContainerMillesimi.innerHTML = '<p>Caricamento anteprima...</p>';
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     try {
                         const data = new Uint8Array(e.target.result);
+                        await window.loadLib('xlsx');
                         const workbook = XLSX.read(data, { type: 'array' });
                         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
                         if (jsonData.length < 2) throw new Error("Il file deve contenere almeno un'intestazione e una riga di dati.");
@@ -12943,7 +13106,7 @@ ${renderBottomNavigation()}
             const renderUnitsTable = (filterText = '') => {
                 if (!tableContainer) return;
                 if (!currentUnitsData || currentUnitsData.length === 0) {
-                    tableContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna unità immobiliare importata o presente.</p></div>';
+                    tableContainer.innerHTML = '<div class="card empty-state"><p>Nessuna unità immobiliare importata o presente.</p></div>';
                     if (countBadge) countBadge.textContent = '0';
                     if (pdfBtn) pdfBtn.style.display = 'none';
                     if (excelBtn) excelBtn.style.display = 'none';
@@ -13660,7 +13823,7 @@ ${renderBottomNavigation()}
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary-text);">
                                 Uniforma nominativi (${cluster.units.length} U.I.)
                             </h3>
-                            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn-icon" style="background:none; border:none; color:var(--secondary-text); cursor:pointer; font-size:1.2rem;">✕</button>
+                            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="btn-icon" aria-label="Chiudi" title="Chiudi" style="background:none; border:none; color:var(--secondary-text); cursor:pointer; font-size:1.2rem;">✕</button>
                         </div>
 
                         <!-- Contenuto scrollabile -->
@@ -14085,11 +14248,12 @@ ${renderBottomNavigation()}
             searchInput?.addEventListener('input', () => renderResultsList());
             filterOnlyAnomaliesCheckbox?.addEventListener('change', () => renderResultsList());
 
-            exportExcelBtn?.addEventListener('click', () => {
+            exportExcelBtn?.addEventListener('click', async () => {
                 if (!clusters || clusters.length === 0) {
                     customAlert('Nessun dato da esportare.');
                     return;
                 }
+                await window.loadLib('xlsx').catch(() => { });
                 if (typeof XLSX === 'undefined') {
                     customAlert('Libreria Excel non disponibile.');
                     return;
@@ -14341,7 +14505,7 @@ ${renderBottomNavigation()}
                         if (pdfBtn) pdfBtn.style.display = 'flex';
                     }
                 } else {
-                    tableContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun orario custode ancora importato.</p></div>';
+                    tableContainer.innerHTML = '<div class="card empty-state"><p>Nessun orario custode ancora importato.</p></div>';
                 }
             });
         };
@@ -14501,7 +14665,7 @@ ${renderBottomNavigation()}
                         if (pdfBtn) pdfBtn.style.display = 'flex';
                     }
                 } else {
-                    tableContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun dato amministratore importato.</p></div>';
+                    tableContainer.innerHTML = '<div class="card empty-state"><p>Nessun dato amministratore importato.</p></div>';
                 }
             });
         };
@@ -14599,9 +14763,10 @@ ${renderBottomNavigation()}
                 }
                 fileNameForSave = file.name;
                 const reader = new FileReader();
-                reader.onload = (event) => {
+                reader.onload = async (event) => {
                     try {
                         const data = new Uint8Array(event.target.result);
+                        await window.loadLib('xlsx');
                         const workbook = XLSX.read(data, { type: 'array' });
                         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                         if (jsonData.length === 0) throw new Error("Il file è vuoto.");
@@ -14717,9 +14882,10 @@ ${renderBottomNavigation()}
                 tableContainerOrariCustode.innerHTML = '<p>Caricamento anteprima...</p>';
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     try {
                         const data = new Uint8Array(e.target.result);
+                        await window.loadLib('xlsx');
                         const workbook = XLSX.read(data, { type: 'array' });
 
                         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -15078,7 +15244,7 @@ ${renderBottomNavigation()}
             const q = query(collection(db, "partialCondos"), orderBy("name"));
             onSnapshot(q, (snapshot) => {
                 if (snapshot.empty) {
-                    listEl.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun gruppo creato.</p></div>`;
+                    listEl.innerHTML = `<div class="card empty-state"><p>Nessun gruppo creato.</p></div>`;
                     return;
                 }
                 listEl.innerHTML = snapshot.docs.map(docSnap => {
@@ -15344,7 +15510,7 @@ ${renderBottomNavigation()}
             if (groupRulesUnsubscribe) groupRulesUnsubscribe();
             groupRulesUnsubscribe = onSnapshot(rulesQuery, (snapshot) => {
                 if (snapshot.empty) {
-                    listEl.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna regola di classificazione definita.</p></div>`;
+                    listEl.innerHTML = `<div class="card empty-state"><p>Nessuna regola di classificazione definita.</p></div>`;
                     return;
                 }
                 listEl.innerHTML = snapshot.docs.map(docSnap => {
@@ -16021,7 +16187,7 @@ ${renderBottomNavigation()}
                 const qImported = query(collection(db, "importedPhoneNumbers"), orderBy("uploadedAt", "desc"), limit(1));
                 onSnapshot(qImported, (snapshot) => {
                     if (snapshot.empty) {
-                        importedContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun contatto importato trovato.</p></div>`;
+                        importedContainer.innerHTML = `<div class="card empty-state"><p>Nessun contatto importato trovato.</p></div>`;
                         return;
                     }
                     const data = snapshot.docs[0].data().tableData;
@@ -16094,7 +16260,7 @@ ${renderBottomNavigation()}
                 const qManual = query(collection(db, "usefulNumbers"), orderBy("createdAt", "desc"));
                 onSnapshot(qManual, (snapshot) => {
                     if (snapshot.empty) {
-                        manualContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun contatto manuale.</p></div>`;
+                        manualContainer.innerHTML = `<div class="card empty-state"><p>Nessun contatto manuale.</p></div>`;
                         return;
                     }
 
@@ -16227,7 +16393,7 @@ ${renderBottomNavigation()}
             const qSchedule = query(collection(db, "importedCustodeSchedule"), orderBy("uploadedAt", "desc"), limit(1));
             onSnapshot(qSchedule, (snapshot) => {
                 if (snapshot.empty) {
-                    scheduleContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun orario custode ancora importato.</p></div>`;
+                    scheduleContainer.innerHTML = `<div class="card empty-state"><p>Nessun orario custode ancora importato.</p></div>`;
                     return;
                 }
 
@@ -16282,7 +16448,7 @@ ${renderBottomNavigation()}
                     const pdfBtn = document.getElementById('custode-schedule-pdf-btn');
                     if (pdfBtn) pdfBtn.style.display = 'flex';
                 } else {
-                    scheduleContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun orario custode ancora importato.</p></div>`;
+                    scheduleContainer.innerHTML = `<div class="card empty-state"><p>Nessun orario custode ancora importato.</p></div>`;
                 }
             }, (error) => {
                 console.error("Errore nel caricamento degli orari del custode:", error);
@@ -16407,7 +16573,6 @@ ${renderBottomNavigation()}
                 const deletedNumber = parseInt(numberMatch[1]);
                 const period = periodMatch[1];
 
-                console.log('DEBUG: Eliminando comunicazione #' + deletedNumber + ' del periodo ' + period);
 
                 // Elimina la comunicazione
                 await deleteDoc(doc(db, "communications", commId));
@@ -16435,7 +16600,6 @@ ${renderBottomNavigation()}
                     }
                 });
 
-                console.log('DEBUG: Comunicazioni da rinumerare:', commsToRenumber.length);
 
                 // Rinumera le comunicazioni in batch
                 if (commsToRenumber.length > 0) {
@@ -16443,7 +16607,6 @@ ${renderBottomNavigation()}
 
                     commsToRenumber.forEach(comm => {
                         const newCommNumber = `#${comm.newNumber} - ${period}`;
-                        console.log('DEBUG: Rinumerando da #' + comm.currentNumber + ' a #' + comm.newNumber);
 
                         batch.update(doc(db, "communications", comm.id), {
                             communicationNumber: newCommNumber
@@ -16451,7 +16614,6 @@ ${renderBottomNavigation()}
                     });
 
                     await batch.commit();
-                    console.log('DEBUG: Rinumerazione completata');
                 }
 
                 // Log dell'attività
@@ -16595,7 +16757,7 @@ ${renderBottomNavigation()}
 
                 if (filteredDocs.length === 0) {
                     const message = searchTerm ? 'Nessuna comunicazione trovata con i criteri di ricerca.' : 'Nessuna comunicazione.';
-                    listEl.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${message}</p></div>`;
+                    listEl.innerHTML = `<div class="card empty-state"><p>${message}</p></div>`;
                 } else {
                     listEl.innerHTML = filteredDocs.map(docSnap => {
                         const comm = docSnap.data();
@@ -16782,7 +16944,7 @@ ${renderBottomNavigation()}
                         } else if (status === 'closed') {
                             message = 'Nessun sondaggio disponibile.';
                         }
-                        container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${message}</p></div>`;
+                        container.innerHTML = `<div class="card empty-state"><p>${message}</p></div>`;
                         return;
                     }
 
@@ -16865,7 +17027,7 @@ ${renderBottomNavigation()}
                         } else if (status === 'closed') {
                             message = 'Nessun sondaggio concluso trovato.';
                         }
-                        container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${message}</p></div>`;
+                        container.innerHTML = `<div class="card empty-state"><p>${message}</p></div>`;
                         return;
                     }
 
@@ -17542,7 +17704,7 @@ ${renderBottomNavigation()}
 
             const renderAndSort = (docs, emptyMessage) => {
                 if (!docs || docs.length === 0) {
-                    mainContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${emptyMessage}</p></div>`;
+                    mainContainer.innerHTML = `<div class="card empty-state"><p>${emptyMessage}</p></div>`;
                     return;
                 }
                 const sortedDocs = docs.sort((a, b) => {
@@ -17649,7 +17811,7 @@ ${renderBottomNavigation()}
 
                 mainContainer.innerHTML = sortedDocs.length > 0
                     ? sortedDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                    : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna segnalazione trovata per: ${filterType}.</p></div>`;
+                    : `<div class="card empty-state"><p>Nessuna segnalazione trovata per: ${filterType}.</p></div>`;
             };
 
             // Esegui il primo rendering
@@ -17719,7 +17881,7 @@ ${renderBottomNavigation()}
 
                 mainContainer.innerHTML = sortedDocs.length > 0
                     ? sortedDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                    : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">${emptyMessage}</p></div>`;
+                    : `<div class="card empty-state"><p>${emptyMessage}</p></div>`;
             };
 
             // Esegui il primo rendering
@@ -17888,24 +18050,27 @@ ${renderBottomNavigation()}
 
                     activeContainer.innerHTML = activeTickets.length > 0
                         ? activeTickets.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                        : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket attivo trovato.</p></div>`;
+                        : `<div class="card empty-state"><p>Nessun ticket attivo trovato.</p></div>`;
 
                     closedContainer.innerHTML = closedTickets.length > 0
                         ? closedTickets.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                        : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket chiuso trovato.</p></div>`;
+                        : `<div class="card empty-state"><p>Nessun ticket chiuso trovato.</p></div>`;
                 } else {
                     mainContainer.innerHTML = filteredDocs.length > 0
                         ? filteredDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
-                        : `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna segnalazione ricevuta.</p></div>`;
+                        : `<div class="card empty-state"><p>Nessuna segnalazione ricevuta.</p></div>`;
                 }
             };
 
             localStorage.setItem(`lastSeenReport_${currentUser.uid}`, Date.now());
             updateNotificationUI('segnalazioni', 0);
 
-            const baseQuery = query(collection(db, "reports"), orderBy("createdAt", "desc"));
+            const baseQuery = isReportsRestricted() ? receivedReportsQuery() : query(collection(db, "reports"), orderBy("createdAt", "desc"));
             onSnapshot(baseQuery, (snapshot) => {
-                let relevantDocs = snapshot.docs.filter(doc => {
+                const orderedDocs = isReportsRestricted()
+                    ? [...snapshot.docs].sort((a, b) => reportMillis(b.data().createdAt) - reportMillis(a.data().createdAt))
+                    : snapshot.docs;
+                let relevantDocs = orderedDocs.filter(doc => {
                     const data = doc.data();
 
                     // Escludi le segnalazioni create dall'utente corrente (devono apparire solo in "Segnalazioni inviate")
@@ -18093,7 +18258,7 @@ ${renderBottomNavigation()}
                 }
 
                 if (filteredDocs.length === 0) {
-                    container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun sollecito inviato trovato.</p></div>`;
+                    container.innerHTML = `<div class="card empty-state"><p>Nessun sollecito inviato trovato.</p></div>`;
                 } else {
                     container.innerHTML = filteredDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("");
                 }
@@ -18111,7 +18276,7 @@ ${renderBottomNavigation()}
                 if (statusFilter) statusFilter.onchange = () => renderFiltered(snapshot.docs);
             }, (error) => {
                 console.error("Errore nel caricamento dei solleciti inviati:", error);
-                container.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun sollecito inviato trovato.</p></div>`;
+                container.innerHTML = `<div class="card empty-state"><p>Nessun sollecito inviato trovato.</p></div>`;
             });
         };
         const loadUrgentReports = () => {
@@ -18119,7 +18284,7 @@ ${renderBottomNavigation()}
             if (!mainContainer) return;
 
             // Marca i solleciti come visti
-            const qSeen = query(
+            const qSeen = isReportsRestricted() ? receivedReportsQuery() : query(
                 collection(db, "reports"),
                 where("priority", "in", ["alta", "richiesta-intervento-danno"]),
                 where("status", "in", ["aperta", "in-corso"]),
@@ -18127,8 +18292,12 @@ ${renderBottomNavigation()}
                 limit(1)
             );
             getDocs(qSeen).then(snapshot => {
-                if (!snapshot.empty) {
-                    localStorage.setItem(`lastSeenSolleciti_${currentUser.uid}`, snapshot.docs[0].data().updatedAt.toMillis());
+                const seenDocs = isReportsRestricted()
+                    ? snapshot.docs.filter(d => ["alta", "richiesta-intervento-danno"].includes(d.data().priority) && ["aperta", "in-corso"].includes(d.data().status) && d.data().updatedAt)
+                        .sort((a, b) => reportMillis(b.data().updatedAt) - reportMillis(a.data().updatedAt))
+                    : snapshot.docs;
+                if (seenDocs.length > 0) {
+                    localStorage.setItem(`lastSeenSolleciti_${currentUser.uid}`, seenDocs[0].data().updatedAt.toMillis());
                     updateNotificationUI('solleciti', 0);
                 }
             }).catch(() => { });
@@ -18180,13 +18349,13 @@ ${renderBottomNavigation()}
                 handleFilteredReports(relevantDocs, 'solleciti ricevuti');
             };
 
-            const q = query(collection(db, "reports"));
+            const q = receivedReportsQuery();
 
             onSnapshot(q, (snapshot) => {
                 renderDocs(snapshot.docs);
             }, (error) => {
                 console.error("Errore nel caricamento dei solleciti ricevuti:", error);
-                mainContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun sollecito ricevuto trovato.</p></div>`;
+                mainContainer.innerHTML = `<div class="card empty-state"><p>Nessun sollecito ricevuto trovato.</p></div>`;
             });
         };
 
@@ -18444,7 +18613,7 @@ ${renderBottomNavigation()}
 
                 if (recipientIds.length > 0) {
                     const uniqueRecipientIds = [...new Set(recipientIds)];
-                    const recipientsSnapshot = await getDocs(query(collection(db, "users"), where("__name__", "in", uniqueRecipientIds)));
+                    const recipientsSnapshot = await getDocs(query(usersReadCollection(), where("__name__", "in", uniqueRecipientIds)));
 
                     const recipientsMap = new Map();
                     recipientsSnapshot.forEach(doc => {
@@ -18547,13 +18716,13 @@ ${renderBottomNavigation()}
 
                 // Renderizza i risultati
                 if (activeTickets.length === 0) {
-                    activeContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket attivo trovato.</p></div>`;
+                    activeContainer.innerHTML = `<div class="card empty-state"><p>Nessun ticket attivo trovato.</p></div>`;
                 } else {
                     activeContainer.innerHTML = activeTickets.map((t, index) => renderReportCardHTML(t.data, t.id, index + 1)).join("");
                 }
 
                 if (closedTickets.length === 0) {
-                    closedContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun ticket chiuso trovato.</p></div>`;
+                    closedContainer.innerHTML = `<div class="card empty-state"><p>Nessun ticket chiuso trovato.</p></div>`;
                 } else {
                     closedContainer.innerHTML = closedTickets.map((t, index) => renderReportCardHTML(t.data, t.id, index + 1)).join("");
                 }
@@ -18782,7 +18951,7 @@ ${renderBottomNavigation()}
             } catch (e) { }
             try {
                 const searchTerm = document.getElementById('user-edit-search')?.value.toLowerCase().trim() || '';
-                const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("cognome")));
+                const usersSnapshot = await getDocs(query(usersReadCollection(), orderBy("cognome")));
 
                 const filteredUsers = usersSnapshot.docs.filter(doc => {
                     if (!searchTerm) return true;
@@ -18792,7 +18961,7 @@ ${renderBottomNavigation()}
                 });
 
                 if (filteredUsers.length === 0) {
-                    container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente trovato con i criteri di ricerca.</p></div>';
+                    container.innerHTML = '<div class="card empty-state"><p>Nessun utente trovato con i criteri di ricerca.</p></div>';
                 } else {
                     container.innerHTML = filteredUsers.map(docSnap => {
                         const user = docSnap.data();
@@ -18854,7 +19023,7 @@ ${renderBottomNavigation()}
             } catch (e) { }
             try {
                 const searchTerm = document.getElementById('user-list-search')?.value.toLowerCase().trim() || '';
-                const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("cognome")));
+                const usersSnapshot = await getDocs(query(usersReadCollection(), orderBy("cognome")));
 
                 const filteredUsers = usersSnapshot.docs.filter(doc => {
                     if (!searchTerm) return true;
@@ -18864,7 +19033,7 @@ ${renderBottomNavigation()}
                 });
 
                 if (filteredUsers.length === 0) {
-                    container.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun utente trovato con i criteri di ricerca.</p></div>';
+                    container.innerHTML = '<div class="card empty-state"><p>Nessun utente trovato con i criteri di ricerca.</p></div>';
                     return;
                 }
 
@@ -19059,7 +19228,7 @@ ${renderBottomNavigation()}
                 const qImported = query(collection(db, "importedPhoneNumbers"), orderBy("uploadedAt", "desc"), limit(1));
                 onSnapshot(qImported, (snapshot) => {
                     if (snapshot.empty) {
-                        importedTableContainer.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun contatto importato trovato.</p></div>`;
+                        importedTableContainer.innerHTML = `<div class="card empty-state"><p>Nessun contatto importato trovato.</p></div>`;
                         return;
                     }
                     const data = snapshot.docs[0].data().tableData;
@@ -19724,11 +19893,11 @@ ${renderBottomNavigation()}
             cleanupAllValidatedRegistrationPhotos().catch(() => { });
 
             try {
-                const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"), orderBy("createdAt", "desc"));
+                const q = query(usersReadCollection(), where("tipoUtente", "==", "condomino"), orderBy("createdAt", "desc"));
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    listContainer.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun condomino registrato.</p></div>';
+                    listContainer.innerHTML = '<div class="card empty-state"><p>Nessun condomino registrato.</p></div>';
                     return;
                 }
 
@@ -20034,7 +20203,7 @@ ${renderBottomNavigation()}
                 specificRecipientContainer.classList.remove('hidden');
                 specificRecipientContainer.innerHTML = `<p style="color: var(--secondary-text);">Caricamento...</p>`;
                 try {
-                    const q = query(collection(db, "users"), where("tipoUtente", "==", role));
+                    const q = query(usersReadCollection(), where("tipoUtente", "==", role));
                     const snapshot = await getDocs(q);
                     if (snapshot.empty) {
                         specificRecipientContainer.innerHTML = `<p style="color: var(--warning);">Nessun utente di tipo "${role}" trovato.</p>`;
@@ -20683,7 +20852,7 @@ ${renderBottomNavigation()}
                         });
 
                         if (foldersHtml === '') {
-                            folderList.innerHTML = `<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessuna sottocartella disponibile.</p></div>`;
+                            folderList.innerHTML = `<div class="card empty-state"><p>Nessuna sottocartella disponibile.</p></div>`;
                         } else {
                             folderList.innerHTML = foldersHtml;
                         }
@@ -20831,9 +21000,6 @@ ${renderBottomNavigation()}
                         return false;
                     }).length;
 
-                    console.log('DEBUG CUSTODE - Notifiche bacheca calcolate:', unreadCount);
-                    console.log('DEBUG CUSTODE - LastSeen timestamp:', lastSeen);
-                    console.log('DEBUG CUSTODE - Comunicazioni totali nel snapshot:', snapshot.docs.length);
 
                     updateNotificationUI('bacheca', unreadCount);
                 });
@@ -20860,7 +21026,6 @@ ${renderBottomNavigation()}
                     // Logica specifica per il Custode: riceve notifica solo se forwardToCustode è true
                     if (userRole === 'custode') {
                         const shouldNotify = comm.forwardToCustode === true;
-                        console.log('DEBUG CUSTODE - Comunicazione:', comm.title, 'forwardToCustode:', comm.forwardToCustode, 'shouldNotify:', shouldNotify);
                         return shouldNotify;
                     }
 
@@ -20904,7 +21069,7 @@ ${renderBottomNavigation()}
             }
 
             const lastSeenDate = new Date(lastSeen);
-            const q = query(collection(db, "reports"), where("updatedAt", ">", lastSeenDate));
+            const q = isReportsRestricted() ? receivedReportsQuery() : query(collection(db, "reports"), where("updatedAt", ">", lastSeenDate));
 
             reportsListener = onSnapshot(q, snapshot => {
                 const userRole = userProfile.tipoUtente;
@@ -20941,6 +21106,7 @@ ${renderBottomNavigation()}
                 snapshot.docChanges().forEach(change => {
                     const reportDoc = change.doc;
                     const reportData = reportDoc.data();
+                    if (isReportsRestricted() && reportMillis(reportData.updatedAt) <= lastSeenDate.getTime()) return;
                     const notificationKey = `reportModal_${reportDoc.id}_${reportData.updatedAt?.toMillis()}`;
 
                     if (sessionStorage.getItem(notificationKey)) {
@@ -21043,10 +21209,7 @@ ${renderBottomNavigation()}
             }
 
             // Query for reports marked as urgent (solleciti) that the user should be notified about
-            const q = query(
-                collection(db, "reports"),
-                where("isUrgent", "==", true)
-            );
+            const q = receivedReportsQuery(where("isUrgent", "==", true));
 
             sollecitisListener = onSnapshot(q, snapshot => {
                 const userRole = userProfile?.tipoUtente;
@@ -21102,34 +21265,6 @@ ${renderBottomNavigation()}
             });
         };
 
-        // Nuova funzione per notificare di nuovi file/cartelle nell'archivio
-        const checkForNewArchivioActivity = () => {
-            if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) return;
-
-            let lastSeen = parseInt(localStorage.getItem(`lastSeenArchivio_${currentUser.uid}`), 10);
-
-            // Se non c'è un timestamp salvato, inizializza con il timestamp corrente
-            if (!lastSeen) {
-                lastSeen = Date.now();
-                localStorage.setItem(`lastSeenArchivio_${currentUser.uid}`, lastSeen);
-            }
-
-            const lastSeenDate = new Date(lastSeen);
-
-            // Query per attività di archivio (file caricati, cartelle create)
-            const q = query(
-                collection(db, "activities"),
-                where("action", "in", ["file_uploaded", "folder_created"]),
-                where("timestamp", ">", lastSeenDate)
-            );
-
-            onSnapshot(q, snapshot => {
-                const unreadCount = snapshot.size;
-                updateNotificationUI('gestione-archivio', unreadCount);
-                updateNotificationUI('archivio', unreadCount); // Also update main archivio badge
-            }, (err) => console.warn("Badge archivio non disponibile:", err?.code || err));
-        };
-
         // Nuova funzione per notificare i creatori di segnalazioni quando i loro report vengono aggiornati
         const checkForUserReportUpdates = () => {
             if (!currentUser) return;
@@ -21159,7 +21294,6 @@ ${renderBottomNavigation()}
 
                     // PRIORITÀ: Se la segnalazione è stata esplicitamente restituita al creatore, mostra sempre la notifica
                     if (report.returnedToCreator === true) {
-                        console.log('DEBUG - Report returned to creator detected:', doc.id, report);
                         return true;
                     }
 
@@ -21168,14 +21302,12 @@ ${renderBottomNavigation()}
                     const wasUpdatedByOthers = lastUpdate && lastUpdate.by !== userFullName;
 
                     if (wasUpdatedByOthers) {
-                        console.log('DEBUG - Report updated by others:', doc.id, 'by:', lastUpdate.by);
                     }
 
                     return wasUpdatedByOthers;
                 });
 
                 const unreadCount = updatedByOthers.length;
-                console.log('DEBUG - Total unread reports for creator:', unreadCount);
                 // Update both the main 'segnalazioni' badge and the 'segnalazioni-inviate' badge
                 // updateNotificationUI('segnalazioni', unreadCount);
                 // updateNotificationUI('segnalazioni-inviate', unreadCount);
@@ -21720,7 +21852,7 @@ ${renderBottomNavigation()}
                     const attendeesList = document.getElementById("attendees-list");
                     if (attendeesList) {
                         if (attendees.length === 0) {
-                            attendeesList.innerHTML = '<div class="card" style="text-align: center; padding: 1.5rem 1rem;"><p style="color: var(--secondary-text); margin: 0;">Nessun condòmino registrato.</p></div>';
+                            attendeesList.innerHTML = '<div class="card empty-state"><p>Nessun condòmino registrato.</p></div>';
                         } else {
                             attendeesList.innerHTML = attendees.map(a => `
                                 <div class="list-item" style="background: var(--surface-color-light);">
@@ -22232,7 +22364,7 @@ ${renderBottomNavigation()}
 
                 let userDocData = {};
                 try {
-                    const uSnap = await getDoc(doc(db, "users", attendeeUid));
+                    const uSnap = await getDoc(userReadDoc(attendeeUid));
                     if (uSnap.exists()) userDocData = uSnap.data();
                 } catch (e) { }
 
@@ -22483,7 +22615,7 @@ ${renderBottomNavigation()}
                     return false;
                 });
 
-                const isExt = delUser.isExternalDelegate === true || delUser.isExternal === true || delUser.tipoUtente === 'terzo_delegato' || (delUser.uid && delUser.uid.toString().startsWith('ext_'));
+                const isExt = isExternalAttendee(delUser);
                 let baseMil = isExt ? 0 : (delUser.baseMillesimi !== undefined ? parseFloat(delUser.baseMillesimi) : (parseFloat(delUser.personalMillesimi) || 0));
                 if (!isExt && baseMil <= 0 && Array.isArray(delUser.proprieta) && delUser.proprieta.length > 0) {
                     baseMil = delUser.proprieta.reduce((s, pr) => s + (parseFloat(pr.millesimi) || 0), 0);
@@ -22567,7 +22699,7 @@ ${renderBottomNavigation()}
             };
         };
 
-        const initScannerForAssembly = (assemblyId) => {
+        const initScannerForAssembly = async (assemblyId) => {
             const messageBox = document.getElementById("scanner-message");
             const feedbackPopup = document.getElementById("scanner-feedback-popup");
 
@@ -22633,7 +22765,7 @@ ${renderBottomNavigation()}
                         throw new Error("Condòmino già registrato come Presente.");
                     }
 
-                    const userDoc = await getDoc(doc(db, "users", qrUid));
+                    const userDoc = await getDoc(userReadDoc(qrUid));
                     if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
 
                     const user = userDoc.data();
@@ -22896,6 +23028,7 @@ ${renderBottomNavigation()}
                 }
             };
 
+            await window.loadLib('qrscanner').catch(() => { });
             if (typeof Html5Qrcode !== 'undefined') {
                 const html5QrCode = new Html5Qrcode("reader");
                 window.html5QrcodeScanner = html5QrCode;
@@ -23033,7 +23166,7 @@ ${renderBottomNavigation()}
 
                     let allUsers = [];
                     try {
-                        const uSnap = await getDocs(query(collection(db, "users")));
+                        const uSnap = await getDocs(query(usersReadCollection()));
                         allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                     } catch (e) {
                         console.warn("Errore lettura users in toggleOdgVote:", e);
@@ -23043,7 +23176,7 @@ ${renderBottomNavigation()}
                     const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
 
                     const isAttendeeEligibleForPoint = (a) => {
-                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const isExt = isExternalAttendee(a);
                         const held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && (window.isProxyApproved ? window.isProxyApproved(p) : (p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.status !== 'revoked' && p.adminApprovalStatus !== 'rejected')));
                         if (isGroupScope) {
                             held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
@@ -23062,7 +23195,7 @@ ${renderBottomNavigation()}
                         if (isGroupScope) {
                             held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
                         }
-                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const isExt = isExternalAttendee(a);
                         const selfM = isExt ? 0 : ((typeof window.getAttendeePersonalMillesimi === 'function')
                             ? window.getAttendeePersonalMillesimi(a, held, targetGroup, allUsers, isGroupScope)
                             : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.millesimi) || 0)));
@@ -23453,7 +23586,7 @@ ${renderBottomNavigation()}
                 return `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10B981; border:1px solid rgba(16,185,129,0.3); font-size:0.64rem; font-weight:800; padding:0.06rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.pen(10)} In Aula (Manuale)</span>`;
             }
 
-            const isExt = itemOrAttendee.isExternalDelegate === true || itemOrAttendee.isExternal === true || itemOrAttendee.tipoUtente === 'terzo_delegato' || (itemOrAttendee.uid && itemOrAttendee.uid.toString().startsWith('ext_'));
+            const isExt = isExternalAttendee(itemOrAttendee);
             if (isExt) {
                 return `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10B981; border:1px solid rgba(16,185,129,0.3); font-size:0.64rem; font-weight:800; padding:0.06rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.circleGreen(8)} In Aula (Manuale)</span>`;
             }
@@ -23604,7 +23737,7 @@ ${renderBottomNavigation()}
 
         window.getAttendeePersonalMillesimi = (attendee, heldProxies = [], tGroup = null, uList = [], grpScope = false) => {
             if (!attendee) return 0;
-            if (attendee.isExternalDelegate === true || attendee.isExternal === true || attendee.tipoUtente === 'terzo_delegato' || (attendee.uid && attendee.uid.toString().startsWith('ext_'))) {
+            if (isExternalAttendee(attendee)) {
                 return 0;
             }
 
@@ -23692,7 +23825,7 @@ ${renderBottomNavigation()}
 
         window.resolveAttendeePersonalMillesimi = (attendee, heldProxies = []) => {
             if (!attendee) return 0;
-            const isExt = attendee.isExternalDelegate === true || attendee.isExternal === true || attendee.tipoUtente === 'terzo_delegato' || (attendee.uid && attendee.uid.toString().startsWith('ext_'));
+            const isExt = isExternalAttendee(attendee);
             if (isExt) return 0;
 
             // 1. baseMillesimi valido (<= 1000)
@@ -24289,7 +24422,7 @@ ${renderBottomNavigation()}
                                                             ` : `
                                                                 ${isFuori ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.04rem 0.25rem; border-radius:3px; font-weight:700;">Fuori scala</span>` : (nv.isManual ? `<span class="badge" style="background:#10B981; color:white; font-size:0.62rem; font-weight:800; padding:0.04rem 0.25rem; border-radius:3px;">${THEME_ICONS.circleGreen(8)} Manuale</span>` : `<span class="badge" style="background:#78350F; color:#FEF3C7; border:1px solid #F59E0B; font-weight:800; font-size:0.62rem; padding:0.04rem 0.25rem; border-radius:3px;">${THEME_ICONS.smartphone(9)} App/QR</span>`)}
                                                                 <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                                                ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                                ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                                 <strong style="font-size:0.86rem; font-weight:700; color:${isSelfVoted || isFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
                                                                     ${isFuori ? '0.00' : selfMil.toFixed(2)} ‰
                                                                 </strong>
@@ -24354,7 +24487,7 @@ ${renderBottomNavigation()}
                                                         <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                                 <span class="badge" style="font-size:0.6rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Delega</span>
-                                                                ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                                ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                                 <strong style="color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                                     ${p.millesimi.toFixed(2)} ‰
                                                                 </strong>
@@ -24746,7 +24879,7 @@ ${renderBottomNavigation()}
 
                 let allUsers = [];
                 try {
-                    const uSnap = await getDocs(query(collection(db, "users")));
+                    const uSnap = await getDocs(query(usersReadCollection()));
                     allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) {
                     allUsers = (window._cachedUnifiedCondominiumRegistry && window._cachedUnifiedCondominiumRegistry.users) || [];
@@ -24889,7 +25022,7 @@ ${renderBottomNavigation()}
 
                 if (voterType === 'proxy' && actualDelegateId) {
                     const checkDelegate = attendeesList.find(a => a.uid === actualDelegateId || a.id === actualDelegateId || a.qrUid === actualDelegateId);
-                    const isDelegateExternal = checkDelegate ? (checkDelegate.isExternalDelegate === true || checkDelegate.isExternal === true || checkDelegate.tipoUtente === 'terzo_delegato' || (checkDelegate.uid && checkDelegate.uid.toString().startsWith('ext_'))) : false;
+                    const isDelegateExternal = checkDelegate ? (isExternalAttendee(checkDelegate)) : false;
                     const isDelegateManual = checkDelegate ? (isDelegateExternal || checkDelegate.isManual === true || checkDelegate.manualAttendance === true || checkDelegate.registrationType === 'manual' || checkDelegate.registeredVia === 'manual' || (!checkDelegate.scannedAt && !!checkDelegate.joinedAt && checkDelegate.registrationType !== 'qr' && checkDelegate.registrationType !== 'app')) : false;
                     if (checkDelegate && !isDelegateManual) {
                         await customAlert("Impossibile registrare o modificare il voto per delega: il delegato è accreditato tramite QR Code (App) e deve votare autonomamente dal proprio smartphone.");
@@ -24961,7 +25094,7 @@ ${renderBottomNavigation()}
 
                 let allUsers = [];
                 try {
-                    const uSnap = await getDocs(query(collection(db, "users")));
+                    const uSnap = await getDocs(query(usersReadCollection()));
                     allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) {
                     allUsers = (window._cachedUnifiedCondominiumRegistry && window._cachedUnifiedCondominiumRegistry.users) || [];
@@ -25325,7 +25458,7 @@ ${renderBottomNavigation()}
                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                 ${isSelfVoted ? selfMethodBadge : ''}
                                                 <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                                ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                 ${isSelfFuori ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.04rem 0.25rem; border-radius:3px; font-weight:700;">Fuori scala</span>` : ''}
                                                 <strong style="font-size:0.86rem; font-weight:700; color:var(--secondary-text); white-space:nowrap;">
                                                     ${isSelfFuori ? '0.00' : (selfVote && selfVote.millesimi !== undefined ? selfVote.millesimi : selfMil).toFixed(2)} ‰
@@ -25356,7 +25489,7 @@ ${renderBottomNavigation()}
                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                             <!-- Riga 1: Nome Delegante su una riga intera -->
                                             <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
-                                                <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
+                                                <span style="color:var(--secondary-text); font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
                                             </div>
 
                                             <!-- Riga 2: Unità pulita -->
@@ -25371,7 +25504,7 @@ ${renderBottomNavigation()}
                                                 <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                     ${proxyModeBadge}
                                                     <span class="badge" style="font-size:0.6rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Delega</span>
-                                                    <span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
+                                                    <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
                                                     <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                         ${(item.vote.millesimi !== undefined ? item.vote.millesimi : item.pMil).toFixed(2)} ‰
                                                     </strong>
@@ -25590,7 +25723,7 @@ ${renderBottomNavigation()}
                 try {
                     const [importedSnap, usersSnap, partialCondosSnap, registryData] = await Promise.all([
                         getDocs(collection(db, "importedData")),
-                        getDocs(collection(db, "users")),
+                        getDocs(usersReadCollection()),
                         getDocs(collection(db, "partialCondos")),
                         (typeof window.getUnifiedCondominiumRegistry === 'function' ? window.getUnifiedCondominiumRegistry(forceRefresh) : Promise.resolve({ allCondomini: [] }))
                     ]);
@@ -25758,7 +25891,7 @@ ${renderBottomNavigation()}
             let presentMillesimi = 0;
 
             (activeAttendees || []).forEach(a => {
-                const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                const isExternal = isExternalAttendee(a);
                 if (!isExternal) {
                     const hId = a.uid || a.id || a.nome;
                     if (hId) presentHeadsSet.add(hId);
@@ -25987,11 +26120,11 @@ ${renderBottomNavigation()}
                 const attendees = Array.from(uniqueAttendeesMap.values());
                 const activeAttendees = attendees.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                 const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && window.isProxyApproved(p) && activeAttendees.some(a => a.uid === p.delegateId));
-                const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
+                const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(isExternalAttendee(a))).length;
                 const totalPresences = activeAttendeesPersonalHeads + activeProxies.length;
                 let totMillesimi = 0;
                 activeAttendees.forEach(a => {
-                    const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                    const isExternal = isExternalAttendee(a);
                     const held = activeProxies.filter(p => p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid));
                     const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExternal ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
                     const heldProxiesMillesimi = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
@@ -26107,7 +26240,7 @@ ${renderBottomNavigation()}
 
                     totMillesimi = 0;
                     activeAttendees.forEach(a => {
-                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const isExt = isExternalAttendee(a);
                         const held = activeProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid)));
                         const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExt ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
                         const heldProxiesMillesimi = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
@@ -27020,7 +27153,7 @@ ${renderBottomNavigation()}
                                 }
 
                                 const isLeft = a.status === 'uscito';
-                                const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                const isExternal = isExternalAttendee(a);
                                 const isManual = isExternal || a.isManual === true || a.manualAttendance === true || a.registrationType === 'manual' || (!a.scannedAt && !!a.joinedAt);
                                 const attendeeUnit = isExternal ? '' : (window.getVoterUnitString ? window.getVoterUnitString(a, window._cachedAllUsers || []) : ((Array.isArray(a.proprieta) && a.proprieta.length > 0 ? a.proprieta.map(pr => pr.interno).filter(Boolean).join(', ') : '') || a.unitaImmobiliare || a.units || ''));
 
@@ -27630,7 +27763,7 @@ ${renderBottomNavigation()}
 
                         totMillesimi = 0;
                         activeAttendees.forEach(a => {
-                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                            const isExt = isExternalAttendee(a);
                             const held = activeProxies.filter(p => p.status !== 'rejected' && (p.delegateId === a.uid || p.delegateId === a.id || (a.registeredUid && p.delegateId === a.registeredUid)));
                             const personalMil = window.resolveAttendeePersonalMillesimi ? window.resolveAttendeePersonalMillesimi(a, held) : (isExt ? 0 : (a.baseMillesimi !== undefined ? parseFloat(a.baseMillesimi) : (parseFloat(a.personalMillesimi) || 0)));
                             const heldProxiesMillesimi = held.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0);
@@ -28343,7 +28476,7 @@ ${renderBottomNavigation()}
 
                                     // ELENCO DI CHI NON HA ANCORA VOTATO QUESTO PUNTO (FILTRATO PER SCALA/GRUPPO)
                                     const isAttendeeEligibleForPoint = (a) => {
-                                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                        const isExt = isExternalAttendee(a);
                                         let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && (window.isProxyApproved ? window.isProxyApproved(p) : (p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.status !== 'revoked' && p.adminApprovalStatus !== 'rejected')));
                                         if (isGroupScope) {
                                             held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
@@ -28356,7 +28489,7 @@ ${renderBottomNavigation()}
                                     };
 
                                     const getAttendeeGroupMilForPoint = (a) => {
-                                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                        const isExt = isExternalAttendee(a);
                                         let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && (window.isProxyApproved ? window.isProxyApproved(p) : (p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.status !== 'revoked' && p.adminApprovalStatus !== 'rejected')));
                                         if (isGroupScope) {
                                             held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
@@ -28369,7 +28502,7 @@ ${renderBottomNavigation()}
                                     };
 
                                     const getAttendeePendingMilForPoint = (a) => {
-                                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                        const isExt = isExternalAttendee(a);
                                         let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && (window.isProxyApproved ? window.isProxyApproved(p) : (p.status !== 'rejected' && p.status !== 'revoked_by_presence' && p.status !== 'revoked' && p.adminApprovalStatus !== 'rejected')));
                                         if (isGroupScope) {
                                             held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
@@ -28409,7 +28542,7 @@ ${renderBottomNavigation()}
 
                                     let totalPendingVotesHeads = 0;
                                     pointNonVoters.forEach(a => {
-                                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                        const isExt = isExternalAttendee(a);
                                         let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
                                         if (isGroupScope) {
                                             held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
@@ -28809,7 +28942,7 @@ ${renderBottomNavigation()}
                                                         <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                             <!-- Riga 1: Nome Delegante su una riga intera -->
                                                             <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
-                                                                <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
+                                                                <span style="color:var(--secondary-text); font-weight:800;">↳</span> ${formatLongName(item.pDelName)}
                                                             </div>
 
                                                             <!-- Riga 2: Unità pulita -->
@@ -28824,7 +28957,7 @@ ${renderBottomNavigation()}
                                                                 <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                                     ${proxyModeBadge}
                                                                     <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
-                                                                    <span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
+                                                                    <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
                                                                     <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                                         ${(item.vote.millesimi !== undefined ? item.vote.millesimi : item.pMil).toFixed(2)} ‰
                                                                     </strong>
@@ -28946,7 +29079,7 @@ ${renderBottomNavigation()}
                                             const name = window.getAttendeeDisplayName ? window.getAttendeeDisplayName(a) : (a.nome || 'Condòmino');
                                             const cleanName = window.formatVoterDisplayName ? window.formatVoterDisplayName(name) : name;
                                             const mil = getAttendeeGroupMilForPoint(a);
-                                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                            const isExt = isExternalAttendee(a);
                                             const selfMil = isExt ? 0 : ((typeof window.getAttendeePersonalMillesimi === 'function')
                                                 ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
                                                 : Math.max(0, mil - heldProxies.reduce((s, p) => s + (parseFloat(p.delegatorMillesimi) || 0), 0)));
@@ -29003,7 +29136,7 @@ ${renderBottomNavigation()}
                                             if (isGroupScope) {
                                                 heldProxies = heldProxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, itemGroup, allUsers) : 0) > 0);
                                             }
-                                            const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                                            const isExt = isExternalAttendee(a);
                                             const selfMilVal = isExt ? 0 : ((typeof window.getAttendeePersonalMillesimi === 'function')
                                                 ? window.getAttendeePersonalMillesimi(a, heldProxies, itemGroup, allUsers, isGroupScope)
                                                 : Math.max(0, milVal - heldProxies.reduce((sum, p) => sum + (parseFloat(p.delegatorMillesimi) || 0), 0)));
@@ -29104,7 +29237,7 @@ ${renderBottomNavigation()}
                                                     ` : `
                                                         ${methodBadge}
                                                         <span class="badge" style="font-size:0.62rem; color:${selfVote ? 'var(--secondary-text)' : '#10B981'}; background:${selfVote ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${selfVote ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Quota personale</span>
-                                                        ${selfVote ? `<span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                        ${selfVote ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                         ${isFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700; flex-shrink:0;">Fuori scala</span>` : ''}
                                                         <strong style="font-size:0.84rem; font-weight:700; color:${selfVote || isFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
                                                             ${isFuori ? '0.00' : selfMilVal.toFixed(2)} ‰
@@ -29168,7 +29301,7 @@ ${renderBottomNavigation()}
                                                         <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                                 <span class="badge" style="font-size:0.58rem; color:${pVote ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${pVote ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${pVote ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700;">Delega</span>
-                                                                ${pVote ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                                ${pVote ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                                 <strong style="color:${pVote ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                                     ${pMil.toFixed(2)} ‰
                                                                 </strong>
@@ -29419,7 +29552,7 @@ ${renderBottomNavigation()}
             }
 
             // 1. Fetch registered users from Firestore
-            const usersSnapshot = await getDocs(query(collection(db, "users")));
+            const usersSnapshot = await getDocs(query(usersReadCollection()));
             const registeredUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             const isUserConsigliere = (u) => {
                 if (!u) return false;
@@ -30191,7 +30324,7 @@ ${renderBottomNavigation()}
                         try { attendeeData = JSON.parse(attendeeJsonStr); } catch (e) { }
                     }
                     if (!attendeeData) {
-                        const userDoc = await getDoc(doc(db, "users", cb.value));
+                        const userDoc = await getDoc(userReadDoc(cb.value));
                         if (userDoc.exists()) {
                             attendeeData = { id: userDoc.id, ...userDoc.data(), isRegistered: true };
                         }
@@ -31688,7 +31821,7 @@ ${renderBottomNavigation()}
                         try { delegateData = JSON.parse(delegateJsonStr); } catch (e) { }
                     }
                     if (!delegateData) {
-                        const delegateDoc = await getDoc(doc(db, "users", delegateId));
+                        const delegateDoc = await getDoc(userReadDoc(delegateId));
                         if (delegateDoc.exists()) delegateData = { id: delegateDoc.id, ...delegateDoc.data() };
                     }
                     if (!delegateData) throw new Error("Dati delegato non trovati.");
@@ -31708,7 +31841,7 @@ ${renderBottomNavigation()}
                         try { dData = JSON.parse(dJsonStr); } catch (e) { }
                     }
                     if (!dData) {
-                        const dDoc = await getDoc(doc(db, "users", cb.value));
+                        const dDoc = await getDoc(userReadDoc(cb.value));
                         if (dDoc.exists()) dData = { id: dDoc.id, ...dDoc.data() };
                     }
                     if (dData) {
@@ -32517,7 +32650,7 @@ ${renderBottomNavigation()}
 
                 // Recupera anche utenti registrati su Firestore per completare le informazioni
                 try {
-                    const snapshot = await getDocs(collection(db, "users"));
+                    const snapshot = await getDocs(usersReadCollection());
                     const registeredUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                     registeredUsers.forEach(u => {
                         const existing = allDelegators.find(d => d.id === u.id || d.registeredUid === u.id);
@@ -32933,7 +33066,7 @@ ${renderBottomNavigation()}
                 } catch (e) { }
                 if (totalCondoCount === 0) {
                     try {
-                        const uSnap = await getDocs(collection(db, "users"));
+                        const uSnap = await getDocs(usersReadCollection());
                         totalCondoCount = uSnap.docs.filter(d => {
                             const u = d.data();
                             return ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0);
@@ -32955,7 +33088,7 @@ ${renderBottomNavigation()}
                     };
                 } else {
                     try {
-                        const dSnap = await getDoc(doc(db, "users", delegateId));
+                        const dSnap = await getDoc(userReadDoc(delegateId));
                         if (dSnap.exists()) {
                             delegateUser = { id: dSnap.id, ...dSnap.data() };
                         }
@@ -33282,7 +33415,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                 let allUsers = [];
                 try {
-                    const uSnap = await getDocs(query(collection(db, "users")));
+                    const uSnap = await getDocs(query(usersReadCollection()));
                     allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) {
                     console.warn("Errore lettura users in openCondoVoteModal:", e);
@@ -33417,7 +33550,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                 <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box; padding-right:0.25rem;">
                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                         <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                        <span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
+                                        <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
                                         <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
                                         <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
                                     </div>
@@ -33461,7 +33594,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                     <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                         <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                             <span class="badge" style="font-size:0.62rem; color:${isSelfVoted ? 'var(--secondary-text)' : '#10B981'}; background:${isSelfVoted ? 'rgba(255,255,255,0.06)' : 'rgba(16,185,129,0.12)'}; border:1px solid ${isSelfVoted ? 'rgba(255,255,255,0.15)' : 'rgba(16,185,129,0.25)'}; padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                            ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>` : ''}
+                                            ${isSelfVoted ? `<span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>` : ''}
                                             ${isSelfFuori ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); padding:0.02rem 0.2rem; border-radius:3px; font-weight:700;">Fuori scala</span>` : ''}
                                             <strong style="font-size:0.84rem; font-weight:700; color:${isSelfVoted || isSelfFuori ? 'var(--secondary-text)' : '#10B981'}; white-space:nowrap;">
                                                 ${isSelfFuori ? '0.00' : selfMil.toFixed(2)} ‰
@@ -33497,7 +33630,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                                 <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                         <span class="badge" style="font-size:0.58rem; color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; background:${hasVoted ? 'rgba(255,255,255,0.06)' : 'rgba(59, 130, 246, 0.15)'}; border:1px solid ${hasVoted ? 'rgba(255,255,255,0.15)' : 'rgba(59, 130, 246, 0.3)'}; padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
-                                                        ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
+                                                        ${hasVoted ? `<span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>` : ''}
                                                         <strong style="color:${hasVoted ? 'var(--secondary-text)' : 'var(--accent-color)'}; font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                             ${pMil.toFixed(2)} ‰
                                                         </strong>
@@ -33538,7 +33671,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                         <div style="display:flex; justify-content:space-between; align-items:center; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                             <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                 <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Quota personale</span>
-                                                <span class="badge" style="font-size:0.62rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
+                                                <span class="badge" style="font-size:0.62rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.04rem 0.28rem; border-radius:3px; font-weight:700;">Già votato</span>
                                                 <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">${selfMil.toFixed(2)} ‰</strong>
                                                 <span style="font-size:0.72rem; font-weight:600; color:var(--secondary-text); white-space:nowrap;">• ${escapeHtml(existingVoteSelf.choice)}</span>
                                             </div>
@@ -33562,13 +33695,13 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                             return `
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                 <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
-                                                    <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(pDelName)}
+                                                    <span style="color:var(--secondary-text); font-weight:800;">↳</span> ${formatLongName(pDelName)}
                                                 </div>
                                                 ${cleanPUnit ? `<div style="font-size:0.73rem; color:var(--secondary-text); font-weight:500; padding-left:0.85rem; line-height:1.25; word-break:break-word;">${escapeHtml(cleanPUnit)}</div>` : ''}
                                                 <div style="display:flex; justify-content:space-between; align-items:center; padding-left:0.85rem; padding-right:0.25rem; gap:0.5rem; margin-top:0.1rem; width:100%; box-sizing:border-box;">
                                                     <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.74rem; flex-wrap:wrap; min-width:0; flex:1;">
                                                         <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Delega</span>
-                                                        <span class="badge" style="font-size:0.58rem; color:#9CA3AF; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
+                                                        <span class="badge" style="font-size:0.58rem; color:var(--secondary-text); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:0.02rem 0.22rem; border-radius:3px; font-weight:700; flex-shrink:0;">Già votato</span>
                                                         <strong style="color:var(--secondary-text); font-size:0.84rem; font-weight:700; white-space:nowrap;">
                                                             ${pMil.toFixed(2)} ‰
                                                         </strong>
@@ -34006,7 +34139,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                 let allUsers = [];
                 try {
-                    const usersSnap = await getDocs(query(collection(db, "users")));
+                    const usersSnap = await getDocs(query(usersReadCollection()));
                     allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) { }
 
@@ -34127,7 +34260,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
             let allUsers = [];
             if (isGroupScope) {
                 try {
-                    const usersSnap = await getDocs(query(collection(db, "users")));
+                    const usersSnap = await getDocs(query(usersReadCollection()));
                     allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) { }
             }
@@ -34163,7 +34296,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                 let allUsers = [];
                 try {
-                    const usersSnap = await getDocs(query(collection(db, "users")));
+                    const usersSnap = await getDocs(query(usersReadCollection()));
                     allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) {
                     console.warn("Lettura utenti fall-back su attendees:", e);
@@ -34237,7 +34370,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const activeAttendees = attendeesList.filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
                 const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && (window.isProxyApproved ? window.isProxyApproved(p) : true) && activeAttendees.some(a => a.uid === p.delegateId || a.id === p.delegateId || (a.registeredUid && a.registeredUid === p.delegateId)));
 
-                const physicalPresentHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
+                const physicalPresentHeads = activeAttendees.filter(a => !(isExternalAttendee(a))).length;
                 const proxyHeads = activeProxies.length;
 
                 // Calcolo Quorum Costitutivo Edificio
@@ -34360,7 +34493,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                     // Add accredited external delegates
                     attendees.forEach(a => {
-                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const isExt = isExternalAttendee(a);
                         if (isExt) {
                             const held = proxies.filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && (window.isProxyApproved ? window.isProxyApproved(p) : (p.status !== 'rejected' && p.status !== 'revoked' && p.status !== 'revoked_by_presence')));
                             const delNames = held.map(p => (window.getDelegatorOfficialName ? window.getDelegatorOfficialName(p) : '') || p.delegatorName).filter(Boolean).join(', ');
@@ -34375,7 +34508,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     });
                 } else {
                     attendees.forEach(a => {
-                        const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                        const isExt = isExternalAttendee(a);
                         const proxyHeld = proxies.find(p => (p.delegatorId === a.uid || p.delegatorUid === a.uid) && (window.isProxyApproved ? window.isProxyApproved(p) : (p.status !== 'rejected' && p.status !== 'revoked' && p.status !== 'revoked_by_presence')));
                         const revokedProxy = proxies.find(p => (p.delegatorId === a.uid || p.delegatorUid === a.uid) && p.status === 'revoked_by_presence');
                         let statusStr = a.status === 'uscito' ? "Uscito dall'aula" : "Presente in aula";
@@ -35284,7 +35417,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
         window.getAttendeeDisplayName = (attendee) => {
             if (!attendee) return '';
-            const isExt = attendee.isExternalDelegate === true || attendee.isExternal === true || attendee.tipoUtente === 'terzo_delegato' || (attendee.uid && attendee.uid.toString().startsWith('ext_'));
+            const isExt = isExternalAttendee(attendee);
             if (isExt) {
                 let n = (attendee.nome || 'Delegato Terzo').replace(/\s*\(\+\d+\s+deleghe?.*?\)/gi, '').trim();
                 return window.formatVoterDisplayName ? window.formatVoterDisplayName(n) : n;
@@ -35556,7 +35689,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
             let presentMillesimi = 0;
 
             (activeAttendees || []).forEach(a => {
-                const isExternal = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                const isExternal = isExternalAttendee(a);
                 if (!isExternal) {
                     const hId = a.uid || a.id || a.nome;
                     if (hId) presentHeadsSet.add(hId);
@@ -35943,7 +36076,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                             )
                         );
 
-                        const isExternal = delUser.isExternalDelegate === true || delUser.isExternal === true || delUser.tipoUtente === 'terzo_delegato' || (delUser.uid && delUser.uid.toString().startsWith('ext_'));
+                        const isExternal = isExternalAttendee(delUser);
 
                         if (isExternal && remainingHeld.length === 0) {
                             // Delegato terzo rimasto senza alcuna delega: rimuovi dall'aula
@@ -36563,7 +36696,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     return;
                 }
 
-                const isExt = attendee.isExternalDelegate === true || attendee.isExternal === true || attendee.tipoUtente === 'terzo_delegato' || (attendee.uid && attendee.uid.toString().startsWith('ext_'));
+                const isExt = isExternalAttendee(attendee);
                 const userMillesimi = attendee.millesimi || 0;
                 const userProxiesCount = (assembly.proxies || []).filter(p => (p.delegateId === attendeeUid || (attendee.uid && p.delegateId === attendee.uid) || (attendee.id && p.delegateId === attendee.id)) && p.status !== 'rejected').length;
                 const userHeads = (isExt ? 0 : 1) + userProxiesCount;
@@ -36747,7 +36880,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
             assembly = assembly || {};
             activeAttendees = Array.isArray(activeAttendees) ? activeAttendees : ((assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated));
             activeProxies = Array.isArray(activeProxies) ? activeProxies : ((assembly.proxies || []).filter(p => p.status !== 'rejected'));
-            const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
+            const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(isExternalAttendee(a))).length;
             const totalRoomPresences = activeAttendeesPersonalHeads + activeProxies.length;
 
             const rawCandidates = assembly.presidentVoting?.candidates || [];
@@ -37094,7 +37227,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         `<option value="Contrario">Contrario</option>`,
                         `<option value="Astenuto">Astenuto</option>`
                     ].join('');
-                    const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                    const isExt = isExternalAttendee(a);
                     const isManual = isExt || isManualAttendee(a);
                     const regBadge = isExt
                         ? `<span class="badge" style="background:#7C3AED; color:white; font-size:0.65rem; font-weight:800; padding:0.1rem 0.35rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.2rem;">${THEME_ICONS.user ? THEME_ICONS.user(9) : '👤'} Terzo</span>`
@@ -37222,7 +37355,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         `<option value="Contrario">Contrario</option>`,
                         `<option value="Astenuto">Astenuto</option>`
                     ].join('');
-                    const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                    const isExt = isExternalAttendee(a);
                     const isManual = isExt || isManualAttendee(a);
                     const regBadge = isExt
                         ? `<span class="badge" style="background:#7C3AED; color:white; font-size:0.68rem; font-weight:800; padding:0.12rem 0.4rem; border-radius:5px; display:inline-flex; align-items:center; gap:0.25rem;">${THEME_ICONS.user ? THEME_ICONS.user(10) : '👤'} Terzo</span>`
@@ -37615,7 +37748,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
             // Calcolo presenze in sala per percentuali
             const activeAttendees = (assembly.attendees || []).filter(a => a.status !== 'uscito' && a.status !== 'delegato' && !a.isDelegated);
             const activeProxies = (assembly.proxies || []).filter(p => p.status !== 'rejected' && activeAttendees.some(a => (a.uid && a.uid === p.delegateId) || (a.id && a.id === p.delegateId)));
-            const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
+            const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(isExternalAttendee(a))).length;
             const totalEligiblePresences = activeAttendeesPersonalHeads + activeProxies.length;
 
             let totalRoomMil = activeAttendees.reduce((acc, a) => acc + (parseFloat(a.millesimi) || 0), 0);
@@ -38860,7 +38993,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
             activeAttendees.forEach(a => totMillesimi += (a.millesimi || 0));
             if (totMillesimi <= 0) totMillesimi = 1000.00;
 
-            const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_')))).length;
+            const activeAttendeesPersonalHeads = activeAttendees.filter(a => !(isExternalAttendee(a))).length;
             const totalPresences = activeAttendeesPersonalHeads + activeProxies.length;
 
             const upVotes = votes.filter(v => v.choice === 'up');
@@ -40162,7 +40295,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                 let allUsers = [];
                 try {
-                    const uSnap = await getDocs(query(collection(db, "users")));
+                    const uSnap = await getDocs(query(usersReadCollection()));
                     allUsers = uSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 } catch (e) {
                     console.warn("Errore lettura users in openAdminManualVoteModal:", e);
@@ -40180,7 +40313,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const getAttendeePersonalMillesimi = (att, held) => window.getAttendeePersonalMillesimi ? window.getAttendeePersonalMillesimi(att, held, targetGroup, allUsers, isGroupScope) : 0;
 
                 const isAttendeeEligibleForManualVote = (a) => {
-                    const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                    const isExt = isExternalAttendee(a);
                     let held = (assembly.proxies || []).filter(p => (p.delegateId === a.uid || p.delegateId === a.id) && p.status !== 'rejected');
                     if (isGroupScope) {
                         held = held.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
@@ -40304,7 +40437,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         attendeeProxies = attendeeProxies.filter(p => (window.getEffectiveProxyMillesimi ? window.getEffectiveProxyMillesimi(p, targetGroup, allUsers) : 0) > 0);
                     }
 
-                    const isExt = a.isExternalDelegate === true || a.isExternal === true || a.tipoUtente === 'terzo_delegato' || (a.uid && a.uid.toString().startsWith('ext_'));
+                    const isExt = isExternalAttendee(a);
                     const selfMil = isExt ? 0 : getAttendeePersonalMillesimi(a, attendeeProxies);
                     if (!isExt) {
                         totalEligibleHeads += (selfMil > 0 || !isGroupScope ? 1 : 0);
@@ -40638,7 +40771,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                             <div style="display:flex; flex-direction:column; gap:0.22rem; padding:0.4rem 0.25rem 0.45rem 0.65rem; border-left:3px solid rgba(156, 163, 175, 0.45); background:rgba(255, 255, 255, 0.02); border-radius:0 7px 7px 0; border-top:1px solid rgba(255, 255, 255, 0.08); width:100%; box-sizing:border-box;">
                                                 <!-- Riga 1: Nome Delegante -->
                                                 <div style="font-size:0.88rem; font-weight:700; color:var(--primary-text); line-height:1.25; word-break:break-word; width:100%;">
-                                                    <span style="color:#9CA3AF; font-weight:800;">↳</span> ${formatLongName(pDelName)}
+                                                    <span style="color:var(--secondary-text); font-weight:800;">↳</span> ${formatLongName(pDelName)}
                                                 </div>
 
                                                 <!-- Riga 2: Unità pulita -->
@@ -41338,7 +41471,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         }
                         if (totalCondoCount === 0) {
                             try {
-                                const uSnap = await getDocs(collection(db, "users"));
+                                const uSnap = await getDocs(usersReadCollection());
                                 totalCondoCount = uSnap.docs.filter(d => {
                                     const u = d.data();
                                     return ['condomino', 'consigliere'].includes(u.tipoUtente) || (u.millesimiTotali && u.millesimiTotali > 0);
@@ -41641,7 +41774,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                 showModal('Registro presenze QR rapido', modalContent, true);
 
-                setTimeout(() => {
+                setTimeout(async () => {
                     const messageBox = document.getElementById("quick-scanner-message");
                     let isProcessingScan = false;
 
@@ -41708,7 +41841,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                 throw new Error("Condòmino già registrato come Presente.");
                             }
 
-                            const userDoc = await getDoc(doc(db, "users", qrUid));
+                            const userDoc = await getDoc(userReadDoc(qrUid));
                             if (!userDoc.exists()) throw new Error("Utente non trovato nel database.");
 
                             const user = userDoc.data();
@@ -41970,6 +42103,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         }
                     };
 
+                    await window.loadLib('qrscanner').catch(() => { });
                     if (typeof Html5Qrcode !== 'undefined') {
                         const html5QrCode = new Html5Qrcode("quick-qr-reader");
                         window.quickScanner = html5QrCode;
@@ -42611,7 +42745,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                     );
                     if (delegateAttendeeIndex !== -1) {
                         const delAtt = updatedAttendees[delegateAttendeeIndex];
-                        const isExt = delAtt.isExternalDelegate === true || delAtt.isExternal === true || delAtt.tipoUtente === 'terzo_delegato' || (delAtt.uid && delAtt.uid.toString().startsWith('ext_')) || oldProxy.isExternalDelegate;
+                        const isExt = isExternalAttendee(delAtt) || oldProxy.isExternalDelegate;
                         const acceptedProxies = updatedProxies.filter(p =>
                             (p.delegateId === oldProxy.delegateId || (delAtt.uid && p.delegateId === delAtt.uid)) &&
                             window.isProxyApproved(p)
@@ -42623,7 +42757,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                             let delegateUser = null;
                             if (!isExt) {
                                 try {
-                                    const delegateDoc = await getDoc(doc(db, "users", oldProxy.delegateId));
+                                    const delegateDoc = await getDoc(userReadDoc(oldProxy.delegateId));
                                     if (delegateDoc.exists()) delegateUser = delegateDoc.data();
                                 } catch (e) { }
                             }
@@ -42747,6 +42881,25 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
         window.deleteSingleCommunication = deleteSingleCommunication;
         window.showPollVoters = showPollVoters;
         window.hideModal = hideModal;
+
+        // Tastiera: Esc chiude il popup in primo piano. Le finestre di conferma vengono chiuse
+        // con "Annulla" (o "OK" se c'è solo quello), il visualizzatore immagini ha già il suo
+        // gestore, altrimenti si chiude la finestra principale.
+        window.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const dialogs = document.querySelectorAll('.custom-dialog-overlay');
+            if (dialogs.length) {
+                const top = dialogs[dialogs.length - 1];
+                const btn = top.querySelector('.custom-dialog-btn-secondary') || top.querySelector('.custom-dialog-btn');
+                if (btn) { e.preventDefault(); e.stopPropagation(); btn.click(); }
+                return;
+            }
+            if (document.getElementById('fullscreen-image-overlay')) return;
+            if (modalContainer && !modalContainer.classList.contains('hidden')) {
+                e.preventDefault();
+                hideModal();
+            }
+        }, true);
         window.openGroupEditModal = openGroupEditModal;
         window.updatePartialCondo = updatePartialCondo;
         window.deletePartialCondo = deletePartialCondo;
@@ -42789,7 +42942,6 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                         // Decodifica il JSON dai parametri HTML
                         const dataStr = match[2].replace(/&quot;/g, '"');
                         const currentData = JSON.parse(dataStr);
-                        console.log('Event delegation: chiamata editImportedAdminEntry', { index, currentData });
                         editImportedAdminEntry(index, currentData);
                     } catch (error) {
                         console.error('Errore nel parsing dei dati dal pulsante:', error);
@@ -43085,7 +43237,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                         <span style="font-size: 0.9rem; color: var(--secondary-text);">${escapeHtml(user.email)}</span><br>
                         <span style="font-size: 0.9rem; color: var(--secondary-text);">Tel: ${escapeHtml(user.telefono || 'N/D')}</span>
                     </div>
-                    <button onclick="showUserDetails('${user.id}')" class="btn-icon" style="flex-shrink: 0;">
+                    <button onclick="showUserDetails('${user.id}')" class="btn-icon" aria-label="Visualizza dettagli" title="Visualizza dettagli" style="flex-shrink: 0;">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                         </svg>
@@ -43140,7 +43292,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
 
         window.showUserDetails = async (userId) => {
             try {
-                const userDoc = await getDoc(doc(db, 'users', userId));
+                const userDoc = await getDoc(userReadDoc(userId));
                 if (!userDoc.exists()) {
                     await customAlert('Errore', 'Utente non trovato.');
                     return;
@@ -43409,7 +43561,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
             }
 
             const userRole = userProfile.tipoUtente;
-            const q = query(collection(db, "reports"), where("isUrgent", "==", true));
+            const q = receivedReportsQuery(where("isUrgent", "==", true));
 
             urgentReportsListener = onSnapshot(q, (snapshot) => {
                 const newUrgentReports = [];
@@ -43561,8 +43713,8 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 }
 
                 // NUOVO: Controllo di convalida account
-                if (userProfile && userProfile.tipoUtente === 'condomino' && !userProfile.isValidated) {
-                    // L'utente è un condomino ma non è ancora stato convalidato
+                if (userProfile && isWaitingPage()) {
+                    // Email da confermare o condomino non ancora convalidato
                     document.getElementById('app').innerHTML = renderPendingValidationPage();
                 } else {
                     // L'utente è convalidato o non è un condomino, procede normalmente
@@ -43659,11 +43811,10 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 // Il percorso deve combaciare con il base path di GitHub Pages (nome repo: PWA-CONDO-APP)
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
-                        console.log('Service Worker registrato con successo:', registration);
                         registration.update();
                     })
                     .catch(error => {
-                        console.log('Registrazione Service Worker fallita:', error);
+                        console.warn('Registrazione Service Worker fallita:', error);
                     });
             });
         }
@@ -43671,6 +43822,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
         // Funzione per generare PDF dalle tabelle
         const generateTablePDF = async (tableElement, filename, title) => {
             try {
+                await window.loadLib('jspdf');
                 if (!window.jspdf || !window.jspdf.jsPDF) {
                     throw new Error("Libreria jsPDF non disponibile");
                 }
@@ -43887,7 +44039,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
             }
         };
 
-        const downloadImportTemplate = (type) => {
+        const downloadImportTemplate = async (type) => {
             let filename = "";
             let data = [];
 
@@ -43923,6 +44075,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 ];
             }
 
+            await window.loadLib('xlsx').catch(() => { });
             try {
                 if (data.length > 0 && typeof XLSX !== 'undefined') {
                     const ws = XLSX.utils.aoa_to_sheet(data);
@@ -43965,6 +44118,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 await customAlert('Nessuna tabella disponibile per il download.');
                 return;
             }
+            await window.loadLib('xlsx').catch(() => { });
             if (typeof XLSX === 'undefined') {
                 await customAlert('Libreria Excel non caricata.');
                 return;

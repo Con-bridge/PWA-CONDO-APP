@@ -1,5 +1,5 @@
 // Definiamo nuovo nome per la cache
-const CACHE_NAME = 'condo-hub-v1.8';
+const CACHE_NAME = 'condo-hub-v1.9';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
@@ -26,7 +26,6 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Cache aperta e file salvati per uso offline');
         return Promise.allSettled(
           URLS_TO_CACHE.map(url => cache.add(url).catch(err => console.warn('SW Cache skip:', url, err)))
         );
@@ -40,7 +39,6 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Eliminazione vecchia cache SW:', cacheName);
             return caches.delete(cacheName);
           }
         })
