@@ -404,6 +404,33 @@
             width: 100%;
         }
 
+        /* Pulsanti delle schede backup: griglia a colonne uguali, stessa altezza */
+        .backup-actions {
+            display: grid;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .backup-actions .btn {
+            width: 100%;
+            min-height: 44px;
+            padding: 0.6rem 0.5rem;
+            font-size: 0.9rem;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .btn-danger-solid {
+            background-color: var(--danger);
+            color: #fff;
+        }
+
+        .btn-danger-outline {
+            background-color: transparent;
+            color: var(--danger);
+            border: 1.5px solid var(--danger);
+        }
+
         /* Responsive Report Actions Container */
         .report-actions-container {
             display: flex;
@@ -9826,14 +9853,14 @@ ${renderBottomNavigation()}
                 }
                 if (isAdm && b.status === 'pending') {
                     actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupApprove('${jsId}')">${b.type === 'restore' ? 'Conferma ed esegui' : 'Conferma'}</button>`);
-                    actions.push(`<button class="btn btn-secondary backup-action-btn" onclick="backupReject('${jsId}')">Rifiuta</button>`);
+                    actions.push(`<button class="btn btn-danger-outline backup-action-btn" onclick="backupReject('${jsId}')">Rifiuta</button>`);
                 }
                 if (isAdm && b.type === 'backup' && b.status === 'approved' && !inPendingList) {
-                    actions.push(`<button class="btn backup-action-btn" style="background:var(--danger); color:white;" onclick="backupRestoreStored('${jsId}')">Ripristina</button>`);
+                    actions.push(`<button class="btn btn-danger-solid backup-action-btn" onclick="backupRestoreStored('${jsId}')">Ripristina</button>`);
                 }
             }
             if (!inPendingList && (isAdm || isOwner)) {
-                actions.push(`<button class="btn btn-secondary backup-action-btn" onclick="backupDelete('${jsId}')">Elimina</button>`);
+                actions.push(`<button class="btn btn-danger-outline backup-action-btn" onclick="backupDelete('${jsId}')">Elimina</button>`);
             }
             const details = [
                 `Richiesto da ${b.requestedByName || 'N/D'} (${b.requestedByRole || 'N/D'})`,
@@ -9852,7 +9879,7 @@ ${renderBottomNavigation()}
                         </div>
                         ${backupStatusBadge(b)}
                     </div>
-                    ${actions.length ? `<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">${actions.join('')}</div>` : ''}
+                    ${actions.length ? `<div class="backup-actions" style="grid-template-columns: repeat(${actions.length}, minmax(0, 1fr));">${actions.join('')}</div>` : ''}
                 </div>`;
         };
 
