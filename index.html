@@ -2732,7 +2732,7 @@
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
         // ===== SICUREZZA: escaping HTML per prevenire XSS (stored/reflected) =====
@@ -9407,7 +9407,7 @@ ${renderBottomNavigation()}
                 try { manifest = JSON.parse(await (await readEntry(manifestEntry)).text()); } catch (e) { throw new Error('elenco file del backup non leggibile.'); }
             }
             const files = manifest
-                .filter(f => f && typeof f.path === 'string' && f.path && !f.path.startsWith(`${BACKUP_STORAGE_ROOT}/`) && entries.has(`files/${f.path}`))
+                .filter(f => f && typeof f.path === 'string' && f.path && !f.path.startsWith(`${BACKUP_STORAGE_ROOT}/`) && !f.path.startsWith('registration-photos/') && entries.has(`files/${f.path}`))
                 .map(f => ({
                     path: f.path,
                     size: Number(f.size) || 0,
@@ -9461,7 +9461,8 @@ ${renderBottomNavigation()}
             const res = await listAll(ref(storage, path));
             let files = res.items.map(i => i.fullPath);
             for (const prefix of res.prefixes) {
-                if (!path && prefix.name === BACKUP_STORAGE_ROOT) continue;
+                // Esclusi: i backup stessi e le foto di registrazione (temporanee, da non conservare in copia).
+                if (!path && (prefix.name === BACKUP_STORAGE_ROOT || prefix.name === 'registration-photos')) continue;
                 files = files.concat(await listAllStorageFiles(prefix.fullPath));
             }
             return files;
@@ -9756,7 +9757,7 @@ ${renderBottomNavigation()}
             <main>
                 <div class="card" style="margin-bottom: 1.25rem;">
                     <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.5; margin: 0;">
-                        Il backup salva tutti i dati del database (utenti, segnalazioni, assemblee, sondaggi, comunicazioni, impostazioni, dati importati e cronologia) e, se selezionato, tutti i file: archivio documenti, allegati e foto. Con i file viene creato un archivio ZIP, altrimenti un file JSON.
+                        Il backup salva tutti i dati del database (utenti, segnalazioni, assemblee, sondaggi, comunicazioni, impostazioni, dati importati e cronologia) e, se selezionato, tutti i file: archivio documenti e allegati. Le foto di registrazione non vengono mai copiate nei backup (sono temporanee, per privacy). Con i file viene creato un archivio ZIP, altrimenti un file JSON.
                         ${isAdm ? '' : '<br><strong>I backup e i ripristini richiesti dall\'amministratore devono essere confermati da un account adm.</strong>'}
                     </p>
                     <div id="backup-progress" class="message-box" style="margin-top: 1rem;"></div>
@@ -9769,7 +9770,7 @@ ${renderBottomNavigation()}
                     </p>
                     <label style="display:flex; align-items:center; gap:0.6rem; margin-bottom: 1rem; cursor:pointer; color: var(--primary-text); font-size: 0.9rem;">
                         <input type="checkbox" id="backup-include-files" checked style="width:18px; height:18px; accent-color: var(--accent-color);">
-                        Includi i file (archivio documenti, allegati e foto)
+                        Includi i file (archivio documenti e allegati)
                     </label>
                     <button type="button" class="btn btn-primary backup-action-btn" onclick="backupCreate()" style="width: 100%;">Esegui backup ora</button>
                 </div>
@@ -11528,16 +11529,43 @@ ${renderBottomNavigation()}
                 }
             }
             await Promise.all(tasks);
+            // Verifica: la cartella della foto deve risultare vuota. Restituisce i file rimasti.
+            if (!userId) return 0;
+            try {
+                const left = await listAll(ref(storage, `registration-photos/${userId}`));
+                return left.items.length;
+            } catch (e) {
+                return -1; // verifica non possibile (es. permessi)
+            }
+        };
+
+        // Profili gestionali: sono gli unici autorizzati dalle regole a eliminare le foto altrui.
+        const canManageRegistrationPhotos = () =>
+            ['adm', 'amministratore', 'supervisore'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+
+        // Una foto senza profilo può appartenere a una registrazione in corso (la foto viene
+        // caricata un istante prima del profilo): la si elimina solo se più vecchia di 24 ore.
+        const ORPHAN_PHOTO_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+        const deleteOrphanPhotosIfOld = async (items) => {
+            for (const item of items) {
+                try {
+                    const meta = await getMetadata(item);
+                    if (Date.now() - new Date(meta.timeCreated).getTime() > ORPHAN_PHOTO_MIN_AGE_MS) {
+                        await deleteObject(item);
+                    }
+                } catch (e) { }
+            }
         };
 
         const cleanupAllValidatedRegistrationPhotos = async () => {
+            if (!canManageRegistrationPhotos()) return;
             try {
                 const rootPhotosRef = ref(storage, 'registration-photos');
                 const res = await listAll(rootPhotosRef);
 
                 // 1. Elimina file orfani direttamente dentro registration-photos/
                 if (res.items.length > 0) {
-                    await Promise.all(res.items.map(item => deleteObject(item).catch(() => { })));
+                    await deleteOrphanPhotosIfOld(res.items);
                 }
 
                 // 2. Per ciascuna cartella utente sotto registration-photos/
@@ -11545,8 +11573,14 @@ ${renderBottomNavigation()}
                     const folderUserId = userFolderRef.name;
                     try {
                         const userSnap = await getDoc(doc(db, 'users', folderUserId));
-                        // Se l'utente non esiste più o è già convalidato, la foto temporanea va rimossa
-                        if (!userSnap.exists() || userSnap.data()?.isValidated === true) {
+                        // Utente inesistente: foto orfana (eliminata solo se vecchia, vedi sopra)
+                        if (!userSnap.exists()) {
+                            const userFiles = await listAll(userFolderRef);
+                            await deleteOrphanPhotosIfOld(userFiles.items);
+                            continue;
+                        }
+                        // Utente già convalidato (o non condomino): la foto temporanea va rimossa
+                        if (userSnap.data()?.isValidated === true || userSnap.data()?.tipoUtente !== 'condomino') {
                             await deleteFolderContents(userFolderRef.fullPath);
                             if (userSnap.exists() && userSnap.data()?.registrationPhotoUrl) {
                                 await updateDoc(doc(db, 'users', folderUserId), { registrationPhotoUrl: null }).catch(() => { });
@@ -19162,19 +19196,18 @@ ${renderBottomNavigation()}
                 try {
                     const batch = writeBatch(db);
                     const checkboxes = form.querySelectorAll('.validation-checkbox');
-                    const photoDeletionPromises = [];
+                    const photosToDelete = [];
 
                     for (const cb of checkboxes) {
                         const userId = cb.dataset.id;
                         const isValidated = cb.checked;
                         const userRef = doc(db, 'users', userId);
 
-                        // Se l'utente viene validato, elimina la foto profilo e la relativa cartella in Storage
                         if (isValidated) {
                             const userDoc = await getDoc(userRef);
                             if (userDoc.exists()) {
                                 const userData = userDoc.data();
-                                photoDeletionPromises.push(deleteRegistrationPhotosForUser(userId, userData.registrationPhotoUrl));
+                                photosToDelete.push({ userId, url: userData.registrationPhotoUrl, name: `${userData.nome || ''} ${userData.cognome || ''}`.trim() });
                                 batch.update(userRef, { isValidated: true, registrationPhotoUrl: null });
                             }
                         } else {
@@ -19182,16 +19215,34 @@ ${renderBottomNavigation()}
                         }
                     }
 
-                    // Esegui le eliminazioni delle foto in parallelo
-                    await Promise.all(photoDeletionPromises);
+                    // Prima si salva la convalida, poi si elimina la foto: se il salvataggio fallisce
+                    // la foto resta disponibile per la verifica d'identità.
                     await batch.commit();
-                    await cleanupAllValidatedRegistrationPhotos();
-                    await logActivity("user_validation_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`);
 
-                    messageBox.className = 'message-box success';
-                    messageBox.textContent = 'Stato di convalida aggiornato con successo!';
-                    messageBox.style.display = 'block';
-                    setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
+                    // Eliminazione delle foto di registrazione dei convalidati, con verifica finale.
+                    const notDeleted = [];
+                    for (const p of photosToDelete) {
+                        const remaining = await deleteRegistrationPhotosForUser(p.userId, p.url).catch(() => -1);
+                        if (remaining !== 0) notDeleted.push(p.name || p.userId);
+                    }
+                    await cleanupAllValidatedRegistrationPhotos();
+                    await logActivity("user_validation_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
+                        validatedUsers: photosToDelete.length,
+                        photosDeleted: photosToDelete.length - notDeleted.length
+                    });
+
+                    if (notDeleted.length) {
+                        messageBox.className = 'message-box error';
+                        messageBox.textContent = `Convalida salvata, ma non è stato possibile verificare l'eliminazione della foto di: ${notDeleted.join(', ')}. Verrà ritentata automaticamente al prossimo accesso di un gestore.`;
+                        messageBox.style.display = 'block';
+                    } else {
+                        messageBox.className = 'message-box success';
+                        messageBox.textContent = photosToDelete.length
+                            ? 'Stato di convalida aggiornato. Le foto di registrazione dei condomini convalidati sono state eliminate.'
+                            : 'Stato di convalida aggiornato con successo!';
+                        messageBox.style.display = 'block';
+                        setTimeout(() => { messageBox.style.display = 'none'; }, 4000);
+                    }
 
                 } catch (error) {
                     messageBox.className = 'message-box error';
@@ -42801,6 +42852,8 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 // Profili gestionali: riallinea l'indice pubblico delle unità registrate
                 if (['adm', 'amministratore', 'supervisore'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true) {
                     syncRegisteredUnitsIndex();
+                    // Rete di sicurezza: elimina le foto di registrazione dei condomini già convalidati
+                    cleanupAllValidatedRegistrationPhotos().catch(() => { });
                 }
                 // Adm: avviso richieste di backup/ripristino in attesa di conferma
                 watchPendingBackupRequests();
