@@ -425,6 +425,16 @@
             color: #fff;
         }
 
+        .error-code {
+            display: block;
+            margin-top: 0.35rem;
+            font-size: 0.72em;
+            font-weight: 400;
+            opacity: 0.65;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            letter-spacing: 0;
+        }
+
         .btn-danger-outline {
             background-color: transparent;
             color: var(--danger);
@@ -2811,6 +2821,111 @@
         };
         window.sanitizeUrl = sanitizeUrl;
 
+        // ===== MESSAGGI DI ERRORE COMPRENSIBILI =====
+        // Traduce gli errori tecnici di Firebase (es. "Firebase: Error (auth/invalid-credential).")
+        // in frasi italiane, con il codice tecnico in fondo, mostrato piccolo, per l'assistenza.
+        // Gli errori scritti dall'app (senza codice) restano invariati.
+        const GENERIC_ERROR_TEXT = 'Si è verificato un problema imprevisto. Riprova; se continua, contatta l\'assistenza.';
+        const FIREBASE_ERROR_TEXTS = {
+            // Accesso e registrazione
+            'auth/invalid-credential': 'Email o password non corretti. Controlla i dati e riprova.',
+            'auth/invalid-login-credentials': 'Email o password non corretti. Controlla i dati e riprova.',
+            'auth/wrong-password': 'Email o password non corretti. Controlla i dati e riprova.',
+            'auth/user-not-found': 'Email o password non corretti. Controlla i dati e riprova.',
+            'auth/too-many-requests': 'Troppi tentativi di accesso. Attendi qualche minuto oppure reimposta la password.',
+            'auth/email-already-in-use': 'Esiste già un account con questa email. Prova ad accedere o a reimpostare la password.',
+            'auth/weak-password': 'La password è troppo debole: usa almeno 6 caratteri.',
+            'auth/invalid-email': 'L\'indirizzo email non è valido.',
+            'auth/missing-email': 'Inserisci l\'indirizzo email.',
+            'auth/missing-password': 'Inserisci la password.',
+            'auth/user-disabled': 'Questo account è stato disattivato. Contatta l\'amministrazione del condominio.',
+            'auth/requires-recent-login': 'Per sicurezza esci e accedi di nuovo, poi ripeti l\'operazione.',
+            'auth/network-request-failed': 'Connessione assente. Controlla internet e riprova.',
+            'auth/operation-not-allowed': 'Questo tipo di accesso non è abilitato. Contatta l\'assistenza.',
+            'auth/user-token-expired': 'La sessione è scaduta. Accedi di nuovo.',
+            'auth/invalid-user-token': 'La sessione è scaduta. Accedi di nuovo.',
+            'auth/quota-exceeded': 'Il servizio è momentaneamente sovraccarico. Riprova più tardi.',
+            // Dati e salvataggi (Firestore)
+            'permission-denied': 'Non hai i permessi per questa operazione. Se pensi sia un errore, contatta l\'amministrazione.',
+            'unauthenticated': 'La sessione è scaduta. Accedi di nuovo.',
+            'unavailable': 'Sei offline o il servizio non è raggiungibile. Riprova tra poco.',
+            'deadline-exceeded': 'Il servizio sta impiegando troppo tempo a rispondere. Riprova tra poco.',
+            'not-found': 'L\'elemento non esiste più: forse è stato eliminato da un altro utente.',
+            'already-exists': 'Questo elemento esiste già.',
+            'resource-exhausted': 'Il servizio è momentaneamente sovraccarico. Riprova più tardi.',
+            'failed-precondition': 'Operazione non possibile in questo momento. Ricarica la pagina e riprova.',
+            'aborted': 'Un altro utente stava modificando gli stessi dati. Riprova.',
+            'invalid-argument': 'Alcuni dati inseriti non sono validi. Controllali e riprova.',
+            'cancelled': 'Operazione annullata.',
+            // File e archivio (Storage)
+            'storage/unauthorized': 'Non hai i permessi per accedere a questo file.',
+            'storage/unauthenticated': 'La sessione è scaduta. Accedi di nuovo.',
+            'storage/object-not-found': 'Il file non esiste più nell\'archivio.',
+            'storage/quota-exceeded': 'Lo spazio dell\'archivio è esaurito. Contatta l\'amministrazione.',
+            'storage/canceled': 'Caricamento interrotto. Controlla la connessione e riprova.',
+            'storage/retry-limit-exceeded': 'Caricamento interrotto. Controlla la connessione e riprova.',
+            'storage/invalid-checksum': 'Il file è arrivato danneggiato. Riprova il caricamento.',
+            'storage/server-file-wrong-size': 'Il file è arrivato danneggiato. Riprova il caricamento.'
+        };
+
+        const friendlyError = (error) => {
+            if (!error) return GENERIC_ERROR_TEXT;
+            if (typeof error === 'string') return error;
+            let code = String(error.code || '');
+            // Codice incluso solo nel testo, es. "Firebase: Error (auth/invalid-credential)."
+            if (!code) {
+                const m = String(error.message || '').match(/\(((?:auth|storage|firestore|functions)\/[a-z0-9-]+)\)/);
+                if (m) code = m[1];
+            }
+            if (!code) {
+                // Errori di programmazione (in inglese): messaggio generico, tipo come codice.
+                if (error instanceof TypeError || error instanceof ReferenceError || error instanceof SyntaxError || error instanceof RangeError) {
+                    return `${GENERIC_ERROR_TEXT} (codice: ${error.name})`;
+                }
+                return error.message || GENERIC_ERROR_TEXT; // errori scritti dall'app: già in italiano
+            }
+            // Cloud Functions: i messaggi sono già in italiano (scritti nelle funzioni).
+            if (code.startsWith('functions/')) {
+                const short = code.slice('functions/'.length);
+                const msg = String(error.message || '');
+                const technical = !msg || msg.toLowerCase() === short || msg === 'internal' || /^[a-z -]+$/.test(msg);
+                const text = technical ? (FIREBASE_ERROR_TEXTS[short] || GENERIC_ERROR_TEXT) : msg;
+                return `${text} (codice: ${code})`;
+            }
+            const shortCode = code.replace(/^firestore\//, '');
+            const text = FIREBASE_ERROR_TEXTS[code] || FIREBASE_ERROR_TEXTS[shortCode] || GENERIC_ERROR_TEXT;
+            return `${text} (codice: ${code})`;
+        };
+        window.friendlyError = friendlyError;
+
+        // Mostra il "(codice: ...)" finale in piccolo e grigio, ovunque compaia in un messaggio.
+        const ERROR_CODE_RE = /\s*\(codice: ([A-Za-z0-9/_-]+)\)\s*$/;
+        const styleErrorCode = (textNode) => {
+            const parent = textNode.parentElement;
+            if (!parent || parent.closest('.error-code, script, style, textarea, input')) return;
+            const m = textNode.nodeValue.match(ERROR_CODE_RE);
+            if (!m) return;
+            textNode.nodeValue = textNode.nodeValue.slice(0, m.index);
+            const span = document.createElement('span');
+            span.className = 'error-code';
+            span.textContent = `codice: ${m[1]}`;
+            parent.insertBefore(span, textNode.nextSibling);
+        };
+        const scanErrorCodes = (root) => {
+            if (root.nodeType === Node.TEXT_NODE) { if (root.nodeValue.includes('(codice:')) styleErrorCode(root); return; }
+            if (root.nodeType !== Node.ELEMENT_NODE || !root.textContent.includes('(codice:')) return;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            const found = [];
+            while (walker.nextNode()) if (walker.currentNode.nodeValue.includes('(codice:')) found.push(walker.currentNode);
+            found.forEach(styleErrorCode);
+        };
+        new MutationObserver((mutations) => {
+            for (const mu of mutations) {
+                if (mu.type === 'characterData') scanErrorCodes(mu.target);
+                else mu.addedNodes.forEach(scanErrorCodes);
+            }
+        }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+
         // ===== MODALI PERSONALIZZATI (sostituiscono alert, confirm, prompt) =====
 
         // Funzione per mostrare un alert personalizzato
@@ -2969,11 +3084,7 @@
         const cloudFunctions = getFunctions(app, 'us-central1');
         const callFunction = (name, data) => httpsCallable(cloudFunctions, name)(data).then(r => r.data);
         // Messaggio leggibile dagli errori delle funzioni callable.
-        const functionErrorMessage = (error) => {
-            const code = String(error?.code || '').replace('functions/', '');
-            if (code === 'unavailable' || code === 'deadline-exceeded') return 'servizio momentaneamente non raggiungibile, riprova.';
-            return error?.message || 'errore sconosciuto.';
-        };
+        const functionErrorMessage = (error) => friendlyError(error);
 
         // Esposizione globale per consentire query e operazioni Firestore in tutto il contesto
         window.db = db;
@@ -3715,7 +3826,7 @@
                     setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
                 } catch (error) {
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore nel salvataggio: ${error.message}`;
+                    messageBox.textContent = `Errore nel salvataggio: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -3835,7 +3946,7 @@
 
                 } catch (error) {
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -4151,7 +4262,7 @@
                 } catch (error) {
                     console.error("Errore creazione periodo:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -4204,7 +4315,7 @@
                 await loadCurrentAdministrativePeriod(); // Ricarica per verificare se il periodo corrente è stato eliminato
             } catch (error) {
                 console.error("Errore eliminazione periodo:", error);
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
             }
         };
 
@@ -4264,7 +4375,7 @@
                 await loadCurrentAdministrativePeriod(); // Ricarica il periodo corrente per riflettere le modifiche
             } catch (error) {
                 console.error("Errore nell'aggiornamento del periodo:", error);
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
             }
         };
 
@@ -5198,7 +5309,7 @@
 
             } catch (error) {
                 console.error("Error loading condo stats:", error);
-                container.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento delle statistiche: ${error.message}</div>`;
+                container.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento delle statistiche: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
 
@@ -5909,7 +6020,7 @@
                 renderCurrentPage();
             } catch (error) {
                 console.error("Errore aggiornamento profilo:", error);
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Salva';
             }
@@ -6000,7 +6111,7 @@
                 await customAlert("Autorizzazioni aggiornate con successo!");
             } catch (error) {
                 console.error("Errore salvataggio autorizzazioni:", error);
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
             }
         };
 
@@ -6602,7 +6713,7 @@ ${renderBottomNavigation()}
                 }
             } catch (error) {
                 console.error("Errore nel caricamento dell'elenco condomini:", error);
-                container.innerHTML = `<div class="card"><p class="message-box error" style="display:block;">Si è verificato un errore: ${error.message}</p></div>`;
+                container.innerHTML = `<div class="card"><p class="message-box error" style="display:block;">Si è verificato un errore: ${escapeHtml(friendlyError(error))}</p></div>`;
             }
         };
 
@@ -6738,7 +6849,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error("Errore nel caricamento dell'elenco per il custode:", error);
-                container.innerHTML = `<p class="message-box error" style="display:block;">Errore: ${error.message}</p>`;
+                container.innerHTML = `<p class="message-box error" style="display:block;">Errore: ${escapeHtml(friendlyError(error))}</p>`;
             }
         };
 
@@ -8279,7 +8390,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error("Errore nel caricamento della cronologia:", error);
-                container.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${error.message}</div>`;
+                container.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
 
@@ -8380,7 +8491,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error("Errore nel caricamento utenti per permessi supervisore:", error);
-                listContainer.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${error.message}</div>`;
+                listContainer.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(friendlyError(error))}</div>`;
             }
 
             form.addEventListener('submit', async (e) => {
@@ -8413,7 +8524,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Errore salvataggio permessi supervisore:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 } finally {
                     submitBtn.disabled = false;
@@ -8535,7 +8646,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Errore creazione categoria:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -8576,7 +8687,7 @@ ${renderBottomNavigation()}
                 await logActivity("report_category_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { categoryId });
             } catch (error) {
                 console.error("Errore eliminazione categoria:", error);
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
             }
         };
 
@@ -8606,7 +8717,7 @@ ${renderBottomNavigation()}
                 hideModal();
             } catch (error) {
                 console.error("Errore aggiornamento categoria:", error);
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
             }
         };
 
@@ -8699,7 +8810,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error(`Error loading ${type} for cleanup:`, error);
-                listContainer.innerHTML = `<div class="message-box error" style="display:block">Errore nel caricamento: ${error.message}</div>`;
+                listContainer.innerHTML = `<div class="message-box error" style="display:block">Errore nel caricamento: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
 
@@ -8873,7 +8984,7 @@ ${renderBottomNavigation()}
             } catch (error) {
                 console.error(`Bulk delete error for ${type}:`, error);
                 messageBox.className = 'message-box error';
-                messageBox.textContent = `Errore durante l'eliminazione: ${error.message}`;
+                messageBox.textContent = `Errore durante l'eliminazione: ${friendlyError(error)}`;
                 messageBox.style.display = 'block';
                 deleteBtn.disabled = false;
                 handleCleanupSelectionChange(type); // Ripristina il conteggio corretto
@@ -8926,7 +9037,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error("Errore durante la pulizia della cronologia:", error);
-                await customAlert(`Si è verificato un errore: ${error.message}`);
+                await customAlert(`Si è verificato un errore: ${friendlyError(error)}`);
             } finally {
                 // Refresh the view
                 loadActivityHistory(false);
@@ -9048,7 +9159,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Error saving service permissions:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore nel salvataggio: ${error.message}`;
+                    messageBox.textContent = `Errore nel salvataggio: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 } finally {
                     submitBtn.disabled = false;
@@ -9104,7 +9215,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Error saving poll settings:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore nel salvataggio: ${error.message}`;
+                    messageBox.textContent = `Errore nel salvataggio: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -9279,8 +9390,8 @@ ${renderBottomNavigation()}
                 await fn();
             } catch (error) {
                 console.error("Operazione backup non riuscita:", error);
-                setBackupProgress(`Errore: ${error.message}`, 'error');
-                await customAlert(`Operazione non riuscita: ${error.message}`);
+                setBackupProgress(`Errore: ${friendlyError(error)}`, 'error');
+                await customAlert(`Operazione non riuscita: ${friendlyError(error)}`);
             } finally {
                 backupOperationInProgress = false;
                 window.removeEventListener('beforeunload', preventUnloadDuringBackup);
@@ -9923,7 +10034,7 @@ ${renderBottomNavigation()}
                 }
             } catch (error) {
                 console.error("Errore caricamento backup:", error);
-                listEl.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(error.message)}</div>`;
+                listEl.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
 
@@ -10045,7 +10156,7 @@ ${renderBottomNavigation()}
             } catch (error) {
                 await updateDoc(doc(db, 'backups', backupId), { status: 'failed', errorMessage: String(error.message || error).slice(0, 500) }).catch(() => { });
                 await logBackupAction('approved', backupId, { requestedByName: record.requestedByName, type: 'restore', error: String(error.message || error).slice(0, 200) }).catch(() => { });
-                throw new Error(`${error.message} Il backup di sicurezza "pre-ripristino" è disponibile nell'elenco per tornare allo stato precedente.`);
+                throw new Error(`${friendlyError(error)} Il backup di sicurezza "pre-ripristino" è disponibile nell'elenco per tornare allo stato precedente.`);
             }
         });
 
@@ -10201,7 +10312,7 @@ ${renderBottomNavigation()}
                 }
             } catch (error) {
                 console.error("Errore caricamento registro backup:", error);
-                listEl.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(error.message)}</div>`;
+                listEl.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
         window.loadBackupEventsList = loadBackupEventsList;
@@ -11057,10 +11168,10 @@ ${renderBottomNavigation()}
                         }
                     } else { await login(o, n); }
                 } catch (p) {
-                    d.textContent = p.message;
+                    d.textContent = friendlyError(p);
                     d.style.display = "block";
                     d.scrollIntoView({ behavior: "smooth", block: "center" });
-                    await customAlert(p.message);
+                    await customAlert(friendlyError(p));
                 }
             });
 
@@ -11073,18 +11184,25 @@ ${renderBottomNavigation()}
                     await customAlert("Inserisci la tua email per reimpostare la password");
                     return;
                 }
+                // SICUREZZA: stessa risposta che l'email sia registrata o no, così non si può
+                // scoprire quali indirizzi hanno un account.
+                const resetSentText = "Se l'email è registrata, riceverai a breve un messaggio per reimpostare la password. Controlla anche la cartella spam.";
                 try {
-                    await resetPassword(e);
-                    n.textContent = "Email di reset password inviata!";
+                    try {
+                        await resetPassword(e);
+                    } catch (err) {
+                        if (!['auth/user-not-found', 'auth/invalid-credential'].includes(err?.code)) throw err;
+                    }
+                    n.textContent = resetSentText;
                     n.style.display = "block";
                     n.scrollIntoView({ behavior: "smooth", block: "center" });
-                    await customAlert("Email di reset password inviata!");
                     o.style.display = "none";
+                    await customAlert(resetSentText);
                 } catch (d) {
-                    o.textContent = d.message;
+                    o.textContent = friendlyError(d);
                     o.style.display = "block";
                     o.scrollIntoView({ behavior: "smooth", block: "center" });
-                    await customAlert(d.message);
+                    await customAlert(friendlyError(d));
                 }
             });
 
@@ -11476,7 +11594,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Errore nella creazione del sondaggio:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -12091,7 +12209,7 @@ ${renderBottomNavigation()}
 
                         } catch (err) {
                             messageBox.className = 'message-box error';
-                            messageBox.textContent = `Errore: ${err.message}`;
+                            messageBox.textContent = `Errore: ${friendlyError(err)}`;
                         } finally {
                             fileInput.value = '';
                             triggerBtn.disabled = false;
@@ -12437,7 +12555,7 @@ ${renderBottomNavigation()}
                         if (pdfBtn) pdfBtn.style.display = 'flex';
                     } catch (err) {
                         messageBoxMillesimi.className = 'message-box error';
-                        messageBoxMillesimi.textContent = `Errore: ${err.message}`;
+                        messageBoxMillesimi.textContent = `Errore: ${friendlyError(err)}`;
                         messageBoxMillesimi.style.display = 'block';
                     }
                 };
@@ -12485,7 +12603,7 @@ ${renderBottomNavigation()}
                     await loadLatestMillesimiData();
                 } catch (error) {
                     messageBoxMillesimi.className = 'message-box error';
-                    messageBoxMillesimi.textContent = `Errore durante il salvataggio: ${error.message}`;
+                    messageBoxMillesimi.textContent = `Errore durante il salvataggio: ${friendlyError(error)}`;
                     messageBoxMillesimi.style.display = 'block';
                 } finally {
                     saveBtnMillesimi.disabled = false; saveBtnMillesimi.textContent = 'Salva';
@@ -12644,7 +12762,7 @@ ${renderBottomNavigation()}
                 renderUnitsTable(searchInput?.value || '');
             }, (err) => {
                 console.error("Errore caricamento dati unità importate:", err);
-                if (tableContainer) tableContainer.innerHTML = `<p class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(err.message)}</p>`;
+                if (tableContainer) tableContainer.innerHTML = `<p class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(friendlyError(err))}</p>`;
             });
 
             // 4. Ricerca in tempo reale
@@ -12726,7 +12844,7 @@ ${renderBottomNavigation()}
                         console.error("Errore salvataggio nuova unità:", error);
                         if (messageBox) {
                             messageBox.className = 'message-box error';
-                            messageBox.textContent = `Errore: ${error.message}`;
+                            messageBox.textContent = `Errore: ${friendlyError(error)}`;
                             messageBox.style.display = 'block';
                         }
                     } finally {
@@ -12770,7 +12888,7 @@ ${renderBottomNavigation()}
                 await customAlert("Unità immobiliare eliminata con successo!");
             } catch (err) {
                 console.error("Errore durante l'eliminazione dell'unità:", err);
-                await customAlert(`Errore durante l'eliminazione: ${err.message}`);
+                await customAlert(`Errore durante l'eliminazione: ${friendlyError(err)}`);
             }
         };
         window.deleteImportedUnitEntry = deleteImportedUnitEntry;
@@ -12970,7 +13088,7 @@ ${renderBottomNavigation()}
                     console.error("Errore modifica unità:", err);
                     if (modalMsg) {
                         modalMsg.className = 'message-box error';
-                        modalMsg.textContent = `Errore: ${err.message}`;
+                        modalMsg.textContent = `Errore: ${friendlyError(err)}`;
                         modalMsg.style.display = 'block';
                     }
                     submitBtn.disabled = false;
@@ -13148,7 +13266,7 @@ ${renderBottomNavigation()}
                     console.error("Errore aggiunta unità da modale:", err);
                     if (modalMsg) {
                         modalMsg.className = 'message-box error';
-                        modalMsg.textContent = `Errore: ${err.message}`;
+                        modalMsg.textContent = `Errore: ${friendlyError(err)}`;
                         modalMsg.style.display = 'block';
                     }
                     submitBtn.disabled = false;
@@ -13405,7 +13523,7 @@ ${renderBottomNavigation()}
                     console.error("Errore uniformazione nominativi:", err);
                     if (msgBox) {
                         msgBox.className = 'message-box error';
-                        msgBox.textContent = `Errore: ${err.message}`;
+                        msgBox.textContent = `Errore: ${friendlyError(err)}`;
                         msgBox.style.display = 'block';
                     }
                     btn.disabled = false;
@@ -13723,7 +13841,7 @@ ${renderBottomNavigation()}
                     XLSX.writeFile(wb, "Verifica_Numero_Teste.xlsx");
                 } catch (err) {
                     console.error("Errore esportazione Excel:", err);
-                    customAlert(`Errore esportazione: ${err.message}`);
+                    customAlert(`Errore esportazione: ${friendlyError(err)}`);
                 }
             });
 
@@ -13754,7 +13872,7 @@ ${renderBottomNavigation()}
                     await generateTablePDF(tempTable, 'Verifica_Numero_Teste', 'Report Verifica numero teste e Omonimie');
                 } catch (err) {
                     console.error("Errore esportazione PDF:", err);
-                    customAlert(`Errore esportazione: ${err.message}`);
+                    customAlert(`Errore esportazione: ${friendlyError(err)}`);
                 }
             });
 
@@ -13812,7 +13930,7 @@ ${renderBottomNavigation()}
                     await customAlert("Backup ripristinato con successo! I dati sono tornati allo stato precedente.");
                 } catch (err) {
                     console.error("Errore durante il ripristino del backup:", err);
-                    await customAlert(`Errore durante il ripristino: ${err.message}`);
+                    await customAlert(`Errore durante il ripristino: ${friendlyError(err)}`);
                 } finally {
                     if (btn) btn.disabled = false;
                     updateRestoreButtonUI();
@@ -13850,7 +13968,7 @@ ${renderBottomNavigation()}
                 } catch (err) {
                     console.error("Errore fallback importedData:", err);
                     if (resultsContainer) {
-                        resultsContainer.innerHTML = `<div class="card" style="text-align:center; padding:1.5rem;"><p style="color:var(--danger); margin:0;">Errore caricamento dati: ${escapeHtml(err.message)}</p></div>`;
+                        resultsContainer.innerHTML = `<div class="card" style="text-align:center; padding:1.5rem;"><p style="color:var(--danger); margin:0;">Errore caricamento dati: ${escapeHtml(friendlyError(err))}</p></div>`;
                     }
                 }
             };
@@ -14028,7 +14146,7 @@ ${renderBottomNavigation()}
                     } catch (error) {
                         console.error("Errore nell'aggiunta della voce orario:", error);
                         messageBox.className = 'message-box error';
-                        messageBox.textContent = `Errore: ${error.message}`;
+                        messageBox.textContent = `Errore: ${friendlyError(error)}`;
                         messageBox.style.display = 'block';
                     } finally {
                         submitBtn.disabled = false;
@@ -14166,7 +14284,7 @@ ${renderBottomNavigation()}
                         setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
                     } catch (error) {
                         messageBox.className = 'message-box error';
-                        messageBox.textContent = `Errore: ${error.message}`;
+                        messageBox.textContent = `Errore: ${friendlyError(error)}`;
                         messageBox.style.display = 'block';
                     } finally {
                         submitBtn.disabled = false;
@@ -14224,7 +14342,7 @@ ${renderBottomNavigation()}
                         }
                     } catch (err) {
                         messageBox.className = 'message-box error';
-                        messageBox.textContent = `Errore: ${err.message}`;
+                        messageBox.textContent = `Errore: ${friendlyError(err)}`;
                         messageBox.style.display = 'block';
                     }
                 };
@@ -14251,7 +14369,7 @@ ${renderBottomNavigation()}
                     setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
                 } catch (error) {
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 } finally {
                     saveBtn.disabled = false;
@@ -14357,7 +14475,7 @@ ${renderBottomNavigation()}
                     } catch (err) {
                         console.error("Errore nel caricamento del file Excel:", err);
                         messageBoxOrariCustode.className = 'message-box error';
-                        messageBoxOrariCustode.textContent = `Errore nel caricamento del file: ${err.message}`;
+                        messageBoxOrariCustode.textContent = `Errore nel caricamento del file: ${friendlyError(err)}`;
                         messageBoxOrariCustode.style.display = 'block';
                         tableContainerOrariCustode.innerHTML = '<p style="color:var(--secondary-text);">Nessun file selezionato.</p>';
                     }
@@ -14430,7 +14548,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Errore durante il salvataggio degli orari:", error);
                     messageBoxOrariCustode.className = 'message-box error';
-                    messageBoxOrariCustode.textContent = `Errore durante il salvataggio: ${error.message}`;
+                    messageBoxOrariCustode.textContent = `Errore durante il salvataggio: ${friendlyError(error)}`;
                     messageBoxOrariCustode.style.display = 'block';
                 } finally {
                     saveBtnOrariCustode.disabled = false;
@@ -14673,7 +14791,7 @@ ${renderBottomNavigation()}
 
                 } catch (error) {
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 }
             });
@@ -15947,7 +16065,7 @@ ${renderBottomNavigation()}
                     hideModal();
                 } catch (error) {
                     console.error("Errore aggiornamento orario:", error);
-                    await customAlert("Errore durante il salvataggio: " + error.message);
+                    await customAlert("Errore durante il salvataggio: " + friendlyError(error));
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Salva';
                 }
@@ -15976,7 +16094,7 @@ ${renderBottomNavigation()}
                 await logActivity("custode_schedule_entry_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { deletedIndex: index });
             } catch (error) {
                 console.error("Errore eliminazione orario:", error);
-                await customAlert("Errore durante l'eliminazione: " + error.message);
+                await customAlert("Errore durante l'eliminazione: " + friendlyError(error));
             }
         };
 
@@ -17874,7 +17992,7 @@ ${renderBottomNavigation()}
                 }, (error) => {
                     console.error("Errore nel listener del dettaglio segnalazione:", error);
                     modalTitle.textContent = 'Errore';
-                    modalBody.innerHTML = `<p style="color:var(--danger);">Impossibile caricare i dati: ${error.message}</p>`;
+                    modalBody.innerHTML = `<p style="color:var(--danger);">Impossibile caricare i dati: ${escapeHtml(friendlyError(error))}</p>`;
                 });
                 // --- MODIFICA FINE ---
             }, 500); // Il ritardo è mantenuto per attendere la navigazione della pagina
@@ -18211,7 +18329,7 @@ ${renderBottomNavigation()}
             } catch (error) {
                 console.error("Errore durante l'aggiornamento dell'utente:", error);
                 messageBox.className = 'message-box error';
-                messageBox.textContent = `Errore: ${error.message}`;
+                messageBox.textContent = `Errore: ${friendlyError(error)}`;
                 messageBox.style.display = 'block';
                 submitButton.disabled = false;
                 submitButton.textContent = 'Salva';
@@ -19322,7 +19440,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error("Errore nel caricamento degli utenti da convalidare:", error);
-                listContainer.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${error.message}</div>`;
+                listContainer.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${escapeHtml(friendlyError(error))}</div>`;
             }
 
             form.addEventListener('submit', async (e) => {
@@ -19385,7 +19503,7 @@ ${renderBottomNavigation()}
 
                 } catch (error) {
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 } finally {
                     submitBtn.disabled = false;
@@ -19938,7 +20056,7 @@ ${renderBottomNavigation()}
 
             } catch (error) {
                 console.error("Errore nel caricare l'archivio:", error);
-                container.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${error.message}</div>`;
+                container.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
 
@@ -20057,7 +20175,7 @@ ${renderBottomNavigation()}
                 const treeHtml = renderFolderTree(tree);
                 modalBody.innerHTML = `<div class="list-container">${treeHtml}</div>`;
             } catch (error) {
-                modalBody.innerHTML = `<div class="message-box error" style="display:block;">Impossibile caricare la struttura: ${error.message}</div>`;
+                modalBody.innerHTML = `<div class="message-box error" style="display:block;">Impossibile caricare la struttura: ${escapeHtml(friendlyError(error))}</div>`;
             }
         };
 
@@ -20092,7 +20210,7 @@ ${renderBottomNavigation()}
             } catch (error) {
                 console.error("Errore durante la ridenominazione:", error);
                 hideModal();
-                await customAlert(`Errore: ${error.message}`);
+                await customAlert(`Errore: ${friendlyError(error)}`);
             }
         };
 
@@ -20294,7 +20412,7 @@ ${renderBottomNavigation()}
                 await customAlert(`Cartella "${folderName}" creata con successo in: ${selectedPath || 'Archivio'}`);
             } catch (error) {
                 console.error("Errore nella creazione della cartella:", error);
-                await customAlert(`Impossibile creare la cartella: ${error.message}`);
+                await customAlert(`Impossibile creare la cartella: ${friendlyError(error)}`);
             }
         };
 
@@ -20310,7 +20428,7 @@ ${renderBottomNavigation()}
                 document.body.removeChild(link);
             } catch (error) {
                 console.error("Errore nel download:", error);
-                await customAlert(`Impossibile scaricare il file: ${error.message}`);
+                await customAlert(`Impossibile scaricare il file: ${friendlyError(error)}`);
             }
         };
 
@@ -20324,7 +20442,7 @@ ${renderBottomNavigation()}
                     loadStorageItems(currentStoragePath);
                 } catch (error) {
                     console.error(`Errore eliminazione ricorsiva cartella:`, error);
-                    await customAlert(`Impossibile eliminare la cartella: ${error.message}`);
+                    await customAlert(`Impossibile eliminare la cartella: ${friendlyError(error)}`);
                 }
             } else {
                 // Cancellazione di un file singolo
@@ -20337,7 +20455,7 @@ ${renderBottomNavigation()}
                     loadStorageItems(currentStoragePath);
                 } catch (error) {
                     console.error(`Errore eliminazione file:`, error);
-                    await customAlert(`Impossibile eliminare il file: ${error.message}`);
+                    await customAlert(`Impossibile eliminare il file: ${friendlyError(error)}`);
                 }
             }
         };
@@ -20904,7 +21022,7 @@ ${renderBottomNavigation()}
                 } catch (error) {
                     console.error("Errore salvataggio assemblea:", error);
                     messageBox.className = 'message-box error';
-                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.textContent = `Errore: ${friendlyError(error)}`;
                     messageBox.style.display = 'block';
                 } finally {
                     btnSave.disabled = false;
@@ -21756,7 +21874,7 @@ ${renderBottomNavigation()}
                     }
                 } catch (err) {
                     console.error("Errore salvataggio benestare deleghe:", err);
-                    await customAlert("Errore durante il salvataggio del benestare alle deleghe: " + err.message);
+                    await customAlert("Errore durante il salvataggio del benestare alle deleghe: " + friendlyError(err));
                     if (btnSave) {
                         btnSave.disabled = false;
                         btnSave.textContent = "Riprova salvataggio";
@@ -21827,7 +21945,7 @@ ${renderBottomNavigation()}
                 });
             } catch (err) {
                 console.error("Errore apertura convalida deleghe pending:", err);
-                await customAlert("Errore durante l'apertura del modale di convalida: " + err.message);
+                await customAlert("Errore durante l'apertura del modale di convalida: " + friendlyError(err));
             }
         };
 
@@ -30241,10 +30359,10 @@ ${renderBottomNavigation()}
             } catch (error) {
                 console.error("Errore salvataggio presenza:", error);
                 if (errorMsg) {
-                    errorMsg.textContent = "Errore durante la registrazione: " + error.message;
+                    errorMsg.textContent = "Errore durante la registrazione: " + friendlyError(error);
                     errorMsg.classList.remove('hidden');
                 } else {
-                    await customAlert("Errore durante la registrazione della presenza: " + error.message);
+                    await customAlert("Errore durante la registrazione della presenza: " + friendlyError(error));
                 }
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -31154,7 +31272,7 @@ ${renderBottomNavigation()}
                 showModal(`Registra delega <span id="proxy-step-pill" style="font-size: 0.72rem; font-weight: 700; color: var(--accent-color); background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 0.15rem 0.5rem; border-radius: 12px; vertical-align: middle; margin-left: 0.5rem; display: inline-flex; align-items: center;">Passo 1 di 2</span>`, modalContent, true);
             } catch (error) {
                 console.error("Errore apertura modal delega cartacea:", error);
-                await customAlert("Errore durante il caricamento dell'anagrafica condomini: " + error.message);
+                await customAlert("Errore durante il caricamento dell'anagrafica condomini: " + friendlyError(error));
             }
         };
 
@@ -31605,7 +31723,7 @@ ${renderBottomNavigation()}
                 await window.openManualProxyModal();
             } catch (error) {
                 console.error("Errore salvataggio delega cartacea:", error);
-                await customAlert("Errore durante la registrazione della delega: " + error.message);
+                await customAlert("Errore durante la registrazione della delega: " + friendlyError(error));
             }
         };
 
@@ -31708,7 +31826,7 @@ ${renderBottomNavigation()}
                 hideModal();
             } catch (error) {
                 console.error("Errore durante l'annullamento dell'assemblea:", error);
-                await customAlert("Errore: " + error.message);
+                await customAlert("Errore: " + friendlyError(error));
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Conferma';
             }
@@ -31812,7 +31930,7 @@ ${renderBottomNavigation()}
                 }
             } catch (error) {
                 console.error("Errore eliminazione singola assemblea:", error);
-                await customAlert("Errore durante l'eliminazione: " + error.message);
+                await customAlert("Errore durante l'eliminazione: " + friendlyError(error));
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = `${THEME_ICONS.trash(15)} <span>Elimina Assemblea</span>`;
@@ -31841,7 +31959,7 @@ ${renderBottomNavigation()}
                 hideModal();
             } catch (error) {
                 console.error("Errore aggiornamento assemblea:", error);
-                await customAlert("Errore: " + error.message);
+                await customAlert("Errore: " + friendlyError(error));
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Salva';
             }
@@ -32420,7 +32538,7 @@ ${renderBottomNavigation()}
                 showModal('Conferisci delega', modalContent, true);
             } catch (error) {
                 console.error("Errore caricamento utenti per delega:", error);
-                await customAlert("Errore caricamento lista condomini: " + error.message);
+                await customAlert("Errore caricamento lista condomini: " + friendlyError(error));
             }
         };
 
@@ -38229,7 +38347,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 await logAssemblyEvent(assemblyId, 'VOTO_ODG_MASSIVO', `Registrato voto di gruppo (${choiceLabel}) per ${votedNames.length} condòmini dall'amministratore.`);
             } catch (err) {
                 console.error("Errore voto massivo OdG:", err);
-                await customAlert("Errore durante la registrazione del voto di gruppo: " + err.message);
+                await customAlert("Errore durante la registrazione del voto di gruppo: " + friendlyError(err));
             }
         };
 
@@ -41020,7 +41138,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         navigateTo('assemblee_menu');
                     } catch (err) {
                         console.error("Errore eliminazione totale assemblee:", err);
-                        errorBox.textContent = "Errore: " + err.message;
+                        errorBox.textContent = "Errore: " + friendlyError(err);
                         errorBox.style.display = 'block';
                         btn.disabled = false;
                         btn.textContent = "Elimina";
@@ -41460,7 +41578,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
             } catch (err) {
                 console.error("Errore avvio scanner rapido admin:", err);
-                await customAlert("Impossibile avviare lo scanner rapido: " + err.message);
+                await customAlert("Impossibile avviare lo scanner rapido: " + friendlyError(err));
             }
         };
 
@@ -41638,7 +41756,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 checkForNewAssemblies();
             } catch (error) {
                 console.error("Errore risposta delega:", error);
-                await customAlert("Errore durante l'aggiornamento della delega: " + error.message);
+                await customAlert("Errore durante l'aggiornamento della delega: " + friendlyError(error));
             }
         };
 
@@ -42117,7 +42235,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 }
             } catch (error) {
                 console.error("Errore ritiro delega:", error);
-                await customAlert("Errore durante il ritiro della delega: " + error.message);
+                await customAlert("Errore durante il ritiro della delega: " + friendlyError(error));
             }
         };
 
@@ -42331,7 +42449,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 await customAlert(`${selectedCheckboxes.length} elementi eliminati con successo.`);
             } catch (error) {
                 console.error("Errore nell'eliminazione di massa:", error);
-                await customAlert(`Si è verificato un errore: ${error.message}`);
+                await customAlert(`Si è verificato un errore: ${friendlyError(error)}`);
             } finally {
                 loadStorageItems(currentStoragePath);
             }
@@ -43429,7 +43547,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 XLSX.writeFile(wb, 'Dati Immobiliari.xlsx');
             } catch (err) {
                 console.error("Errore download Excel:", err);
-                await customAlert(`Errore durante il download Excel: ${err.message}`);
+                await customAlert(`Errore durante il download Excel: ${friendlyError(err)}`);
             }
         };
         window.downloadImportedUnitsExcel = downloadImportedUnitsExcel;
