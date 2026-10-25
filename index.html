@@ -17720,6 +17720,28 @@ ${renderBottomNavigation()}
             }
         };
 
+        // Filtro per genere nelle segnalazioni ricevute dall'amministratore: permette a più
+        // persone che usano lo stesso account di vedere solo il proprio genere di richieste.
+        // La scelta è ricordata sul dispositivo.
+        const REPORT_GENRE_FILTERS = {
+            contabilita: { label: 'Contabilità', values: ['contabilita'] },
+            interventi: { label: "Richieste d'intervento", values: ['richiesta-intervento-propria', 'richiesta-intervento-danno'] },
+            altre: { label: 'Altre richieste', values: ['altre-richieste'] },
+            segnalazioni: { label: 'Segnalazioni', values: ['solo-segnalazione'] }
+        };
+        const reportGenreFilterKey = () => `reportGenreFilter_${currentUser?.uid || 'anon'}`;
+        const getSavedReportGenreFilter = () => {
+            try {
+                const v = localStorage.getItem(reportGenreFilterKey());
+                return REPORT_GENRE_FILTERS[v] ? v : 'all';
+            } catch (e) { return 'all'; }
+        };
+        const saveReportGenreFilter = (v) => {
+            try { localStorage.setItem(reportGenreFilterKey(), v); } catch (e) { }
+        };
+        const matchesReportGenre = (data, filter) =>
+            filter === 'all' || (REPORT_GENRE_FILTERS[filter]?.values || []).includes(data.priority);
+
         const renderSegnalazioniRicevute = () => {
             const isAdmin = userProfile?.tipoUtente === 'amministratore';
             const isCustode = userProfile?.tipoUtente === 'custode';
@@ -17760,6 +17782,14 @@ ${renderBottomNavigation()}
                         <option value="adm">Sviluppatore</option>
                     </select>
                 </div>
+                ${isAdmin ? `
+                <div class="form-group" style="flex-shrink: 0; min-width: 150px; margin-bottom: 0;">
+                    <label for="report-genre-filter" class="form-label">Genere di intervento</label>
+                    <select id="report-genre-filter" class="form-select">
+                        <option value="all">Tutti i generi</option>
+                        ${Object.entries(REPORT_GENRE_FILTERS).map(([k, g]) => `<option value="${k}" ${getSavedReportGenreFilter() === k ? 'selected' : ''}>${escapeHtml(g.label)}</option>`).join('')}
+                    </select>
+                </div>` : ''}
             </div>
         </div>
     ` : '';
@@ -17801,7 +17831,10 @@ ${renderBottomNavigation()}
 
             if (!mainContainer && !activeContainer) return;
 
-            const renderTickets = (allDocs) => {
+            const renderTickets = (docsForRole) => {
+                // Genere scelto (solo amministratore): limita elenco e contatori.
+                const genreFilter = isAdmin ? (document.getElementById('report-genre-filter')?.value || 'all') : 'all';
+                const allDocs = docsForRole.filter(doc => matchesReportGenre(doc.data(), genreFilter));
                 let filteredDocs = allDocs;
                 if (shouldShowControls) {
                     const searchTerm = searchInput.value.toLowerCase().trim();
@@ -17910,6 +17943,13 @@ ${renderBottomNavigation()}
                     const recipientFilter = document.getElementById('report-recipient-filter');
                     if (recipientFilter) {
                         recipientFilter.onchange = () => renderTickets(relevantDocs);
+                    }
+                    const genreFilter = document.getElementById('report-genre-filter');
+                    if (genreFilter) {
+                        genreFilter.onchange = () => {
+                            saveReportGenreFilter(genreFilter.value);
+                            renderTickets(relevantDocs);
+                        };
                     }
                 }
             });
