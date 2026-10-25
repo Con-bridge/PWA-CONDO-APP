@@ -2769,7 +2769,7 @@
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference, FieldValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob, getMetadata } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
@@ -12688,7 +12688,7 @@ ${renderBottomNavigation()}
                     });
 
                     if (changed) {
-                        await updateDoc(aRef, {
+                        await updateAssemblyMerged(aRef, aDoc.data(), {
                             proxies: updatedProxies,
                             attendees: updatedAttendees
                         });
@@ -19184,7 +19184,20 @@ ${renderBottomNavigation()}
                     tipoUtente: userProfile.tipoUtente // Aggiunto
                 });
 
-                await updateDoc(pollRef, { options: updatedOptions, voters: updatedVoters });
+                // Scrittura atomica: si rilegge il sondaggio aggiornato, si sostituisce solo il voto di
+                // questo utente e i conteggi vengono ricalcolati dai votanti (nessun voto perso).
+                const myVoteRecord = updatedVoters.find(v => v.uid === currentUser.uid);
+                await runTransaction(db, async (t) => {
+                    const freshSnap = await t.get(pollRef);
+                    if (!freshSnap.exists()) throw new Error('Il sondaggio non esiste più.');
+                    const fresh = freshSnap.data();
+                    const voters = [...(fresh.voters || []).filter(v => v.uid !== currentUser.uid), myVoteRecord];
+                    const options = (fresh.options || []).map(opt => ({
+                        ...opt,
+                        votes: voters.filter(v => String(v.vote || '').split(', ').includes(opt.text)).length
+                    }));
+                    t.update(pollRef, { options, voters });
+                }, CONCURRENT_TX_OPTIONS);
                 await logActivity("poll_voted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
                     pollTitle: poll.title,
                     option: newSelectedOptionsText.join(', '),
@@ -22148,7 +22161,7 @@ ${renderBottomNavigation()}
                         }
                     }
 
-                    await updateDoc(assemblyRef, {
+                    await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                         proxies: JSON.parse(JSON.stringify(updatedProxies)),
                         attendees: JSON.parse(JSON.stringify(updatedAttendees))
                     });
@@ -22738,7 +22751,7 @@ ${renderBottomNavigation()}
                         updatePayload.agenda = JSON.parse(JSON.stringify(updatedAgenda));
                     }
 
-                    await updateDoc(assemblyRef, updatePayload);
+                    await updateAssemblyMerged(assemblyRef, docSnap.data(), updatePayload);
 
                     if (hasRevocation && activeProxyAsDelegator) {
                         await logAssemblyEvent(
@@ -23073,7 +23086,7 @@ ${renderBottomNavigation()}
                 return item;
             });
 
-            await updateDoc(assemblyRef, { agenda: updatedAgenda });
+            await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
 
             const statusText = newStatus === 'voting' ? 'Votazione aperta' : (newStatus === 'closed' ? 'Votazione chiusa' : 'Stato votazione aggiornato');
             await logAssemblyEvent(assemblyId, newStatus === 'voting' ? 'VOTAZIONE_APERTA' : 'VOTAZIONE_CHIUSA', `${statusText} per il punto OdG "${itemTitle}" dall'amministratore`);
@@ -24575,7 +24588,7 @@ ${renderBottomNavigation()}
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
                 await logAssemblyEvent(
                     assemblyId,
                     newChoice === '__RESET__' ? 'ANNULLA_VOTO_MANUALE' : 'MODIFICA_VOTO_MANUALE',
@@ -24804,7 +24817,7 @@ ${renderBottomNavigation()}
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
                 await logAssemblyEvent(
                     assemblyId,
                     newChoice === '__RESET__' ? 'ANNULLA_VOTO_GRUPPO' : 'MODIFICA_VOTO_GRUPPO',
@@ -24904,7 +24917,7 @@ ${renderBottomNavigation()}
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
             } catch (err) {
                 console.error("Errore salvataggio voto da pannello non votanti:", err);
                 await customAlert("Errore durante il salvataggio del voto: " + (err?.message || err));
@@ -25039,7 +25052,7 @@ ${renderBottomNavigation()}
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
                 await logAssemblyEvent(assemblyId, 'VOTO_MANUALE_GRUPPO', `Registrati ${newVotes.length} voti individuali (${choice}) da pannello Non Votanti per le quote selezionate del gruppo delegato ${cleanName}.`);
             } catch (err) {
                 console.error("Errore salvataggio voto gruppo da pannello non votanti:", err);
@@ -30412,7 +30425,7 @@ ${renderBottomNavigation()}
                     updatePayload.agenda = JSON.parse(JSON.stringify(updatedAgenda));
                 }
 
-                await updateDoc(assemblyRef, updatePayload);
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), updatePayload);
 
                 // Invalida cache anagrafica accreditamento su salvataggio presenza
                 if (window.invalidateUnifiedCondominiumRegistryCache) {
@@ -31942,7 +31955,7 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, assemblySnap.data(), {
                     proxies: updatedProxies,
                     attendees: JSON.parse(JSON.stringify(updatedAttendees))
                 });
@@ -33027,7 +33040,7 @@ ${renderBottomNavigation()}
                     createdAt: new Date().toISOString()
                 };
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     proxies: [...existingProxies, proxyData]
                 });
 
@@ -33949,7 +33962,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
                 if (typeof window.openCondoVoteModal === 'function') {
                     await window.openCondoVoteModal(assemblyId, itemId);
                 }
@@ -34076,7 +34089,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
                 await logAssemblyEvent(assemblyId, 'VOTO_GRUPPO', `Votazione di gruppo registrata per ${uName} (+${selectedProxies.length} deleghe): ${choice}`);
             } catch (err) {
                 console.error("Errore salvataggio voto gruppo condòmino:", err);
@@ -34977,7 +34990,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     });
                 }
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
 
                 const alertMsg = splitScales.length > 1
                     ? `Generate con successo ${newDeliberationItems.length} delibere autonome (una per ogni scala selezionata: ${splitScales.join(', ')}) con quorum e voti isolati!`
@@ -35016,7 +35029,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     cancelledNoQuorum: true
                 };
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
 
                 const pointNumStr = window.getPointDisplayNumber ? window.getPointDisplayNumber(updatedAgenda, targetIdx) : `${targetIdx + 1}`;
                 await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_QUORUM', `Punto ${pointNumStr} chiuso senza esito per mancanza del quorum costitutivo.`);
@@ -35048,7 +35061,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     cancelledNoQuorum: true
                 };
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
 
                 const pointNumStr = window.getPointDisplayNumber ? window.getPointDisplayNumber(updatedAgenda, targetIdx) : `${targetIdx + 1}`;
                 await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_QUORUM', `Punto ${pointNumStr} archiviato senza votazione per mancato raggiungimento del quorum costitutivo.`);
@@ -35097,27 +35110,131 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
             }
         };
 
+        // ===== SCRITTURE SICURE SULLE ASSEMBLEE (voti e presenze simultanei) =====
+        // Molte funzioni leggono l'assemblea, modificano una lista (ordine del giorno, voti,
+        // presenze, deleghe) e riscrivono la lista intera. Se due persone scrivono insieme,
+        // l'ultima cancellerebbe la modifica dell'altra. updateAssemblyMerged scrive invece con
+        // una "fusione a tre vie" dentro una transazione: confronta i dati letti dalla funzione
+        // (base), quelli che vuole scrivere (miei) e quelli attuali nel database (loro), e applica
+        // ai dati attuali solo le modifiche fatte da questo utente. Se nel frattempo un altro
+        // utente scrive, Firestore riesegue la fusione sui dati nuovi: nessun voto va perso.
+        // Gli elementi delle liste sono riconosciuti dal loro identificativo:
+        const MERGE_ARRAY_KEYS = {
+            agenda: e => e?.id,
+            votes: e => e?.voterId ?? e?.uid,
+            attendees: e => e?.uid ?? e?.id,
+            proxies: e => e?.id ?? ((e?.delegatorId || e?.delegatorUid) ? `del:${e.delegatorId || e.delegatorUid}` : undefined),
+            eventLog: e => (e && e.timestamp !== undefined) ? `${e.timestamp}|${e.type}|${e.description}` : undefined
+        };
+        const isPlainMergeObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
+            && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
+        const stableStringify = (v) => JSON.stringify(v, (k, val) => (isPlainMergeObject(val)
+            ? Object.keys(val).sort().reduce((o, key) => { o[key] = val[key]; return o; }, {})
+            : val));
+        const sameMergeValue = (a, b) => a === b || stableStringify(a) === stableStringify(b);
+        const genericIdKey = e => (isPlainMergeObject(e) && (typeof e.id === 'string' || typeof e.id === 'number')) ? e.id : undefined;
+        const hasUniqueKeys = (arr, keyFn) => {
+            const seen = new Set();
+            for (const e of arr) {
+                const k = keyFn(e);
+                if (k === undefined || k === null || seen.has(k)) return false;
+                seen.add(k);
+            }
+            return true;
+        };
+
+        const mergeKeyedArrays = (base, mine, theirs, keyFn) => {
+            const bMap = new Map(base.map(e => [keyFn(e), e]));
+            const mMap = new Map(mine.map(e => [keyFn(e), e]));
+            const tMap = new Map(theirs.map(e => [keyFn(e), e]));
+            const merged = new Map();
+            for (const [k, t] of tMap) {
+                if (bMap.has(k) && !mMap.has(k)) continue;                         // rimosso da me
+                if (mMap.has(k)) merged.set(k, bMap.has(k) ? merge3(bMap.get(k), mMap.get(k), t, null) : mMap.get(k));
+                else merged.set(k, t);                                              // invariato o aggiunto da altri
+            }
+            for (const [k, m] of mMap) if (!bMap.has(k) && !tMap.has(k)) merged.set(k, m); // aggiunto da me
+            // Se ho cambiato l'ordine degli elementi esistenti, vale il mio ordine.
+            const myOrder = mine.map(keyFn).filter(k => bMap.has(k));
+            const baseOrder = base.map(keyFn).filter(k => mMap.has(k));
+            if (myOrder.join('\u0001') === baseOrder.join('\u0001')) return [...merged.values()];
+            const ordered = mine.map(keyFn).filter(k => merged.has(k));
+            const rest = [...merged.keys()].filter(k => !ordered.includes(k));
+            return [...ordered, ...rest].map(k => merged.get(k));
+        };
+
+        // base = dati letti dalla funzione, mine = da scrivere, theirs = attuali nel database.
+        const merge3 = (base, mine, theirs, name) => {
+            if (sameMergeValue(base, mine)) return theirs;      // non modificato da me
+            if (theirs === undefined || sameMergeValue(base, theirs)) return mine; // modificato solo da me
+            if (Array.isArray(base) && Array.isArray(mine) && Array.isArray(theirs)) {
+                const keyFn = MERGE_ARRAY_KEYS[name] || genericIdKey;
+                if ([base, mine, theirs].every(a => hasUniqueKeys(a, keyFn))) return mergeKeyedArrays(base, mine, theirs, keyFn);
+                return mine;
+            }
+            if (isPlainMergeObject(base) && isPlainMergeObject(mine) && isPlainMergeObject(theirs)) {
+                const out = { ...theirs };
+                for (const k of new Set([...Object.keys(base), ...Object.keys(mine)])) {
+                    const inBase = Object.prototype.hasOwnProperty.call(base, k);
+                    const inMine = Object.prototype.hasOwnProperty.call(mine, k);
+                    if (inBase && !inMine) { delete out[k]; continue; }
+                    if (!inBase) { out[k] = mine[k]; continue; }
+                    if (sameMergeValue(base[k], mine[k])) continue;
+                    out[k] = merge3(base[k], mine[k], theirs[k], k);
+                }
+                return out;
+            }
+            return mine;
+        };
+
+        const stripUndefinedDeep = (v) => {
+            if (Array.isArray(v)) return v.map(x => (x === undefined ? null : stripUndefinedDeep(x)));
+            if (isPlainMergeObject(v)) {
+                const out = {};
+                for (const [k, x] of Object.entries(v)) if (x !== undefined) out[k] = stripUndefinedDeep(x);
+                return out;
+            }
+            return v;
+        };
+        const getMergePath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+        // Con molti voti nello stesso istante Firestore deve ritentare più volte: i 5 tentativi
+        // standard non bastano (test: 30 dispositivi simultanei → 30 voti salvati con 30 tentativi).
+        const CONCURRENT_TX_OPTIONS = { maxAttempts: 30 };
+
+        const updateAssemblyMerged = (assemblyRef, base, payload) => runTransaction(db, async (t) => {
+            const snap = await t.get(assemblyRef);
+            if (!snap.exists()) throw new Error("L'assemblea non esiste più.");
+            const fresh = snap.data();
+            const out = {};
+            for (const [path, value] of Object.entries(payload)) {
+                if (value instanceof FieldValue) { out[path] = value; continue; }
+                const b = getMergePath(base, path);
+                if (sameMergeValue(b, value)) continue;          // campo non modificato da questa operazione
+                out[path] = stripUndefinedDeep(merge3(b, value, getMergePath(fresh, path), path.split('.').pop()));
+            }
+            if (Object.keys(out).length) t.update(assemblyRef, out);
+            return out;
+        }, CONCURRENT_TX_OPTIONS);
+        window.updateAssemblyMerged = updateAssemblyMerged;
+        window.__mergeAssemblyData = merge3; // usato dai test
+
         window.logAssemblyEvent = async (assemblyId, eventType, description) => {
             try {
                 const assemblyRef = doc(db, "assemblies", assemblyId);
-                const docSnap = await getDoc(assemblyRef);
-                if (!docSnap.exists()) return;
-
-                const assembly = docSnap.data();
-                const eventLog = assembly.eventLog || [];
                 const now = new Date();
-                const dateTimeStr = now.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-                eventLog.push({
+                const entry = {
                     timestamp: Date.now(),
-                    dateTimeStr: dateTimeStr,
-                    timeStr: timeStr,
+                    dateTimeStr: now.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                    timeStr: now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
                     type: eventType,
                     description: description
-                });
-
-                await updateDoc(assemblyRef, { eventLog: eventLog });
+                };
+                // Aggiunta atomica: eventi registrati in parallelo da più utenti non si sovrascrivono.
+                await runTransaction(db, async (t) => {
+                    const snap = await t.get(assemblyRef);
+                    if (!snap.exists()) return;
+                    t.update(assemblyRef, { eventLog: [...(snap.data().eventLog || []), entry] });
+                }, CONCURRENT_TX_OPTIONS);
             } catch (err) {
                 console.error("Errore registrazione evento assemblea:", err);
             }
@@ -35580,7 +35697,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 });
 
                 const sanitizedAttendees = JSON.parse(JSON.stringify(updatedAttendees));
-                await updateDoc(assemblyRef, { attendees: sanitizedAttendees });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { attendees: sanitizedAttendees });
 
                 const proxyNotice = heldProxies.length > 0 ? ` (e ${heldProxies.length} deleghe)` : '';
                 const eventDescription = newStatus === 'uscito'
@@ -35833,7 +35950,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         }
                     }
 
-                    await updateDoc(assemblyRef, { attendees: updatedAttendees, proxies: updatedProxies });
+                    await updateAssemblyMerged(assemblyRef, docSnap.data(), { attendees: updatedAttendees, proxies: updatedProxies });
                     if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
                     await logAssemblyEvent(assemblyId, 'ANNULLAMENTO_DELEGA', `Delega annullata per ${targetName}`);
@@ -35865,7 +35982,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                         return p;
                     }).filter(Boolean);
 
-                    await updateDoc(assemblyRef, { attendees: updatedAttendees, proxies: updatedProxies });
+                    await updateAssemblyMerged(assemblyRef, docSnap.data(), { attendees: updatedAttendees, proxies: updatedProxies });
                     if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
                     const eventLogMsg = `Annullata presenza del delegato ${targetName}. Rimossi automaticamente dal registro presenze ${removedDelegatorsCount} condòmini deleganti associati.`;
@@ -35878,7 +35995,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
 
                 // CASO C: PARTECIPANTE SINGOLO ORDINARIO (SENZA DELEGHE E NON DELEGANTE)
                 updatedAttendees = updatedAttendees.filter(a => a.uid !== attendeeUid);
-                await updateDoc(assemblyRef, { attendees: updatedAttendees, proxies: updatedProxies });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { attendees: updatedAttendees, proxies: updatedProxies });
 
                 if (window.invalidateUnifiedCondominiumRegistryCache) window.invalidateUnifiedCondominiumRegistryCache();
 
@@ -36394,7 +36511,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const existingVotes = (assembly.presidentVoting.votes || []).filter(v => v.voterId !== currentUser.uid);
                 existingVotes.push(newVote);
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     'presidentVoting.votes': existingVotes
                 });
 
@@ -36454,7 +36571,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const existingVotes = (assembly.presidentVoting.votes || []).filter(v => v.voterId !== targetUid && v.voterId !== attendeeUid && v.voterId !== attendee.uid && v.voterId !== attendee.id);
                 existingVotes.push(newVote);
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     'presidentVoting.votes': existingVotes
                 });
 
@@ -36492,7 +36609,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     if (!confirmReset) return;
 
                     const updatedVotes = existingVotes.filter(v => v.voterId !== voterId && String(v.voterId) !== String(voterId));
-                    await updateDoc(assemblyRef, {
+                    await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                         'presidentVoting.votes': updatedVotes
                     });
                     await logAssemblyEvent(assemblyId, 'MODIFICA_VOTO_PRESIDENTE', `Voto per il Presidente annullato per ${voterName} dall'amministratore (riportato tra i senza voto)`);
@@ -36524,7 +36641,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const updatedVotes = existingVotes.filter(v => v.voterId !== voterId && String(v.voterId) !== String(voterId));
                 updatedVotes.push(updatedVote);
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     'presidentVoting.votes': updatedVotes
                 });
 
@@ -38417,7 +38534,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const existingVotes = (assembly.odgApproval.votes || []).filter(v => v.voterId !== currentUser.uid);
                 existingVotes.push(newVote);
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     'odgApproval.votes': existingVotes
                 });
 
@@ -38467,7 +38584,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                 const existingVotes = (assembly.odgApproval.votes || []).filter(v => v.voterId !== attendeeUid);
                 existingVotes.push(newVote);
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     'odgApproval.votes': existingVotes
                 });
 
@@ -38640,7 +38757,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     });
                 });
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     'odgApproval.votes': existingVotes
                 });
 
@@ -40749,7 +40866,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     return agItem;
                 });
 
-                await updateDoc(assemblyRef, { agenda: updatedAgenda });
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), { agenda: updatedAgenda });
                 await window.openAdminManualVoteModal(assemblyId, itemId);
             } catch (err) {
                 console.error("Errore salvataggio voto manuale singolo:", err);
@@ -41707,7 +41824,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                                 updatePayload.proxies = JSON.parse(JSON.stringify(updatedProxies));
                                 updatePayload.agenda = JSON.parse(JSON.stringify(updatedAgenda));
                             }
-                            await updateDoc(assemblyRef, updatePayload);
+                            await updateAssemblyMerged(assemblyRef, docSnap.data(), updatePayload);
 
                             if (hasRevocation && activeProxyAsDelegator) {
                                 await logAssemblyEvent(
@@ -41990,7 +42107,7 @@ Il delegato dovrà esibirla all'amministratore all'ingresso dell'assemblea per l
                     };
                 }
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     proxies: updatedProxies,
                     attendees: updatedAttendees
                 });
@@ -42519,7 +42636,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                     updatedAttendees.splice(delegatorAttIndex, 1);
                 }
 
-                await updateDoc(assemblyRef, {
+                await updateAssemblyMerged(assemblyRef, docSnap.data(), {
                     proxies: updatedProxies,
                     attendees: updatedAttendees
                 });
