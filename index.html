@@ -2731,7 +2731,7 @@
     <script type="module">
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter, Timestamp, GeoPoint, Bytes, DocumentReference } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
@@ -3008,6 +3008,7 @@
         let currentAdministrativePeriod = null; // NUOVO: Oggetto per il periodo amministrativo corrente
         let custodianPermissions = null; // NUOVO: Oggetto per i permessi del custode
         let selectedProfilePhoto = null; // File della foto profilo per la registrazione
+        let isRegistrationInProgress = false; // Evita il rendering dell'app mentre il profilo viene creato
 
         // Stato per la registrazione, reso globale a livello di modulo per un reset corretto
         let groupedProperties = {};
@@ -3467,11 +3468,13 @@
                 registrationPhotoUrl = await uploadRegistrationPhoto(a.user.uid, o.profilePhoto);
             }
 
-            return await setDoc(doc(db, "users", a.user.uid), {
+            await setDoc(doc(db, "users", a.user.uid), {
                 nome: o.nome,
                 cognome: o.cognome,
                 email: t,
-                tipoUtente: o.tipoUtente,
+                // SICUREZZA: l'auto-registrazione è consentita solo come condomino
+                // (il valore non viene mai preso dal form, manipolabile dal client).
+                tipoUtente: 'condomino',
                 proprieta: o.proprieta || [],
                 telefono: o.telefono || "",
                 millesimiTotali: totalMillesimi,
@@ -3482,8 +3485,51 @@
                 privacyAccepted: o.privacyAccepted || false,
                 isValidated: false,
                 registrationPhotoUrl: registrationPhotoUrl
-            }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a
+            });
+            // Registra le unità nell'indice pubblico delle unità già registrate
+            // (usato per il controllo duplicati senza esporre la collezione utenti).
+            await addUnitsToRegisteredIndex((o.proprieta || []).map(p => p.interno));
+            await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: 'condomino' });
+            return a;
         };
+
+        // ===== INDICE PUBBLICO UNITÀ REGISTRATE =====
+        // Documento "publicRegistry/registeredUnits" con il solo elenco degli interni già
+        // associati a un account. Sostituisce la lettura dell'intera collezione "users"
+        // durante la registrazione (che avveniva senza login ed esponeva email/telefoni).
+        const REGISTERED_UNITS_REF = () => doc(db, "publicRegistry", "registeredUnits");
+        const normalizeUnitKey = (interno) => String(interno ?? '').trim();
+
+        const getRegisteredUnits = async () => {
+            const snap = await getDoc(REGISTERED_UNITS_REF());
+            return snap.exists() ? (snap.data().interni || []) : [];
+        };
+
+        const addUnitsToRegisteredIndex = async (interni) => {
+            const keys = [...new Set((interni || []).map(normalizeUnitKey).filter(Boolean))];
+            if (keys.length === 0) return;
+            try {
+                await setDoc(REGISTERED_UNITS_REF(), { interni: arrayUnion(...keys), updatedAt: serverTimestamp() }, { merge: true });
+            } catch (err) {
+                console.warn("Aggiornamento indice unità registrate non riuscito:", err);
+            }
+        };
+
+        // Ricostruisce l'indice a partire dagli utenti (solo profili gestionali, che possono leggerli).
+        const syncRegisteredUnitsIndex = async () => {
+            try {
+                const usersSnap = await getDocs(collection(db, "users"));
+                const interni = new Set();
+                usersSnap.forEach(d => (d.data().proprieta || []).forEach(p => {
+                    const k = normalizeUnitKey(p?.interno);
+                    if (k) interni.add(k);
+                }));
+                await setDoc(REGISTERED_UNITS_REF(), { interni: [...interni].sort(), updatedAt: serverTimestamp() });
+            } catch (err) {
+                console.warn("Sincronizzazione indice unità registrate non riuscita:", err);
+            }
+        };
+        window.syncRegisteredUnitsIndex = syncRegisteredUnitsIndex;
 
         const adminCreateUser = async (email, password, profileData) => {
             const tempAppName = `user-creation-${Date.now()}`;
@@ -3506,6 +3552,7 @@
                     createdAt: (new Date).toISOString(),
                     isValidated: true // Gli utenti creati dall'admin sono pre-approvati
                 });
+                syncRegisteredUnitsIndex();
 
                 await logActivity("user_created_by_admin", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
                     createdUserId: newUserId,
@@ -3773,6 +3820,12 @@
             }
 
             await signOut(auth);
+            // Azzera subito lo stato di sessione: nessuna pagina interna resta raggiungibile
+            // (es. con il tasto "indietro") nell'attesa di onAuthStateChanged.
+            currentUser = null;
+            userProfile = null;
+            currentPage = 'login';
+            history.replaceState({ page: 'login' }, '', '#login');
         };
 
         const resetPassword = async t => await sendPasswordResetEmail(auth, t);
@@ -4082,7 +4135,7 @@
                         year: period.year,
                         startDate: period.startDate.toDate().toISOString().split('T')[0], // Formato YYYY-MM-DD
                         endDate: period.endDate.toDate().toISOString().split('T')[0] // Formato YYYY-MM-DD
-                    }).replace(/"/g, '&quot;');
+                    }).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
                     return `
                 <div class="list-item" style="background: var(--surface-color-light);">
@@ -4209,7 +4262,7 @@
 
             // --- NUOVA LOGICA DI AUTORIZZAZIONE ROBUSTA ---
             const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'modificaDatiImportati', 'verificaTeste', 'orariCustode', 'periodiAmministrativi', 'convalidaCondomini'];
-            const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore'];
+            const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore', 'registroBackup'];
             // Aggiunto "assemblea_crea" e "assemblea_gestione" tra le pagine riservate all'amministratore (e ADM)
             const amministratoreOnlyPages = ['funzioniAmministratore', 'creaFornitore', 'abilitaCustode', 'assemblea_crea', 'assemblea_gestione'];
 
@@ -4224,6 +4277,13 @@
             if (admOnlyPages.includes(e) && userType !== 'adm') {
                 console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
                 navigateTo('dashboard'); // Reindirizza a una pagina sicura
+                return;
+            }
+
+            // Backup database: riservato ad amministratore e adm.
+            if (e === 'backupDatabase' && !['amministratore', 'adm'].includes(userType)) {
+                console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
+                navigateTo('dashboard');
                 return;
             }
 
@@ -5672,6 +5732,15 @@
                         </div>
                         <p>Gestione account</p>
                     </div>
+
+                    ${['amministratore', 'adm'].includes(userProfile?.tipoUtente) ? `
+                    <div onclick="navigateTo('backupDatabase')" class="dashboard-item" style="position: relative;">
+                        <div class="dashboard-card">
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2zm6 12c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V17zm0-5c0 .5-2.13 2-6 2s-6-1.5-6-2V9.77C7.61 10.55 9.72 11 12 11s4.39-.45 6-1.23V12z"/></svg>
+                        </div>
+                        <p>Backup database</p>
+                        <span id="backup-pending-badge" class="hidden" style="position:absolute; top:4px; right:10px; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--danger); color:#fff; font-size:0.72rem; font-weight:700; display:flex; align-items:center; justify-content:center;"></span>
+                    </div>` : ''}
                 </div>
 
                 <div style="margin-top: 2rem;">
@@ -5930,6 +5999,7 @@
 
         const setupProfileHandlers = () => {
             // I gestori sono ora collegati ai modali dedicati
+            updateBackupPendingBadge();
         };
 
         // Esposizione funzioni modali per il Profilo
@@ -7588,6 +7658,13 @@ ${renderBottomNavigation()}
                         <p style="text-align: left; font-size: 1.1rem;">Abilita servizi</p>
                     </div>
                 </div>
+                <div onclick="navigateTo('registroBackup')" class="dashboard-item" style="position: relative;">
+                    <span id="backup-events-badge" class="hidden" style="position:absolute; top:8px; right:8px; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--danger); color:#fff; font-size:0.72rem; font-weight:700; display:flex; align-items:center; justify-content:center;"></span>
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2zm6 12c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V17zm0-5c0 .5-2.13 2-6 2s-6-1.5-6-2V9.77C7.61 10.55 9.72 11 12 11s4.39-.45 6-1.23V12z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Registro backup database</p>
+                    </div>
+                </div>
                 ` : ''}
                 <div onclick="navigateTo('convalidaCondomini')" class="dashboard-item">
 <div class="menu-list-item">
@@ -8011,6 +8088,13 @@ ${renderBottomNavigation()}
                                     <optgroup label="Impostazioni">
                                         <option value="service_permissions_updated">Modifica permessi servizi</option>
                                     </optgroup>
+                                    <optgroup label="Backup database">
+                                        <option value="database_backup_">Tutte le operazioni di backup</option>
+                                        <option value="database_backup_created">Backup eseguiti</option>
+                                        <option value="database_backup_downloaded">Backup scaricati</option>
+                                        <option value="database_backup_uploaded">File di backup caricati</option>
+                                        <option value="database_backup_restore">Ripristini (richiesti ed eseguiti)</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
@@ -8062,7 +8146,13 @@ ${renderBottomNavigation()}
                 case 'file_deleted': return `ha eliminato il file dal percorso: ${detailsText(details.path)}.`;
                 case 'folder_created': return `ha creato la cartella nel percorso: ${detailsText(details.path)}.`;
                 case 'folder_deleted': return `ha eliminato la cartella dal percorso: ${detailsText(details.path)}.`;
-                default: return `ha eseguito l'azione di tipo "${escapeHtml(type)}".`;
+                default:
+                    if (typeof type === 'string' && type.startsWith('database_backup_')) {
+                        const action = type.slice('database_backup_'.length);
+                        const extra = describeBackupDetails(details || {});
+                        return `${escapeHtml(BACKUP_EVENT_LABELS[action] || `ha eseguito l'operazione di backup "${action}"`)}${extra ? ` (${escapeHtml(extra)})` : ''}.`;
+                    }
+                    return `ha eseguito l'azione di tipo "${escapeHtml(type)}".`;
             }
         };
 
@@ -8975,8 +9065,1114 @@ ${renderBottomNavigation()}
             });
         };
 
+        // ============================================================================
+        // BACKUP DATABASE (amministratore / adm)
+        // ============================================================================
+        // Backup completo dell'app: tutte le collezioni Firestore e, a scelta, tutti i file
+        // di Storage (archivio documenti, allegati, foto). Con i file il backup è un archivio
+        // ZIP contenente database.json, files-manifest.json e la cartella files/.
+        // - adm: esegue, scarica e ripristina direttamente.
+        // - amministratore: il backup viene generato ma resta bloccato finché un adm non
+        //   lo conferma; le richieste di ripristino dell'amministratore vengono eseguite
+        //   dall'adm dopo la conferma. Gli stessi vincoli sono imposti dalle regole Firestore
+        //   e Storage, quindi non sono aggirabili dal browser.
+        // Ogni operazione viene registrata nella cronologia attività e nel registro
+        // "backupEvents", che notifica gli account adm.
+        // Il database.json è salvato a blocchi in backups/{id}/chunks (impronta SHA-256);
+        // lo ZIP completo in Storage: backups/{id}/backup.zip (o restore.zip).
+        const BACKUP_FORMAT = 'conbridge-firestore-backup';
+        const BACKUP_VERSION = 1;
+        const BACKUP_CHUNK_SIZE = 200000; // caratteri per blocco: resta sotto 1 MiB anche con UTF-8 a 4 byte
+        const BACKUP_STORAGE_ROOT = 'backups'; // cartella Storage dei backup, esclusa dai backup stessi
+        const BACKUP_COLLECTIONS = [
+            'users', 'reports', 'assemblies', 'polls', 'communications', 'settings', 'counters',
+            'administrativePeriods', 'reportCategories', 'partialCondos', 'groupRules', 'usefulNumbers',
+            'importedData', 'importedPhoneNumbers', 'importedAdminData', 'importedCustodeSchedule',
+            'activities', 'publicRegistry'
+        ];
+        const BACKUP_EVENT_LABELS = {
+            created: 'ha eseguito un backup del database',
+            downloaded: 'ha scaricato un backup del database',
+            uploaded: 'ha caricato un file di backup',
+            restore_requested: 'ha richiesto un ripristino del database',
+            restored: 'ha ripristinato il database',
+            approved: 'ha confermato una richiesta di backup/ripristino',
+            rejected: 'ha rifiutato una richiesta di backup/ripristino',
+            deleted: 'ha eliminato un backup'
+        };
+        let backupOperationInProgress = false;
+        let pendingBackupsListener = null;
+        let pendingBackupCount = 0;
+        const notifiedPendingBackupIds = new Set();
+        let backupEventsListener = null;
+        let unreadBackupEventsCount = 0;
+        const notifiedBackupEventIds = new Set();
+
+        const isBackupAdm = () => userProfile?.tipoUtente === 'adm';
+
+        // --- Serializzazione dei tipi Firestore in JSON (e ritorno) ---
+        const serializeBackupValue = (value) => {
+            if (value === null || value === undefined) return null;
+            if (value instanceof Timestamp) return { __cbType: 'timestamp', seconds: value.seconds, nanoseconds: value.nanoseconds };
+            if (value instanceof Date) {
+                const ts = Timestamp.fromDate(value);
+                return { __cbType: 'timestamp', seconds: ts.seconds, nanoseconds: ts.nanoseconds };
+            }
+            if (value instanceof GeoPoint) return { __cbType: 'geopoint', latitude: value.latitude, longitude: value.longitude };
+            if (value instanceof Bytes) return { __cbType: 'bytes', base64: value.toBase64() };
+            if (value instanceof DocumentReference) return { __cbType: 'reference', path: value.path };
+            if (Array.isArray(value)) return value.map(serializeBackupValue);
+            if (typeof value === 'number' && !Number.isFinite(value)) return { __cbType: 'number', value: String(value) };
+            if (typeof value === 'object') {
+                const out = {};
+                for (const [k, v] of Object.entries(value)) out[k] = serializeBackupValue(v);
+                return out;
+            }
+            return value;
+        };
+
+        const deserializeBackupValue = (value) => {
+            if (value === null || value === undefined) return null;
+            if (Array.isArray(value)) return value.map(deserializeBackupValue);
+            if (typeof value === 'object') {
+                switch (value.__cbType) {
+                    case 'timestamp': return new Timestamp(value.seconds, value.nanoseconds);
+                    case 'geopoint': return new GeoPoint(value.latitude, value.longitude);
+                    case 'bytes': return Bytes.fromBase64String(value.base64);
+                    case 'reference': return doc(db, value.path);
+                    case 'number': return Number(value.value);
+                }
+                const out = {};
+                for (const [k, v] of Object.entries(value)) out[k] = deserializeBackupValue(v);
+                return out;
+            }
+            return value;
+        };
+
+        // Dopo il ripristino dei file Firebase assegna nuovi link di download: sostituisce
+        // nei dati i vecchi link (per percorso del file) con quelli nuovi.
+        const STORAGE_URL_RE = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/([^?#]+)/;
+        const remapStorageUrls = (value, urlMap) => {
+            if (typeof value === 'string') {
+                const m = value.match(STORAGE_URL_RE);
+                if (!m) return value;
+                let path;
+                try { path = decodeURIComponent(m[1]); } catch (e) { return value; }
+                return urlMap.get(path) || value;
+            }
+            if (Array.isArray(value)) return value.map(v => remapStorageUrls(v, urlMap));
+            if (value && typeof value === 'object') {
+                const out = {};
+                for (const [k, v] of Object.entries(value)) out[k] = remapStorageUrls(v, urlMap);
+                return out;
+            }
+            return value;
+        };
+
+        const sha256Hex = async (text) => {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+        };
+
+        // Divide la stringa senza spezzare le coppie surrogate UTF-16 (emoji ecc.).
+        const splitBackupJson = (json) => {
+            const parts = [];
+            let i = 0;
+            while (i < json.length) {
+                let end = Math.min(i + BACKUP_CHUNK_SIZE, json.length);
+                const code = json.charCodeAt(end - 1);
+                if (end < json.length && code >= 0xD800 && code <= 0xDBFF) end--;
+                parts.push(json.slice(i, end));
+                i = end;
+            }
+            return parts;
+        };
+
+        const formatBackupDate = (value) => {
+            const d = value?.toDate ? value.toDate() : (value ? new Date(value) : null);
+            if (!d || isNaN(d.getTime())) return 'In elaborazione...';
+            return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        };
+
+        const formatBytes = (bytes) => {
+            const n = Number(bytes) || 0;
+            if (n < 1024) return `${n} B`;
+            if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+            if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+            return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+        };
+
+        const backupFileName = (value, ext = 'json') => {
+            const d = value?.toDate ? value.toDate() : (value ? new Date(value) : new Date());
+            const pad = (n) => String(n).padStart(2, '0');
+            return `backup-conbridge-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}.${ext}`;
+        };
+
+        const backupZipPath = (backupId, type) => `${BACKUP_STORAGE_ROOT}/${backupId}/${type === 'restore' ? 'restore.zip' : 'backup.zip'}`;
+
+        const setBackupProgress = (text, type = 'info') => {
+            const box = document.getElementById('backup-progress');
+            if (!box) return;
+            if (!text) { box.style.display = 'none'; return; }
+            box.className = `message-box ${type === 'error' ? 'error' : 'success'}`;
+            box.textContent = text;
+            box.style.display = 'block';
+        };
+
+        const preventUnloadDuringBackup = (e) => { e.preventDefault(); e.returnValue = ''; };
+
+        // Esegue un'operazione di backup/ripristino impedendo operazioni concorrenti.
+        const runBackupOperation = async (fn) => {
+            if (backupOperationInProgress) {
+                await customAlert("È già in corso un'operazione di backup o ripristino. Attendi il termine.");
+                return;
+            }
+            backupOperationInProgress = true;
+            window.addEventListener('beforeunload', preventUnloadDuringBackup);
+            document.querySelectorAll('.backup-action-btn').forEach(b => b.disabled = true);
+            try {
+                await fn();
+            } catch (error) {
+                console.error("Operazione backup non riuscita:", error);
+                setBackupProgress(`Errore: ${error.message}`, 'error');
+                await customAlert(`Operazione non riuscita: ${error.message}`);
+            } finally {
+                backupOperationInProgress = false;
+                window.removeEventListener('beforeunload', preventUnloadDuringBackup);
+                document.querySelectorAll('.backup-action-btn').forEach(b => b.disabled = false);
+                if (currentPage === 'backupDatabase') loadBackupList();
+            }
+        };
+
+        // --- Registro operazioni: cronologia attività + notifica agli adm ---
+        const logBackupAction = async (action, backupId = null, details = {}) => {
+            const actorName = `${userProfile?.nome || ''} ${userProfile?.cognome || ''}`.trim();
+            await logActivity(`database_backup_${action}`, currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { backupId, ...details });
+            try {
+                await addDoc(collection(db, 'backupEvents'), {
+                    action,
+                    backupId,
+                    actorUid: currentUser.uid,
+                    actorName,
+                    actorRole: userProfile.tipoUtente,
+                    details: serializeBackupValue(details),
+                    createdAt: serverTimestamp(),
+                    readBy: [currentUser.uid] // chi esegue l'azione non riceve la propria notifica
+                });
+            } catch (err) {
+                console.warn("Registrazione evento backup non riuscita:", err);
+            }
+        };
+
+        const describeBackupDetails = (details = {}) => [
+            details.totalDocuments !== undefined && details.totalDocuments !== null ? `${details.totalDocuments} documenti` : null,
+            details.filesCount ? `${details.filesCount} file` : null,
+            details.written !== undefined ? `${details.written} documenti ripristinati, ${details.deleted || 0} eliminati` : null,
+            details.filesUploaded !== undefined ? `${details.filesUploaded} file ripristinati` : null,
+            details.requestedByName ? `richiesta di ${details.requestedByName}` : null,
+            details.requiresApproval ? 'in attesa di conferma adm' : null,
+            details.fileName ? `file "${details.fileName}"` : null,
+            details.label ? `backup ${details.label}` : null,
+            details.error ? `errore: ${details.error}` : null
+        ].filter(Boolean).join(', ');
+
+        // --- ZIP (scritto in casa: metodo "store", nessuna libreria esterna) ---
+        const CRC32_TABLE = (() => {
+            const t = new Uint32Array(256);
+            for (let n = 0; n < 256; n++) {
+                let c = n;
+                for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+                t[n] = c >>> 0;
+            }
+            return t;
+        })();
+        const crc32 = (bytes) => {
+            let c = 0xFFFFFFFF;
+            for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+            return (c ^ 0xFFFFFFFF) >>> 0;
+        };
+
+        const buildZipBlob = async (entries, onProgress) => {
+            const encoder = new TextEncoder();
+            const now = new Date();
+            const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+            const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+            const parts = [];
+            const central = [];
+            let offset = 0;
+            if (entries.length > 0xFFFF) throw new Error('troppi file per un unico archivio ZIP.');
+            for (let idx = 0; idx < entries.length; idx++) {
+                const { name, blob } = entries[idx];
+                if (idx % 10 === 0) onProgress?.(`Creazione archivio ZIP: ${idx + 1} di ${entries.length}...`);
+                const data = new Uint8Array(await blob.arrayBuffer());
+                const crc = crc32(data);
+                const nameBytes = encoder.encode(name);
+
+                const local = new DataView(new ArrayBuffer(30));
+                local.setUint32(0, 0x04034b50, true);
+                local.setUint16(4, 20, true);
+                local.setUint16(6, 0x0800, true); // nomi in UTF-8
+                local.setUint16(8, 0, true);      // nessuna compressione
+                local.setUint16(10, dosTime, true);
+                local.setUint16(12, dosDate, true);
+                local.setUint32(14, crc, true);
+                local.setUint32(18, data.length, true);
+                local.setUint32(22, data.length, true);
+                local.setUint16(26, nameBytes.length, true);
+                local.setUint16(28, 0, true);
+                parts.push(local.buffer, nameBytes, blob);
+
+                const cen = new DataView(new ArrayBuffer(46));
+                cen.setUint32(0, 0x02014b50, true);
+                cen.setUint16(4, 20, true);
+                cen.setUint16(6, 20, true);
+                cen.setUint16(8, 0x0800, true);
+                cen.setUint16(10, 0, true);
+                cen.setUint16(12, dosTime, true);
+                cen.setUint16(14, dosDate, true);
+                cen.setUint32(16, crc, true);
+                cen.setUint32(20, data.length, true);
+                cen.setUint32(24, data.length, true);
+                cen.setUint16(28, nameBytes.length, true);
+                cen.setUint32(42, offset, true);
+                central.push(cen.buffer, nameBytes);
+
+                offset += 30 + nameBytes.length + data.length;
+                if (offset > 0xFFFFFFFF) throw new Error("l'archivio supera i 4 GB, dimensione non supportata.");
+            }
+            const centralSize = central.reduce((sum, p) => sum + p.byteLength, 0);
+            const end = new DataView(new ArrayBuffer(22));
+            end.setUint32(0, 0x06054b50, true);
+            end.setUint16(8, entries.length, true);
+            end.setUint16(10, entries.length, true);
+            end.setUint32(12, centralSize, true);
+            end.setUint32(16, offset, true);
+            return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+        };
+
+        // Legge un archivio ZIP (anche ricompresso con strumenti esterni: metodi store e deflate).
+        const readZipArchive = async (blob) => {
+            const tailLen = Math.min(blob.size, 22 + 0xFFFF);
+            const tail = new DataView(await blob.slice(blob.size - tailLen).arrayBuffer());
+            let eocd = -1;
+            for (let i = tailLen - 22; i >= 0; i--) {
+                if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+            }
+            if (eocd < 0) throw new Error('archivio ZIP non valido.');
+            const count = tail.getUint16(eocd + 10, true);
+            const cdSize = tail.getUint32(eocd + 12, true);
+            const cdOffset = tail.getUint32(eocd + 16, true);
+            const cd = new DataView(await blob.slice(cdOffset, cdOffset + cdSize).arrayBuffer());
+            const decoder = new TextDecoder();
+            const entries = new Map();
+            let p = 0;
+            for (let n = 0; n < count; n++) {
+                if (cd.getUint32(p, true) !== 0x02014b50) throw new Error('archivio ZIP danneggiato.');
+                const nameLen = cd.getUint16(p + 28, true);
+                const extraLen = cd.getUint16(p + 30, true);
+                const commentLen = cd.getUint16(p + 32, true);
+                const name = decoder.decode(new Uint8Array(cd.buffer, cd.byteOffset + p + 46, nameLen));
+                entries.set(name, {
+                    name,
+                    method: cd.getUint16(p + 10, true),
+                    compSize: cd.getUint32(p + 20, true),
+                    localOffset: cd.getUint32(p + 42, true)
+                });
+                p += 46 + nameLen + extraLen + commentLen;
+            }
+            const readEntry = async (entry) => {
+                const lh = new DataView(await blob.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer());
+                if (lh.getUint32(0, true) !== 0x04034b50) throw new Error(`archivio ZIP danneggiato ("${entry.name}").`);
+                const start = entry.localOffset + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+                const raw = blob.slice(start, start + entry.compSize);
+                if (entry.method === 0) return raw;
+                if (entry.method === 8 && typeof DecompressionStream !== 'undefined') {
+                    return await new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+                }
+                throw new Error(`metodo di compressione non supportato per "${entry.name}".`);
+            };
+            return { entries, readEntry };
+        };
+
+        // Da uno ZIP di backup ricava database e file. Restituisce { payload, json, files }.
+        const loadBackupPackageFromZip = async (zipBlob) => {
+            const { entries, readEntry } = await readZipArchive(zipBlob);
+            const dbEntry = entries.get('database.json');
+            if (!dbEntry) throw new Error("l'archivio ZIP non contiene database.json.");
+            const json = await (await readEntry(dbEntry)).text();
+            const payload = parseBackupJson(json);
+            let manifest = [];
+            const manifestEntry = entries.get('files-manifest.json');
+            if (manifestEntry) {
+                try { manifest = JSON.parse(await (await readEntry(manifestEntry)).text()); } catch (e) { throw new Error('elenco file del backup non leggibile.'); }
+            }
+            const files = manifest
+                .filter(f => f && typeof f.path === 'string' && f.path && !f.path.startsWith(`${BACKUP_STORAGE_ROOT}/`) && entries.has(`files/${f.path}`))
+                .map(f => ({
+                    path: f.path,
+                    size: Number(f.size) || 0,
+                    contentType: f.contentType || 'application/octet-stream',
+                    read: () => readEntry(entries.get(`files/${f.path}`))
+                }));
+            return { payload, json, files };
+        };
+
+        const isZipFile = async (file) => {
+            if (/\.zip$/i.test(file.name || '')) return true;
+            const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+            return head[0] === 0x50 && head[1] === 0x4B; // "PK"
+        };
+
+        // --- Lettura dati ---
+        // Legge tutte le collezioni. Fallisce se anche una sola collezione non è leggibile:
+        // un backup parziale sarebbe ingannevole.
+        const buildDatabaseBackup = async (onProgress) => {
+            const collections = {};
+            const counts = {};
+            let total = 0;
+            for (const name of BACKUP_COLLECTIONS) {
+                onProgress?.(`Lettura della collezione "${name}"...`);
+                let snap;
+                try {
+                    snap = await getDocs(collection(db, name));
+                } catch (error) {
+                    throw new Error(`impossibile leggere la collezione "${name}" (${error.code || error.message}).`);
+                }
+                const docsMap = {};
+                snap.forEach(d => { docsMap[d.id] = serializeBackupValue(d.data()); });
+                collections[name] = docsMap;
+                counts[name] = snap.size;
+                total += snap.size;
+            }
+            const payload = {
+                format: BACKUP_FORMAT,
+                version: BACKUP_VERSION,
+                projectId: firebaseConfig.projectId,
+                createdAt: new Date().toISOString(),
+                createdBy: { uid: currentUser.uid, name: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim(), role: userProfile.tipoUtente },
+                counts,
+                totalDocuments: total,
+                collections
+            };
+            return { payload, json: JSON.stringify(payload), counts, total };
+        };
+
+        const listAllStorageFiles = async (path = '') => {
+            const res = await listAll(ref(storage, path));
+            let files = res.items.map(i => i.fullPath);
+            for (const prefix of res.prefixes) {
+                if (!path && prefix.name === BACKUP_STORAGE_ROOT) continue;
+                files = files.concat(await listAllStorageFiles(prefix.fullPath));
+            }
+            return files;
+        };
+
+        const CORS_HINT = "Per leggere i file dal browser il bucket Storage deve avere la configurazione CORS (vedi file cors.json e istruzioni). In alternativa esegui il backup senza file.";
+
+        const collectStorageFiles = async (onProgress) => {
+            onProgress?.('Elenco dei file in archivio...');
+            let paths;
+            try {
+                paths = await listAllStorageFiles();
+            } catch (error) {
+                throw new Error(`impossibile elencare i file (${error.code || error.message}).`);
+            }
+            const files = [];
+            let bytes = 0;
+            for (let i = 0; i < paths.length; i++) {
+                onProgress?.(`Lettura file ${i + 1} di ${paths.length} (${formatBytes(bytes)})...`);
+                let blob;
+                try {
+                    blob = await getBlob(ref(storage, paths[i]));
+                } catch (error) {
+                    throw new Error(`impossibile scaricare il file "${paths[i]}" (${error.code || error.message}). ${CORS_HINT}`);
+                }
+                files.push({ path: paths[i], blob });
+                bytes += blob.size;
+            }
+            return { files, bytes };
+        };
+
+        // Prepara il pacchetto di backup: solo JSON oppure ZIP con database e file.
+        const buildBackupPackage = async (includeFiles, onProgress) => {
+            const base = await buildDatabaseBackup(onProgress);
+            if (!includeFiles) return { ...base, zipBlob: null, filesCount: 0, filesBytes: 0 };
+            const { files, bytes } = await collectStorageFiles(onProgress);
+            const manifest = files.map(f => ({ path: f.path, size: f.blob.size, contentType: f.blob.type || 'application/octet-stream' }));
+            const zipBlob = await buildZipBlob([
+                { name: 'database.json', blob: new Blob([base.json], { type: 'application/json' }) },
+                { name: 'files-manifest.json', blob: new Blob([JSON.stringify(manifest)], { type: 'application/json' }) },
+                ...files.map(f => ({ name: `files/${f.path}`, blob: f.blob }))
+            ], onProgress);
+            return { ...base, zipBlob, filesCount: files.length, filesBytes: bytes };
+        };
+
+        const uploadBackupZip = (path, blob, downloadName, onProgress) => new Promise((resolve, reject) => {
+            const task = uploadBytesResumable(ref(storage, path), blob, {
+                contentType: 'application/zip',
+                contentDisposition: `attachment; filename="${downloadName}"`
+            });
+            task.on('state_changed',
+                (snap) => onProgress?.(`Caricamento archivio: ${Math.round((snap.bytesTransferred / Math.max(snap.totalBytes, 1)) * 100)}% (${formatBytes(snap.totalBytes)})...`),
+                reject,
+                resolve);
+        });
+
+        // Salva il backup (documento + blocchi del database.json + eventuale ZIP in Storage).
+        // Per l'amministratore lo stato iniziale è sempre "pending": il contenuto resta
+        // illeggibile finché un adm non conferma.
+        const storeBackupRecord = async ({ type, json, counts, total, zipBlob = null, filesCount = 0, filesBytes = 0, sourceCreatedAt = null, label = null }, onProgress) => {
+            const backupRef = doc(collection(db, 'backups'));
+            const parts = splitBackupJson(json);
+            const sha = await sha256Hex(json);
+            await setDoc(backupRef, {
+                type,
+                status: (isBackupAdm() && type === 'backup') ? 'approved' : 'pending',
+                requestedBy: currentUser.uid,
+                requestedByName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim(),
+                requestedByRole: userProfile.tipoUtente,
+                createdAt: serverTimestamp(),
+                fileReady: false,
+                chunkCount: parts.length,
+                sizeChars: json.length,
+                sha256: sha,
+                totalDocuments: total,
+                collectionCounts: counts,
+                hasFiles: !!zipBlob,
+                filesCount,
+                filesBytes,
+                sourceCreatedAt,
+                label
+            });
+            try {
+                for (let i = 0; i < parts.length; i++) {
+                    onProgress?.(`Salvataggio del database: blocco ${i + 1} di ${parts.length}...`);
+                    await setDoc(doc(db, 'backups', backupRef.id, 'chunks', String(i).padStart(5, '0')), { i, data: parts[i] });
+                }
+                if (zipBlob) {
+                    await uploadBackupZip(backupZipPath(backupRef.id, type), zipBlob, backupFileName(new Date(), 'zip'), onProgress);
+                }
+                await updateDoc(backupRef, { fileReady: true });
+            } catch (error) {
+                await deleteBackupRecord(backupRef.id).catch(() => { });
+                throw error;
+            }
+            return backupRef.id;
+        };
+
+        const loadBackupJson = async (backupId, record) => {
+            const snap = await getDocs(collection(db, 'backups', backupId, 'chunks'));
+            const parts = snap.docs.map(d => d.data()).sort((a, b) => a.i - b.i);
+            if (!parts.length || (record.chunkCount && parts.length !== record.chunkCount)) {
+                throw new Error('il file del backup è incompleto.');
+            }
+            const json = parts.map(p => p.data).join('');
+            if (record.sha256 && await sha256Hex(json) !== record.sha256) {
+                throw new Error('verifica di integrità non superata: il file del backup risulta alterato.');
+            }
+            return json;
+        };
+
+        // Pacchetto da un backup salvato: database dai blocchi, file dallo ZIP in Storage.
+        const loadStoredBackupPackage = async (backupId, record, onProgress) => {
+            onProgress?.('Verifica del database del backup...');
+            const json = await loadBackupJson(backupId, record);
+            const payload = parseBackupJson(json);
+            if (!record.hasFiles) return { payload, json, files: null };
+            onProgress?.('Download dell\'archivio dei file...');
+            let zipBlob;
+            try {
+                zipBlob = await getBlob(ref(storage, backupZipPath(backupId, record.type)));
+            } catch (error) {
+                throw new Error(`impossibile scaricare l'archivio dei file (${error.code || error.message}). ${CORS_HINT}`);
+            }
+            const pkg = await loadBackupPackageFromZip(zipBlob);
+            return { payload, json, files: pkg.files };
+        };
+
+        const deleteBackupChunks = async (backupId) => {
+            const snap = await getDocs(collection(db, 'backups', backupId, 'chunks'));
+            for (let i = 0; i < snap.docs.length; i += 400) {
+                const batch = writeBatch(db);
+                snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+        };
+
+        const deleteBackupZips = async (backupId) => {
+            await Promise.all(['backup', 'restore'].map(t => deleteObject(ref(storage, backupZipPath(backupId, t))).catch(() => { })));
+        };
+
+        // Prima ZIP e blocchi, poi il documento: le regole li autorizzano leggendo il documento padre.
+        const deleteBackupRecord = async (backupId) => {
+            await deleteBackupZips(backupId);
+            await deleteBackupChunks(backupId);
+            await deleteDoc(doc(db, 'backups', backupId));
+        };
+
+        const parseBackupJson = (json) => {
+            let payload;
+            try {
+                payload = JSON.parse(json);
+            } catch (e) {
+                throw new Error('il file non è un JSON valido.');
+            }
+            if (!payload || payload.format !== BACKUP_FORMAT || !payload.collections || typeof payload.collections !== 'object') {
+                throw new Error('il file non è un backup del database Con-bridge.');
+            }
+            if (payload.version > BACKUP_VERSION) {
+                throw new Error('il backup è stato creato da una versione più recente dell\'app.');
+            }
+            return payload;
+        };
+
+        // Legge il file scelto dall'utente: JSON (solo database) o ZIP (database + file).
+        const loadBackupPackageFromFile = async (file) => {
+            if (await isZipFile(file)) return { ...(await loadBackupPackageFromZip(file)), isZip: true };
+            const json = await file.text();
+            return { payload: parseBackupJson(json), json, files: null, isZip: false };
+        };
+
+        const describeBackupPayload = (payload, files) => {
+            const known = Object.keys(payload.collections).filter(c => BACKUP_COLLECTIONS.includes(c));
+            const docs = known.reduce((sum, c) => sum + Object.keys(payload.collections[c] || {}).length, 0);
+            const filesText = files ? ` e ${files.length} file (${formatBytes(files.reduce((s, f) => s + f.size, 0))})` : ' (senza file)';
+            const otherProject = payload.projectId && payload.projectId !== firebaseConfig.projectId
+                ? ` ATTENZIONE: il backup proviene da un altro progetto Firebase (${payload.projectId}).` : '';
+            return `Backup del ${formatBackupDate(payload.createdAt)} creato da ${payload.createdBy?.name || 'N/D'} (${payload.createdBy?.role || 'N/D'}): ${docs} documenti in ${known.length} collezioni${filesText}.${otherProject}`;
+        };
+
+        const confirmDestructiveRestore = async (payload, files) => {
+            const filesWarning = files
+                ? ' Verranno ripristinati anche i file: quelli caricati dopo il backup verranno eliminati.'
+                : ' I file dell\'archivio non verranno modificati.';
+            if (!await customConfirm(`${describeBackupPayload(payload, files)} Il ripristino SOVRASCRIVE il database: i dati attuali verranno sostituiti e i documenti creati dopo il backup verranno eliminati.${filesWarning} Prima di procedere verrà creato automaticamente un backup di sicurezza dello stato attuale. Continuare?`, 'Continua', 'Annulla', true)) {
+                return false;
+            }
+            const typed = await customPrompt('Per confermare il ripristino digita "RIPRISTINA" nel campo sottostante.');
+            if (typed !== 'RIPRISTINA') {
+                await customAlert('Ripristino annullato: la parola di conferma non è corretta.');
+                return false;
+            }
+            return true;
+        };
+
+        // Ripristina i file di Storage: carica quelli del backup, elimina quelli successivi.
+        const restoreStorageFiles = async (files, onProgress) => {
+            const keep = new Set(files.map(f => f.path));
+            const urlMap = new Map();
+            for (let i = 0; i < files.length; i++) {
+                const f = files[i];
+                onProgress?.(`Ripristino file ${i + 1} di ${files.length}: ${f.path}`);
+                const fileRef = ref(storage, f.path);
+                await uploadBytes(fileRef, await f.read(), { contentType: f.contentType });
+                urlMap.set(f.path, await getDownloadURL(fileRef));
+            }
+            let deleted = 0;
+            const current = await listAllStorageFiles();
+            for (const path of current) {
+                if (keep.has(path)) continue;
+                onProgress?.(`Rimozione dei file non presenti nel backup: ${path}`);
+                await deleteObject(ref(storage, path)).then(() => { deleted++; }).catch(() => { });
+            }
+            return { urlMap, uploaded: files.length, deleted };
+        };
+
+        // Ripristino completo (solo adm). Il profilo dell'adm che esegue l'operazione non viene
+        // toccato, per evitare di perdere l'accesso a metà ripristino.
+        const restoreDatabaseFromPayload = async (payload, files, onProgress) => {
+            if (!isBackupAdm()) throw new Error('solo un account adm può eseguire il ripristino.');
+            const myUid = currentUser.uid;
+
+            onProgress?.('Creazione del backup di sicurezza dello stato attuale...');
+            const safety = await buildBackupPackage(!!files, onProgress);
+            const safetyBackupId = await storeBackupRecord({
+                type: 'backup', json: safety.json, counts: safety.counts, total: safety.total,
+                zipBlob: safety.zipBlob, filesCount: safety.filesCount, filesBytes: safety.filesBytes,
+                label: 'Backup automatico pre-ripristino'
+            }, onProgress);
+
+            let fileStats = null;
+            if (files) fileStats = await restoreStorageFiles(files, onProgress);
+
+            const ops = [];
+            for (const name of BACKUP_COLLECTIONS) {
+                if (!Object.prototype.hasOwnProperty.call(payload.collections, name)) continue; // collezione assente nel backup: lasciata intatta
+                const backupDocs = payload.collections[name] || {};
+                onProgress?.(`Preparazione del ripristino di "${name}"...`);
+                const current = await getDocs(collection(db, name));
+                current.forEach(d => {
+                    if (name === 'users' && d.id === myUid) return;
+                    if (!Object.prototype.hasOwnProperty.call(backupDocs, d.id)) ops.push({ kind: 'delete', ref: d.ref, size: 100 });
+                });
+                for (const [id, raw] of Object.entries(backupDocs)) {
+                    if (name === 'users' && id === myUid) continue;
+                    const data = fileStats ? remapStorageUrls(raw, fileStats.urlMap) : raw;
+                    ops.push({ kind: 'set', ref: doc(db, name, id), data: deserializeBackupValue(data), size: JSON.stringify(data).length + 100 });
+                }
+            }
+
+            const stats = { written: 0, deleted: 0 };
+            let batch = writeBatch(db), count = 0, bytes = 0;
+            const flush = async () => {
+                if (count === 0) return;
+                await batch.commit();
+                onProgress?.(`Ripristino in corso: ${stats.written + stats.deleted} di ${ops.length} operazioni completate...`);
+                batch = writeBatch(db); count = 0; bytes = 0;
+            };
+            for (const op of ops) {
+                if (count >= 200 || bytes + op.size > 4000000) await flush();
+                if (op.kind === 'delete') { batch.delete(op.ref); stats.deleted++; }
+                else { batch.set(op.ref, op.data); stats.written++; }
+                count++; bytes += op.size;
+            }
+            await flush();
+            stats.safetyBackupId = safetyBackupId;
+            stats.safetyTotalDocuments = safety.total;
+            stats.safetyFilesCount = safety.filesCount;
+            if (fileStats) {
+                stats.filesUploaded = fileStats.uploaded;
+                stats.filesDeleted = fileStats.deleted;
+            }
+            return stats;
+        };
+
+        // Registra le operazioni DOPO il ripristino: la cronologia attività viene riportata allo
+        // stato del backup, quindi le voci scritte prima andrebbero perse.
+        const logRestoreActions = async (stats, { backupId = null, uploaded = null, approved = null, source }) => {
+            const { safetyBackupId, safetyTotalDocuments, safetyFilesCount, ...restoreStats } = stats;
+            await logBackupAction('created', safetyBackupId, { totalDocuments: safetyTotalDocuments, filesCount: safetyFilesCount, label: 'pre-ripristino' });
+            if (uploaded) await logBackupAction('uploaded', backupId, uploaded);
+            if (approved) await logBackupAction('approved', backupId, approved);
+            await logBackupAction('restored', backupId, { source, ...restoreStats });
+        };
+
+        const restoreSummary = (stats) => `${stats.written} documenti ripristinati, ${stats.deleted} eliminati${stats.filesUploaded !== undefined ? `, ${stats.filesUploaded} file ripristinati, ${stats.filesDeleted} file rimossi` : ''}`;
+
+        const renderBackupDatabase = () => {
+            const isAdm = isBackupAdm();
+            return `
+            ${renderHeader('Backup database')}
+            <main>
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.5; margin: 0;">
+                        Il backup salva tutti i dati del database (utenti, segnalazioni, assemblee, sondaggi, comunicazioni, impostazioni, dati importati e cronologia) e, se selezionato, tutti i file: archivio documenti, allegati e foto. Con i file viene creato un archivio ZIP, altrimenti un file JSON.
+                        ${isAdm ? '' : '<br><strong>I backup e i ripristini richiesti dall\'amministratore devono essere confermati da un account adm.</strong>'}
+                    </p>
+                    <div id="backup-progress" class="message-box" style="margin-top: 1rem;"></div>
+                </div>
+
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <h3 class="card-title" style="display:flex; align-items:center; gap:0.5rem;">${THEME_ICONS.download(18, 2.2)} Esegui backup</h3>
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin-bottom: 1rem;">
+                        ${isAdm ? 'Il backup sarà subito disponibile per il download.' : 'Il backup verrà creato e sarà scaricabile dopo la conferma di un account adm.'}
+                    </p>
+                    <label style="display:flex; align-items:center; gap:0.6rem; margin-bottom: 1rem; cursor:pointer; color: var(--primary-text); font-size: 0.9rem;">
+                        <input type="checkbox" id="backup-include-files" checked style="width:18px; height:18px; accent-color: var(--accent-color);">
+                        Includi i file (archivio documenti, allegati e foto)
+                    </label>
+                    <button type="button" class="btn btn-primary backup-action-btn" onclick="backupCreate()" style="width: 100%;">Esegui backup ora</button>
+                </div>
+
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <h3 class="card-title" style="display:flex; align-items:center; gap:0.5rem;">${THEME_ICONS.upload(18, 2.2)} Carica backup (ripristino)</h3>
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin-bottom: 1rem;">
+                        ${isAdm
+                    ? 'Seleziona un file di backup (.zip o .json) per ripristinare il database. Il ripristino sovrascrive i dati attuali; prima viene creato automaticamente un backup di sicurezza.'
+                    : 'Seleziona un file di backup (.zip o .json): verrà inviata una richiesta di ripristino che un account adm dovrà confermare ed eseguire.'}
+                    </p>
+                    <input type="file" id="backup-restore-file" accept=".zip,.json,application/zip,application/json" class="form-input" style="margin-bottom: 0.75rem;">
+                    <button type="button" class="btn backup-action-btn" onclick="backupRestoreFromFile()" style="width: 100%; background-color: var(--danger); color: white;">${isAdm ? 'Ripristina database' : 'Invia richiesta di ripristino'}</button>
+                </div>
+
+                ${isAdm ? `
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <h3 class="card-title">Richieste in attesa di conferma</h3>
+                    <div id="backup-pending-list" class="list-container"><p style="color:var(--secondary-text);">Caricamento...</p></div>
+                </div>` : ''}
+
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <h3 class="card-title">${isAdm ? 'Tutti i backup e le richieste' : 'I tuoi backup e richieste'}</h3>
+                    <div id="backup-list" class="list-container"><p style="color:var(--secondary-text);">Caricamento...</p></div>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+            `;
+        };
+
+        const backupStatusBadge = (b) => {
+            const map = {
+                pending: ['In attesa di conferma adm', 'background:#9c640c; color:#fdebd0;'],
+                approved: ['Confermato', 'background:#145a32; color:#a9dfbf;'],
+                completed: ['Completato', 'background:#145a32; color:#a9dfbf;'],
+                rejected: ['Rifiutato', 'background:#7b241c; color:#f5b7b1;'],
+                failed: ['Non riuscito', 'background:#7b241c; color:#f5b7b1;']
+            };
+            const [label, style] = map[b.status] || [b.status || 'N/D', ''];
+            const ready = b.fileReady === false && b.status === 'pending' ? ' (caricamento...)' : '';
+            return `<span class="badge" style="${style}">${escapeHtml(label + ready)}</span>`;
+        };
+
+        const renderBackupItem = (id, b, { inPendingList = false } = {}) => {
+            const isAdm = isBackupAdm();
+            const isOwner = b.requestedBy === currentUser?.uid;
+            const typeLabel = b.type === 'restore' ? 'Richiesta di ripristino' : 'Backup';
+            const actions = [];
+            const jsId = escapeJsAttr(id);
+            if (b.fileReady) {
+                if (b.type === 'backup' && b.status === 'approved' && (isAdm || isOwner)) {
+                    actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupDownload('${jsId}')">Scarica</button>`);
+                }
+                if (isAdm && b.status === 'pending') {
+                    actions.push(`<button class="btn btn-primary backup-action-btn" onclick="backupApprove('${jsId}')">${b.type === 'restore' ? 'Conferma ed esegui' : 'Conferma'}</button>`);
+                    actions.push(`<button class="btn btn-secondary backup-action-btn" onclick="backupReject('${jsId}')">Rifiuta</button>`);
+                }
+                if (isAdm && b.type === 'backup' && b.status === 'approved' && !inPendingList) {
+                    actions.push(`<button class="btn backup-action-btn" style="background:var(--danger); color:white;" onclick="backupRestoreStored('${jsId}')">Ripristina</button>`);
+                }
+            }
+            if (!inPendingList && (isAdm || isOwner)) {
+                actions.push(`<button class="btn btn-secondary backup-action-btn" onclick="backupDelete('${jsId}')">Elimina</button>`);
+            }
+            const details = [
+                `Richiesto da ${b.requestedByName || 'N/D'} (${b.requestedByRole || 'N/D'})`,
+                `${b.totalDocuments ?? 0} documenti`,
+                b.hasFiles ? `${b.filesCount || 0} file (${formatBytes(b.filesBytes)})` : 'senza file',
+                b.type === 'restore' && b.sourceCreatedAt ? `backup del ${formatBackupDate(b.sourceCreatedAt)}` : null,
+                b.decidedByName ? `${b.status === 'rejected' ? 'Rifiutato' : 'Confermato'} da ${b.decidedByName}` : null,
+                b.errorMessage ? `Errore: ${b.errorMessage}` : null
+            ].filter(Boolean).join(' • ');
+            return `
+                <div class="list-item" style="flex-direction: column; align-items: stretch; gap: 0.6rem; background: var(--surface-color-light);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; flex-wrap:wrap;">
+                        <div class="list-item-content">
+                            <div class="title">${escapeHtml(typeLabel)} del ${escapeHtml(formatBackupDate(b.createdAt))}${b.label ? ` <span style="color:var(--secondary-text); font-weight:500;">— ${escapeHtml(b.label)}</span>` : ''}</div>
+                            <div class="subtitle">${escapeHtml(details)}</div>
+                        </div>
+                        ${backupStatusBadge(b)}
+                    </div>
+                    ${actions.length ? `<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">${actions.join('')}</div>` : ''}
+                </div>`;
+        };
+
+        const loadBackupList = async () => {
+            const listEl = document.getElementById('backup-list');
+            if (!listEl) return;
+            try {
+                const q = isBackupAdm()
+                    ? query(collection(db, 'backups'), orderBy('createdAt', 'desc'), limit(100))
+                    : query(collection(db, 'backups'), where('requestedBy', '==', currentUser.uid));
+                const snap = await getDocs(q);
+                const sorted = snap.docs.sort((a, b) => (b.data().createdAt?.toMillis?.() || Date.now()) - (a.data().createdAt?.toMillis?.() || Date.now()));
+                listEl.innerHTML = sorted.length
+                    ? sorted.map(d => renderBackupItem(d.id, d.data())).join('')
+                    : `<p style="color:var(--secondary-text);">Nessun backup presente.</p>`;
+
+                const pendingEl = document.getElementById('backup-pending-list');
+                if (pendingEl) {
+                    const pending = sorted.filter(d => d.data().status === 'pending' && d.data().fileReady);
+                    pendingEl.innerHTML = pending.length
+                        ? pending.map(d => renderBackupItem(d.id, d.data(), { inPendingList: true })).join('')
+                        : `<p style="color:var(--secondary-text);">Nessuna richiesta in attesa.</p>`;
+                }
+            } catch (error) {
+                console.error("Errore caricamento backup:", error);
+                listEl.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(error.message)}</div>`;
+            }
+        };
+
+        const getBackupRecord = async (backupId) => {
+            const snap = await getDoc(doc(db, 'backups', backupId));
+            if (!snap.exists()) throw new Error('backup non trovato.');
+            return snap.data();
+        };
+
+        const setupBackupDatabaseHandlers = () => {
+            loadBackupList();
+        };
+
+        window.backupCreate = () => runBackupOperation(async () => {
+            const isAdm = isBackupAdm();
+            const includeFiles = document.getElementById('backup-include-files')?.checked !== false;
+            if (!await customConfirm(`Eseguire ora il backup completo del database${includeFiles ? ' e dei file' : ''}?${isAdm ? '' : ' Sarà scaricabile dopo la conferma di un account adm.'}`)) return;
+            const pkg = await buildBackupPackage(includeFiles, setBackupProgress);
+            const backupId = await storeBackupRecord({
+                type: 'backup', json: pkg.json, counts: pkg.counts, total: pkg.total,
+                zipBlob: pkg.zipBlob, filesCount: pkg.filesCount, filesBytes: pkg.filesBytes
+            }, setBackupProgress);
+            await logBackupAction('created', backupId, { totalDocuments: pkg.total, filesCount: pkg.filesCount, requiresApproval: !isAdm });
+            const filesText = includeFiles ? ` e ${pkg.filesCount} file (${formatBytes(pkg.filesBytes)})` : '';
+            setBackupProgress(isAdm
+                ? `Backup completato (${pkg.total} documenti${filesText}). Ora puoi scaricarlo dall'elenco.`
+                : `Backup completato (${pkg.total} documenti${filesText}). Sarà scaricabile dopo la conferma di un account adm.`);
+        });
+
+        window.backupDownload = (backupId) => runBackupOperation(async () => {
+            const record = await getBackupRecord(backupId);
+            if (record.type !== 'backup' || record.status !== 'approved') {
+                throw new Error('questo backup non è ancora stato confermato da un account adm.');
+            }
+            setBackupProgress('Preparazione del download...');
+            const link = document.createElement('a');
+            let objectUrl = null;
+            if (record.hasFiles) {
+                // Link diretto a Storage (autorizzato dalle regole): il file viene scaricato come allegato.
+                link.href = await getDownloadURL(ref(storage, backupZipPath(backupId, 'backup')));
+                link.target = '_blank';
+                link.rel = 'noopener';
+            } else {
+                const json = await loadBackupJson(backupId, record);
+                objectUrl = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+                link.href = objectUrl;
+            }
+            link.download = backupFileName(record.createdAt, record.hasFiles ? 'zip' : 'json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+            await logBackupAction('downloaded', backupId, { totalDocuments: record.totalDocuments, filesCount: record.filesCount || 0, requestedByName: record.requestedByName });
+            setBackupProgress('Download del backup avviato.');
+        });
+
+        window.backupRestoreFromFile = () => runBackupOperation(async () => {
+            const input = document.getElementById('backup-restore-file');
+            const file = input?.files?.[0];
+            if (!file) {
+                await customAlert('Seleziona prima un file di backup (.zip o .json).');
+                return;
+            }
+            setBackupProgress('Lettura e verifica del file...');
+            const pkg = await loadBackupPackageFromFile(file);
+            const { payload } = pkg;
+            const uploadDetails = { fileName: file.name, totalDocuments: payload.totalDocuments ?? null, filesCount: pkg.files ? pkg.files.length : 0 };
+
+            if (isBackupAdm()) {
+                if (!await confirmDestructiveRestore(payload, pkg.files)) { setBackupProgress(''); return; }
+                const stats = await restoreDatabaseFromPayload(payload, pkg.files, setBackupProgress);
+                await logRestoreActions(stats, { uploaded: uploadDetails, source: 'file' });
+                setBackupProgress(`Ripristino completato: ${restoreSummary(stats)}.`);
+                await customAlert('Ripristino completato. L\'app verrà ricaricata.');
+                window.location.reload();
+                return;
+            }
+
+            if (!await customConfirm(`${describeBackupPayload(payload, pkg.files)} Inviare la richiesta di ripristino all'adm? Il database non verrà modificato finché un adm non conferma.`)) { setBackupProgress(''); return; }
+            const counts = {};
+            Object.keys(payload.collections).filter(c => BACKUP_COLLECTIONS.includes(c)).forEach(c => { counts[c] = Object.keys(payload.collections[c] || {}).length; });
+            const total = Object.values(counts).reduce((a, b) => a + b, 0);
+            const backupId = await storeBackupRecord({
+                type: 'restore', json: pkg.json, counts, total,
+                zipBlob: pkg.isZip && pkg.files?.length ? file : null,
+                filesCount: pkg.files ? pkg.files.length : 0,
+                filesBytes: pkg.files ? pkg.files.reduce((s, f) => s + f.size, 0) : 0,
+                sourceCreatedAt: payload.createdAt || null
+            }, setBackupProgress);
+            await logBackupAction('uploaded', backupId, uploadDetails);
+            await logBackupAction('restore_requested', backupId, { backupCreatedAt: payload.createdAt || null, totalDocuments: total, requiresApproval: true });
+            if (input) input.value = '';
+            setBackupProgress('Richiesta di ripristino inviata. Verrà eseguita dopo la conferma di un account adm.');
+        });
+
+        window.backupApprove = (backupId) => runBackupOperation(async () => {
+            if (!isBackupAdm()) throw new Error('solo un account adm può confermare.');
+            const record = await getBackupRecord(backupId);
+            if (record.status !== 'pending' || !record.fileReady) throw new Error('la richiesta non è più in attesa di conferma.');
+            const decision = { decidedBy: currentUser.uid, decidedByName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim(), decidedAt: serverTimestamp() };
+
+            if (record.type === 'backup') {
+                if (!await customConfirm(`Confermare il backup richiesto da ${record.requestedByName || 'amministratore'}? Dopo la conferma potrà scaricarlo.`)) return;
+                await updateDoc(doc(db, 'backups', backupId), { status: 'approved', ...decision });
+                await logBackupAction('approved', backupId, { requestedByName: record.requestedByName, type: 'backup' });
+                setBackupProgress('Backup confermato: ora l\'amministratore può scaricarlo.');
+                return;
+            }
+
+            const pkg = await loadStoredBackupPackage(backupId, record, setBackupProgress);
+            if (!await confirmDestructiveRestore(pkg.payload, pkg.files)) { setBackupProgress(''); return; }
+            await updateDoc(doc(db, 'backups', backupId), { status: 'approved', ...decision });
+            try {
+                const stats = await restoreDatabaseFromPayload(pkg.payload, pkg.files, setBackupProgress);
+                await updateDoc(doc(db, 'backups', backupId), { status: 'completed', completedAt: serverTimestamp(), restoredDocuments: stats.written, deletedDocuments: stats.deleted });
+                await logRestoreActions(stats, { backupId, approved: { requestedByName: record.requestedByName, type: 'restore' }, source: 'request' });
+                await customAlert(`Ripristino completato: ${restoreSummary(stats)}. L'app verrà ricaricata.`);
+                window.location.reload();
+            } catch (error) {
+                await updateDoc(doc(db, 'backups', backupId), { status: 'failed', errorMessage: String(error.message || error).slice(0, 500) }).catch(() => { });
+                await logBackupAction('approved', backupId, { requestedByName: record.requestedByName, type: 'restore', error: String(error.message || error).slice(0, 200) }).catch(() => { });
+                throw new Error(`${error.message} Il backup di sicurezza "pre-ripristino" è disponibile nell'elenco per tornare allo stato precedente.`);
+            }
+        });
+
+        window.backupReject = (backupId) => runBackupOperation(async () => {
+            if (!isBackupAdm()) throw new Error('solo un account adm può rifiutare.');
+            const record = await getBackupRecord(backupId);
+            if (!await customConfirm(`Rifiutare la richiesta di ${record.requestedByName || 'amministratore'}? Il file verrà eliminato.`, 'Rifiuta', 'Annulla', true)) return;
+            await deleteBackupZips(backupId);
+            await deleteBackupChunks(backupId);
+            await updateDoc(doc(db, 'backups', backupId), {
+                status: 'rejected', fileReady: false,
+                decidedBy: currentUser.uid, decidedByName: `${userProfile.nome || ''} ${userProfile.cognome || ''}`.trim(), decidedAt: serverTimestamp()
+            });
+            await logBackupAction('rejected', backupId, { requestedByName: record.requestedByName, type: record.type });
+            setBackupProgress('Richiesta rifiutata.');
+        });
+
+        window.backupRestoreStored = (backupId) => runBackupOperation(async () => {
+            if (!isBackupAdm()) throw new Error('solo un account adm può eseguire il ripristino.');
+            const record = await getBackupRecord(backupId);
+            const pkg = await loadStoredBackupPackage(backupId, record, setBackupProgress);
+            if (!await confirmDestructiveRestore(pkg.payload, pkg.files)) { setBackupProgress(''); return; }
+            const stats = await restoreDatabaseFromPayload(pkg.payload, pkg.files, setBackupProgress);
+            await logRestoreActions(stats, { backupId, source: 'stored' });
+            await customAlert(`Ripristino completato: ${restoreSummary(stats)}. L'app verrà ricaricata.`);
+            window.location.reload();
+        });
+
+        window.backupDelete = (backupId) => runBackupOperation(async () => {
+            if (!await customConfirm('Eliminare definitivamente questo backup? L\'operazione è irreversibile.', 'Elimina', 'Annulla', true)) return;
+            await deleteBackupRecord(backupId);
+            await logBackupAction('deleted', backupId);
+            setBackupProgress('Backup eliminato.');
+        });
+
+        const updateBackupPendingBadge = () => {
+            const badge = document.getElementById('backup-pending-badge');
+            if (!badge) return;
+            badge.textContent = String(pendingBackupCount);
+            badge.classList.toggle('hidden', pendingBackupCount === 0);
+        };
+
+        const updateBackupEventsBadge = () => {
+            const badge = document.getElementById('backup-events-badge');
+            if (!badge) return;
+            badge.textContent = String(unreadBackupEventsCount);
+            badge.classList.toggle('hidden', unreadBackupEventsCount === 0);
+        };
+
+        // Solo adm: segnala le richieste dell'amministratore in attesa di conferma.
+        const watchPendingBackupRequests = () => {
+            if (pendingBackupsListener) { pendingBackupsListener(); pendingBackupsListener = null; }
+            if (!isBackupAdm()) return;
+            pendingBackupsListener = onSnapshot(query(collection(db, 'backups'), where('status', '==', 'pending')), (snap) => {
+                const ready = snap.docs.filter(d => d.data().fileReady);
+                pendingBackupCount = ready.length;
+                updateBackupPendingBadge();
+                const fresh = ready.filter(d => !notifiedPendingBackupIds.has(d.id));
+                fresh.forEach(d => notifiedPendingBackupIds.add(d.id));
+                if (fresh.length && typeof window.showLiveToastBanner === 'function') {
+                    window.showLiveToastBanner({
+                        title: 'Backup database: conferma richiesta',
+                        message: `${fresh.length} richiesta/e dell'amministratore in attesa di conferma (Impostazioni > Backup database).`,
+                        type: 'warning'
+                    });
+                }
+                if (currentPage === 'backupDatabase' && !backupOperationInProgress) loadBackupList();
+            }, (err) => console.warn("Listener richieste backup non disponibile:", err?.code || err));
+        };
+
+        const describeBackupEvent = (e) => {
+            const extra = describeBackupDetails(e.details || {});
+            return `${e.actorName || 'Utente'} (${e.actorRole || 'N/D'}) ${BACKUP_EVENT_LABELS[e.action] || e.action}${extra ? ` (${extra})` : ''}.`;
+        };
+
+        // Solo adm: notifica ogni backup creato, scaricato o caricato (e le altre operazioni)
+        // eseguito da altri utenti, anche se avvenuto mentre l'adm non era collegato.
+        const watchBackupEvents = () => {
+            if (backupEventsListener) { backupEventsListener(); backupEventsListener = null; }
+            if (!isBackupAdm()) return;
+            backupEventsListener = onSnapshot(query(collection(db, 'backupEvents'), orderBy('createdAt', 'desc'), limit(50)), (snap) => {
+                const unread = snap.docs.filter(d => !(d.data().readBy || []).includes(currentUser?.uid));
+                unreadBackupEventsCount = unread.length;
+                updateBackupEventsBadge();
+                const fresh = unread.filter(d => !notifiedBackupEventIds.has(d.id));
+                fresh.forEach(d => notifiedBackupEventIds.add(d.id));
+                if (fresh.length && typeof window.showLiveToastBanner === 'function') {
+                    window.showLiveToastBanner({
+                        title: 'Backup database',
+                        message: fresh.length === 1
+                            ? describeBackupEvent(fresh[0].data())
+                            : `${fresh.length} nuove operazioni sui backup. Dettagli in Funzioni admin > Registro backup.`,
+                        type: 'warning'
+                    });
+                }
+                if (currentPage === 'registroBackup') loadBackupEventsList();
+            }, (err) => console.warn("Listener registro backup non disponibile:", err?.code || err));
+        };
+
+        const renderRegistroBackup = () => `
+            ${renderHeader('Registro backup')}
+            <main>
+                <div class="card" style="margin-bottom: 1.25rem;">
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; line-height: 1.5; margin: 0 0 1rem;">
+                        Tutte le operazioni sui backup del database (creazione, download, caricamento, ripristino, conferme). Il registro non può essere modificato né cancellato.
+                    </p>
+                    <div class="form-group" style="margin-bottom: 0.75rem;">
+                        <select id="backup-events-filter" class="form-select" onchange="loadBackupEventsList()">
+                            <option value="">Tutte le operazioni</option>
+                            <option value="created">Backup eseguiti</option>
+                            <option value="downloaded">Backup scaricati</option>
+                            <option value="uploaded">File di backup caricati</option>
+                            <option value="restore_requested">Richieste di ripristino</option>
+                            <option value="restored">Ripristini eseguiti</option>
+                            <option value="approved">Conferme</option>
+                            <option value="rejected">Rifiuti</option>
+                            <option value="deleted">Backup eliminati</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('backupDatabase')" style="width: 100%;">Vai a Backup database</button>
+                </div>
+                <div id="backup-events-list" class="list-container"><p style="color:var(--secondary-text);">Caricamento...</p></div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const loadBackupEventsList = async () => {
+            const listEl = document.getElementById('backup-events-list');
+            if (!listEl || !isBackupAdm()) return;
+            try {
+                const snap = await getDocs(query(collection(db, 'backupEvents'), orderBy('createdAt', 'desc'), limit(300)));
+                const filter = document.getElementById('backup-events-filter')?.value || '';
+                const items = snap.docs.filter(d => !filter || d.data().action === filter);
+                listEl.innerHTML = items.length ? items.map(d => {
+                    const e = d.data();
+                    const unread = !(e.readBy || []).includes(currentUser.uid);
+                    return `
+                    <div class="list-item" style="background-color: var(--surface-color); flex-direction: column; align-items: flex-start; gap: 0.4rem; ${unread ? 'border-left: 3px solid var(--warning);' : ''}">
+                        <div class="flex justify-between w-full" style="gap:0.5rem;">
+                            <div class="title" style="font-weight: 600;">${escapeHtml(BACKUP_EVENT_LABELS[e.action] ? BACKUP_EVENT_LABELS[e.action].replace(/^ha /, '').replace(/^./, c => c.toUpperCase()) : e.action)}</div>
+                            <div class="subtitle" style="font-size: 0.8rem; white-space: nowrap;">${escapeHtml(formatBackupDate(e.createdAt))}</div>
+                        </div>
+                        <div class="subtitle" style="font-size: 0.9rem;">${escapeHtml(describeBackupEvent(e))}</div>
+                    </div>`;
+                }).join('') : `<div class="card" style="text-align:center; padding:1.5rem 1rem;"><p style="color:var(--secondary-text); margin:0;">Nessuna operazione registrata.</p></div>`;
+
+                // Apertura del registro = notifiche lette.
+                const unreadDocs = snap.docs.filter(d => !(d.data().readBy || []).includes(currentUser.uid));
+                for (let i = 0; i < unreadDocs.length; i += 400) {
+                    const batch = writeBatch(db);
+                    unreadDocs.slice(i, i + 400).forEach(d => batch.update(d.ref, { readBy: arrayUnion(currentUser.uid) }));
+                    await batch.commit();
+                }
+            } catch (error) {
+                console.error("Errore caricamento registro backup:", error);
+                listEl.innerHTML = `<div class="message-box error" style="display:block;">Errore nel caricamento: ${escapeHtml(error.message)}</div>`;
+            }
+        };
+        window.loadBackupEventsList = loadBackupEventsList;
+
         const renderCurrentPage = async () => {
             const app = document.getElementById('app');
+            // SICUREZZA: nessuna pagina interna senza sessione e profilo validi (es. tasto
+            // "indietro" dopo il logout, hash digitato a mano, profilo eliminato).
+            if (currentPage !== 'login' && (!currentUser || !auth.currentUser || !userProfile)) {
+                currentPage = 'login';
+                history.replaceState({ page: 'login' }, '', '#login');
+            }
+            // Un condomino non ancora convalidato vede solo la pagina di attesa.
+            if (currentPage !== 'login' && userProfile?.tipoUtente === 'condomino' && !userProfile?.isValidated) {
+                app.innerHTML = renderPendingValidationPage();
+                return;
+            }
             if (currentPage === 'login') {
                 app.innerHTML = renderLoginPage();
                 setupLoginHandlers();
@@ -9184,6 +10380,14 @@ ${renderBottomNavigation()}
                     if (userProfile?.tipoUtente === 'amministratore') content = renderAbilitaCustode();
                     else navigateTo('dashboard');
                     break;
+                case 'backupDatabase':
+                    if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) content = renderBackupDatabase();
+                    else navigateTo('dashboard');
+                    break;
+                case 'registroBackup':
+                    if (userProfile?.tipoUtente === 'adm') content = renderRegistroBackup();
+                    else navigateTo('dashboard');
+                    break;
                 default: content = renderLoginPage();
             }
 
@@ -9197,6 +10401,8 @@ ${renderBottomNavigation()}
 
             // Update theme icon after page render
             updateThemeIcon(currentTheme);
+            updateBackupPendingBadge();
+            updateBackupEventsBadge();
 
             switch (currentPage) {
                 case 'dashboard':
@@ -9305,6 +10511,8 @@ ${renderBottomNavigation()}
                 case 'creaFornitore': if (userProfile?.tipoUtente === 'amministratore') setupCreaFornitoreHandlers(); break;
                 case 'convalidaCondomini': if (hasSupervisorAccess) setupConvalidaCondominiHandlers(); break;
                 case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
+                case 'backupDatabase': if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) setupBackupDatabaseHandlers(); break;
+                case 'registroBackup': if (userProfile?.tipoUtente === 'adm') loadBackupEventsList(); break;
                 case 'archivio':
                 case 'gestione_archivio':
                     setupArchivioHandlers();
@@ -9490,7 +10698,7 @@ ${renderBottomNavigation()}
                 if (!properties) return;
 
                 await loadPartialCondosForRegistration();
-                const groupOptionsHtml = `<option value="" disabled selected>Seleziona gruppo...</option>` + localPartialCondosList.map(c => `<option value="${c.name}" data-start="${c.startPlan}" data-end="${c.endPlan}">${c.name}</option>`).join('');
+                const groupOptionsHtml = `<option value="" disabled selected>Seleziona gruppo...</option>` + localPartialCondosList.map(c => `<option value="${escapeHtml(c.name)}" data-start="${escapeHtml(c.startPlan)}" data-end="${escapeHtml(c.endPlan)}">${escapeHtml(c.name)}</option>`).join('');
 
                 const headers = Object.keys(properties[0] || {});
                 const apartmentHeader = findHeader(headers, ['interno', 'appartamento', 'unita']);
@@ -9515,7 +10723,7 @@ ${renderBottomNavigation()}
                             <span class="property-millesimi-badge">${formattedMil} ‰</span>
                         </div>
                         <div class="property-controls-stack">
-                            <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
+                            <select class="form-select group-select">${autoGroup ? groupOptionsHtml.replace(`value="${escapeHtml(autoGroup)}"`, `value="${escapeHtml(autoGroup)}" selected`) : groupOptionsHtml}</select>
                             <select class="form-select plan-select" disabled><option>Seleziona gruppo</option></select>
                         </div>
                     `;
@@ -9661,13 +10869,12 @@ ${renderBottomNavigation()}
                         if (groupSelectionMissing) throw new Error("È obbligatorio assegnare un gruppo a ogni unità immobiliare selezionata.");
                         if (planSelectionMissing) throw new Error("È obbligatorio selezionare un piano per ogni unità immobiliare selezionata.");
 
-                        const internosToRegister = propertiesForUser.map(p => p.interno);
-                        const usersSnapshot = await getDocs(collection(db, "users"));
-                        for (const userDoc of usersSnapshot.docs) {
-                            const user = userDoc.data();
-                            if (user.proprieta?.some(p => internosToRegister.includes(p.interno))) {
-                                throw new Error(`Una delle unità immobiliari selezionate è già registrata.`);
-                            }
+                        // SICUREZZA: il controllo duplicati usa l'indice pubblico delle unità registrate
+                        // invece di scaricare (senza login) l'intera collezione utenti.
+                        const internosToRegister = propertiesForUser.map(p => normalizeUnitKey(p.interno));
+                        const registeredUnits = await getRegisteredUnits().catch(() => []);
+                        if (internosToRegister.some(k => registeredUnits.includes(k))) {
+                            throw new Error(`Una delle unità immobiliari selezionate è già registrata.`);
                         }
 
                         const allowCustodeViewPhone = document.getElementById("allowCustodeViewPhone").checked;
@@ -9688,7 +10895,16 @@ ${renderBottomNavigation()}
                             throw new Error("La foto profilo è obbligatoria per la registrazione.");
                         }
 
-                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent, betaTestAccepted: betaTestConsent, profilePhoto: selectedProfilePhoto });
+                        isRegistrationInProgress = true;
+                        try {
+                            await register(o, n, { nome: i, cognome: s, tipoUtente: 'condomino', telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent, betaTestAccepted: betaTestConsent, profilePhoto: selectedProfilePhoto });
+                        } finally {
+                            isRegistrationInProgress = false;
+                        }
+                        // L'account resta in attesa di convalida: si esce, al prossimo accesso
+                        // verrà mostrata la pagina di attesa approvazione.
+                        await signOut(auth).catch(() => { });
+                        customAlert("Registrazione completata! Il tuo account è in attesa di approvazione da parte dell'amministratore.");
                         r.textContent = "Registrazione completata! Il tuo account è in attesa di approvazione da parte dell'amministratore."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
@@ -11229,7 +12445,7 @@ ${renderBottomNavigation()}
                         tableHTML += `<td>${escapeHtml(cellVal)}</td>`;
                     });
 
-                    const safeRowJson = JSON.stringify(row).replace(/"/g, '&quot;');
+                    const safeRowJson = escapeHtml(JSON.stringify(row));
                     const editIcon = `<button type="button" onclick="editImportedUnitEntry(${originalIndex}, ${safeRowJson})" class="btn-icon" title="Modifica unità" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
                     const deleteIcon = `<button type="button" onclick="deleteImportedUnitEntry(${originalIndex})" class="btn-icon" title="Elimina unità" style="background:var(--danger); color:white;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
 
@@ -12535,7 +13751,7 @@ ${renderBottomNavigation()}
                     });
 
                     if (isEditable) {
-                        const editIcon = `<button onclick="editImportedScheduleEntry(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
+                        const editIcon = `<button onclick="editImportedScheduleEntry(${index}, ${escapeHtml(JSON.stringify(row))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
                         const deleteIcon = `<button onclick="deleteImportedScheduleEntry(${index})" class="btn-icon" title="Elimina" style="background:var(--danger); color:white;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
                         tableHTML += `<td style="text-align:right;">${editIcon}${deleteIcon}</td>`;
                     }
@@ -12697,7 +13913,7 @@ ${renderBottomNavigation()}
                     `;
 
                     if (isEditable) {
-                        const editIcon = `<button onclick="editImportedAdminEntry(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
+                        const editIcon = `<button onclick="editImportedAdminEntry(${index}, ${escapeHtml(JSON.stringify(row))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
                         const deleteIcon = `<button onclick="deleteImportedAdminEntry(${index})" class="btn-icon" title="Elimina" style="background:var(--danger); color:white;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
                         tableHTML += `<td style="text-align:right;">${editIcon}${deleteIcon}</td>`;
                     }
@@ -13312,7 +14528,7 @@ ${renderBottomNavigation()}
                             </div>
                         </div>
                         <div class="flex gap-2" style="width: 100%; margin-top: 0.25rem;">
-                            <button onclick="openGroupEditModal('${docSnap.id}', ${JSON.stringify(condo).replace(/"/g, '&quot;')})" class="btn btn-secondary" style="flex: 1; padding: 0.55rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 500;" title="Modifica gruppo">
+                            <button onclick="openGroupEditModal('${docSnap.id}', ${escapeHtml(JSON.stringify(condo))})" class="btn btn-secondary" style="flex: 1; padding: 0.55rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 500;" title="Modifica gruppo">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                                 <span>Modifica</span>
                             </button>
@@ -13835,7 +15051,7 @@ ${renderBottomNavigation()}
                 const value = String(currentData[key] || '');
                 const label = key;
                 // Using data-key to associate input with its original key, escaping quotes for safety
-                return `<div><label class="form-label">${label}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
+                return `<div><label class="form-label">${escapeHtml(label)}</label><input type="text" data-key="${escapeHtml(key)}" value="${escapeHtml(value)}" class="form-input"></div>`;
             }).join('');
 
             const editFormHtml = `
@@ -13973,7 +15189,7 @@ ${renderBottomNavigation()}
             const formFields = Object.keys(currentData).map(key => {
                 const value = String(currentData[key] || '');
                 const label = key;
-                return `<div><label class="form-label">${label}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
+                return `<div><label class="form-label">${escapeHtml(label)}</label><input type="text" data-key="${escapeHtml(key)}" value="${escapeHtml(value)}" class="form-input"></div>`;
             }).join('');
 
             const editFormHtml = `
@@ -14052,7 +15268,7 @@ ${renderBottomNavigation()}
             const formFields = Object.keys(currentData).map(key => {
                 const value = String(currentData[key] || '');
                 const label = key;
-                return `<div><label class="form-label">${label}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
+                return `<div><label class="form-label">${escapeHtml(label)}</label><input type="text" data-key="${escapeHtml(key)}" value="${escapeHtml(value)}" class="form-input"></div>`;
             }).join('');
 
             const editFormHtml = `
@@ -14274,7 +15490,7 @@ ${renderBottomNavigation()}
                         orderedHeaders.forEach(h => tableHTML += `<td>${escapeHtml(row[h] !== undefined ? row[h] : '')}</td>`);
 
                         if (canManage) {
-                            const editIcon = `<button onclick="editImportedContact(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
+                            const editIcon = `<button onclick="editImportedContact(${index}, ${escapeHtml(JSON.stringify(row))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                                 </svg>
@@ -14345,7 +15561,7 @@ ${renderBottomNavigation()}
                     tableHTML += snapshot.docs.map(docSnap => {
                         const contact = docSnap.data();
                         if (canManage) {
-                            const editIcon = `<button onclick="editUsefulNumber('${docSnap.id}', ${JSON.stringify(contact).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
+                            const editIcon = `<button onclick="editUsefulNumber('${docSnap.id}', ${escapeHtml(JSON.stringify(contact))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                                 </svg>
@@ -14487,7 +15703,7 @@ ${renderBottomNavigation()}
                         });
 
                         if (canManage) {
-                            const editIcon = `<button onclick="editImportedScheduleEntry(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
+                            const editIcon = `<button onclick="editImportedScheduleEntry(${index}, ${escapeHtml(JSON.stringify(row))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
                             const deleteIcon = `<button onclick="deleteImportedScheduleEntry(${index})" class="btn-icon" title="Elimina" style="background:var(--danger); color:white;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
                             tableHTML += `<td style="text-align:right;">${editIcon}${deleteIcon}</td>`;
                         }
@@ -16510,13 +17726,13 @@ ${renderBottomNavigation()}
                     <div style="background-color: var(--surface-color-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                             <div style="background-color: var(--danger); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.9rem;">
-                               ${reportNumber}
+                               ${escapeHtml(reportNumber)}
                             </div>
                             <div style="font-size: 0.9rem; color: var(--secondary-text);">
-                                Inviata da: <strong>${creator}</strong>
+                                Inviata da: <strong>${escapeHtml(creator)}</strong>
                             </div>
                         </div>
-                        <button onclick="viewReportDetail('${doc.id}', 'segnalazioni_ricevute')" class="btn btn-primary" style="width: 100%;">
+                        <button onclick="viewReportDetail('${escapeJsAttr(doc.id)}', 'segnalazioni_ricevute')" class="btn btn-primary" style="width: 100%;">
                             Visualizza segnalazione
                         </button>
                     </div>
@@ -16530,9 +17746,9 @@ ${renderBottomNavigation()}
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                     </svg>
                   </div>
-                  <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem;">${mainTitle}</h2>
+                  <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem;">${escapeHtml(mainTitle)}</h2>
                   <p style="color: var(--secondary-text); font-size: 1rem; max-width: 400px; margin: 0 auto 1.5rem; text-align: center;">
-                    ${mainSubtitle}
+                    ${escapeHtml(mainSubtitle)}
                   </p>
                 </div>
                 <div style="max-height: 30vh; overflow-y: auto; scrollbar-gutter: stable both-edges;">
@@ -16557,19 +17773,19 @@ ${renderBottomNavigation()}
                     <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color-light);">
                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                             <div style="background: var(--warning); color: var(--bg-color); padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700;">
-                                ${reportNumber}
+                                ${escapeHtml(reportNumber)}
                             </div>
                             <div style="flex: 1;">
-                                <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${title}</div>
+                                <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${escapeHtml(title)}</div>
                                 <div style="color: var(--secondary-text); font-size: 0.9rem;">Non presa in carico</div>
                             </div>
                         </div>
                         <div style="background: var(--surface-color); padding: 0.75rem; border-radius: var(--radius-sm); margin-top: 0.5rem;">
                             <div style="font-weight: 600; margin-bottom: 0.25rem; color: var(--warning);">Motivo:</div>
-                            <div style="color: var(--primary-text);">${returnReason}</div>
+                            <div style="color: var(--primary-text);">${escapeHtml(returnReason)}</div>
                         </div>
                         <div style="margin-top: 0.75rem; text-align: center;">
-                            <button onclick="viewReportDetail('${doc.id}', 'segnalazioni_utente')" class="btn btn-primary" style="width: 100%;">
+                            <button onclick="viewReportDetail('${escapeJsAttr(doc.id)}', 'segnalazioni_utente')" class="btn btn-primary" style="width: 100%;">
                                 Visualizza segnalazione
                             </button>
                         </div>
@@ -16761,6 +17977,7 @@ ${renderBottomNavigation()}
             try {
                 await deleteDoc(doc(db, 'users', userId));
                 deleteRegistrationPhotosForUser(userId).catch(() => { });
+                syncRegisteredUnitsIndex();
                 await logActivity("user_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { deletedUserId: userId, deletedUserName: userName });
                 // Nota: L'eliminazione dell'utente da Firebase Authentication non può essere eseguita in modo sicuro dal client.
                 // Richiede una Cloud Function o la riautenticazione dell'utente da eliminare.
@@ -16811,6 +18028,7 @@ ${renderBottomNavigation()}
                 };
 
                 await updateDoc(doc(db, "users", userId), updatedData);
+                syncRegisteredUnitsIndex();
                 await logActivity("user_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { updatedUserId: userId, changes: updatedData });
 
                 hideModal();
@@ -16918,7 +18136,7 @@ ${renderBottomNavigation()}
                 </form>
             `;
 
-            showModal(`Modifica utente: ${user.nome} ${user.cognome}`, modalContent);
+            showModal(`Modifica utente: ${escapeHtml(user.nome)} ${escapeHtml(user.cognome)}`, modalContent);
 
             // Add event listeners for dynamic plan selects
             document.querySelectorAll('.property-edit-row .form-select[data-field="gruppo"]').forEach(groupSelect => {
@@ -17195,7 +18413,7 @@ ${renderBottomNavigation()}
                     const rowsHtml = snapshot.docs.map(docSnap => {
                         const contact = docSnap.data();
                         if (canManage) {
-                            const editIcon = `<button onclick="editUsefulNumber('${docSnap.id}', ${JSON.stringify(contact).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
+                            const editIcon = `<button onclick="editUsefulNumber('${docSnap.id}', ${escapeHtml(JSON.stringify(contact))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                                 </svg>
@@ -17267,7 +18485,7 @@ ${renderBottomNavigation()}
                         orderedHeaders.forEach(h => tableHTML += `<td>${escapeHtml(row[h] !== undefined ? row[h] : '')}</td>`);
 
                         if (canManage) {
-                            const editIcon = `<button onclick="editImportedContact(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
+                            const editIcon = `<button onclick="editImportedContact(${index}, ${escapeHtml(JSON.stringify(row))})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                                 </svg>
@@ -18429,7 +19647,7 @@ ${renderBottomNavigation()}
             pathSegments.forEach(segment => {
                 currentPath += segment + '/';
                 const displaySegment = segment.replace(/__SLASH__/g, '/'); // Decodifica per visualizzazione
-                breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="handleBreadcrumbClick('${currentPath}')">${displaySegment}</div>`;
+                breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="handleBreadcrumbClick('${escapeJsAttr(currentPath)}')">${escapeHtml(displaySegment)}</div>`;
             });
             breadcrumbsContainer.innerHTML = breadcrumbsHtml;
 
@@ -18473,7 +19691,7 @@ ${renderBottomNavigation()}
                     if (canDeleteFolder) {
                         managementActions = `
                         <div class="list-item-action flex gap-2">
-                            <button onclick="event.stopPropagation(); handleDeleteItem('${folderRef.fullPath}', true)" class="btn-icon" title="Elimina Cartella" style="background:var(--danger); color:white;">
+                            <button onclick="event.stopPropagation(); handleDeleteItem('${escapeJsAttr(folderRef.fullPath)}', true)" class="btn-icon" title="Elimina Cartella" style="background:var(--danger); color:white;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
@@ -18483,10 +19701,10 @@ ${renderBottomNavigation()}
                     const showCheckbox = canManage && !(userProfile?.tipoUtente === 'consigliere' && folderRef.fullPath.startsWith('Archivio Amministratore'));
                     itemsHtml += `
                     <div class="list-item">
-                        ${showCheckbox ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${folderRef.fullPath}" data-type="folder" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
-                        <div onclick="handleFolderClick('${folderRef.name}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
+                        ${showCheckbox ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${escapeHtml(folderRef.fullPath)}" data-type="folder" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
+                        <div onclick="handleFolderClick('${escapeJsAttr(folderRef.name)}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
                             <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
-                            <div class="list-item-content"><div class="title">${displayName}</div></div>
+                            <div class="list-item-content"><div class="title">${escapeHtml(displayName)}</div></div>
                         </div>
                         ${managementActions}
                     </div>`;
@@ -18504,7 +19722,7 @@ ${renderBottomNavigation()}
                     }
                     const managementActions = canDeleteItem ? `
                         <div class="list-item-action">
-                            <button onclick="event.stopPropagation(); handleDeleteItem('${itemRef.fullPath}', false)" class="btn-icon" title="Elimina File" style="background:var(--danger); color:white;">
+                            <button onclick="event.stopPropagation(); handleDeleteItem('${escapeJsAttr(itemRef.fullPath)}', false)" class="btn-icon" title="Elimina File" style="background:var(--danger); color:white;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
@@ -18513,10 +19731,10 @@ ${renderBottomNavigation()}
                     const showFileCheckbox = canManage && !(userProfile?.tipoUtente === 'consigliere' && currentStoragePath.startsWith('Archivio Amministratore/'));
                     itemsHtml += `
                     <div class="list-item">
-                         ${showFileCheckbox ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${itemRef.fullPath}" data-type="file" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
-                        <div onclick="handleDownloadFile('${itemRef.fullPath}', '${itemRef.name}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
+                         ${showFileCheckbox ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${escapeHtml(itemRef.fullPath)}" data-type="file" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
+                        <div onclick="handleDownloadFile('${escapeJsAttr(itemRef.fullPath)}', '${escapeJsAttr(itemRef.name)}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
                             <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
-                            <div class="list-item-content"><div class="title">${itemRef.name}</div></div>
+                            <div class="list-item-content"><div class="title">${escapeHtml(itemRef.name)}</div></div>
                         </div>
                         ${managementActions}
                     </div>`;
@@ -18623,10 +19841,10 @@ ${renderBottomNavigation()}
                     <div class="list-item" style="padding-left: ${level * 1.5}rem; background-color: var(--surface-color-light); margin-bottom: 0.5rem; flex-wrap: wrap; row-gap: 0.5rem; align-items: center;">
                         <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
                         <div class="list-item-content" style="min-width: 150px;">
-                            <div class="title" style="white-space: normal; word-break: break-word;">${node.name || 'Archivio'}</div>
+                            <div class="title" style="white-space: normal; word-break: break-word;">${escapeHtml(node.name || 'Archivio')}</div>
                         </div>
                         <div class="list-item-action" style="margin-left: auto;">
-                            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem;" onclick="selectUploadPath('${node.path}')" ${buttonDisabled ? 'disabled' : ''}>Carica qui</button>
+                            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem;" onclick="selectUploadPath('${escapeJsAttr(node.path)}')" ${buttonDisabled ? 'disabled' : ''}>Carica qui</button>
                         </div>
                     </div>
                 `;
@@ -18784,7 +20002,7 @@ ${renderBottomNavigation()}
                     pathSegments.forEach(segment => {
                         currentPathForBreadcrumbs += segment + '/';
                         const displaySegment = segment.replace(/__SLASH__/g, '/');
-                        breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="loadFoldersInModal('${currentPathForBreadcrumbs}')" style="cursor: pointer;">${displaySegment}</div>`;
+                        breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="loadFoldersInModal('${escapeJsAttr(currentPathForBreadcrumbs)}')" style="cursor: pointer;">${escapeHtml(displaySegment)}</div>`;
                     });
                     breadcrumbsContainer.innerHTML = breadcrumbsHtml;
 
@@ -18815,14 +20033,14 @@ ${renderBottomNavigation()}
 
                             const displayName = folderRef.name.replace(/__SLASH__/g, '/');
                             foldersHtml += `
-                            <div class="list-item" onclick="loadFoldersInModal('${path}${folderRef.name}/')" style="cursor: pointer;">
+                            <div class="list-item" onclick="loadFoldersInModal('${escapeJsAttr(path + folderRef.name + '/')}')" style="cursor: pointer;">
                                 <div class="list-item-icon">
                                     <svg fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
                                     </svg>
                                 </div>
                                 <div class="list-item-content">
-                                    <div class="title">${displayName}</div>
+                                    <div class="title">${escapeHtml(displayName)}</div>
                                 </div>
                             </div>
                         `;
@@ -19273,7 +20491,7 @@ ${renderBottomNavigation()}
                 const unreadCount = snapshot.size;
                 updateNotificationUI('gestione-archivio', unreadCount);
                 updateNotificationUI('archivio', unreadCount); // Also update main archivio badge
-            });
+            }, (err) => console.warn("Badge archivio non disponibile:", err?.code || err));
         };
 
         // Nuova funzione per notificare i creatori di segnalazioni quando i loro report vengono aggiornati
@@ -19601,7 +20819,7 @@ ${renderBottomNavigation()}
                             title: assembly.title,
                             date: formattedIsoDate,
                             time: `${hours}:${minutes}`
-                        }).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
+                        }).replace(/&/g, '&amp;').replace(/'/g, "&apos;").replace(/"/g, '&quot;');
 
                         actionButtonsHtml = `
                             <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--surface-color-light); display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; width: 100%; box-sizing: border-box;">
@@ -20442,10 +21660,10 @@ ${renderBottomNavigation()}
                 </div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: 800; font-size: 0.88rem; color: #FFFFFF; margin-bottom: 0.2rem; line-height: 1.25;">
-                        ${title}
+                        ${escapeHtml(title)}
                     </div>
                     <div style="font-size: 0.82rem; color: #CBD5E1; line-height: 1.38;">
-                        ${message}
+                        ${escapeHtml(message)}
                     </div>
                 </div>
                 <button type="button" aria-label="Chiudi" style="background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 0.15rem; margin-left: 0.35rem; display: flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; flex-shrink: 0;">
@@ -41041,6 +42259,16 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 return;
             }
 
+            // SICUREZZA: dopo il logout il tasto "indietro" non deve riaprire pagine interne.
+            if (!currentUser || !auth.currentUser) {
+                history.replaceState({ page: 'login' }, '', '#login');
+                if (currentPage !== 'login') {
+                    currentPage = 'login';
+                    renderCurrentPage();
+                }
+                return;
+            }
+
             if (event.state && event.state.page) {
                 const newPage = event.state.page;
                 // Evita di renderizzare la login page se l'utente è ancora loggato
@@ -41392,15 +42620,15 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color-light);">
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                         <div style="background: var(--danger); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700;">
-                            ${reportNumber}
+                            ${escapeHtml(reportNumber)}
                         </div>
                         <div style="flex: 1;">
-                            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${title}</div>
-                            <div style="color: var(--secondary-text); font-size: 0.9rem;">Sollecito inviato da: <strong>${creator}</strong></div>
+                            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${escapeHtml(title)}</div>
+                            <div style="color: var(--secondary-text); font-size: 0.9rem;">Sollecito inviato da: <strong>${escapeHtml(creator)}</strong></div>
                         </div>
                     </div>
                     <div style="margin-top: 0.75rem; text-align: center;">
-                        <button onclick="viewReportDetail('${doc.id}', 'solleciti_ricevuti')" class="btn btn-primary" style="width: 100%;">
+                        <button onclick="viewReportDetail('${escapeJsAttr(doc.id)}', 'solleciti_ricevuti')" class="btn btn-primary" style="width: 100%;">
                             Visualizza Segnalazione
                         </button>
                     </div>
@@ -41550,6 +42778,11 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
         };
 
         onAuthStateChanged(auth, async (user) => {
+            if (user && isRegistrationInProgress) {
+                // Registrazione in corso: il profilo non esiste ancora, non renderizzare l'app.
+                currentUser = user;
+                return;
+            }
             if (user) {
                 // L'utente è loggato o si è appena loggato
                 currentUser = user;
@@ -41565,6 +42798,14 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 listenForReportUpdates();
                 // Listener per utenti in attesa di approvazione
                 checkPendingUsersAndNotify();
+                // Profili gestionali: riallinea l'indice pubblico delle unità registrate
+                if (['adm', 'amministratore', 'supervisore'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true) {
+                    syncRegisteredUnitsIndex();
+                }
+                // Adm: avviso richieste di backup/ripristino in attesa di conferma
+                watchPendingBackupRequests();
+                // Adm: notifiche di ogni operazione sui backup (creazione, download, caricamento...)
+                watchBackupEvents();
                 // Listener globale per assemblee e deleghe
                 checkForNewAssemblies();
                 // Inizializza Notifiche Web Push PWA
@@ -41627,6 +42868,18 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                     pendingUsersListener();
                     pendingUsersListener = null;
                 }
+                if (pendingBackupsListener) {
+                    pendingBackupsListener();
+                    pendingBackupsListener = null;
+                }
+                pendingBackupCount = 0;
+                notifiedPendingBackupIds.clear();
+                if (backupEventsListener) {
+                    backupEventsListener();
+                    backupEventsListener = null;
+                }
+                unreadBackupEventsCount = 0;
+                notifiedBackupEventIds.clear();
 
                 currentUser = null;
 
