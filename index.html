@@ -4118,7 +4118,7 @@
         // Selettore a tutto schermo (stessa finestra delle altre schermate dell'app).
         window.openCondoSwitcher = () => {
             const rows = myCondos.map(c => `
-                <button type="button" onclick="pickCondoFromSwitcher('${escapeHtml(c.id)}')" style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; padding: 0.85rem 1rem; border-radius: 10px; cursor: pointer; background: ${c.id === activeCondoId ? 'rgba(29, 185, 84, 0.12)' : 'var(--surface-color-light)'}; border: 1px solid ${c.id === activeCondoId ? 'var(--accent-color)' : 'transparent'}; color: var(--primary-text);">
+                <button type="button" class="cb-condo-row" data-search="${escapeHtml(condoSearchText([c.nome, c.indirizzo, c.comune, ROLE_LABELS[c.ruolo] || c.ruolo, c.codiceInvito]))}" onclick="pickCondoFromSwitcher('${escapeHtml(c.id)}')" style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; padding: 0.85rem 1rem; border-radius: 10px; cursor: pointer; background: ${c.id === activeCondoId ? 'rgba(29, 185, 84, 0.12)' : 'var(--surface-color-light)'}; border: 1px solid ${c.id === activeCondoId ? 'var(--accent-color)' : 'transparent'}; color: var(--primary-text);">
                     <span style="font-weight: 700;">${escapeHtml(c.nome || 'Condominio senza nome')}${c.id === activeCondoId ? ' · attivo' : ''}</span>
                     <span style="font-size: 0.8rem; color: var(--secondary-text);">${escapeHtml([c.indirizzo, c.comune].filter(Boolean).join(', '))}${(c.indirizzo || c.comune) ? ' · ' : ''}${escapeHtml(ROLE_LABELS[c.ruolo] || c.ruolo || '')}${c.ruolo === 'condomino' && c.isValidated === false ? ' (in attesa di convalida)' : ''}</span>
                 </button>`).join('');
@@ -4130,13 +4130,29 @@
             ].filter(Boolean).join('');
             showModal('Seleziona condominio', `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <div style="flex-shrink: 0; margin-bottom: 0.75rem;">
+                        <input type="search" id="condo-switcher-search" oninput="filterCondoSwitcher(this.value)" placeholder="Cerca per nome, indirizzo, comune..." class="form-input" autocomplete="off" aria-label="Cerca condominio">
+                    </div>
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; -webkit-overflow-scrolling: touch;">
                         ${rows || '<p style="color: var(--secondary-text);">Nessun condominio.</p>'}
+                        <p id="condo-switcher-empty" class="hidden" style="color: var(--secondary-text); margin: 0.5rem 0;">Nessun condominio trovato.</p>
                     </div>
                     ${actions ? `<div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; display: flex; gap: 0.5rem;">
                         ${actions}
                     </div>` : ''}
                 </div>`, true);
+        };
+        // Ricerca nel selettore: ogni parola deve comparire (maiuscole e accenti ignorati).
+        const condoSearchText = (parts) => parts.filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        window.filterCondoSwitcher = (q) => {
+            const words = condoSearchText([q]).split(/\s+/).filter(Boolean);
+            let shown = 0;
+            document.querySelectorAll('#modal-body .cb-condo-row').forEach(row => {
+                const match = words.every(w => row.dataset.search.includes(w));
+                row.style.display = match ? 'flex' : 'none';
+                if (match) shown++;
+            });
+            document.getElementById('condo-switcher-empty')?.classList.toggle('hidden', shown > 0);
         };
         window.pickCondoFromSwitcher = (cid) => {
             closeModalThen(() => { if (cid !== activeCondoId) switchCondo(cid); });
@@ -4223,7 +4239,7 @@
                     </div>
                     <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.6rem 0 0;">Un nuovo codice disattiva quello precedente: utile se il codice è finito a persone estranee. Chi è già iscritto non perde l'accesso.</p>`, true)}
 
-                ${condoSection('condo-aggiungi', 'Aggiungi una persona già registrata', 'M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M6,10V7H4V10H1V12H4V15H6V12H9V10M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12Z', `
+                ${condoSection('condo-aggiungi', 'Aggiungi registrazione', 'M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M6,10V7H4V10H1V12H4V15H6V12H9V10M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12Z', `
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Per chi ha già un account Con-bridge in un altro condominio (es. proprietari di più unità, custodi o fornitori che lavorano per più stabili): usa la stessa email, senza nuova registrazione.</p>
                     <div id="add-member-message" class="message-box"></div>
                     <form id="add-member-form" class="space-y-4">
@@ -4251,7 +4267,7 @@
                     </form>`)}
 
                 ${userProfile?.tipoUtente === 'adm' ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
-                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con il suo codice di invito. Poi aggiungi l'amministratore con "Aggiungi una persona già registrata" o crea gli account da Gestione utenti.</p>
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con il suo codice di invito. Poi aggiungi l'amministratore con "Aggiungi registrazione" o crea gli account da Gestione utenti.</p>
                     <div id="new-condo-message" class="message-box"></div>
                     <form id="new-condo-form" class="space-y-4">
                         <div class="form-group"><label for="new-condo-nome" class="form-label">Nome</label><input id="new-condo-nome" type="text" required maxlength="80" class="form-input" placeholder="Es. Condominio Verdi"></div>
