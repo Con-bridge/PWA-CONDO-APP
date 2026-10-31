@@ -2792,6 +2792,85 @@
 </head>
 
 <body>
+    <!-- Apertura animata: il logo si disegna (palazzi, finestre che si accendono, il "ponte")
+         finché l'app non mostra la prima schermata. Stesso sfondo della schermata di avvio
+         del telefono (manifest), così il passaggio è continuo. -->
+    <div id="cb-splash" role="img" aria-label="Con-bridge">
+        <style>
+            #cb-splash { position: fixed; inset: 0; z-index: 100000; background: #121212; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; transition: opacity 0.35s ease, transform 0.35s ease; }
+            #cb-splash.cb-out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+            #cb-splash svg { width: min(56vw, 240px); height: auto; overflow: visible; filter: drop-shadow(0 0 14px rgba(29, 185, 84, 0.35)); }
+            #cb-splash .cb-line { fill: none; stroke: #1DB954; stroke-width: 11; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: cbDraw 0.7s ease-out forwards; }
+            #cb-splash .cb-l2 { animation-delay: 0.12s; } #cb-splash .cb-l3 { animation-delay: 0.24s; } #cb-splash .cb-l4 { animation-delay: 0.36s; }
+            #cb-splash .cb-win { fill: #1DB954; opacity: 0; animation: cbLight 0.25s ease-out forwards, cbTwinkle 2.4s ease-in-out 1.6s infinite; }
+            #cb-splash .cb-bridge { fill: none; stroke: #1DB954; stroke-width: 7; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0.85; animation: cbDraw 0.55s ease-in-out 0.85s forwards; }
+            #cb-splash .cb-cable { stroke: #1DB954; stroke-width: 4; stroke-linecap: round; opacity: 0; animation: cbLight 0.2s ease-out forwards; }
+            #cb-splash .cb-name { font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 2.1rem; letter-spacing: -0.5px; color: #1DB954; opacity: 0; transform: translateY(10px); animation: cbRise 0.45s ease-out 1.05s forwards; }
+            @keyframes cbDraw { to { stroke-dashoffset: 0; } }
+            @keyframes cbLight { to { opacity: 1; } }
+            @keyframes cbTwinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+            @keyframes cbRise { to { opacity: 1; transform: none; } }
+            @media (prefers-reduced-motion: reduce) {
+                #cb-splash *, #cb-splash { animation: none !important; transition: none !important; }
+                #cb-splash .cb-line, #cb-splash .cb-bridge { stroke-dashoffset: 0; }
+                #cb-splash .cb-win, #cb-splash .cb-cable, #cb-splash .cb-name { opacity: 1; transform: none; }
+            }
+        </style>
+        <svg viewBox="80 120 352 300" aria-hidden="true">
+            <path class="cb-line" pathLength="1" d="M100 372 V242 L168 225 V372" />
+            <path class="cb-line cb-l2" pathLength="1" d="M170 372 V166 L252 142 L336 166 V236 M252 142 V372" />
+            <path class="cb-line cb-l3" pathLength="1" d="M282 372 V244 L318 234 L412 257 V372 M318 234 V372" />
+            <path class="cb-line cb-l4" pathLength="1" d="M94 372 H418" />
+            <g>
+                <rect class="cb-win" x="127" y="257" width="16" height="14" style="animation-delay: 0.55s, 1.6s" />
+                <rect class="cb-win" x="127" y="293" width="16" height="14" style="animation-delay: 0.62s, 2.1s" />
+                <rect class="cb-win" x="127" y="329" width="16" height="14" style="animation-delay: 0.69s, 1.8s" />
+                <rect class="cb-win" x="203" y="182" width="19" height="15" style="animation-delay: 0.58s, 2.4s" />
+                <rect class="cb-win" x="203" y="220" width="19" height="15" style="animation-delay: 0.65s, 1.7s" />
+                <rect class="cb-win" x="203" y="257" width="19" height="15" style="animation-delay: 0.72s, 2.2s" />
+                <rect class="cb-win" x="203" y="294" width="19" height="15" style="animation-delay: 0.79s, 1.9s" />
+                <rect class="cb-win" x="277" y="182" width="9" height="11" style="animation-delay: 0.6s, 2.6s" />
+                <rect class="cb-win" x="300" y="189" width="9" height="11" style="animation-delay: 0.67s, 2.0s" />
+                <rect class="cb-win" x="277" y="212" width="9" height="11" style="animation-delay: 0.74s, 2.3s" />
+                <rect class="cb-win" x="346" y="266" width="12" height="12" style="animation-delay: 0.7s, 1.75s" />
+                <rect class="cb-win" x="376" y="271" width="12" height="12" style="animation-delay: 0.77s, 2.5s" />
+                <rect class="cb-win" x="346" y="297" width="12" height="12" style="animation-delay: 0.84s, 2.05s" />
+                <rect class="cb-win" x="376" y="300" width="12" height="12" style="animation-delay: 0.91s, 1.65s" />
+                <rect class="cb-win" x="346" y="328" width="12" height="12" style="animation-delay: 0.98s, 2.35s" />
+                <rect class="cb-win" x="376" y="330" width="12" height="12" style="animation-delay: 1.05s, 1.95s" />
+            </g>
+            <path class="cb-bridge" pathLength="1" d="M70 412 Q256 352 442 412" />
+            <line class="cb-cable" x1="163" y1="390" x2="163" y2="412" style="animation-delay: 1.1s" />
+            <line class="cb-cable" x1="256" y1="382" x2="256" y2="412" style="animation-delay: 1.18s" />
+            <line class="cb-cable" x1="349" y1="390" x2="349" y2="412" style="animation-delay: 1.26s" />
+        </svg>
+        <div class="cb-name">Con-bridge</div>
+        <script>
+            // Sparisce quando l'app ha disegnato la prima schermata (dopo almeno 1,9 s, così
+            // l'animazione si vede per intero); in ogni caso entro 10 s.
+            (function () {
+                var splash = document.getElementById('cb-splash');
+                var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                var minUntil = Date.now() + (reduced ? 300 : 1900);
+                var done = false;
+                function hide() {
+                    if (done) return; done = true;
+                    setTimeout(function () {
+                        splash.classList.add('cb-out');
+                        setTimeout(function () { splash.remove(); }, 400);
+                    }, Math.max(0, minUntil - Date.now()));
+                }
+                function watch() {
+                    var app = document.getElementById('app');
+                    if (!app) return setTimeout(watch, 50);
+                    if (app.children.length) return hide();
+                    new MutationObserver(function (m, obs) { if (app.children.length) { obs.disconnect(); hide(); } }).observe(app, { childList: true });
+                }
+                watch();
+                setTimeout(hide, 10000);
+            })();
+        </script>
+    </div>
     <div id="app"></div>
 
     <div id="modal-container" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -4138,11 +4217,9 @@
                     <div id="invite-current" style="text-align: center;">
                         <p style="color: var(--secondary-text); margin: 0;">Caricamento...</p>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.9rem;">
-                        <button type="button" id="invite-copy-code" class="btn btn-secondary">Copia codice</button>
-                        <button type="button" id="invite-copy-link" class="btn btn-secondary">Copia link</button>
-                        <button type="button" id="invite-share" class="btn btn-primary" style="grid-column: span 2;">Condividi invito</button>
-                        <button type="button" id="invite-regenerate" class="btn btn-secondary" style="grid-column: span 2;">Genera un nuovo codice</button>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem; margin-top: 0.9rem;">
+                        <button type="button" id="invite-share" class="btn btn-primary">Condividi invito</button>
+                        <button type="button" id="invite-regenerate" class="btn btn-secondary">Genera un nuovo codice</button>
                     </div>
                     <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.6rem 0 0;">Un nuovo codice disattiva quello precedente: utile se il codice è finito a persone estranee. Chi è già iscritto non perde l'accesso.</p>`, true)}
 
@@ -4274,8 +4351,6 @@
                 try { await navigator.clipboard.writeText(text); show('invite-message', `${what} copiato.`); }
                 catch { await customAlert(text); }
             };
-            document.getElementById('invite-copy-code')?.addEventListener('click', () => code ? copy(code, 'Codice') : null);
-            document.getElementById('invite-copy-link')?.addEventListener('click', () => code ? copy(inviteLinkFor(code), 'Link') : null);
             document.getElementById('invite-share')?.addEventListener('click', async () => {
                 if (!code) return;
                 const text = `Per accedere a Con-bridge per ${condo.nome || 'il condominio'}: apri ${inviteLinkFor(code)} e registrati (codice ${code}).`;
@@ -5664,7 +5739,7 @@
                 </form>
 
                 <div class="flex w-full mt-4" style="max-width:400px; justify-content: space-between;">
-                    <button type="button" id="toggle-auth" style="background:none; border:none; color:var(--secondary-text); cursor:pointer;">Registrati</button>
+                    <button type="button" id="toggle-auth" style="background:none; border:none; color:var(--secondary-text); cursor:pointer;">Non hai un account? Registrati</button>
                     <button type="button" id="forgot-password" style="background:none; border:none; color:var(--secondary-text); cursor:pointer;">Password dimenticata?</button>
                 </div>
             </div>`;
@@ -5831,7 +5906,17 @@
             }
 
             // Blocco 1: Pulsante "Funzioni Supervisore" per utenti 'supervisore' o con permesso speciale
-            if (userProfile?.tipoUtente === 'supervisore' || userProfile?.canAccessSupervisorFunctions) {
+            // L'adm ha già Funzioni admin: al posto di Funzioni supervisore vede Gestione condominii.
+            if (userProfile?.tipoUtente === 'adm') {
+                dashboardItemsHtml.push(`
+                        <div onclick="openManageCondosModal()" class="dashboard-item">
+                            <div class="dashboard-card">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19,2H9C7.9,2 7,2.9 7,4V8H5C3.9,8 3,8.9 3,10V22H11V18H13V22H21V4C21,2.9 20.1,2 19,2M9,20H5V18H9V20M9,16H5V14H9V16M9,12H5V10H9V12M13,16H11V14H13V16M13,12H11V10H13V12M13,8H11V6H13V8M17,16H15V14H17V16M17,12H15V10H17V12M17,8H15V6H17V8M17,4H15V4H17Z"/></svg>
+                            </div>
+                            <p>Gestione condominii</p>
+                        </div>
+                    `);
+            } else if (userProfile?.tipoUtente === 'supervisore' || userProfile?.canAccessSupervisorFunctions) {
                 const rolesRequiringWarning = ['consigliere', 'amministratore', 'adm'];
                 const shouldShowWarning = rolesRequiringWarning.includes(userProfile?.tipoUtente);
                 const supervisorFunctionOnclick = shouldShowWarning ? "showSupervisorWarningForConsigliere()" : "navigateTo('gestioneGruppi')";
@@ -12021,7 +12106,7 @@ ${renderBottomNavigation()}
                 isRegistering = !isRegistering;
                 authTitle.textContent = isRegistering ? "Registrati" : "Accedi";
                 authSubmitBtn.textContent = isRegistering ? "Registrati" : "Accedi";
-                event.target.textContent = isRegistering ? "Accedi" : "Registrati";
+                event.target.textContent = isRegistering ? "Accedi" : "Non hai un account? Registrati";
                 registerFields.classList.toggle("hidden", !isRegistering);
                 forgotPasswordBtn.classList.toggle("hidden", isRegistering);
                 if (isRegistering && inviteInput?.value) await verifyInvite();
