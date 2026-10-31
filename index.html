@@ -4250,13 +4250,16 @@
         };
         // Impostazioni > Gestisci condomini (adm e amministratore)
         window.openManageCondosModal = () => {
-            const btn = (onclick, label, icon) => `<button type="button" onclick="${onclick}" class="btn btn-secondary w-full" style="width: 100%; padding: 0.85rem 1rem; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 24 24"><path d="${icon}"/></svg><span>${label}</span></button>`;
+            // Stesso stile dei sottomenu delle Funzioni admin
+            const btn = (onclick, label, icon) => `<div onclick="${onclick}" class="dashboard-item" role="button" tabindex="0"><div class="menu-list-item"><svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="${icon}"/></svg><p style="text-align: left; font-size: 1.1rem;">${label}</p></div></div>`;
             showModal('Gestisci condomini', `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.85rem; -webkit-overflow-scrolling: touch;">
                         <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.45; margin: 0;">Condominio attivo: <strong style="color: var(--primary-text);">${escapeHtml(activeCondo?.nome || '—')}</strong></p>
+                        <div class="dashboard-grid dashboard-grid-menu" style="margin: 0;">
                         ${btn('closeModalThen(openCondoSwitcher)', 'Selezione condominio', 'M3,3H11V11H3V3M13,3H21V11H13V3M3,13H11V21H3V13M18,13H16V16H13V18H16V21H18V18H21V16H18V13Z')}
                         ${btn("closeModalThen(() => navigateTo('condominioInviti'))", 'Condominio e inviti', 'M12,3L2,12H5V20H10V14H14V20H19V12H22L12,3Z')}
+                        </div>
                     </div>
                     <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
                         <button type="button" class="btn btn-secondary w-full" onclick="hideModal()" style="width: 100%; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">Chiudi</button>
