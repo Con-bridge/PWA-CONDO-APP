@@ -4117,11 +4117,17 @@
         };
         // Selettore a tutto schermo (stessa finestra delle altre schermate dell'app).
         window.openCondoSwitcher = () => {
+            const isAdm = userProfile?.tipoUtente === 'adm';
+            const iconBtn = (onclick, label, path, color) => `<button type="button" onclick="${onclick}" aria-label="${label}" title="${label}" style="flex-shrink: 0; width: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: none; cursor: pointer; background: var(--surface-color-light); color: ${color};"><svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="${path}"/></svg></button>`;
             const rows = myCondos.map(c => `
-                <button type="button" class="cb-condo-row" data-search="${escapeHtml(condoSearchText([c.nome, c.indirizzo, c.comune, ROLE_LABELS[c.ruolo] || c.ruolo, c.codiceInvito]))}" onclick="pickCondoFromSwitcher('${escapeHtml(c.id)}')" style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; padding: 0.85rem 1rem; border-radius: 10px; cursor: pointer; background: ${c.id === activeCondoId ? 'rgba(29, 185, 84, 0.12)' : 'var(--surface-color-light)'}; border: 1px solid ${c.id === activeCondoId ? 'var(--accent-color)' : 'transparent'}; color: var(--primary-text);">
-                    <span style="font-weight: 700;">${escapeHtml(c.nome || 'Condominio senza nome')}${c.id === activeCondoId ? ' · attivo' : ''}</span>
-                    <span style="font-size: 0.8rem; color: var(--secondary-text);">${escapeHtml([c.indirizzo, c.comune].filter(Boolean).join(', '))}${(c.indirizzo || c.comune) ? ' · ' : ''}${escapeHtml(ROLE_LABELS[c.ruolo] || c.ruolo || '')}${c.ruolo === 'condomino' && c.isValidated === false ? ' (in attesa di convalida)' : ''}</span>
-                </button>`).join('');
+                <div class="cb-condo-row" data-search="${escapeHtml(condoSearchText([c.nome, c.indirizzo, c.comune, ROLE_LABELS[c.ruolo] || c.ruolo, c.codiceInvito]))}" style="display: flex; gap: 0.4rem; align-items: stretch;">
+                    <button type="button" onclick="pickCondoFromSwitcher('${escapeHtml(c.id)}')" style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 0.85rem 1rem; border-radius: 10px; cursor: pointer; background: ${c.id === activeCondoId ? 'rgba(29, 185, 84, 0.12)' : 'var(--surface-color-light)'}; border: 1px solid ${c.id === activeCondoId ? 'var(--accent-color)' : 'transparent'}; color: var(--primary-text);">
+                        <span style="font-weight: 700;">${escapeHtml(c.nome || 'Condominio senza nome')}${c.id === activeCondoId ? ' · attivo' : ''}</span>
+                        <span style="font-size: 0.8rem; color: var(--secondary-text);">${escapeHtml([c.indirizzo, c.comune].filter(Boolean).join(', '))}${(c.indirizzo || c.comune) ? ' · ' : ''}${escapeHtml(ROLE_LABELS[c.ruolo] || c.ruolo || '')}${c.ruolo === 'condomino' && c.isValidated === false ? ' (in attesa di convalida)' : ''}</span>
+                    </button>
+                    ${isAdm ? iconBtn(`openEditCondo('${escapeHtml(c.id)}')`, 'Modifica condominio', 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z', 'var(--primary-text)') : ''}
+                    ${isAdm ? iconBtn(`deleteCondoFromSwitcher('${escapeHtml(c.id)}')`, 'Elimina condominio', 'M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z', 'var(--danger)') : ''}
+                </div>`).join('');
             const staff = activeCondoId && canReadFullUserProfiles();
             const barBtn = (onclick, label) => `<button type="button" class="btn btn-secondary" onclick="${onclick}" style="flex: 1 1 0; min-width: 0; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">${label}</button>`;
             const actions = [
@@ -4153,6 +4159,83 @@
                 if (match) shown++;
             });
             document.getElementById('condo-switcher-empty')?.classList.toggle('hidden', shown > 0);
+        };
+        // (adm) Modifica di un condominio dal selettore: dati e password di accesso.
+        window.openEditCondo = (cid) => {
+            const c = myCondos.find(x => x.id === cid);
+            if (!c || userProfile?.tipoUtente !== 'adm') return;
+            const field = (id, label, value, extra = '') => `<div class="form-group"><label for="${id}" class="form-label">${label}</label><input id="${id}" type="text" class="form-input" value="${escapeHtml(value || '')}" ${extra}></div>`;
+            closeModalThen(() => showModal('Modifica condominio', `
+                <form id="edit-condo-form" onsubmit="event.preventDefault(); saveEditCondo('${escapeHtml(cid)}');" style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.85rem; -webkit-overflow-scrolling: touch;">
+                        <div id="edit-condo-message" class="message-box"></div>
+                        ${field('edit-condo-nome', 'Nome', c.nome, 'required maxlength="80"')}
+                        ${field('edit-condo-indirizzo', 'Indirizzo', c.indirizzo, 'maxlength="120"')}
+                        ${field('edit-condo-comune', 'Comune', c.comune, 'maxlength="60"')}
+                        ${field('edit-condo-codice', 'Password di accesso (codice di invito)', c.codiceInvito, 'maxlength="30" autocomplete="off" autocapitalize="characters" style="text-transform: uppercase;"')}
+                        <p style="color: var(--secondary-text); font-size: 0.8rem; margin: -0.4rem 0 0;">Se cambi la password, quella precedente smette di funzionare per le nuove registrazioni.</p>
+                    </div>
+                    <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; display: flex; gap: 0.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModalThen(openCondoSwitcher)" style="flex: 1 1 0; height: 42px; font-weight: 700; border-radius: 8px;">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 1 1 0; height: 42px; font-weight: 700; border-radius: 8px;">Salva</button>
+                    </div>
+                </form>`, true));
+        };
+        window.saveEditCondo = async (cid) => {
+            const c = myCondos.find(x => x.id === cid);
+            const box = document.getElementById('edit-condo-message');
+            const btn = document.querySelector('#edit-condo-form button[type=submit]');
+            const fail = (text) => { box.textContent = text; box.className = 'message-box error'; box.style.display = 'block'; };
+            const data = {
+                nome: document.getElementById('edit-condo-nome').value.trim(),
+                indirizzo: document.getElementById('edit-condo-indirizzo').value.trim(),
+                comune: document.getElementById('edit-condo-comune').value.trim()
+            };
+            if (!data.nome) return fail('Il nome è obbligatorio.');
+            const wanted = document.getElementById('edit-condo-codice').value.trim();
+            const newCode = wanted ? normalizeInviteCode(wanted) : null;
+            if (wanted && !newCode) return fail('Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.');
+            btn.disabled = true;
+            try {
+                const batch = writeBatch(db);
+                batch.update(doc(db, 'condomini', cid), { ...data, updatedAt: serverTimestamp() });
+                if (c.codiceInvito) batch.update(doc(db, 'inviti', c.codiceInvito), { nomeCondominio: data.nome });
+                await batch.commit();
+                Object.assign(c, data);
+                if (newCode && newCode !== c.codiceInvito) await replaceInviteCode(cid, data.nome, c.codiceInvito, newCode);
+                if (cid === activeCondoId && activeCondo) {
+                    Object.assign(activeCondo, data);
+                    const headerName = document.getElementById('header-condo-name');
+                    if (headerName) headerName.textContent = data.nome + (canSwitchCondo() ? ' ▾' : '');
+                }
+                closeModalThen(openCondoSwitcher);
+            } catch (err) {
+                fail('Salvataggio non riuscito: ' + friendlyError(err));
+                btn.disabled = false;
+            }
+        };
+        // (adm) Eliminazione: si conferma scrivendo il nome; la funzione archivia prima tutto.
+        window.deleteCondoFromSwitcher = async (cid) => {
+            const c = myCondos.find(x => x.id === cid);
+            if (!c || userProfile?.tipoUtente !== 'adm') return;
+            const nome = c.nome || '';
+            const typed = await customPrompt(`Eliminare "${nome}"? Verranno cancellati dati, iscrizioni, file e password di accesso del condominio (resta una copia d'archivio riservata agli adm). Gli account delle persone non vengono eliminati.\n\nPer confermare scrivi il nome del condominio:`);
+            if (typed === null || typed === undefined) return;
+            if (typed.trim() !== nome.trim()) { await customAlert('Il nome non corrisponde: nessun dato è stato eliminato.'); return; }
+            try {
+                const res = await callFunction('deleteCondominio', { condominioId: cid, conferma: typed.trim() });
+                myCondos = myCondos.filter(x => x.id !== cid);
+                await customAlert(`"${nome}" è stato eliminato (${res.documenti} documenti e ${res.file} file archiviati).`);
+                if (cid === activeCondoId) {
+                    try { localStorage.removeItem(`condominioAttivo_${currentUser.uid}`); } catch { }
+                    if (myCondos[0]) switchCondo(myCondos[0].id);
+                    else { window.location.replace(window.location.pathname + '#dashboard'); window.location.reload(); }
+                } else {
+                    closeModalThen(openCondoSwitcher);
+                }
+            } catch (err) {
+                await customAlert('Eliminazione non riuscita: ' + functionErrorMessage(err));
+            }
         };
         window.pickCondoFromSwitcher = (cid) => {
             closeModalThen(() => { if (cid !== activeCondoId) switchCondo(cid); });
@@ -4227,8 +4310,8 @@
         const renderCondominioInviti = () => `
             ${renderHeader('Condominio e inviti')}
             <main>
-                ${condoSection('condo-invito', 'Codice di invito', 'M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z', `
-                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">I condòmini si registrano con questo codice, oppure aprendo il link o inquadrando il QR. Ogni nuova iscrizione resta in attesa finché non la convalidi.</p>
+                ${condoSection('condo-invito', 'Password di accesso', 'M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z', `
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">I condòmini si registrano scrivendo questa password, oppure aprendo il link o inquadrando il QR. Ogni nuova iscrizione resta in attesa finché non la convalidi.</p>
                     <div id="invite-message" class="message-box"></div>
                     <div id="invite-current" style="text-align: center;">
                         <p style="color: var(--secondary-text); margin: 0;">Caricamento...</p>
@@ -4237,9 +4320,16 @@
                         <button type="button" id="invite-share" class="btn btn-primary">Condividi invito</button>
                         <button type="button" id="invite-regenerate" class="btn btn-secondary">Genera un nuovo codice</button>
                     </div>
-                    <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.6rem 0 0;">Un nuovo codice disattiva quello precedente: utile se il codice è finito a persone estranee. Chi è già iscritto non perde l'accesso.</p>`, true)}
+                    <form id="invite-set-form" style="margin-top: 1rem;">
+                        <label for="invite-set-code" class="form-label">Imposta una nuova password</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input id="invite-set-code" type="text" maxlength="30" autocomplete="off" autocapitalize="characters" class="form-input" placeholder="Es. VERDI2026" style="text-transform: uppercase; min-width: 0;">
+                            <button type="submit" class="btn btn-secondary" style="white-space: nowrap;">Imposta</button>
+                        </div>
+                    </form>
+                    <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.6rem 0 0;">Una nuova password disattiva quella precedente: utile se è finita a persone estranee. Chi è già iscritto non perde l'accesso.</p>`, true)}
 
-                ${condoSection('condo-aggiungi', 'Aggiungi registrazione', 'M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M6,10V7H4V10H1V12H4V15H6V12H9V10M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12Z', `
+                ${condoSection('condo-aggiungi', 'Nuovo utente', 'M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M6,10V7H4V10H1V12H4V15H6V12H9V10M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12Z', `
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Per chi ha già un account Con-bridge in un altro condominio (es. proprietari di più unità, custodi o fornitori che lavorano per più stabili): usa la stessa email, senza nuova registrazione.</p>
                     <div id="add-member-message" class="message-box"></div>
                     <form id="add-member-form" class="space-y-4">
@@ -4267,7 +4357,7 @@
                     </form>`)}
 
                 ${userProfile?.tipoUtente === 'adm' ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
-                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con il suo codice di invito. Poi aggiungi l'amministratore con "Aggiungi registrazione" o crea gli account da Gestione utenti.</p>
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con il suo codice di invito. Poi aggiungi l'amministratore con "Nuovo utente" o crea gli account da Gestione utenti.</p>
                     <div id="new-condo-message" class="message-box"></div>
                     <form id="new-condo-form" class="space-y-4">
                         <div class="form-group"><label for="new-condo-nome" class="form-label">Nome</label><input id="new-condo-nome" type="text" required maxlength="80" class="form-input" placeholder="Es. Condominio Verdi"></div>
@@ -4285,6 +4375,26 @@
         `;
 
         // Nuovo condominio (solo adm): documento del condominio + codice di invito.
+        // Sostituisce la password di accesso (codice di invito) di un condominio: la nuova (scelta
+        // a mano o, se manca, generata) deve essere libera; la vecchia viene disattivata.
+        const replaceInviteCode = async (cid, nomeCondominio, oldCode, wanted) => {
+            let next;
+            if (wanted) {
+                next = normalizeInviteCode(wanted);
+                if (!next) throw new Error('Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.');
+                if ((await getDoc(doc(db, 'inviti', next))).exists()) throw new Error('Questa password è già usata da un altro condominio (o lo è stata): scegline un\'altra.');
+            } else {
+                next = await freshInviteCode();
+            }
+            const batch = writeBatch(db);
+            batch.set(doc(db, 'inviti', next), { condominioId: cid, nomeCondominio: nomeCondominio || '', attivo: true, creatoDa: currentUser.uid, createdAt: serverTimestamp() });
+            if (oldCode) batch.update(doc(db, 'inviti', oldCode), { attivo: false });
+            batch.update(doc(db, 'condomini', cid), { codiceInvito: next, updatedAt: serverTimestamp() });
+            await batch.commit();
+            const mine = myCondos.find(c => c.id === cid);
+            if (mine) mine.codiceInvito = next;
+            return next;
+        };
         // customCode: password di accesso scelta dall'adm (facoltativa, deve essere libera).
         const createCondo = async (data, customCode = '') => {
             const hex = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
@@ -4340,8 +4450,9 @@
             const renderInvite = () => {
                 const box = document.getElementById('invite-current');
                 if (!box) return;
-                if (!code) { box.innerHTML = '<p style="color: var(--secondary-text); margin: 0;">Nessun codice attivo: generane uno.</p>'; return; }
+                if (!code) { box.innerHTML = '<p style="color: var(--secondary-text); margin: 0;">Nessuna password attiva: generane una o impostala qui sotto.</p>'; return; }
                 box.innerHTML = `
+                    <div style="font-size: 0.8rem; color: var(--secondary-text); margin-bottom: 0.2rem;">Password attuale</div>
                     <div style="font-family: ui-monospace, Consolas, monospace; font-size: 1.6rem; font-weight: 800; letter-spacing: 1px; color: var(--accent-color); margin-bottom: 0.4rem;">${escapeHtml(code)}</div>
                     <div style="font-size: 0.78rem; color: var(--secondary-text); word-break: break-all; margin-bottom: 0.8rem;">${escapeHtml(inviteLinkFor(code))}</div>
                     <div id="invite-qr" style="display: inline-block; background: #fff; padding: 10px; border-radius: 10px;"></div>`;
@@ -4373,22 +4484,28 @@
                 if (navigator.share) { try { await navigator.share({ title: 'Invito Con-bridge', text }); } catch { } }
                 else copy(text, 'Messaggio di invito');
             });
-            document.getElementById('invite-regenerate')?.addEventListener('click', async (e) => {
-                if (code && !(await customConfirm('Il codice attuale smetterà di funzionare per le nuove registrazioni. Continuare?', 'Genera', 'Annulla'))) return;
-                e.target.disabled = true;
+            const applyNewCode = async (next, button) => {
+                if (code && !(await customConfirm('La password attuale smetterà di funzionare per le nuove registrazioni. Chi è già iscritto non perde l\'accesso. Continuare?', 'Cambia', 'Annulla'))) return false;
+                if (button) button.disabled = true;
                 try {
-                    const next = await freshInviteCode();
-                    const batch = writeBatch(db);
-                    batch.set(doc(db, 'inviti', next), { condominioId: cid, nomeCondominio: condo.nome || '', attivo: true, creatoDa: currentUser.uid, createdAt: serverTimestamp() });
-                    if (code) batch.update(doc(db, 'inviti', code), { attivo: false });
-                    batch.update(condoRef, { codiceInvito: next, updatedAt: serverTimestamp() });
-                    await batch.commit();
-                    code = next; condo.codiceInvito = next;
+                    code = await replaceInviteCode(cid, condo.nome, code, next);
+                    condo.codiceInvito = code;
                     renderInvite();
-                    show('invite-message', 'Nuovo codice attivo.');
+                    show('invite-message', `Nuova password attiva: ${code}`);
+                    return true;
                 } catch (err) {
-                    show('invite-message', 'Codice non generato: ' + friendlyError(err), 'error');
-                } finally { e.target.disabled = false; }
+                    show('invite-message', 'Password non cambiata: ' + friendlyError(err), 'error');
+                    return false;
+                } finally { if (button) button.disabled = false; }
+            };
+            document.getElementById('invite-regenerate')?.addEventListener('click', (e) => applyNewCode(null, e.target));
+            document.getElementById('invite-set-form')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('invite-set-code');
+                const next = normalizeInviteCode(input.value);
+                if (!next) return show('invite-message', 'Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.', 'error');
+                if (next === code) return show('invite-message', 'È già la password attuale.', 'error');
+                if (await applyNewCode(next, e.target.querySelector('button[type=submit]'))) input.value = '';
             });
 
             document.getElementById('condo-data-form')?.addEventListener('submit', async (e) => {
