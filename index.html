@@ -4248,10 +4248,12 @@
                 document.getElementById('new-condo-card')?.scrollIntoView({ behavior: 'smooth' });
             }, 400);
         };
+        // Riquadro nello stile dei sottomenu delle Funzioni admin (icona verde, testo a sinistra).
+        // color: per le azioni pericolose (es. var(--danger)) colora icona e testo.
+        const menuTileHtml = (onclick, label, icon, color = '') => `<div onclick="${onclick}" class="dashboard-item" role="button" tabindex="0"><div class="menu-list-item"><svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;${color ? ` color: ${color};` : ''}"><path d="${icon}"/></svg><p style="text-align: left; font-size: 1.1rem;${color ? ` color: ${color};` : ''}">${label}</p></div></div>`;
         // Impostazioni > Gestisci condomini (adm e amministratore)
         window.openManageCondosModal = () => {
-            // Stesso stile dei sottomenu delle Funzioni admin
-            const btn = (onclick, label, icon) => `<div onclick="${onclick}" class="dashboard-item" role="button" tabindex="0"><div class="menu-list-item"><svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="${icon}"/></svg><p style="text-align: left; font-size: 1.1rem;">${label}</p></div></div>`;
+            const btn = menuTileHtml;
             showModal('Gestisci condomini', `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.85rem; -webkit-overflow-scrolling: touch;">
@@ -7079,15 +7081,14 @@
         const openPropertiesDetailModal = () => {
             const propertiesListHtml = userProfile?.proprieta && userProfile.proprieta.length > 0
                 ? userProfile.proprieta.map(p => `
-                    <div style="background: var(--surface-color-light); padding: 0.85rem 1rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.06);">
-                        <div>
-                            <strong style="font-size: 1.05rem; color: var(--primary-text);">Interno ${escapeHtml(p.interno)}</strong>
-                            <div style="font-size: 0.85rem; color: var(--secondary-text); margin-top: 0.15rem;">
-                                Piano: ${escapeHtml(p.piano ?? 'N/A')} ${p.gruppo ? `• Gruppo: ${escapeHtml(p.gruppo)}` : ''}
+                    <div class="dashboard-item" style="cursor: default;">
+                        <div class="menu-list-item" style="cursor: default;">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                            <div style="flex: 1 1 auto; min-width: 0; text-align: left;">
+                                <p style="text-align: left; font-size: 1.1rem; margin: 0; padding-left: 0;">Interno ${escapeHtml(p.interno)}</p>
+                                <div style="font-size: 0.85rem; color: var(--secondary-text); margin-top: 0.15rem;">Piano: ${escapeHtml(p.piano ?? 'N/A')} ${p.gruppo ? `• Gruppo: ${escapeHtml(p.gruppo)}` : ''}</div>
                             </div>
-                        </div>
-                        <div style="font-weight: 800; color: var(--accent-color); font-size: 1.15rem;">
-                            ${(p.millesimi || 0).toFixed(2)} ‰
+                            <div style="font-weight: 800; color: var(--accent-color); font-size: 1.15rem; white-space: nowrap;">${(p.millesimi || 0).toFixed(2)} ‰</div>
                         </div>
                     </div>
                 `).join('')
@@ -7096,7 +7097,7 @@
             const modalContent = `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; padding-right: 0.2rem; display: flex; flex-direction: column; gap: 0.6rem; -webkit-overflow-scrolling: touch;">
-                        <div style="display: flex; flex-direction: column;">
+                        <div class="dashboard-grid dashboard-grid-menu" style="margin: 0;">
                             ${propertiesListHtml}
                         </div>
                         <div style="background: var(--surface-color); padding: 1rem 1.1rem; border-radius: var(--radius-sm); border: 2px solid var(--accent-color); display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
@@ -7172,24 +7173,11 @@
                         <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.45; margin: 0;">
                             Gestisci le autorizzazioni sui tuoi recapiti, la portabilità dei tuoi dati personali o elimina definitivamente il tuo account.
                         </p>
-                        <button type="button" onclick="closeModalThen(openPermissionsModal)" class="btn btn-secondary w-full" style="width: 100%; padding: 0.85rem 1rem; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                            <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                            </svg>
-                            <span>Autorizzazioni</span>
-                        </button>
-                        <button type="button" onclick="downloadUserData()" class="btn btn-secondary w-full" style="width: 100%; padding: 0.85rem 1rem; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                            <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                            </svg>
-                            <span>Scarica dati (JSON)</span>
-                        </button>
-                        <button type="button" onclick="confirmDeleteAccount()" class="btn" style="background-color: var(--danger); color: white; width: 100%; padding: 0.85rem 1rem; border-radius: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; cursor: pointer;">
-                            <svg style="width: 20px; height: 20px;" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                            </svg>
-                            <span>Elimina account</span>
-                        </button>
+                        <div class="dashboard-grid dashboard-grid-menu" style="margin: 0;">
+                            ${menuTileHtml('closeModalThen(openPermissionsModal)', 'Autorizzazioni', 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z')}
+                            ${menuTileHtml('downloadUserData()', 'Scarica dati (JSON)', 'M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z')}
+                            ${menuTileHtml('confirmDeleteAccount()', 'Elimina account', 'M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z', 'var(--danger)')}
+                        </div>
                     </div>
 
                     <!-- BARRA BOTTOM FISSA -->
