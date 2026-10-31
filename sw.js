@@ -1,5 +1,5 @@
 // Definiamo nuovo nome per la cache
-const CACHE_NAME = 'condo-hub-v1.10';
+const CACHE_NAME = 'condo-hub-v1.11';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
@@ -74,6 +74,7 @@ self.addEventListener('push', event => {
   let icon = "/PWA-CONDO-APP/icons/icon-192x192.png";
   let badge = "/PWA-CONDO-APP/icons/icon-192x192.png";
   let targetPage = "dashboard";
+  let condominio = ""; // condominio della notifica: l'app lo apre al clic
 
   if (event.data) {
     try {
@@ -86,6 +87,7 @@ self.addEventListener('push', event => {
       
       if (payload.data) {
         targetPage = payload.data.page || targetPage;
+        condominio = payload.data.condominio || "";
         if (payload.data.title) title = payload.data.title;
         if (payload.data.body) body = payload.data.body;
       }
@@ -100,7 +102,7 @@ self.addEventListener('push', event => {
     badge: badge,
     vibrate: [100, 50, 100],
     data: {
-      url: `/PWA-CONDO-APP/#${targetPage}`
+      url: `/PWA-CONDO-APP/${condominio ? `?condominio=${encodeURIComponent(condominio)}` : ""}#${targetPage}`
     }
   };
 
