@@ -98,6 +98,12 @@
             padding: 100px 1rem 100px 1rem;
         }
 
+        /* Accesso, registrazione e pagine di attesa: niente intestazione né barra in basso,
+           quindi niente spazio riservato (la pagina scorre solo se il contenuto è più alto). */
+        #app.auth-page {
+            padding: 0 !important;
+        }
+
         body::-webkit-scrollbar {
             display: none;
         }
@@ -4038,17 +4044,19 @@
                     <span style="font-size: 0.8rem; color: var(--secondary-text);">${escapeHtml([c.indirizzo, c.comune].filter(Boolean).join(', '))}${(c.indirizzo || c.comune) ? ' · ' : ''}${escapeHtml(ROLE_LABELS[c.ruolo] || c.ruolo || '')}${c.ruolo === 'condomino' && c.isValidated === false ? ' (in attesa di convalida)' : ''}</span>
                 </button>`).join('');
             const staff = activeCondoId && canReadFullUserProfiles();
-            const barBtn = (onclick, label) => `<button type="button" class="btn btn-secondary w-full" onclick="${onclick}" style="width: 100%; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">${label}</button>`;
+            const barBtn = (onclick, label) => `<button type="button" class="btn btn-secondary" onclick="${onclick}" style="flex: 1 1 0; min-width: 0; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">${label}</button>`;
+            const actions = [
+                staff ? barBtn("closeModalThen(() => navigateTo('condominioInviti'))", 'Gestione inviti') : '',
+                userProfile?.tipoUtente === 'adm' ? barBtn('closeModalThen(openNewCondoForm)', 'Crea nuovo') : ''
+            ].filter(Boolean).join('');
             showModal('Seleziona condominio', `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; -webkit-overflow-scrolling: touch;">
                         ${rows || '<p style="color: var(--secondary-text);">Nessun condominio.</p>'}
                     </div>
-                    <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                        ${staff ? barBtn("closeModalThen(() => navigateTo('condominioInviti'))", 'Condominio e inviti') : ''}
-                        ${userProfile?.tipoUtente === 'adm' ? barBtn('closeModalThen(openNewCondoForm)', 'Nuovo condominio') : ''}
-                        ${barBtn('hideModal()', 'Chiudi')}
-                    </div>
+                    ${actions ? `<div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; display: flex; gap: 0.5rem;">
+                        ${actions}
+                    </div>` : ''}
                 </div>`, true);
         };
         window.pickCondoFromSwitcher = (cid) => {
@@ -4056,7 +4064,11 @@
         };
         window.openNewCondoForm = () => {
             navigateTo('condominioInviti');
-            setTimeout(() => document.getElementById('new-condo-card')?.scrollIntoView({ behavior: 'smooth' }), 400);
+            setTimeout(() => {
+                const content = document.getElementById('section-condo-nuovo-content');
+                if (content?.classList.contains('hidden')) toggleGenericSection('condo-nuovo');
+                document.getElementById('new-condo-card')?.scrollIntoView({ behavior: 'smooth' });
+            }, 400);
         };
         // Impostazioni > Gestisci condomini (adm e amministratore)
         window.openManageCondosModal = () => {
@@ -4082,7 +4094,14 @@
             const s = Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
             return `CB-${s.slice(0, 4)}-${s.slice(4)}`;
         };
-        const inviteLinkFor = (code) => `${window.location.origin}${window.location.pathname}?codice=${encodeURIComponent(code)}`;
+        // Il link punta sempre all'app pubblicata (anche se la pagina è aperta da una copia locale).
+        const APP_PUBLIC_URL = 'https://con-bridge.github.io/PWA-CONDO-APP/';
+        const inviteLinkFor = (code) => `${APP_PUBLIC_URL}?codice=${encodeURIComponent(code)}`;
+        // Codice scelto a mano (es. "VERDI2026"): maiuscolo, spazi -> trattini; null se non valido.
+        const normalizeInviteCode = (raw) => {
+            const code = String(raw || '').trim().toUpperCase().replace(/\s+/g, '-');
+            return /^[A-Z0-9][A-Z0-9-]{3,29}$/.test(code) ? code : null;
+        };
         // Un codice nuovo che non esiste già (la probabilità di collisione è minima, ma si controlla).
         const freshInviteCode = async () => {
             for (let i = 0; i < 5; i++) {
@@ -4093,11 +4112,27 @@
             throw new Error('Impossibile generare un codice: riprova.');
         };
 
+        // Sezione espandibile (stesso stile delle altre pagine: Espandi ▼ / Comprimi ▲)
+        const condoSection = (id, title, icon, body, open = false, extraId = '') => `
+                <div class="card"${extraId ? ` id="${extraId}"` : ''} style="margin-bottom: 1.25rem; padding: 0; overflow: hidden;">
+                    <div onclick="window.toggleGenericSection('${id}')" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; user-select: none; background: rgba(255, 255, 255, 0.03);">
+                        <div style="display: flex; align-items: center; gap: 0.65rem;">
+                            <div style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: var(--accent-color);">
+                                <svg fill="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="${icon}"/></svg>
+                            </div>
+                            <h3 class="card-title" style="margin: 0; font-size: 1.05rem; font-weight: 700;">${title}</h3>
+                        </div>
+                        <span id="toggle-${id}-icon" style="color: var(--accent-color); font-size: 0.78rem; font-weight: 700;">${open ? 'Comprimi ▲' : 'Espandi ▼'}</span>
+                    </div>
+                    <div id="section-${id}-content" class="${open ? '' : 'hidden'}" style="padding: 1.25rem 1.25rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                        ${body}
+                    </div>
+                </div>`;
+
         const renderCondominioInviti = () => `
             ${renderHeader('Condominio e inviti')}
             <main>
-                <div class="card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title">Codice di invito</h3>
+                ${condoSection('condo-invito', 'Codice di invito', 'M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z', `
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">I condòmini si registrano con questo codice, oppure aprendo il link o inquadrando il QR. Ogni nuova iscrizione resta in attesa finché non la convalidi.</p>
                     <div id="invite-message" class="message-box"></div>
                     <div id="invite-current" style="text-align: center;">
@@ -4109,11 +4144,9 @@
                         <button type="button" id="invite-share" class="btn btn-primary" style="grid-column: span 2;">Condividi invito</button>
                         <button type="button" id="invite-regenerate" class="btn btn-secondary" style="grid-column: span 2;">Genera un nuovo codice</button>
                     </div>
-                    <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.6rem 0 0;">Un nuovo codice disattiva quello precedente: utile se il codice è finito a persone estranee. Chi è già iscritto non perde l'accesso.</p>
-                </div>
+                    <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.6rem 0 0;">Un nuovo codice disattiva quello precedente: utile se il codice è finito a persone estranee. Chi è già iscritto non perde l'accesso.</p>`, true)}
 
-                <div class="card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title">Aggiungi una persona già registrata</h3>
+                ${condoSection('condo-aggiungi', 'Aggiungi una persona già registrata', 'M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M6,10V7H4V10H1V12H4V15H6V12H9V10M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12Z', `
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Per chi ha già un account Con-bridge in un altro condominio (es. proprietari di più unità, custodi o fornitori che lavorano per più stabili): usa la stessa email, senza nuova registrazione.</p>
                     <div id="add-member-message" class="message-box"></div>
                     <form id="add-member-form" class="space-y-4">
@@ -4129,41 +4162,48 @@
                         </div>
                         <p style="color: var(--secondary-text); font-size: 0.8rem; margin: -0.4rem 0 0;">Unità immobiliari e millesimi si assegnano poi da Gestione utenti.</p>
                         <button type="submit" class="btn btn-primary w-full">Aggiungi al condominio</button>
-                    </form>
-                </div>
+                    </form>`)}
 
-                <div class="card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title">Dati del condominio</h3>
+                ${condoSection('condo-dati', 'Dati del condominio', 'M12,3L2,12H5V20H10V14H14V20H19V12H22L12,3Z', `
                     <div id="condo-data-message" class="message-box"></div>
                     <form id="condo-data-form" class="space-y-4">
                         <div class="form-group"><label for="condo-nome" class="form-label">Nome</label><input id="condo-nome" type="text" required maxlength="80" class="form-input" placeholder="Es. Condominio Verdi"></div>
                         <div class="form-group"><label for="condo-indirizzo" class="form-label">Indirizzo</label><input id="condo-indirizzo" type="text" maxlength="120" class="form-input" placeholder="Via, numero civico"></div>
                         <div class="form-group"><label for="condo-comune" class="form-label">Comune</label><input id="condo-comune" type="text" maxlength="60" class="form-input"></div>
                         <button type="submit" class="btn btn-primary w-full">Salva</button>
-                    </form>
-                </div>
+                    </form>`)}
 
-                ${userProfile?.tipoUtente === 'adm' ? `
-                <div class="card" id="new-condo-card" style="margin-bottom: 1.25rem;">
-                    <h3 class="card-title">Nuovo condominio</h3>
+                ${userProfile?.tipoUtente === 'adm' ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con il suo codice di invito. Poi aggiungi l'amministratore con "Aggiungi una persona già registrata" o crea gli account da Gestione utenti.</p>
                     <div id="new-condo-message" class="message-box"></div>
                     <form id="new-condo-form" class="space-y-4">
                         <div class="form-group"><label for="new-condo-nome" class="form-label">Nome</label><input id="new-condo-nome" type="text" required maxlength="80" class="form-input" placeholder="Es. Condominio Verdi"></div>
                         <div class="form-group"><label for="new-condo-indirizzo" class="form-label">Indirizzo</label><input id="new-condo-indirizzo" type="text" maxlength="120" class="form-input"></div>
                         <div class="form-group"><label for="new-condo-comune" class="form-label">Comune</label><input id="new-condo-comune" type="text" maxlength="60" class="form-input"></div>
+                        <div class="form-group">
+                            <label for="new-condo-codice" class="form-label">Password di accesso (codice di invito)</label>
+                            <input id="new-condo-codice" type="text" maxlength="30" autocomplete="off" autocapitalize="characters" class="form-input" placeholder="Es. VERDI2026 — vuoto: generata in automatico" style="text-transform: uppercase;">
+                            <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.4rem 0 0;">I condòmini la scrivono in registrazione. Da 4 a 30 caratteri: lettere, numeri e trattini. Link e QR restano disponibili.</p>
+                        </div>
                         <button type="submit" class="btn btn-primary w-full">Crea condominio</button>
-                    </form>
-                </div>` : ''}
+                    </form>`, false, 'new-condo-card') : ''}
             </main>
             ${renderBottomNavigation()}
         `;
 
         // Nuovo condominio (solo adm): documento del condominio + codice di invito.
-        const createCondo = async (data) => {
+        // customCode: password di accesso scelta dall'adm (facoltativa, deve essere libera).
+        const createCondo = async (data, customCode = '') => {
             const hex = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
             const newId = 'cond-' + hex;
-            const newCode = await freshInviteCode();
+            let newCode;
+            if (customCode) {
+                newCode = normalizeInviteCode(customCode);
+                if (!newCode) throw new Error('Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.');
+                if ((await getDoc(doc(db, 'inviti', newCode))).exists()) throw new Error('Questa password è già usata da un altro condominio: scegline un\'altra.');
+            } else {
+                newCode = await freshInviteCode();
+            }
             const batch = writeBatch(db);
             batch.set(doc(db, 'condomini', newId), { ...data, codiceInvito: newCode, createdAt: serverTimestamp(), creatoDa: currentUser.uid });
             batch.set(doc(db, 'inviti', newCode), { condominioId: newId, nomeCondominio: data.nome, attivo: true, creatoDa: currentUser.uid, createdAt: serverTimestamp() });
@@ -4311,9 +4351,9 @@
                 if (!data.nome) return show('new-condo-message', 'Il nome è obbligatorio.', 'error');
                 btn.disabled = true;
                 try {
-                    const { id: newId, code: newCode } = await createCondo(data);
+                    const { id: newId, code: newCode } = await createCondo(data, document.getElementById('new-condo-codice').value);
                     e.target.reset();
-                    show('new-condo-message', `Creato "${data.nome}" (codice ${newCode}).`);
+                    show('new-condo-message', `Creato "${data.nome}" (password di accesso ${newCode}).`);
                     if (await customConfirm(`Aprire ora "${data.nome}"?`, 'Apri', 'Più tardi')) switchCondo(newId);
                 } catch (err) {
                     show('new-condo-message', 'Creazione non riuscita: ' + friendlyError(err), 'error');
@@ -5500,7 +5540,7 @@
         };
 
         const renderLoginPage = () => `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:1.5rem 1rem;">
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; min-height:100dvh; padding:1.5rem 1rem;">
                 <div style="margin-bottom: 1rem; text-align: center;">
                     <img src="icons/icon-512x512.png" alt="Con-bridge Logo" style="width: 96px; height: 96px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); object-fit: contain; background: var(--surface-color); padding: 4px;">
                 </div>
@@ -11278,6 +11318,7 @@ ${renderBottomNavigation()}
                 currentPage = 'login';
                 history.replaceState({ page: 'login' }, '', '#login');
             }
+            app.classList.toggle('auth-page', currentPage === 'login' || (!!userProfile && (!activeCondoId || isWaitingPage())));
             // Account senza condominio: nessuna pagina interna.
             if (currentPage !== 'login' && userProfile && !activeCondoId) {
                 app.innerHTML = renderNoCondoPage();
@@ -11952,7 +11993,7 @@ ${renderBottomNavigation()}
             const inviteInfo = document.getElementById('invite-code-info');
             let verifiedInvite = null;
             const verifyInvite = async () => {
-                const code = (inviteInput?.value || '').trim().toUpperCase();
+                const code = (inviteInput?.value || '').trim().toUpperCase().replace(/\s+/g, '-');
                 verifiedInvite = null;
                 if (!code) return false;
                 try {
@@ -44181,6 +44222,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 if (!activeCondoId) {
                     // Nessun condominio (account senza iscrizioni): solo la pagina per aggiungerne uno
                     currentPage = 'dashboard';
+                    document.getElementById('app').classList.add('auth-page');
                     document.getElementById('app').innerHTML = renderNoCondoPage();
                     return;
                 }
@@ -44220,6 +44262,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 // NUOVO: Controllo di convalida account
                 if (userProfile && isWaitingPage()) {
                     // Email da confermare o condomino non ancora convalidato
+                    document.getElementById('app').classList.add('auth-page');
                     document.getElementById('app').innerHTML = renderPendingValidationPage();
                 } else {
                     // L'utente è convalidato o non è un condomino, procede normalmente
