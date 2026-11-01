@@ -4158,14 +4158,7 @@
                             <input type="search" id="${p}-studio-search" oninput="onStudioSearch('${p}', this.value)" onfocus="renderStudioOptions('${p}')" onblur="setTimeout(() => { if (document.activeElement !== this) document.getElementById('${p}-studio-list')?.classList.add('hidden'); }, 150)" ${noEnter} placeholder="Caricamento..." class="form-input" autocomplete="off" disabled>
                             <div id="${p}-studio-list" class="custom-dropdown-list hidden" style="position: static; margin-top: 4px;"></div>
                             <p id="${p}-studio-message" class="hidden" style="font-size: 0.8rem; margin: 0.4rem 0 0;"></p>
-                            <button type="button" class="btn btn-primary w-full" onclick="document.getElementById('${p}-new-studio').classList.toggle('hidden')" style="margin-top: 0.5rem;">Aggiungi amministratore</button>
-                            <div id="${p}-new-studio" class="hidden" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                                <input id="${p}-new-nome" type="text" maxlength="60" ${noEnter} class="form-input" placeholder="Nome o nome dello studio" aria-label="Nome">
-                                <input id="${p}-new-cognome" type="text" maxlength="60" ${noEnter} class="form-input" placeholder="Cognome (facoltativo)" aria-label="Cognome">
-                                <input id="${p}-new-email" type="email" ${noEnter} class="form-input" placeholder="email@studio.it" aria-label="Email">
-                                <button type="button" class="btn btn-primary w-full" onclick="createStudioFromPicker('${p}', this)">Crea amministratore</button>
-                                <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0;">Riceverà un'email per impostare la password.</p>
-                            </div>
+                            <button type="button" id="${p}-new-trigger" onclick="openNewStudioDialog('${p}')" style="background: none; border: none; padding: 0.5rem 0 0; color: var(--accent-color); font-size: 0.85rem; font-weight: 600; text-decoration: underline; cursor: pointer; text-align: left;">Non è nell'elenco? Crea un nuovo amministratore</button>
                             <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.4rem 0 0;">Vedrà subito il condominio nel suo selettore. Password, link e QR servono ai condòmini.</p>
                         </div>`;
         };
@@ -4186,6 +4179,8 @@
         };
         window.onStudioSearch = (p, value) => {
             document.getElementById(`${p}-studio`).value = '';
+            studioPickerMessage(p, '');
+            updateStudioTrigger(p);
             renderStudioOptions(p);
         };
         window.pickStudio = (p, uid) => {
@@ -4193,6 +4188,7 @@
             document.getElementById(`${p}-studio`).value = uid || '';
             document.getElementById(`${p}-studio-search`).value = st ? `${st.nome}${st.email ? ` (${st.email})` : ''}` : '';
             document.getElementById(`${p}-studio-list`).classList.add('hidden');
+            updateStudioTrigger(p);
         };
         // Testo scritto ma nessun amministratore scelto dall'elenco
         const studioPickPending = (p) => {
@@ -4221,18 +4217,67 @@
             box.style.color = isError ? 'var(--danger)' : 'var(--accent-color)';
             box.classList.toggle('hidden', !text);
         };
-        window.createStudioFromPicker = async (p, btn) => {
-            const val = (s) => document.getElementById(`${p}-new-${s}`).value.trim();
-            if (!val('nome') || !val('email')) return studioPickerMessage(p, 'Nome ed email sono obbligatori.', true);
+        // Il collegamento per creare un account compare solo se non è scelto nessun amministratore.
+        const updateStudioTrigger = (p) => {
+            const picked = document.getElementById(`${p}-studio`);
+            document.getElementById(`${p}-new-trigger`)?.classList.toggle('hidden', !!picked?.value);
+        };
+        // Finestra separata: crea un account completamente nuovo, non assegna solo un nome dall'elenco.
+        window.openNewStudioDialog = (p) => {
+            document.getElementById('new-studio-dialog')?.remove();
+            const overlay = document.createElement('div');
+            overlay.id = 'new-studio-dialog';
+            overlay.className = 'custom-dialog-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'new-studio-title');
+            overlay.innerHTML = `
+                <form class="custom-dialog-content" onsubmit="event.preventDefault(); createStudioFromDialog('${p}', this);" style="max-width: 420px; width: 92%; max-height: 90vh; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <h3 id="new-studio-title" style="margin: 0; font-size: 1.2rem;">Nuovo account amministratore</h3>
+                    <div style="padding: 0.7rem 0.85rem; border-radius: 8px; border: 1px solid var(--warning); background: rgba(241, 196, 15, 0.12); font-size: 0.86rem; line-height: 1.4; color: var(--primary-text);">
+                        <strong>Stai creando un utente completamente nuovo.</strong> Se lo studio è già nell'elenco, chiudi questa finestra e sceglilo da lì.
+                    </div>
+                    <div id="new-studio-error" class="message-box error" style="display: none; margin: 0;"></div>
+                    <div class="form-group" style="margin: 0;"><label for="new-studio-nome" class="form-label">Nome o nome dello studio</label><input id="new-studio-nome" type="text" required maxlength="60" class="form-input"></div>
+                    <div class="form-group" style="margin: 0;"><label for="new-studio-cognome" class="form-label">Cognome (facoltativo)</label><input id="new-studio-cognome" type="text" maxlength="60" class="form-input"></div>
+                    <div class="form-group" style="margin: 0;"><label for="new-studio-email" class="form-label">Email</label><input id="new-studio-email" type="email" required class="form-input" placeholder="email@studio.it"></div>
+                    <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0;">Riceverà un'email per impostare la password.</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('new-studio-dialog').remove()">Annulla</button>
+                        <button type="submit" class="btn btn-primary" style="white-space: nowrap; padding-left: 0.5rem; padding-right: 0.5rem;">Crea account</button>
+                    </div>
+                </form>`;
+            document.body.appendChild(overlay);
+            const typed = document.getElementById(`${p}-studio-search`)?.value.trim() || '';
+            const nome = document.getElementById('new-studio-nome');
+            nome.value = typed;
+            nome.focus();
+        };
+        window.createStudioFromDialog = async (p, form) => {
+            const val = (s) => document.getElementById(`new-studio-${s}`).value.trim();
+            const box = document.getElementById('new-studio-error');
+            const btn = form.querySelector('button[type=submit]');
+            const enableStudioPicker = () => {
+                document.getElementById(`${p}-studio`).disabled = false;
+                document.getElementById(`${p}-studio-search`).disabled = false;
+            };
+            // Email già in elenco: si sceglie quell'amministratore, senza creare nulla.
+            const known = (studiCache || []).find(st => st.email && st.email.toLowerCase() === val('email').toLowerCase());
+            if (known) {
+                document.getElementById('new-studio-dialog')?.remove();
+                enableStudioPicker();
+                pickStudio(p, known.uid);
+                studioPickerMessage(p, `${known.nome} era già nell'elenco: l'ho selezionato, nessun nuovo account creato.`);
+                return;
+            }
             btn.disabled = true;
+            box.style.display = 'none';
             try {
                 const studio = await callFunction('createStudio', { nome: val('nome'), cognome: val('cognome'), email: val('email') });
                 studiCache = [...(studiCache || []).filter(s => s.uid !== studio.uid), studio].sort((a, b) => a.nome.localeCompare(b.nome));
-                document.getElementById(`${p}-studio`).disabled = false;
-                document.getElementById(`${p}-studio-search`).disabled = false;
+                document.getElementById('new-studio-dialog')?.remove();
+                enableStudioPicker();
                 pickStudio(p, studio.uid);
-                ['nome', 'cognome', 'email'].forEach(s => { document.getElementById(`${p}-new-${s}`).value = ''; });
-                document.getElementById(`${p}-new-studio`).classList.add('hidden');
                 if (studio.existing) {
                     studioPickerMessage(p, `${studio.nome} aveva già un account: ora è tra gli amministratori e usa la sua password.`);
                 } else {
@@ -4244,8 +4289,10 @@
                     }
                 }
             } catch (err) {
-                studioPickerMessage(p, friendlyError(err), true);
-            } finally { btn.disabled = false; }
+                box.textContent = friendlyError(err);
+                box.style.display = 'block';
+                btn.disabled = false;
+            }
         };
         // Chi può creare condomini: solo l'adm (ogni condominio prevede un canone).
         const canCreateCondo = () => userProfile?.tipoUtente === 'adm';
