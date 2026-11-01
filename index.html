@@ -4231,9 +4231,11 @@
             overlay.setAttribute('role', 'dialog');
             overlay.setAttribute('aria-modal', 'true');
             overlay.setAttribute('aria-labelledby', 'new-studio-title');
+            overlay.style.padding = '0';
             overlay.innerHTML = `
-                <form class="custom-dialog-content" onsubmit="event.preventDefault(); createStudioFromDialog('${p}', this);" style="max-width: 420px; width: 92%; max-height: 90vh; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 0.75rem;">
-                    <h3 id="new-studio-title" style="margin: 0; font-size: 1.2rem;">Nuovo account amministratore</h3>
+                <form class="custom-dialog-content" onsubmit="event.preventDefault(); createStudioFromDialog('${p}', this);" style="width: 100%; max-width: none; height: 100vh; height: 100dvh; max-height: none; border-radius: 0; margin: 0; padding: 1rem; box-sizing: border-box; text-align: left; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <h3 id="new-studio-title" style="margin: 0; font-size: 1.2rem; flex-shrink: 0;">Nuovo account amministratore</h3>
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
                     <div style="padding: 0.7rem 0.85rem; border-radius: 8px; border: 1px solid var(--warning); background: rgba(241, 196, 15, 0.12); font-size: 0.86rem; line-height: 1.4; color: var(--primary-text);">
                         <strong>Stai creando un utente completamente nuovo.</strong> Se lo studio è già nell'elenco, chiudi questa finestra e sceglilo da lì.
                     </div>
@@ -4242,7 +4244,8 @@
                     <div class="form-group" style="margin: 0;"><label for="new-studio-cognome" class="form-label">Cognome (facoltativo)</label><input id="new-studio-cognome" type="text" maxlength="60" class="form-input"></div>
                     <div class="form-group" style="margin: 0;"><label for="new-studio-email" class="form-label">Email</label><input id="new-studio-email" type="email" required class="form-input" placeholder="email@studio.it"></div>
                     <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0;">Riceverà un'email per impostare la password.</p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; flex-shrink: 0; padding-top: 0.5rem; padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid var(--surface-color-light);">
                         <button type="button" class="btn btn-secondary" onclick="document.getElementById('new-studio-dialog').remove()">Annulla</button>
                         <button type="submit" class="btn btn-primary" style="white-space: nowrap; padding-left: 0.5rem; padding-right: 0.5rem;">Crea account</button>
                     </div>
@@ -4508,9 +4511,9 @@
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.85rem; -webkit-overflow-scrolling: touch;">
                         <p style="color: var(--secondary-text); font-size: 0.9rem; line-height: 1.45; margin: 0;">Condominio attivo: <strong style="color: var(--primary-text);">${escapeHtml(activeCondo?.nome || '—')}</strong></p>
                         <div class="dashboard-grid dashboard-grid-menu" style="margin: 0;">
-                        ${btn('closeModalThen(openCondoSwitcher)', 'Selezione condominio', 'M3,3H11V11H3V3M13,3H21V11H13V3M3,13H11V21H3V13M18,13H16V16H13V18H16V21H18V18H21V16H18V13Z')}
+                        ${btn('closeModalThen(openCondoSwitcher)', 'Seleziona condominio', 'M3,3H11V11H3V3M13,3H21V11H13V3M3,13H11V21H3V13M18,13H16V16H13V18H16V21H18V18H21V16H18V13Z')}
+                        ${canCreateCondo() ? btn('closeModalThen(openNewCondoForm)', 'Crea condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z') : ''}
                         ${btn("closeModalThen(() => navigateTo('condominioInviti'))", 'Condominio e inviti', 'M12,3L2,12H5V20H10V14H14V20H19V12H22L12,3Z')}
-                        ${canCreateCondo() ? btn('closeModalThen(openNewCondoForm)', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z') : ''}
                         ${userProfile?.tipoUtente === 'adm' ? btn('closeModalThen(openCondoAdminsView)', 'Amministratori e condomini', 'M16,11C17.66,11 18.99,9.66 18.99,8C18.99,6.34 17.66,5 16,5C14.34,5 13,6.34 13,8C13,9.66 14.34,11 16,11M8,11C9.66,11 10.99,9.66 10.99,8C10.99,6.34 9.66,5 8,5C6.34,5 5,6.34 5,8C5,9.66 6.34,11 8,11M8,13C5.67,13 1,14.17 1,16.5V19H15V16.5C15,14.17 10.33,13 8,13M16,13C15.71,13 15.38,13 15.03,13.05C16.19,13.89 17,15 17,16.5V19H23V16.5C23,14.17 18.33,13 16,13Z') : ''}
                         </div>
                     </div>
