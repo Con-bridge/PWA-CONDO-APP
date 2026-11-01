@@ -4098,7 +4098,7 @@
         `;
 
         // ===== CAMBIO CONDOMINIO =====
-        const canSwitchCondo = () => myCondos.length > 1 || userProfile?.tipoUtente === 'adm';
+        const canSwitchCondo = () => !!activeCondoId && myCondos.length > 0;
         const ROLE_LABELS = { adm: 'Adm', amministratore: 'Amministratore', supervisore: 'Supervisore', consigliere: 'Consigliere', condomino: 'Condòmino', custode: 'Custode', fornitore: 'Fornitore' };
         // Si ricarica l'app: ascoltatori, cache delle schermate e permessi ripartono puliti.
         window.switchCondo = (cid) => {
@@ -6039,6 +6039,15 @@
                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
                             </div>
                             <p>Funzioni Amministr.</p>
+                        </div>
+                    `);
+                // Accanto: Gestione condominii (selezione e inviti)
+                dashboardItemsHtml.push(`
+                        <div onclick="openManageCondosModal()" class="dashboard-item">
+                            <div class="dashboard-card">
+                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19,2H9C7.9,2 7,2.9 7,4V8H5C3.9,8 3,8.9 3,10V22H11V18H13V22H21V4C21,2.9 20.1,2 19,2M9,20H5V18H9V20M9,16H5V14H9V16M9,12H5V10H9V12M13,16H11V14H13V16M13,12H11V10H13V12M13,8H11V6H13V8M17,16H15V14H17V16M17,12H15V10H17V12M17,8H15V6H17V8M17,4H15V4H17Z"/></svg>
+                            </div>
+                            <p>Gestione condominii</p>
                         </div>
                     `);
             }
