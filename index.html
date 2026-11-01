@@ -4116,14 +4116,83 @@
             else fn();
         };
         // Selettore a tutto schermo (stessa finestra delle altre schermate dell'app).
-        window.openCondoSwitcher = () => {
+        // Chi può creare condomini: l'adm e chi è amministratore di almeno un condominio (lo studio).
+        const canCreateCondo = () => userProfile?.tipoUtente === 'adm' || myCondos.some(c => c.ruolo === 'amministratore');
+        // (adm) Amministratori di ogni condominio: letti all'apertura del selettore, una volta per sessione.
+        let condoAdminsLoaded = false;
+        const loadCondoAdmins = async (force = false) => {
+            if (userProfile?.tipoUtente !== 'adm' || (condoAdminsLoaded && !force)) return;
+            await Promise.all(myCondos.map(async (c) => {
+                try {
+                    const snap = await getDocs(query(collection(db, 'condomini', c.id, 'membri'), where('tipoUtente', '==', 'amministratore')));
+                    c.amministratori = snap.docs.map(d => {
+                        const m = d.data();
+                        return { uid: d.id, nome: `${m.nome || ''} ${m.cognome || ''}`.trim() || m.email || 'Senza nome', email: m.email || '' };
+                    });
+                } catch (err) {
+                    console.warn('Amministratori non leggibili:', c.id, err?.code || err);
+                    c.amministratori = c.amministratori || [];
+                }
+            }));
+            condoAdminsLoaded = true;
+        };
+        const adminNamesOf = (c) => (c.amministratori || []).map(a => a.nome).join(', ');
+        // (adm) Vista "Amministratori e condomini": ogni amministratore con i condomini che gestisce.
+        window.openCondoAdminsView = async () => {
+            await loadCondoAdmins(true);
+            const byAdmin = new Map();
+            const orphans = [];
+            for (const c of myCondos) {
+                if (!c.amministratori?.length) { orphans.push(c); continue; }
+                for (const a of c.amministratori) {
+                    if (!byAdmin.has(a.uid)) byAdmin.set(a.uid, { ...a, condos: [] });
+                    byAdmin.get(a.uid).condos.push(c);
+                }
+            }
+            const condoBtn = (c) => `<button type="button" onclick="pickCondoFromSwitcher('${escapeHtml(c.id)}')" style="display: block; width: 100%; text-align: left; padding: 0.55rem 0.75rem; margin-top: 0.4rem; border-radius: 8px; border: 1px solid ${c.id === activeCondoId ? 'var(--accent-color)' : 'transparent'}; background: var(--surface-color-light); color: var(--primary-text); cursor: pointer;"><span style="font-weight: 600;">${escapeHtml(c.nome || 'Condominio senza nome')}</span>${(c.indirizzo || c.comune) ? `<span style="font-size: 0.78rem; color: var(--secondary-text);"> · ${escapeHtml([c.indirizzo, c.comune].filter(Boolean).join(', '))}</span>` : ''}</button>`;
+            const group = (title, subtitle, condos, search) => `
+                <div class="cb-admin-group card" data-search="${escapeHtml(condoSearchText([search, ...condos.map(c => [c.nome, c.indirizzo, c.comune].join(' '))]))}" style="margin: 0; padding: 0.9rem 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;">
+                        <strong style="font-size: 1rem;">${escapeHtml(title)}</strong>
+                        <span style="font-size: 0.8rem; color: var(--accent-color); font-weight: 700; white-space: nowrap;">${condos.length} ${condos.length === 1 ? 'condominio' : 'condomini'}</span>
+                    </div>
+                    ${subtitle ? `<div style="font-size: 0.8rem; color: var(--secondary-text);">${escapeHtml(subtitle)}</div>` : ''}
+                    ${condos.map(condoBtn).join('')}
+                </div>`;
+            const admins = [...byAdmin.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+            const html = admins.map(a => group(a.nome, a.email, a.condos, `${a.nome} ${a.email}`)).join('')
+                + (orphans.length ? group('Senza amministratore', 'Aggiungilo da Gestione inviti > Nuovo utente', orphans, 'senza amministratore') : '');
+            showModal('Amministratori e condomini', `
+                <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
+                    <div style="flex-shrink: 0; margin-bottom: 0.75rem;">
+                        <input type="search" oninput="filterCondoAdminsView(this.value)" placeholder="Cerca amministratore o condominio..." class="form-input" autocomplete="off" aria-label="Cerca amministratore o condominio">
+                    </div>
+                    <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch;">
+                        ${html || '<p style="color: var(--secondary-text);">Nessun condominio.</p>'}
+                        <p id="condo-admins-empty" class="hidden" style="color: var(--secondary-text); margin: 0.5rem 0;">Nessun risultato.</p>
+                    </div>
+                </div>`, true);
+        };
+        window.filterCondoAdminsView = (q) => {
+            const words = condoSearchText([q]).split(/\s+/).filter(Boolean);
+            let shown = 0;
+            document.querySelectorAll('#modal-body .cb-admin-group').forEach(g => {
+                const match = words.every(w => g.dataset.search.includes(w));
+                g.style.display = match ? '' : 'none';
+                if (match) shown++;
+            });
+            document.getElementById('condo-admins-empty')?.classList.toggle('hidden', shown > 0);
+        };
+        window.openCondoSwitcher = async () => {
             const isAdm = userProfile?.tipoUtente === 'adm';
+            await loadCondoAdmins();
             const iconBtn = (onclick, label, path, color) => `<button type="button" onclick="${onclick}" aria-label="${label}" title="${label}" style="flex-shrink: 0; width: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: none; cursor: pointer; background: var(--surface-color-light); color: ${color};"><svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;"><path d="${path}"/></svg></button>`;
             const rows = myCondos.map(c => `
-                <div class="cb-condo-row" data-search="${escapeHtml(condoSearchText([c.nome, c.indirizzo, c.comune, ROLE_LABELS[c.ruolo] || c.ruolo, c.codiceInvito]))}" style="display: flex; gap: 0.4rem; align-items: stretch;">
+                <div class="cb-condo-row" data-search="${escapeHtml(condoSearchText([c.nome, c.indirizzo, c.comune, ROLE_LABELS[c.ruolo] || c.ruolo, c.codiceInvito, adminNamesOf(c)]))}" style="display: flex; gap: 0.4rem; align-items: stretch;">
                     <button type="button" onclick="pickCondoFromSwitcher('${escapeHtml(c.id)}')" style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 0.85rem 1rem; border-radius: 10px; cursor: pointer; background: ${c.id === activeCondoId ? 'rgba(29, 185, 84, 0.12)' : 'var(--surface-color-light)'}; border: 1px solid ${c.id === activeCondoId ? 'var(--accent-color)' : 'transparent'}; color: var(--primary-text);">
                         <span style="font-weight: 700;">${escapeHtml(c.nome || 'Condominio senza nome')}${c.id === activeCondoId ? ' · attivo' : ''}</span>
                         <span style="font-size: 0.8rem; color: var(--secondary-text);">${escapeHtml([c.indirizzo, c.comune].filter(Boolean).join(', '))}${(c.indirizzo || c.comune) ? ' · ' : ''}${escapeHtml(ROLE_LABELS[c.ruolo] || c.ruolo || '')}${c.ruolo === 'condomino' && c.isValidated === false ? ' (in attesa di convalida)' : ''}</span>
+                        ${isAdm ? `<span style="font-size: 0.8rem; color: ${c.amministratori?.length ? 'var(--accent-color)' : 'var(--warning)'};">${c.amministratori?.length ? `Amministratore: ${escapeHtml(adminNamesOf(c))}` : 'Nessun amministratore'}</span>` : ''}
                     </button>
                     ${isAdm ? iconBtn(`openEditCondo('${escapeHtml(c.id)}')`, 'Modifica condominio', 'M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z', 'var(--primary-text)') : ''}
                     ${isAdm ? iconBtn(`deleteCondoFromSwitcher('${escapeHtml(c.id)}')`, 'Elimina condominio', 'M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z', 'var(--danger)') : ''}
@@ -4132,7 +4201,7 @@
             const barBtn = (onclick, label) => `<button type="button" class="btn btn-secondary" onclick="${onclick}" style="flex: 1 1 0; min-width: 0; height: 42px; font-size: 0.9rem; font-weight: 700; border-radius: 8px;">${label}</button>`;
             const actions = [
                 staff ? barBtn("closeModalThen(() => navigateTo('condominioInviti'))", 'Gestione inviti') : '',
-                userProfile?.tipoUtente === 'adm' ? barBtn('closeModalThen(openNewCondoForm)', 'Crea nuovo') : ''
+                canCreateCondo() ? barBtn('closeModalThen(openNewCondoForm)', 'Crea nuovo') : ''
             ].filter(Boolean).join('');
             showModal('Seleziona condominio', `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
@@ -4261,6 +4330,7 @@
                         <div class="dashboard-grid dashboard-grid-menu" style="margin: 0;">
                         ${btn('closeModalThen(openCondoSwitcher)', 'Selezione condominio', 'M3,3H11V11H3V3M13,3H21V11H13V3M3,13H11V21H3V13M18,13H16V16H13V18H16V21H18V18H21V16H18V13Z')}
                         ${btn("closeModalThen(() => navigateTo('condominioInviti'))", 'Condominio e inviti', 'M12,3L2,12H5V20H10V14H14V20H19V12H22L12,3Z')}
+                        ${userProfile?.tipoUtente === 'adm' ? btn('closeModalThen(openCondoAdminsView)', 'Amministratori e condomini', 'M16,11C17.66,11 18.99,9.66 18.99,8C18.99,6.34 17.66,5 16,5C14.34,5 13,6.34 13,8C13,9.66 14.34,11 16,11M8,11C9.66,11 10.99,9.66 10.99,8C10.99,6.34 9.66,5 8,5C6.34,5 5,6.34 5,8C5,9.66 6.34,11 8,11M8,13C5.67,13 1,14.17 1,16.5V19H15V16.5C15,14.17 10.33,13 8,13M16,13C15.71,13 15.38,13 15.03,13.05C16.19,13.89 17,15 17,16.5V19H23V16.5C23,14.17 18.33,13 16,13Z') : ''}
                         </div>
                     </div>
                     <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0;">
@@ -4361,8 +4431,10 @@
                         <button type="submit" class="btn btn-primary w-full">Salva</button>
                     </form>`)}
 
-                ${userProfile?.tipoUtente === 'adm' ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
-                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con il suo codice di invito. Poi aggiungi l'amministratore con "Nuovo utente" o crea gli account da Gestione utenti.</p>
+                ${canCreateCondo() ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">${userProfile?.tipoUtente === 'adm'
+                        ? 'Crea un condominio vuoto con la sua password di accesso. Poi aggiungi l\'amministratore con "Nuovo utente" o crea gli account da Gestione utenti.'
+                        : 'Crea un condominio vuoto con la sua password di accesso: ne diventerai subito l\'amministratore e lo troverai nel selettore.'}</p>
                     <div id="new-condo-message" class="message-box"></div>
                     <form id="new-condo-form" class="space-y-4">
                         <div class="form-group"><label for="new-condo-nome" class="form-label">Nome</label><input id="new-condo-nome" type="text" required maxlength="80" class="form-input" placeholder="Es. Condominio Verdi"></div>
@@ -4402,22 +4474,10 @@
         };
         // customCode: password di accesso scelta dall'adm (facoltativa, deve essere libera).
         const createCondo = async (data, customCode = '') => {
-            const hex = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
-            const newId = 'cond-' + hex;
-            let newCode;
-            if (customCode) {
-                newCode = normalizeInviteCode(customCode);
-                if (!newCode) throw new Error('Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.');
-                if ((await getDoc(doc(db, 'inviti', newCode))).exists()) throw new Error('Questa password è già usata da un altro condominio: scegline un\'altra.');
-            } else {
-                newCode = await freshInviteCode();
-            }
-            const batch = writeBatch(db);
-            batch.set(doc(db, 'condomini', newId), { ...data, codiceInvito: newCode, createdAt: serverTimestamp(), creatoDa: currentUser.uid });
-            batch.set(doc(db, 'inviti', newCode), { condominioId: newId, nomeCondominio: data.nome, attivo: true, creatoDa: currentUser.uid, createdAt: serverTimestamp() });
-            await batch.commit();
-            myCondos.push({ id: newId, ...data, codiceInvito: newCode, ruolo: 'adm' });
-            return { id: newId, code: newCode };
+            const res = await callFunction('createCondominio', { ...data, codice: customCode || '' });
+            const me = { uid: currentUser.uid, nome: `${personalProfile?.nome || ''} ${personalProfile?.cognome || ''}`.trim(), email: currentUser.email || '' };
+            myCondos.push({ id: res.id, ...data, codiceInvito: res.code, ruolo: res.ruolo, amministratori: res.ruolo === 'amministratore' ? [me] : [] });
+            return { id: res.id, code: res.code };
         };
         window.admCreateFirstCondo = async (form) => {
             const btn = form.querySelector('button[type=submit]');

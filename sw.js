@@ -1,5 +1,5 @@
 // Definiamo nuovo nome per la cache
-const CACHE_NAME = 'condo-hub-v1.19';
+const CACHE_NAME = 'condo-hub-v1.20';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 const URLS_TO_CACHE = [
