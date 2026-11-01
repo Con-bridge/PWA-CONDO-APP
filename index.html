@@ -9832,15 +9832,18 @@ ${renderBottomNavigation()}
                 listContainer.innerHTML = usersSnapshot.docs.map(doc => {
                     const user = doc.data();
                     const userId = doc.id;
-                    const canAccess = user.canAccessSupervisorFunctions === true;
+                    // Per gli amministratori il permesso è legato al ruolo: sempre attivo.
+                    const alwaysOn = user.tipoUtente === 'amministratore';
+                    const canAccess = alwaysOn || user.canAccessSupervisorFunctions === true;
 
                     return `
                     <div class="list-item" style="background: var(--surface-color-light);">
-                        <label class="flex items-center gap-4 w-full cursor-pointer">
-                            <input type="checkbox" class="supervisor-permission-checkbox" data-id="${userId}" ${canAccess ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
+                        <label class="flex items-center gap-4 w-full ${alwaysOn ? '' : 'cursor-pointer'}">
+                            <input type="checkbox" class="supervisor-permission-checkbox" data-id="${userId}" ${canAccess ? 'checked' : ''} ${alwaysOn ? 'disabled' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
                             <div class="list-item-content">
                                 <div class="title">${escapeHtml(user.cognome)} ${escapeHtml(user.nome)}</div>
                                 <div class="subtitle">${escapeHtml(user.tipoUtente)} - ${escapeHtml(user.email)}</div>
+                                ${alwaysOn ? '<div class="subtitle" style="color: var(--accent-color); font-weight: 600;">Sempre attivo</div>' : ''}
                             </div>
                         </label>
                     </div>
@@ -9864,6 +9867,7 @@ ${renderBottomNavigation()}
                     const checkboxes = form.querySelectorAll('.supervisor-permission-checkbox');
 
                     checkboxes.forEach(cb => {
+                        if (cb.disabled) return; // amministratori: permesso legato al ruolo
                         const userId = cb.dataset.id;
                         const hasPermission = cb.checked;
                         const userRef = cDoc('membri', userId);
@@ -44233,8 +44237,8 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
 
         // --- FUNZIONE PER NOTIFICA UTENTI IN ATTESA DI APPROVAZIONE ---
         const checkPendingUsersAndNotify = () => {
-            // Solo per admin e supervisori
-            if (!userProfile || (userProfile.tipoUtente !== 'adm' && userProfile.tipoUtente !== 'supervisore')) {
+            // Per chi può convalidare: adm, amministratori, supervisori e chi ha le funzioni supervisore
+            if (!userProfile || !canReadFullUserProfiles()) {
                 return;
             }
 
