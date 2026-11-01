@@ -4116,8 +4116,117 @@
             else fn();
         };
         // Selettore a tutto schermo (stessa finestra delle altre schermate dell'app).
-        // Chi può creare condomini: l'adm e chi è amministratore di almeno un condominio (lo studio).
-        const canCreateCondo = () => userProfile?.tipoUtente === 'adm' || myCondos.some(c => c.ruolo === 'amministratore');
+        // Se cambiano le iscrizioni dell'utente (es. l'adm gli assegna un condominio) il selettore
+        // si aggiorna da solo; se perde il condominio attivo o non ne aveva, l'app riparte.
+        let membershipsWatch = null;
+        const stopWatchingMyCondos = () => { if (membershipsWatch) { membershipsWatch(); membershipsWatch = null; } };
+        const watchMyCondos = (uid) => {
+            stopWatchingMyCondos();
+            if (isAdmProfile(personalProfile)) return;
+            membershipsWatch = onSnapshot(query(collectionGroup(db, 'membri'), where('uid', '==', uid)), async (snap) => {
+                if (snap.metadata.fromCache) return;
+                const ids = snap.docs.map(d => d.ref.parent.parent.id);
+                const known = myCondos.map(c => c.id);
+                if (ids.length === known.length && ids.every(id => known.includes(id))) return;
+                if (!activeCondoId || !ids.includes(activeCondoId)) {
+                    // al massimo una ripartenza ogni 10 secondi, anche in caso di errori di rete
+                    let last = 0;
+                    try { last = Number(sessionStorage.getItem('condominiRipartenza')) || 0; sessionStorage.setItem('condominiRipartenza', String(Date.now())); } catch { }
+                    if (Date.now() - last < 10000) return;
+                    window.location.replace(window.location.pathname + '#dashboard');
+                    window.location.reload();
+                    return;
+                }
+                myCondos = await loadMyCondos(uid).catch(() => myCondos);
+                activeCondo = myCondos.find(c => c.id === activeCondoId) || activeCondo;
+                if (document.getElementById('condo-switcher-search')) openCondoSwitcher();
+            }, (err) => console.warn('Aggiornamento condomini non disponibile:', err?.code || err));
+        };
+
+        // (adm) Scelta dell'amministratore di un condominio, con ricerca e creazione di uno nuovo.
+        let studiCache = null;
+        const loadStudi = async (force = false) => {
+            if (!studiCache || force) studiCache = (await callFunction('listStudi', {})).studi || [];
+            return studiCache;
+        };
+        const studioPickerHtml = (p) => {
+            const noEnter = `onkeydown="if (event.key === 'Enter') event.preventDefault();"`;
+            return `
+                        <div class="form-group">
+                            <label for="${p}-studio" class="form-label">Assegna amministratore</label>
+                            <input type="search" oninput="renderStudioOptions('${p}', this.value)" ${noEnter} placeholder="Cerca per nome o email..." class="form-input" autocomplete="off" aria-label="Cerca amministratore" style="margin-bottom: 0.5rem;">
+                            <select id="${p}-studio" class="form-input" disabled><option value="">Caricamento...</option></select>
+                            <p id="${p}-studio-message" class="hidden" style="font-size: 0.8rem; margin: 0.4rem 0 0;"></p>
+                            <button type="button" class="btn btn-secondary w-full" onclick="document.getElementById('${p}-new-studio').classList.toggle('hidden')" style="margin-top: 0.5rem;">+ Nuovo amministratore</button>
+                            <div id="${p}-new-studio" class="hidden" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                <input id="${p}-new-nome" type="text" maxlength="60" ${noEnter} class="form-input" placeholder="Nome o nome dello studio" aria-label="Nome">
+                                <input id="${p}-new-cognome" type="text" maxlength="60" ${noEnter} class="form-input" placeholder="Cognome (facoltativo)" aria-label="Cognome">
+                                <input id="${p}-new-email" type="email" ${noEnter} class="form-input" placeholder="email@studio.it" aria-label="Email">
+                                <button type="button" class="btn btn-primary w-full" onclick="createStudioFromPicker('${p}', this)">Crea amministratore</button>
+                                <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0;">Riceverà un'email per impostare la password.</p>
+                            </div>
+                            <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.4rem 0 0;">Vedrà subito il condominio nel suo selettore. Password, link e QR servono ai condòmini.</p>
+                        </div>`;
+        };
+        window.renderStudioOptions = (p, q = '') => {
+            const select = document.getElementById(`${p}-studio`);
+            if (!select) return;
+            const selected = select.dataset.selected ?? select.value;
+            const words = condoSearchText([q]).split(/\s+/).filter(Boolean);
+            const list = (studiCache || []).filter(s => s.uid === selected || words.every(w => condoSearchText([s.nome, s.email]).includes(w)));
+            select.innerHTML = `<option value="">Nessuno: lo assegnerò dopo</option>` + list.map(s => `<option value="${escapeHtml(s.uid)}">${escapeHtml(s.nome)}${s.email ? ` (${escapeHtml(s.email)})` : ''}</option>`).join('');
+            select.value = selected;
+            delete select.dataset.selected;
+        };
+        const initStudioPicker = async (p, current = '') => {
+            const select = document.getElementById(`${p}-studio`);
+            if (!select) return;
+            try {
+                await loadStudi(true);
+                select.dataset.selected = current;
+                renderStudioOptions(p);
+                select.disabled = false;
+            } catch (err) {
+                select.innerHTML = '<option value="">Elenco non disponibile</option>';
+                studioPickerMessage(p, 'Elenco degli amministratori non disponibile: ' + friendlyError(err), true);
+            }
+        };
+        const studioPickerMessage = (p, text, isError = false) => {
+            const box = document.getElementById(`${p}-studio-message`);
+            if (!box) return;
+            box.textContent = text;
+            box.style.color = isError ? 'var(--danger)' : 'var(--accent-color)';
+            box.classList.toggle('hidden', !text);
+        };
+        window.createStudioFromPicker = async (p, btn) => {
+            const val = (s) => document.getElementById(`${p}-new-${s}`).value.trim();
+            if (!val('nome') || !val('email')) return studioPickerMessage(p, 'Nome ed email sono obbligatori.', true);
+            btn.disabled = true;
+            try {
+                const studio = await callFunction('createStudio', { nome: val('nome'), cognome: val('cognome'), email: val('email') });
+                studiCache = [...(studiCache || []).filter(s => s.uid !== studio.uid), studio].sort((a, b) => a.nome.localeCompare(b.nome));
+                const select = document.getElementById(`${p}-studio`);
+                select.dataset.selected = studio.uid;
+                renderStudioOptions(p);
+                select.disabled = false;
+                ['nome', 'cognome', 'email'].forEach(s => { document.getElementById(`${p}-new-${s}`).value = ''; });
+                document.getElementById(`${p}-new-studio`).classList.add('hidden');
+                if (studio.existing) {
+                    studioPickerMessage(p, `${studio.nome} aveva già un account: ora è tra gli amministratori e usa la sua password.`);
+                } else {
+                    try {
+                        await resetPassword(studio.email);
+                        studioPickerMessage(p, `${studio.nome} creato: gli abbiamo inviato l'email per impostare la password.`);
+                    } catch {
+                        studioPickerMessage(p, `${studio.nome} creato, ma l'email non è partita: può usare "Password dimenticata?" nella pagina di accesso.`, true);
+                    }
+                }
+            } catch (err) {
+                studioPickerMessage(p, friendlyError(err), true);
+            } finally { btn.disabled = false; }
+        };
+        // Chi può creare condomini: solo l'adm (ogni condominio prevede un canone).
+        const canCreateCondo = () => userProfile?.tipoUtente === 'adm';
         // (adm) Amministratori di ogni condominio: letti all'apertura del selettore, una volta per sessione.
         let condoAdminsLoaded = false;
         const loadCondoAdmins = async (force = false) => {
@@ -4141,6 +4250,7 @@
         window.openCondoAdminsView = async () => {
             await loadCondoAdmins(true);
             const byAdmin = new Map();
+            (await loadStudi(true).catch(() => [])).forEach(st => byAdmin.set(st.uid, { ...st, condos: [] }));
             const orphans = [];
             for (const c of myCondos) {
                 if (!c.amministratori?.length) { orphans.push(c); continue; }
@@ -4161,7 +4271,7 @@
                 </div>`;
             const admins = [...byAdmin.values()].sort((a, b) => a.nome.localeCompare(b.nome));
             const html = admins.map(a => group(a.nome, a.email, a.condos, `${a.nome} ${a.email}`)).join('')
-                + (orphans.length ? group('Senza amministratore', 'Aggiungilo da Gestione inviti > Nuovo utente', orphans, 'senza amministratore') : '');
+                + (orphans.length ? group('Senza amministratore', 'Assegnalo con la matita nel selettore', orphans, 'senza amministratore') : '');
             showModal('Amministratori e condomini', `
                 <div style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                     <div style="flex-shrink: 0; margin-bottom: 0.75rem;">
@@ -4234,7 +4344,7 @@
             const c = myCondos.find(x => x.id === cid);
             if (!c || userProfile?.tipoUtente !== 'adm') return;
             const field = (id, label, value, extra = '') => `<div class="form-group"><label for="${id}" class="form-label">${label}</label><input id="${id}" type="text" class="form-input" value="${escapeHtml(value || '')}" ${extra}></div>`;
-            closeModalThen(() => showModal('Modifica condominio', `
+            closeModalThen(() => { showModal('Modifica condominio', `
                 <form id="edit-condo-form" onsubmit="event.preventDefault(); saveEditCondo('${escapeHtml(cid)}');" style="position: relative; text-align: left !important; width: 100%; height: 100%; display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; overflow: hidden;">
                     <div style="flex: 1 1 0%; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.85rem; -webkit-overflow-scrolling: touch;">
                         <div id="edit-condo-message" class="message-box"></div>
@@ -4243,12 +4353,13 @@
                         ${field('edit-condo-comune', 'Comune', c.comune, 'maxlength="60"')}
                         ${field('edit-condo-codice', 'Password di accesso (codice di invito)', c.codiceInvito, 'maxlength="30" autocomplete="off" autocapitalize="characters" style="text-transform: uppercase;"')}
                         <p style="color: var(--secondary-text); font-size: 0.8rem; margin: -0.4rem 0 0;">Se cambi la password, quella precedente smette di funzionare per le nuove registrazioni.</p>
+                        ${studioPickerHtml('edit-condo')}
                     </div>
                     <div style="margin-top: auto; padding-top: 0.5rem; padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--surface-color-light); width: 100%; flex-shrink: 0; display: flex; gap: 0.5rem;">
                         <button type="button" class="btn btn-secondary" onclick="closeModalThen(openCondoSwitcher)" style="flex: 1 1 0; height: 42px; font-weight: 700; border-radius: 8px;">Annulla</button>
                         <button type="submit" class="btn btn-primary" style="flex: 1 1 0; height: 42px; font-weight: 700; border-radius: 8px;">Salva</button>
                     </div>
-                </form>`, true));
+                </form>`, true); initStudioPicker('edit-condo', c.amministratori?.[0]?.uid || ''); });
         };
         window.saveEditCondo = async (cid) => {
             const c = myCondos.find(x => x.id === cid);
@@ -4264,6 +4375,11 @@
             const wanted = document.getElementById('edit-condo-codice').value.trim();
             const newCode = wanted ? normalizeInviteCode(wanted) : null;
             if (wanted && !newCode) return fail('Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.');
+            const picker = document.getElementById('edit-condo-studio');
+            const currentAdmin = c.amministratori?.[0];
+            const newAdminUid = picker && !picker.disabled ? picker.value : (currentAdmin?.uid || '');
+            const adminChanged = newAdminUid !== (currentAdmin?.uid || '');
+            if (adminChanged && currentAdmin && !(await customConfirm(`${currentAdmin.nome} non amministrerà più questo condominio e, se non vi possiede unità, ne uscirà. Continuare?`, 'Continua', 'Annulla'))) return;
             btn.disabled = true;
             try {
                 const batch = writeBatch(db);
@@ -4272,6 +4388,7 @@
                 await batch.commit();
                 Object.assign(c, data);
                 if (newCode && newCode !== c.codiceInvito) await replaceInviteCode(cid, data.nome, c.codiceInvito, newCode);
+                if (adminChanged) c.amministratori = (await callFunction('assignCondoAdmin', { condominioId: cid, amministratoreUid: newAdminUid })).amministratori || [];
                 if (cid === activeCondoId && activeCondo) {
                     Object.assign(activeCondo, data);
                     const headerName = document.getElementById('header-condo-name');
@@ -4432,9 +4549,7 @@
                     </form>`)}
 
                 ${canCreateCondo() ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
-                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">${userProfile?.tipoUtente === 'adm'
-                        ? 'Crea un condominio vuoto con la sua password di accesso. Poi aggiungi l\'amministratore con "Nuovo utente" o crea gli account da Gestione utenti.'
-                        : 'Crea un condominio vuoto con la sua password di accesso: ne diventerai subito l\'amministratore e lo troverai nel selettore.'}</p>
+                    <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con la sua password di accesso e, se vuoi, assegnalo subito a un amministratore.</p>
                     <div id="new-condo-message" class="message-box"></div>
                     <form id="new-condo-form" class="space-y-4">
                         <div class="form-group"><label for="new-condo-nome" class="form-label">Nome</label><input id="new-condo-nome" type="text" required maxlength="80" class="form-input" placeholder="Es. Condominio Verdi"></div>
@@ -4442,9 +4557,10 @@
                         <div class="form-group"><label for="new-condo-comune" class="form-label">Comune</label><input id="new-condo-comune" type="text" maxlength="60" class="form-input"></div>
                         <div class="form-group">
                             <label for="new-condo-codice" class="form-label">Password di accesso (codice di invito)</label>
-                            <input id="new-condo-codice" type="text" maxlength="30" autocomplete="off" autocapitalize="characters" class="form-input" placeholder="Es. VERDI2026 — vuoto: generata in automatico" style="text-transform: uppercase;">
+                            <input id="new-condo-codice" type="text" maxlength="30" autocomplete="off" autocapitalize="characters" class="form-input" placeholder="Vuoto: generata in automatico" style="text-transform: uppercase;">
                             <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.4rem 0 0;">I condòmini la scrivono in registrazione. Da 4 a 30 caratteri: lettere, numeri e trattini. Link e QR restano disponibili.</p>
                         </div>
+                        ${studioPickerHtml('new-condo')}
                         <button type="submit" class="btn btn-primary w-full">Crea condominio</button>
                     </form>`, false, 'new-condo-card') : ''}
             </main>
@@ -4473,11 +4589,10 @@
             return next;
         };
         // customCode: password di accesso scelta dall'adm (facoltativa, deve essere libera).
-        const createCondo = async (data, customCode = '') => {
-            const res = await callFunction('createCondominio', { ...data, codice: customCode || '' });
-            const me = { uid: currentUser.uid, nome: `${personalProfile?.nome || ''} ${personalProfile?.cognome || ''}`.trim(), email: currentUser.email || '' };
-            myCondos.push({ id: res.id, ...data, codiceInvito: res.code, ruolo: res.ruolo, amministratori: res.ruolo === 'amministratore' ? [me] : [] });
-            return { id: res.id, code: res.code };
+        const createCondo = async (data, customCode = '', amministratoreUid = '') => {
+            const res = await callFunction('createCondominio', { ...data, codice: customCode || '', amministratoreUid });
+            myCondos.push({ id: res.id, ...data, codiceInvito: res.code, ruolo: 'adm', amministratori: res.amministratori || [] });
+            return { id: res.id, code: res.code, amministratori: res.amministratori || [] };
         };
         window.admCreateFirstCondo = async (form) => {
             const btn = form.querySelector('button[type=submit]');
@@ -4538,6 +4653,7 @@
             renderInvite();
             const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
             setVal('condo-nome', condo.nome); setVal('condo-indirizzo', condo.indirizzo); setVal('condo-comune', condo.comune);
+            if (canCreateCondo()) initStudioPicker('new-condo');
 
             const copy = async (text, what) => {
                 try { await navigator.clipboard.writeText(text); show('invite-message', `${what} copiato.`); }
@@ -4624,9 +4740,11 @@
                 if (!data.nome) return show('new-condo-message', 'Il nome è obbligatorio.', 'error');
                 btn.disabled = true;
                 try {
-                    const { id: newId, code: newCode } = await createCondo(data, document.getElementById('new-condo-codice').value);
+                    const { id: newId, code: newCode, amministratori } = await createCondo(data, document.getElementById('new-condo-codice').value, document.getElementById('new-condo-studio')?.value || '');
                     e.target.reset();
-                    show('new-condo-message', `Creato "${data.nome}" (password di accesso ${newCode}).`);
+                    renderStudioOptions('new-condo');
+                    studioPickerMessage('new-condo', '');
+                    show('new-condo-message', `Creato "${data.nome}" (password di accesso ${newCode})${amministratori.length ? `, assegnato a ${amministratori[0].nome}` : ''}.`);
                     if (await customConfirm(`Aprire ora "${data.nome}"?`, 'Apri', 'Più tardi')) switchCondo(newId);
                 } catch (err) {
                     show('new-condo-message', 'Creazione non riuscita: ' + friendlyError(err), 'error');
@@ -4651,7 +4769,7 @@
         ` : `
             <div style="background-color: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 2rem;">
                 <h1 style="font-size: 1.6rem; font-weight: 700; margin-bottom: 1rem;">Nessun condominio associato</h1>
-                <p style="color: var(--secondary-text); max-width: 400px; margin-bottom: 2rem;">Il tuo account non è iscritto a nessun condominio. Chiedi allo studio di amministrazione il codice del condominio o il link di invito.</p>
+                <p style="color: var(--secondary-text); max-width: 400px; margin-bottom: 2rem;">${personalProfile?.isStudio ? 'Il tuo account amministratore è attivo. I condomini che ti verranno assegnati compariranno qui automaticamente.' : 'Il tuo account non è iscritto a nessun condominio. Chiedi allo studio di amministrazione il codice del condominio o il link di invito.'}</p>
                 <button onclick="logout()" class="btn btn-secondary">Esci</button>
             </div>
         `;
@@ -44497,6 +44615,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
                 // L'utente è loggato o si è appena loggato
                 currentUser = user;
                 await loadUserProfile(user);
+                watchMyCondos(user.uid);
                 if (!activeCondoId) {
                     // Nessun condominio (account senza iscrizioni): solo la pagina per aggiungerne uno
                     currentPage = 'dashboard';
@@ -44550,6 +44669,7 @@ PROMEMORIA (Art. 67 disp. att. c.c.): Ricordati di farti consegnare dal delegant
 
             } else {
                 // L'utente non è loggato o ha appena fatto logout
+                stopWatchingMyCondos();
                 if (communicationsListener) {
                     communicationsListener();
                     communicationsListener = null;
