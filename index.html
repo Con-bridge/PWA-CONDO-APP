@@ -4155,9 +4155,9 @@
                         <div class="form-group">
                             <label for="${p}-studio" class="form-label">Assegna amministratore</label>
                             <input type="search" oninput="renderStudioOptions('${p}', this.value)" ${noEnter} placeholder="Cerca per nome o email..." class="form-input" autocomplete="off" aria-label="Cerca amministratore" style="margin-bottom: 0.5rem;">
-                            <select id="${p}-studio" class="form-input" disabled><option value="">Caricamento...</option></select>
+                            <select id="${p}-studio" class="form-select" disabled><option value="">Caricamento...</option></select>
                             <p id="${p}-studio-message" class="hidden" style="font-size: 0.8rem; margin: 0.4rem 0 0;"></p>
-                            <button type="button" class="btn btn-secondary w-full" onclick="document.getElementById('${p}-new-studio').classList.toggle('hidden')" style="margin-top: 0.5rem;">+ Nuovo amministratore</button>
+                            <button type="button" class="btn btn-primary w-full" onclick="document.getElementById('${p}-new-studio').classList.toggle('hidden')" style="margin-top: 0.5rem;">Aggiungi amministratore</button>
                             <div id="${p}-new-studio" class="hidden" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
                                 <input id="${p}-new-nome" type="text" maxlength="60" ${noEnter} class="form-input" placeholder="Nome o nome dello studio" aria-label="Nome">
                                 <input id="${p}-new-cognome" type="text" maxlength="60" ${noEnter} class="form-input" placeholder="Cognome (facoltativo)" aria-label="Cognome">
@@ -4426,14 +4426,7 @@
         window.pickCondoFromSwitcher = (cid) => {
             closeModalThen(() => { if (cid !== activeCondoId) switchCondo(cid); });
         };
-        window.openNewCondoForm = () => {
-            navigateTo('condominioInviti');
-            setTimeout(() => {
-                const content = document.getElementById('section-condo-nuovo-content');
-                if (content?.classList.contains('hidden')) toggleGenericSection('condo-nuovo');
-                document.getElementById('new-condo-card')?.scrollIntoView({ behavior: 'smooth' });
-            }, 400);
-        };
+        window.openNewCondoForm = () => navigateTo('nuovoCondominio');
         // Riquadro nello stile dei sottomenu delle Funzioni admin (icona verde, testo a sinistra).
         // color: per le azioni pericolose (es. var(--danger)) colora icona e testo.
         const menuTileHtml = (onclick, label, icon, color = '') => `<div onclick="${onclick}" class="dashboard-item" role="button" tabindex="0"><div class="menu-list-item"><svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;${color ? ` color: ${color};` : ''}"><path d="${icon}"/></svg><p style="text-align: left; font-size: 1.1rem;${color ? ` color: ${color};` : ''}">${label}</p></div></div>`;
@@ -4502,6 +4495,8 @@
         const renderCondominioInviti = () => `
             ${renderHeader('Condominio e inviti')}
             <main>
+                <h2 id="condo-page-title" class="section-title" style="margin-bottom: 0.15rem;">${escapeHtml(activeCondo?.nome || 'Condominio')}</h2>
+                <p id="condo-page-subtitle" style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 1rem;">${escapeHtml([activeCondo?.indirizzo, activeCondo?.comune].filter(Boolean).join(', '))}</p>
                 ${condoSection('condo-invito', 'Password di accesso', 'M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z', `
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">I condòmini si registrano scrivendo questa password, oppure aprendo il link o inquadrando il QR. Ogni nuova iscrizione resta in attesa finché non la convalidi.</p>
                     <div id="invite-message" class="message-box"></div>
@@ -4527,7 +4522,7 @@
                     <form id="add-member-form" class="space-y-4">
                         <div class="form-group"><label for="add-member-email" class="form-label">Email dell'account</label><input id="add-member-email" type="email" required class="form-input" placeholder="nome@esempio.it"></div>
                         <div class="form-group"><label for="add-member-role" class="form-label">Ruolo in questo condominio</label>
-                            <select id="add-member-role" class="form-input">
+                            <select id="add-member-role" class="form-select">
                                 <option value="condomino">Condòmino</option>
                                 <option value="consigliere">Consigliere</option>
                                 <option value="custode">Custode</option>
@@ -4547,8 +4542,16 @@
                         <div class="form-group"><label for="condo-comune" class="form-label">Comune</label><input id="condo-comune" type="text" maxlength="60" class="form-input"></div>
                         <button type="submit" class="btn btn-primary w-full">Salva</button>
                     </form>`)}
+            </main>
+            ${renderBottomNavigation()}
+        `;
 
-                ${canCreateCondo() ? condoSection('condo-nuovo', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z', `
+        // Pagina di creazione (solo adm): contiene soltanto il modulo del nuovo condominio.
+        const renderNuovoCondominio = () => `
+            ${renderHeader('Nuovo condominio')}
+            <main>
+                <div class="card" id="new-condo-card" style="margin-bottom: 1.25rem;">
+                    <h3 class="card-title">Nuovo condominio</h3>
                     <p style="color: var(--secondary-text); font-size: 0.88rem; margin: 0 0 0.9rem;">Crea un condominio vuoto con la sua password di accesso e, se vuoi, assegnalo subito a un amministratore.</p>
                     <div id="new-condo-message" class="message-box"></div>
                     <form id="new-condo-form" class="space-y-4">
@@ -4562,7 +4565,8 @@
                         </div>
                         ${studioPickerHtml('new-condo')}
                         <button type="submit" class="btn btn-primary w-full">Crea condominio</button>
-                    </form>`, false, 'new-condo-card') : ''}
+                    </form>
+                </div>
             </main>
             ${renderBottomNavigation()}
         `;
@@ -4653,7 +4657,13 @@
             renderInvite();
             const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
             setVal('condo-nome', condo.nome); setVal('condo-indirizzo', condo.indirizzo); setVal('condo-comune', condo.comune);
-            if (canCreateCondo()) initStudioPicker('new-condo');
+            const showCondoTitle = () => {
+                const title = document.getElementById('condo-page-title');
+                const sub = document.getElementById('condo-page-subtitle');
+                if (title) title.textContent = condo.nome || 'Condominio';
+                if (sub) sub.textContent = [condo.indirizzo, condo.comune].filter(Boolean).join(', ');
+            };
+            showCondoTitle();
 
             const copy = async (text, what) => {
                 try { await navigator.clipboard.writeText(text); show('invite-message', `${what} copiato.`); }
@@ -4703,6 +4713,7 @@
                     if (code) batch.update(doc(db, 'inviti', code), { nomeCondominio: data.nome });
                     await batch.commit();
                     Object.assign(condo, data);
+                    showCondoTitle();
                     const mine = myCondos.find(c => c.id === cid);
                     if (mine) Object.assign(mine, data);
                     if (activeCondo) Object.assign(activeCondo, data);
@@ -4728,7 +4739,17 @@
                     show('add-member-message', functionErrorMessage(err), 'error');
                 } finally { btn.disabled = false; }
             });
+        };
 
+        const setupNuovoCondominioHandlers = () => {
+            const show = (id, text, type = 'success') => {
+                const box = document.getElementById(id);
+                if (!box) return;
+                box.textContent = text;
+                box.className = `message-box ${type}`;
+                box.style.display = text ? 'block' : 'none';
+            };
+            initStudioPicker('new-condo');
             document.getElementById('new-condo-form')?.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const btn = e.target.querySelector('button[type=submit]');
@@ -11923,6 +11944,10 @@ ${renderBottomNavigation()}
                     if (userProfile?.tipoUtente === 'adm') content = renderGestoreFunzioniSupervisore();
                     else navigateTo('dashboard');
                     break;
+                case 'nuovoCondominio':
+                    if (canCreateCondo()) content = renderNuovoCondominio();
+                    else navigateTo('dashboard');
+                    break;
                 case 'condominioInviti':
                     if (canReadFullUserProfiles()) content = renderCondominioInviti();
                     else navigateTo('dashboard');
@@ -12080,6 +12105,7 @@ ${renderBottomNavigation()}
                 case 'statisticheCondomini': setupStatisticheCondominiHandlers(); break;
                 case 'periodiAmministrativi': setupPeriodiAmministrativiHandlers(); break; // NUOVO
                 case 'gestoreFunzioniSupervisore': if (userProfile?.tipoUtente === 'adm') setupGestoreFunzioniSupervisoreHandlers(); break;
+                case 'nuovoCondominio': if (canCreateCondo()) setupNuovoCondominioHandlers(); break;
                 case 'condominioInviti': if (canReadFullUserProfiles()) setupCondominioInvitiHandlers(); break;
                 case 'funzioniAmministratore': /* Nessun handler specifico per la pagina menu */ break;
                 case 'creaFornitore': if (userProfile?.tipoUtente === 'amministratore') setupCreaFornitoreHandlers(); break;
