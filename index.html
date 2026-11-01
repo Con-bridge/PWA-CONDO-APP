@@ -4153,9 +4153,10 @@
             const noEnter = `onkeydown="if (event.key === 'Enter') event.preventDefault();"`;
             return `
                         <div class="form-group">
-                            <label for="${p}-studio" class="form-label">Assegna amministratore</label>
-                            <input type="search" oninput="renderStudioOptions('${p}', this.value)" ${noEnter} placeholder="Cerca per nome o email..." class="form-input" autocomplete="off" aria-label="Cerca amministratore" style="margin-bottom: 0.5rem;">
-                            <select id="${p}-studio" class="form-select" disabled><option value="">Caricamento...</option></select>
+                            <label for="${p}-studio-search" class="form-label">Assegna amministratore</label>
+                            <input type="hidden" id="${p}-studio" value="" disabled>
+                            <input type="search" id="${p}-studio-search" oninput="onStudioSearch('${p}', this.value)" onfocus="renderStudioOptions('${p}')" onblur="setTimeout(() => { if (document.activeElement !== this) document.getElementById('${p}-studio-list')?.classList.add('hidden'); }, 150)" ${noEnter} placeholder="Caricamento..." class="form-input" autocomplete="off" disabled>
+                            <div id="${p}-studio-list" class="custom-dropdown-list hidden" style="position: static; margin-top: 4px;"></div>
                             <p id="${p}-studio-message" class="hidden" style="font-size: 0.8rem; margin: 0.4rem 0 0;"></p>
                             <button type="button" class="btn btn-primary w-full" onclick="document.getElementById('${p}-new-studio').classList.toggle('hidden')" style="margin-top: 0.5rem;">Aggiungi amministratore</button>
                             <div id="${p}-new-studio" class="hidden" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
@@ -4168,26 +4169,48 @@
                             <p style="color: var(--secondary-text); font-size: 0.8rem; margin: 0.4rem 0 0;">Vedrà subito il condominio nel suo selettore. Password, link e QR servono ai condòmini.</p>
                         </div>`;
         };
-        window.renderStudioOptions = (p, q = '') => {
-            const select = document.getElementById(`${p}-studio`);
-            if (!select) return;
-            const selected = select.dataset.selected ?? select.value;
+        // Mentre si scrive compaiono i risultati; "Nessuno" solo a campo vuoto.
+        window.renderStudioOptions = (p) => {
+            const list = document.getElementById(`${p}-studio-list`);
+            const input = document.getElementById(`${p}-studio-search`);
+            const picked = document.getElementById(`${p}-studio`);
+            if (!list || !input) return;
+            const q = picked.value ? '' : input.value;
             const words = condoSearchText([q]).split(/\s+/).filter(Boolean);
-            const list = (studiCache || []).filter(s => s.uid === selected || words.every(w => condoSearchText([s.nome, s.email]).includes(w)));
-            select.innerHTML = `<option value="">Nessuno: lo assegnerò dopo</option>` + list.map(s => `<option value="${escapeHtml(s.uid)}">${escapeHtml(s.nome)}${s.email ? ` (${escapeHtml(s.email)})` : ''}</option>`).join('');
-            select.value = selected;
-            delete select.dataset.selected;
+            const matches = (studiCache || []).filter(st => words.every(w => condoSearchText([st.nome, st.email]).includes(w)));
+            const row = (uid, label) => `<div class="custom-dropdown-item" role="option" onmousedown="event.preventDefault()" onclick="pickStudio('${p}', '${escapeHtml(uid)}')">${label}</div>`;
+            list.innerHTML = (words.length ? '' : row('', 'Nessuno: lo assegnerò dopo'))
+                + matches.map(st => row(st.uid, `${escapeHtml(st.nome)}${st.email ? ` (${escapeHtml(st.email)})` : ''}`)).join('')
+                + (words.length && !matches.length ? '<div class="custom-dropdown-item" style="cursor: default;">Nessun amministratore trovato</div>' : '');
+            list.classList.remove('hidden');
+        };
+        window.onStudioSearch = (p, value) => {
+            document.getElementById(`${p}-studio`).value = '';
+            renderStudioOptions(p);
+        };
+        window.pickStudio = (p, uid) => {
+            const st = (studiCache || []).find(x => x.uid === uid);
+            document.getElementById(`${p}-studio`).value = uid || '';
+            document.getElementById(`${p}-studio-search`).value = st ? `${st.nome}${st.email ? ` (${st.email})` : ''}` : '';
+            document.getElementById(`${p}-studio-list`).classList.add('hidden');
+        };
+        // Testo scritto ma nessun amministratore scelto dall'elenco
+        const studioPickPending = (p) => {
+            const input = document.getElementById(`${p}-studio-search`);
+            return !!input && !input.disabled && !!input.value.trim() && !document.getElementById(`${p}-studio`).value;
         };
         const initStudioPicker = async (p, current = '') => {
-            const select = document.getElementById(`${p}-studio`);
-            if (!select) return;
+            const picked = document.getElementById(`${p}-studio`);
+            const input = document.getElementById(`${p}-studio-search`);
+            if (!picked || !input) return;
             try {
                 await loadStudi(true);
-                select.dataset.selected = current;
-                renderStudioOptions(p);
-                select.disabled = false;
+                picked.disabled = false;
+                input.disabled = false;
+                input.placeholder = 'Cerca per nome o email...';
+                pickStudio(p, current);
             } catch (err) {
-                select.innerHTML = '<option value="">Elenco non disponibile</option>';
+                input.placeholder = 'Elenco non disponibile';
                 studioPickerMessage(p, 'Elenco degli amministratori non disponibile: ' + friendlyError(err), true);
             }
         };
@@ -4205,10 +4228,9 @@
             try {
                 const studio = await callFunction('createStudio', { nome: val('nome'), cognome: val('cognome'), email: val('email') });
                 studiCache = [...(studiCache || []).filter(s => s.uid !== studio.uid), studio].sort((a, b) => a.nome.localeCompare(b.nome));
-                const select = document.getElementById(`${p}-studio`);
-                select.dataset.selected = studio.uid;
-                renderStudioOptions(p);
-                select.disabled = false;
+                document.getElementById(`${p}-studio`).disabled = false;
+                document.getElementById(`${p}-studio-search`).disabled = false;
+                pickStudio(p, studio.uid);
                 ['nome', 'cognome', 'email'].forEach(s => { document.getElementById(`${p}-new-${s}`).value = ''; });
                 document.getElementById(`${p}-new-studio`).classList.add('hidden');
                 if (studio.existing) {
@@ -4375,6 +4397,7 @@
             const wanted = document.getElementById('edit-condo-codice').value.trim();
             const newCode = wanted ? normalizeInviteCode(wanted) : null;
             if (wanted && !newCode) return fail('Password non valida: da 4 a 30 caratteri, solo lettere, numeri e trattini.');
+            if (studioPickPending('edit-condo')) return fail("Scegli l'amministratore dall'elenco oppure svuota il campo.");
             const picker = document.getElementById('edit-condo-studio');
             const currentAdmin = c.amministratori?.[0];
             const newAdminUid = picker && !picker.disabled ? picker.value : (currentAdmin?.uid || '');
@@ -4440,6 +4463,7 @@
                         <div class="dashboard-grid dashboard-grid-menu" style="margin: 0;">
                         ${btn('closeModalThen(openCondoSwitcher)', 'Selezione condominio', 'M3,3H11V11H3V3M13,3H21V11H13V3M3,13H11V21H3V13M18,13H16V16H13V18H16V21H18V18H21V16H18V13Z')}
                         ${btn("closeModalThen(() => navigateTo('condominioInviti'))", 'Condominio e inviti', 'M12,3L2,12H5V20H10V14H14V20H19V12H22L12,3Z')}
+                        ${canCreateCondo() ? btn('closeModalThen(openNewCondoForm)', 'Nuovo condominio', 'M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z') : ''}
                         ${userProfile?.tipoUtente === 'adm' ? btn('closeModalThen(openCondoAdminsView)', 'Amministratori e condomini', 'M16,11C17.66,11 18.99,9.66 18.99,8C18.99,6.34 17.66,5 16,5C14.34,5 13,6.34 13,8C13,9.66 14.34,11 16,11M8,11C9.66,11 10.99,9.66 10.99,8C10.99,6.34 9.66,5 8,5C6.34,5 5,6.34 5,8C5,9.66 6.34,11 8,11M8,13C5.67,13 1,14.17 1,16.5V19H15V16.5C15,14.17 10.33,13 8,13M16,13C15.71,13 15.38,13 15.03,13.05C16.19,13.89 17,15 17,16.5V19H23V16.5C23,14.17 18.33,13 16,13Z') : ''}
                         </div>
                     </div>
@@ -4759,11 +4783,12 @@
                     comune: document.getElementById('new-condo-comune').value.trim()
                 };
                 if (!data.nome) return show('new-condo-message', 'Il nome è obbligatorio.', 'error');
+                if (studioPickPending('new-condo')) return show('new-condo-message', "Scegli l'amministratore dall'elenco oppure svuota il campo.", 'error');
                 btn.disabled = true;
                 try {
                     const { id: newId, code: newCode, amministratori } = await createCondo(data, document.getElementById('new-condo-codice').value, document.getElementById('new-condo-studio')?.value || '');
                     e.target.reset();
-                    renderStudioOptions('new-condo');
+                    pickStudio('new-condo', '');
                     studioPickerMessage('new-condo', '');
                     show('new-condo-message', `Creato "${data.nome}" (password di accesso ${newCode})${amministratori.length ? `, assegnato a ${amministratori[0].nome}` : ''}.`);
                     if (await customConfirm(`Aprire ora "${data.nome}"?`, 'Apri', 'Più tardi')) switchCondo(newId);
