@@ -3368,6 +3368,8 @@
         const canReadFullUserProfiles = () => !!userProfile
             && (['adm', 'amministratore', 'supervisore'].includes(userProfile.tipoUtente)
                 || userProfile.canAccessSupervisorFunctions === true);
+        // Crea nuovo fornitore, Abilita custode e Contatti di riserva: per ruolo, non con il permesso speciale.
+        const canUseRoleFunctions = () => ['amministratore', 'supervisore', 'adm'].includes(userProfile?.tipoUtente);
         const usersReadCollection = () => cCol(canReadFullUserProfiles() ? 'membri' : 'profiliPubblici');
         const userReadDoc = (uid) => cDoc((uid === currentUser?.uid || canReadFullUserProfiles()) ? 'membri' : 'profiliPubblici', uid);
         // Segnalazioni: un condomino può leggere solo quelle create da lui o indirizzate a lui.
@@ -4923,7 +4925,7 @@
         // ============================================================================
         // CONTATTI DI RISERVA DELL'AMMINISTRATORE (per categoria di segnalazione)
         // ============================================================================
-        // Documento settings/adminContacts, modificabile dall'amministratore e dall'adm.
+        // Documento settings/adminContacts, modificabile da amministratore, supervisore e adm.
         // Il condomino vede il contatto corrispondente al genere della segnalazione;
         // se una categoria è vuota si usa il contatto "Comunicazioni generali".
         const ADMIN_CONTACT_CATEGORIES = [
@@ -5006,7 +5008,7 @@
             box.innerHTML = rows || '<p style="color: var(--secondary-text); margin: 0;">L\'amministratore non ha ancora indicato contatti per categoria.</p>';
         };
 
-        const canEditAdminContacts = () => ['amministratore', 'adm'].includes(userProfile?.tipoUtente);
+        const canEditAdminContacts = () => canUseRoleFunctions();
 
         const renderContattiAmministratore = () => `
             ${renderHeader('Contatti di riserva')}
@@ -5670,7 +5672,7 @@
             const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'modificaDatiImportati', 'verificaTeste', 'orariCustode', 'periodiAmministrativi', 'convalidaCondomini'];
             const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore', 'registroBackup', 'accountOrfani'];
             // Aggiunto "assemblea_crea" e "assemblea_gestione" tra le pagine riservate all'amministratore (e ADM)
-            const amministratoreOnlyPages = ['funzioniAmministratore', 'creaFornitore', 'abilitaCustode', 'assemblea_crea', 'assemblea_gestione'];
+            const amministratoreOnlyPages = ['funzioniAmministratore', 'assemblea_crea', 'assemblea_gestione'];
 
             // Se la pagina è per l'amministratore, ma l'utente non lo è, blocca.
             if (amministratoreOnlyPages.includes(e) && userType !== 'amministratore') {
@@ -5686,15 +5688,14 @@
                 return;
             }
 
-            // Contatti di riserva dell'amministratore: amministratore e adm.
-            if (e === 'contattiAmministratore' && !['amministratore', 'adm'].includes(userType)) {
+            // Backup database: riservato ad amministratore e adm.
+            if (e === 'backupDatabase' && !['amministratore', 'adm'].includes(userType)) {
                 console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
                 navigateTo('dashboard');
                 return;
             }
 
-            // Backup database: riservato ad amministratore e adm.
-            if (e === 'backupDatabase' && !['amministratore', 'adm'].includes(userType)) {
+            if (['creaFornitore', 'abilitaCustode', 'contattiAmministratore'].includes(e) && !canUseRoleFunctions()) {
                 console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
                 navigateTo('dashboard');
                 return;
@@ -9046,7 +9047,7 @@ ${renderBottomNavigation()}
                         <p style="text-align: left; font-size: 1.1rem;">Modifica dati unità immobiliari</p>
                     </div>
                 </div>
-                ${userProfile?.tipoUtente === 'amministratore' ? `
+                ${canUseRoleFunctions() ? `
                 <div onclick="navigateTo('creaFornitore')" class="dashboard-item">
                     <div class="menu-list-item">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15,12C17.21,12 19,10.21 19,8C19,5.79 17.21,4 15,4C12.79,4 11,5.79 11,8C11,10.21 12.79,12 15,12M6,10V7H4V10H1V12H4V15H6V12H9V10H6M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14Z"/></svg>
@@ -9148,12 +9149,6 @@ ${renderBottomNavigation()}
                     <div class="menu-list-item">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 14c-2.67 0-8 1.33-8 4v2h16v-2c0-2.67-5.33-4-8-4zm-9-4V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 2a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" transform="matrix(-1 0 0 1 24 0)"/></svg>
                         <p style="text-align: left; font-size: 1.1rem;">Account senza profilo</p>
-                    </div>
-                </div>
-                <div onclick="navigateTo('contattiAmministratore')" class="dashboard-item">
-                    <div class="menu-list-item">
-                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                        <p style="text-align: left; font-size: 1.1rem;">Contatti amministratore</p>
                     </div>
                 </div>
                 ` : ''}
@@ -12016,7 +12011,7 @@ ${renderBottomNavigation()}
                     navigateTo(userProfile?.tipoUtente === 'amministratore' ? 'gestioneGruppi' : 'dashboard');
                     break;
                 case 'creaFornitore':
-                    if (userProfile?.tipoUtente === 'amministratore') content = renderCreaFornitore();
+                    if (canUseRoleFunctions()) content = renderCreaFornitore();
                     else navigateTo('dashboard');
                     break;
                 case 'convalidaCondomini':
@@ -12024,7 +12019,7 @@ ${renderBottomNavigation()}
                     else navigateTo('dashboard');
                     break;
                 case 'abilitaCustode':
-                    if (userProfile?.tipoUtente === 'amministratore') content = renderAbilitaCustode();
+                    if (canUseRoleFunctions()) content = renderAbilitaCustode();
                     else navigateTo('dashboard');
                     break;
                 case 'contattiAmministratore':
@@ -12166,9 +12161,9 @@ ${renderBottomNavigation()}
                 case 'gestoreFunzioniSupervisore': if (userProfile?.tipoUtente === 'adm') setupGestoreFunzioniSupervisoreHandlers(); break;
                 case 'nuovoCondominio': if (canCreateCondo()) setupNuovoCondominioHandlers(); break;
                 case 'condominioInviti': if (canReadFullUserProfiles()) setupCondominioInvitiHandlers(); break;
-                case 'creaFornitore': if (userProfile?.tipoUtente === 'amministratore') setupCreaFornitoreHandlers(); break;
+                case 'creaFornitore': if (canUseRoleFunctions()) setupCreaFornitoreHandlers(); break;
                 case 'convalidaCondomini': if (hasSupervisorAccess) setupConvalidaCondominiHandlers(); break;
-                case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
+                case 'abilitaCustode': if (canUseRoleFunctions()) setupAbilitaCustodeHandlers(); break;
                 case 'backupDatabase': if (['amministratore', 'adm'].includes(userProfile?.tipoUtente)) setupBackupDatabaseHandlers(); break;
                 case 'contattiAmministratore': if (canEditAdminContacts()) setupContattiAmministratoreHandlers(); break;
                 case 'registroBackup': if (userProfile?.tipoUtente === 'adm') loadBackupEventsList(); break;
