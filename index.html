@@ -3265,6 +3265,10 @@
         window.limit = limit;
         window.serverTimestamp = serverTimestamp;
 
+        // Dispositivi per persona: gli ultimi usati, il vecchio campo fcmToken confluisce nell'elenco.
+        const MAX_FCM_DEVICES = 5;
+        const mergeDeviceTokens = (list, legacy, current) => [...new Set([...(Array.isArray(list) ? list : []), legacy, current].filter(t => t && t !== current)), current].slice(-MAX_FCM_DEVICES);
+
         // --- FUNZIONE REGISTRAZIONE WEB PUSH PER PWA ---
         const initPushNotifications = async (userId) => {
             if (!userId || !('Notification' in window) || !('serviceWorker' in navigator)) return;
@@ -3286,8 +3290,12 @@
 
                     if (currentToken) {
 
-                        // Salviamo il token Web Push nel campo fcmToken dell'utente
-                        await updateDoc(doc(db, "users", userId), {
+                        // Salviamo il token Web Push di questo dispositivo accanto a quelli degli altri
+                        try { localStorage.setItem('fcmDeviceToken', currentToken); } catch { }
+                        const userRef = doc(db, "users", userId);
+                        const saved = (await getDoc(userRef)).data() || {};
+                        await updateDoc(userRef, {
+                            fcmTokens: mergeDeviceTokens(saved.fcmTokens, saved.fcmToken, currentToken),
                             fcmToken: currentToken,
                             notificationsEnabled: true
                         }).catch(err => console.warn("Errore salvataggio token FCM PWA:", err));
@@ -5208,9 +5216,17 @@
 
             if (currentUser) {
                 try {
-                    await updateDoc(doc(db, "users", currentUser.uid), {
-                        fcmToken: null
-                    });
+                    // Si toglie solo questo dispositivo: gli altri continuano a ricevere le notifiche.
+                    let deviceToken = null;
+                    try { deviceToken = localStorage.getItem('fcmDeviceToken'); localStorage.removeItem('fcmDeviceToken'); } catch { }
+                    if (deviceToken) {
+                        const userRef = doc(db, "users", currentUser.uid);
+                        const saved = (await getDoc(userRef)).data() || {};
+                        await updateDoc(userRef, {
+                            fcmTokens: (saved.fcmTokens || []).filter(t => t !== deviceToken),
+                            ...(saved.fcmToken === deviceToken ? { fcmToken: null } : {})
+                        });
+                    }
                 } catch (err) {
                     console.warn("Impossibile rimuovere fcmToken al logout:", err);
                 }
