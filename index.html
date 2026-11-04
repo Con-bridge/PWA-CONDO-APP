@@ -2558,6 +2558,23 @@
             color: var(--secondary-text);
         }
 
+        .profile-photo-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .profile-photo-actions .btn {
+            flex: 1 1 140px;
+            max-width: 220px;
+        }
+
+        .profile-photo-actions .btn-secondary {
+            background-color: var(--bg-color);
+        }
+
         .profile-photo-info {
             text-align: center;
             max-width: 280px;
@@ -6078,9 +6095,13 @@
                                 <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
                             </svg>
                         </div>
-                        <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleProfilePhotoSelection(event)">
+                        <input type="file" id="profile-photo-input" accept="image/*" style="display: none;" onchange="handleProfilePhotoSelection(event)">
+                        <input type="file" id="profile-photo-camera" accept="image/*" capture="user" style="display: none;" onchange="handleProfilePhotoSelection(event)">
+                        <div class="profile-photo-actions">
+                            ${window.matchMedia('(pointer: coarse)').matches ? `<button type="button" id="profile-photo-camera-btn" class="btn btn-primary" onclick="document.getElementById('profile-photo-camera').click()">Scatta foto</button>` : ''}
+                            <button type="button" id="profile-photo-gallery-btn" class="btn btn-secondary" onclick="document.getElementById('profile-photo-input').click()">${window.matchMedia('(pointer: coarse)').matches ? 'Scegli dalla galleria' : 'Scegli foto'}</button>
+                        </div>
                         <div class="profile-photo-info">
-                            <p>Tocca per caricare una tua foto</p>
                             <div class="photo-notice">
                                 <strong style="display:inline-flex; align-items:center; gap:0.35rem; color:var(--warning);">${THEME_ICONS.alertWarning(16)} Attenzione:</strong> È obbligatoria una tua foto profilo per la verifica dell’identità. L’immagine verrà cancellata in modo permanente dopo l’approvazione dell’account.
                             </div>
@@ -13128,8 +13149,34 @@ ${renderBottomNavigation()}
         };
 
         // --- Gestione Foto Profilo per Registrazione ---
-        window.handleProfilePhotoSelection = (event) => {
-            const file = event.target.files[0];
+        // Una foto scattata può superare il limite o non essere JPEG/PNG/WebP (es. HEIC):
+        // si converte in JPEG più leggero. Se il dispositivo non sa leggerla resta com'è.
+        const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+        const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+        const convertProfilePhoto = async (file) => {
+            const url = URL.createObjectURL(file);
+            try {
+                const img = new Image();
+                await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
+                const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.naturalWidth * scale);
+                canvas.height = Math.round(img.naturalHeight * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+                return blob ? new File([blob], 'foto-profilo.jpg', { type: 'image/jpeg' }) : file;
+            } catch {
+                return file;
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        };
+
+        window.handleProfilePhotoSelection = async (event) => {
+            let file = event.target.files[0];
             const previewEl = document.getElementById('profile-photo-preview');
 
             if (!file) {
@@ -13141,20 +13188,21 @@ ${renderBottomNavigation()}
                 return;
             }
 
+            event.target.value = ''; // così si può ripetere lo scatto o scegliere la stessa foto
+            if (!PROFILE_PHOTO_TYPES.includes(file.type) || file.size > PROFILE_PHOTO_MAX_BYTES) {
+                file = await convertProfilePhoto(file);
+            }
+
             // Validazione formato
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!allowedTypes.includes(file.type)) {
+            if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
                 customAlert('Formato non valido. Carica un\'immagine in formato JPEG, PNG o WebP.');
-                event.target.value = '';
                 if (previewEl) previewEl.classList.add('error');
                 return;
             }
 
             // Validazione dimensione (max 5MB)
-            const maxSizeBytes = 5 * 1024 * 1024;
-            if (file.size > maxSizeBytes) {
+            if (file.size > PROFILE_PHOTO_MAX_BYTES) {
                 customAlert('La foto è troppo grande. Dimensione massima consentita: 5MB.');
-                event.target.value = '';
                 if (previewEl) previewEl.classList.add('error');
                 return;
             }
